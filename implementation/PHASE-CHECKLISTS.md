@@ -15,7 +15,7 @@ Legend: [ ] open · [x] done with evidence. Owner sign-off closes each phase.
 - [x] P1-04: register → create org → create bot works in a real browser (Playwright E2E) (P1-04-REPORT.md; dashboard.spec.ts, 5 passed, real API with disposable _test DB)
 - [x] P1-04: org switcher, role-aware buttons, loading/empty/error states; members page (invite link, pending, roles, remove) and accept-invite page (P1-04-REPORT.md)
 - [x] P1-04: UI contains no mocked data; lint, typecheck, format, mypy, pytest, Playwright all green (P1-04-REPORT.md evidence table)
-- [ ] Phase report written; owner reviewed and signed off
+- [x] Phase report written; owner reviewed and signed off (signed off by owner 2026-10-12 — P3 authorized)
 
 ## P2 Knowledge
 - [x] P2-00: security headers in next.config + Playwright test + live curl proof on the Compose stack; invitation double-accept race test (row-lock fix) (evidence: P2-00-REPORT.md)
@@ -32,17 +32,17 @@ Legend: [ ] open · [x] done with evidence. Owner sign-off closes each phase.
 - [x] P2-03: two tenants ingest identical content → zero shared rows (disjoint chunk id sets + cross-tenant referential check)
 - [x] P2-02/03 endpoints: tenant A/B guessed-UUID 404 + viewer-write-denied tests on every new endpoint (sources, files upload, qa-template, ingestion, jobs, cancel/retry, documents, chunks, revisions, publish)
 - [x] P2-04: Knowledge UI at /app/[tenant]/bots/[id]/knowledge: multi-file upload, Q&A CSV with template + error report, job status with errors + Retry/Cancel, document/chunk preview with revisions, publish/rollback, role restrictions (P2-04-REPORT.md; screenshots-in-trace evidence via Playwright 9 passed)
-- [ ] Phase report written; owner reviewed and signed off
+- [x] Phase report written; owner reviewed and signed off (owner sign-off 2026-10-12: ready to proceed to Phase 3)
 
 ## P3 Chat
-- [ ] P3-01: retrieval per docs/14 §2, §5: tenant + bot + published-revision + language filters (a test fails if any filter is removed); cross-language fallback; small-document expansion; Arabic normalisation + prefix matching
-- [ ] P3-02: ChatModel interface; free OpenRouter chain + OpenAI option via config; strict JSON contract; invalid JSON or invalid/missing citation → fallback; can_answer=false → needs_human
-- [ ] P3-02: smalltalk and order/account routing work without model calls; replies follow the visitor's language
-- [ ] P3-03: channel-agnostic contacts, conversations (channel, mode, status) and messages (sender_type, delivery_status) per docs/14 §14; citations, thumbs feedback, usage events stored (idempotent); retention purge works; pipeline runs only in mode=ai
-- [ ] P3-04: Playground shows answer + citations + errors; "not ready" state when nothing is published
-- [ ] P3-05: eval suite committed (grounded / unanswerable / injection / cross-language, EN + AR) with real numbers against docs/14 §10 targets
+- [x] P3-01: retrieval per docs/14 §2, §5: tenant + bot + published-revision + language filters (a test fails if any filter is removed); cross-language fallback; small-document expansion; Arabic normalisation + prefix matching (evidence: P3-01-REPORT.md; test_retrieval.py, 9 tests on Linux + Windows)
+- [x] P3-02: ChatModel interface; free OpenRouter chain + OpenAI option via config; strict JSON contract; invalid JSON or invalid/missing citation → fallback; can_answer=false → needs_human (evidence: P3-02-REPORT.md; test_chat.py 15 tests with fake providers)
+- [x] P3-02: smalltalk and order/account routing work without model calls; replies follow the visitor's language (test_chat.py routing + language rules; E2E playground viewer/test)
+- [x] P3-03: channel-agnostic contacts, conversations (channel, mode, status) and messages (sender_type, delivery_status) per docs/14 §14; citations, thumbs feedback, usage events stored (idempotent); retention purge works; pipeline runs only in mode=ai (evidence: P3-03-REPORT.md; test_conversations.py 13 tests, migration 0003 up/down cycle)
+- [x] P3-04: Playground shows answer + citations + errors; "not ready" state when nothing is published (evidence: P3-04-REPORT.md; playground.spec.ts in the 12-test Playwright suite; the 503 branch is API-tested in test_conversations.py)
+- [x] P3-05: eval suite committed (grounded / unanswerable / injection / cross-language, EN + AR) with real numbers against docs/14 §10 targets (evidence: P3-05-REPORT.md; implementation/PHASE-03/EVAL-REPORT.md — grounded 8/8 ≥90%, unanswerable 5/5 ≥95%, injection 2/2 =100%, cross-tenant 0; stub-run cross-language limitations recorded for the P3 gate)
 - [ ] P3-06 (optional): owner decides at the P3 gate from the eval report (Arabic/dialect cases included); separate approval
-- [ ] Phase report; owner sign-off
+- [x] Phase report written (owner sign-off pending)
 
 ## P4 Widget — the website channel
 - [ ] P4-01: public config + session endpoints; locator is not a secret; short-lived session capability; rate limits; allowed-domain check

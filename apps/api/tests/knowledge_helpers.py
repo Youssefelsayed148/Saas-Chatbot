@@ -118,6 +118,16 @@ def drain_jobs(engine: Any, tmp_root: Path) -> list[Job]:
     return jobs
 
 
+def publish_draft(users: Any, bot_id: UUID | str) -> str:
+    """Publish the bot's current draft via the API and return its id."""
+    base = f"/api/v1/tenants/{users.tenant_id}/bots/{bot_id}/revisions"
+    revisions = users.call("owner", "GET", base).json()
+    draft = next(row for row in revisions["revisions"] if row["status"] == "draft")
+    published = users.call("owner", "POST", f"{base}/{draft['id']}/publish")
+    assert published.status_code == 200, published.text
+    return str(draft["id"])
+
+
 def run_jobs_to_completion(
     engine: Any, tmp_root: Path, db: OrmSession, max_rounds: int = 5
 ) -> list[Job]:

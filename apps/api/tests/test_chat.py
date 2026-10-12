@@ -182,9 +182,7 @@ def test_history_is_condensed_via_short_model_call(
     assert model.calls[1][1] is True
 
 
-def test_condensation_failure_ends_busy(
-    app: Any, db: OrmSession, corpus: dict[str, Any]
-) -> None:
+def test_condensation_failure_ends_busy(app: Any, db: OrmSession, corpus: dict[str, Any]) -> None:
     reply = answer(
         db,
         corpus,

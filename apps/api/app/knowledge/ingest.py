@@ -255,7 +255,13 @@ def plan_source(
                 chunk_texts = split_text(text, settings.chunk_size, settings.chunk_overlap)
             planned_chunks: list[ChunkPlanRow] = []
             for chunk_ordinal, chunk_text in enumerate(chunk_texts):
-                normalised = normalise_text(chunk_text)
+                # Indexed text = title + heading + text (docs/14 §4); the
+                # Arabic side stores its normalised form in text_norm, which
+                # feeds the GIN-indexed fts_simple column.
+                indexed_text = " ".join(
+                    part for part in (page.title, section.heading or "", chunk_text) if part
+                )
+                normalised = normalise_text(indexed_text)
                 digest = content_hash(normalised)
                 if digest in seen_hashes:
                     # Identical chunk text is stored once per source (§3).
