@@ -5,6 +5,7 @@ from app.api.health import router as health_router
 from app.auth.router import router as auth_router
 from app.bots.router import router as bots_router
 from app.core.errors import REQUEST_ID_HEADER, RequestIdMiddleware, install_error_handlers
+from app.knowledge.router import router as knowledge_router
 from app.tenants.router import router as tenants_router
 
 # Same-origin deployment (web + api under one gateway in production). Local dev uses
@@ -27,6 +28,7 @@ def create_app() -> FastAPI:
     application.include_router(auth_router)
     application.include_router(tenants_router)
     application.include_router(bots_router)
+    application.include_router(knowledge_router)
     install_error_handlers(application)
     return application
 
