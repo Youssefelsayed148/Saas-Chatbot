@@ -161,6 +161,8 @@ export default function BotSettingsPage() {
     <main>
       <p className="eyebrow">
         <Link href={`/app/${tenantId}/bots`}>Back to bots</Link>
+        {" · "}
+        <Link href={`/app/${tenantId}/bots/${botId}/knowledge`}>Knowledge</Link>
       </p>
       <h1>{bot.name} — settings</h1>
       <p data-status={bot.status}>Status: {bot.status}</p>

@@ -1,6 +1,7 @@
-/** Playwright global setup: boot the real FastAPI backend against a disposable DB. */
+/** Playwright global setup: boot the real FastAPI backend AND the DB worker
+ * (python -m app.worker) against a disposable database. */
 
-import { spawn, spawnSync } from "node:child_process";
+import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 
 import {
   API_DIR,
@@ -10,12 +11,17 @@ import {
   resolvePython,
   waitFor,
 } from "./e2e-api-common";
-import type { ServerHandle } from "./e2e-api-common";
+
+interface ServerHandle {
+  server: ChildProcess | null;
+  databaseUrl: string;
+}
 
 export async function startServer(): Promise<ServerHandle> {
   if (await waitFor(HEALTH_URL, 1500)) {
     console.log(`[e2e] Reusing an already-running API at ${HEALTH_URL}.`);
-    return { server: null };
+    const base = process.env.DATABASE_URL ?? readEnvFile().DATABASE_URL;
+    return { server: null, databaseUrl: disposableUrl(base ?? "") };
   }
 
   const base = process.env.DATABASE_URL ?? readEnvFile().DATABASE_URL;
@@ -83,14 +89,34 @@ export async function startServer(): Promise<ServerHandle> {
   if (!up) {
     throw new Error("The E2E API did not become healthy in time.");
   }
-  return { server };
+  return { server, databaseUrl };
+}
+
+/** Start the P2 worker (same codebase) on the disposable _test database. */
+export function startWorker(databaseUrl: string): ChildProcess {
+  const python = resolvePython();
+  const worker = spawn(python, ["-m", "app.worker"], {
+    cwd: API_DIR,
+    env: {
+      ...process.env,
+      DATABASE_URL: databaseUrl,
+      WORKER_ALLOW_ONLY_TEST_DB: "1",
+      WORKER_HEARTBEAT_FILE: "/tmp/chatbot-e2e-worker-heartbeat",
+    },
+    stdio: "inherit",
+  });
+  console.log("[e2e] Started the DB worker (python -m app.worker).");
+  return worker;
 }
 
 export default async function globalSetup(): Promise<void> {
   const handle = await startServer();
+  if (handle.server !== null) {
+    // Only spawn a worker we own the API/database for (reuse runs keep theirs).
+    const worker = startWorker(handle.databaseUrl);
+    (globalThis as unknown as { __e2eWorker?: unknown }).__e2eWorker = worker;
+  }
   // Share the child process with the teardown module through globalThis.
   (globalThis as unknown as { __e2eServer?: unknown }).__e2eServer =
     handle.server;
 }
-
-export { ServerHandle };

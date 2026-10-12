@@ -333,3 +333,213 @@ export async function acceptInvitation(token: string): Promise<Me> {
     tolerate401: true,
   });
 }
+
+// --- knowledge (P2) ---------------------------------------------------------
+
+export type KnowledgeSourceKind = "pdf" | "docx" | "txt" | "md" | "qa_csv";
+export type KnowledgeSourceStatus = "stored" | "queued" | "ingested" | "failed";
+
+export interface KnowledgeSource {
+  id: string;
+  kind: KnowledgeSourceKind;
+  original_name: string;
+  storage_key: string;
+  size_bytes: number;
+  sha256: string;
+  status: KnowledgeSourceStatus;
+  error: string | null;
+  row_errors: { row: number; reason: string }[] | null;
+  valid_rows: number | null;
+  total_rows: number | null;
+  created_at: string;
+}
+
+export type KnowledgeJobStatus =
+  "pending" | "running" | "succeeded" | "failed" | "cancelled";
+
+export interface KnowledgeJob {
+  id: string;
+  status: KnowledgeJobStatus;
+  type: string;
+  source_ids: string[];
+  attempts: number;
+  max_attempts: number;
+  error: string | null;
+  cancel_requested: boolean;
+  run_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  created_at: string;
+}
+
+export interface KnowledgeDocument {
+  id: string;
+  source_id: string;
+  title: string;
+  heading: string | null;
+  source_url: string | null;
+  page_ref: string;
+  language: string;
+  priority: number;
+  text: string;
+  total_chars: number;
+  chunk_count: number;
+  created_at: string;
+}
+
+export interface KnowledgeChunk {
+  id: string;
+  document_id: string;
+  title: string;
+  heading: string | null;
+  text: string;
+  language: string;
+  priority: number;
+  ordinal: number;
+}
+
+export interface KnowledgeRevision {
+  id: string;
+  status: "draft" | "published" | "archived";
+  published_at: string | null;
+  created_at: string;
+  is_current: boolean;
+  document_count: number;
+  chunk_count: number;
+}
+
+export interface RevisionsResponse {
+  revisions: KnowledgeRevision[];
+  published_revision_id: string | null;
+}
+
+const KNOWLEDGE_ROOT = (tenantId: string, botId: string): string =>
+  `tenants/${tenantId}/bots/${botId}`;
+
+export async function listSources(
+  tenantId: string,
+  botId: string,
+): Promise<KnowledgeSource[]> {
+  return api<KnowledgeSource[]>(`${KNOWLEDGE_ROOT(tenantId, botId)}/sources`);
+}
+
+/** Multipart upload; the CSRF header is added like every write. */
+export async function uploadSources(
+  tenantId: string,
+  botId: string,
+  files: File[],
+): Promise<KnowledgeSource[]> {
+  const form = new FormData();
+  for (const file of files) {
+    form.append("files", file);
+  }
+  const method = "POST";
+  const headers: Record<string, string> = csrfHeader();
+  const response = await fetch(
+    `/api/v1/${KNOWLEDGE_ROOT(tenantId, botId)}/sources/files`,
+    { method, headers, credentials: "same-origin", body: form },
+  );
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    const error = (
+      payload as { error?: { code?: string; message?: string } } | null
+    )?.error;
+    throw new ApiError(
+      error?.code ?? "UNKNOWN_ERROR",
+      response.status,
+      error?.message ?? `Upload failed (${response.status}).`,
+    );
+  }
+  return (payload ?? []) as KnowledgeSource[];
+}
+
+export async function qaTemplateHref(
+  tenantId: string,
+  botId: string,
+): Promise<string> {
+  return `/api/v1/${KNOWLEDGE_ROOT(tenantId, botId)}/sources/qa-template`;
+}
+
+export async function startIngestion(
+  tenantId: string,
+  botId: string,
+  sourceIds: string[] | null = null,
+): Promise<KnowledgeJob> {
+  return api<KnowledgeJob>(`${KNOWLEDGE_ROOT(tenantId, botId)}/ingestion`, {
+    method: "POST",
+    body: sourceIds ? { source_ids: sourceIds } : {},
+  });
+}
+
+export async function listJobs(
+  tenantId: string,
+  botId: string,
+): Promise<KnowledgeJob[]> {
+  return api<KnowledgeJob[]>(`${KNOWLEDGE_ROOT(tenantId, botId)}/jobs`);
+}
+
+export async function retryJob(
+  tenantId: string,
+  botId: string,
+  jobId: string,
+): Promise<KnowledgeJob> {
+  return api<KnowledgeJob>(
+    `${KNOWLEDGE_ROOT(tenantId, botId)}/jobs/${jobId}/retry`,
+    { method: "POST" },
+  );
+}
+
+export async function cancelJob(
+  tenantId: string,
+  botId: string,
+  jobId: string,
+): Promise<KnowledgeJob> {
+  return api<KnowledgeJob>(
+    `${KNOWLEDGE_ROOT(tenantId, botId)}/jobs/${jobId}/cancel`,
+    { method: "POST" },
+  );
+}
+
+export async function listDocuments(
+  tenantId: string,
+  botId: string,
+  options: { sourceId?: string; revision?: "published" | "draft" } = {},
+): Promise<KnowledgeDocument[]> {
+  const params = new URLSearchParams();
+  if (options.sourceId) params.set("source_id", options.sourceId);
+  params.set("revision", options.revision ?? "published");
+  return api<KnowledgeDocument[]>(
+    `${KNOWLEDGE_ROOT(tenantId, botId)}/documents?${params.toString()}`,
+  );
+}
+
+export async function listDocumentChunks(
+  tenantId: string,
+  botId: string,
+  documentId: string,
+): Promise<KnowledgeChunk[]> {
+  return api<KnowledgeChunk[]>(
+    `${KNOWLEDGE_ROOT(tenantId, botId)}/documents/${documentId}/chunks`,
+  );
+}
+
+export async function listRevisions(
+  tenantId: string,
+  botId: string,
+): Promise<RevisionsResponse> {
+  return api<RevisionsResponse>(`${KNOWLEDGE_ROOT(tenantId, botId)}/revisions`);
+}
+
+export async function publishRevision(
+  tenantId: string,
+  botId: string,
+  revisionId: string,
+): Promise<{ revision_id: string; status: string; changed: boolean }> {
+  return api<{
+    revision_id: string;
+    status: string;
+    changed: boolean;
+  }>(`${KNOWLEDGE_ROOT(tenantId, botId)}/revisions/${revisionId}/publish`, {
+    method: "POST",
+  });
+}
