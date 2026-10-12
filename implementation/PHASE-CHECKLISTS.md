@@ -13,9 +13,9 @@ Legend: [ ] open · [x] done with evidence. Owner sign-off closes each phase.
 - [x] P1-03: role matrix tested (owner/admin/editor/viewer × every endpoint) (test_members.py::test_full_role_matrix + role-restricted invitation/member cases)
 - [x] P1-03: tenant A cannot read/write tenant B bots by guessed UUID (404) (test_bots_of_other_tenant_are_hidden_on_every_endpoint; non-member cases across bots/members/invitations)
 - [x] P1-03: bot create/list/get/update/archive with validation; archive is soft; audit rows written (test_bots.py)
-- [ ] P1-04: register → create org → create bot works in a real browser (Playwright E2E)
-- [ ] P1-04: org switcher, role-aware buttons, loading/empty/error states; members page (invite link, pending, roles, remove) and accept-invite page
-- [ ] P1-04: UI contains no mocked data; lint, typecheck, format, mypy, pytest, Playwright all green
+- [x] P1-04: register → create org → create bot works in a real browser (Playwright E2E) (P1-04-REPORT.md; dashboard.spec.ts, 5 passed, real API with disposable _test DB)
+- [x] P1-04: org switcher, role-aware buttons, loading/empty/error states; members page (invite link, pending, roles, remove) and accept-invite page (P1-04-REPORT.md)
+- [x] P1-04: UI contains no mocked data; lint, typecheck, format, mypy, pytest, Playwright all green (P1-04-REPORT.md evidence table)
 - [ ] Phase report written; owner reviewed and signed off
 
 ## P2 Knowledge

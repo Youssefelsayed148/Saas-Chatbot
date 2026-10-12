@@ -42,6 +42,22 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NEXT_TELEMETRY_DISABLED: "1"
+      # The E2E flow boots the real API against this disposable *_test database.
+      DATABASE_URL: postgresql://chatbot_dev:ci-only-not-secret@127.0.0.1:55432/chatbot_dev
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: chatbot_dev
+          POSTGRES_PASSWORD: ci-only-not-secret
+          POSTGRES_DB: chatbot_dev
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U chatbot_dev"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

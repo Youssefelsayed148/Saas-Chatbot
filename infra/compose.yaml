@@ -41,6 +41,9 @@ services:
     build:
       context: ..
       dockerfile: apps/web/Dockerfile
+      args:
+        # The dashboard proxy forwards same-origin /api requests to the FastAPI service.
+        API_PROXY_TARGET: http://api:8000
     ports:
       - "127.0.0.1:3000:3000"
     healthcheck:

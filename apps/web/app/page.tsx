@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Home() {
   return (
     <main>
@@ -7,6 +9,10 @@ export default function Home() {
         The frontend is running. Product features will be added in individually
         approved implementation tickets.
       </p>
+      <nav>
+        <Link href="/login">Sign in</Link> ·{" "}
+        <Link href="/register">Register</Link>
+      </nav>
     </main>
   );
 }

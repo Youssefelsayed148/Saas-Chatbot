@@ -1,6 +1,8 @@
 FROM node:24-bookworm-slim AS builder
 WORKDIR /workspace
-ENV NEXT_TELEMETRY_DISABLED=1 NEXT_STANDALONE=1
+# The /api proxy destination is baked at build time (Next.js rewrites manifest).
+ARG API_PROXY_TARGET=http://127.0.0.1:8000
+ENV NEXT_TELEMETRY_DISABLED=1 NEXT_STANDALONE=1 API_PROXY_TARGET=${API_PROXY_TARGET}
 COPY package.json package-lock.json ./
 COPY apps/web/package.json ./apps/web/package.json
 RUN npm ci
