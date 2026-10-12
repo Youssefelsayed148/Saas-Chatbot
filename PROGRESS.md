@@ -14,6 +14,19 @@ IMPLEMENTED AND LOCALLY VERIFIED; evidence: [P1-02 report](implementation/PHASE-
 
 Next: P1-03 (tenants, roles, bots, team invitations).
 
+## 2026-10-12 — P1-03 implemented (tenants, roles, bots, team invitations)
+
+IMPLEMENTED AND LOCALLY VERIFIED; evidence: [P1-03 report](implementation/PHASE-01/P1-03-REPORT.md). Checklist P1-03 items ticked with that evidence.
+
+- Reusable TenantContext dependency resolves tenant from path, validates active membership, role-required helpers; hidden resources always 404.
+- Tenants create (creator-owner, audited, unique slug), member-only tenant get; /me with memberships.
+- Team: invitations via one-time link (SHA-256 hash stored, token shown once), accept with email match, expiry/revoke/resend; members list/role change/remove; last-owner + owner protections; all audited.
+- Bots CRUD with validated config schema (docs/04 fields), soft archive (idempotent, config preserved, hidden from default list), tenant-scoped 404s; CSRF required on all writes; stable error codes.
+- Tests: 61 passed — full role matrix, tenant A/B guessed-UUID isolation across bots/members/invitations, invitation lifecycle incl. expired/used/revoked/resend + stale token, last-owner protection, soft-archive behaviour, audits. Same result in the Linux checks container (docker run).
+- Exact commands recorded in P1-03-REPORT.md.
+
+Next: P1-04 (dashboard UI + Playwright E2E).
+
 P1-01: IMPLEMENTED AND LOCALLY VERIFIED; awaiting owner acceptance. Evidence: [P1-01 report](implementation/PHASE-01/P1-01-REPORT.md).
 
 - Initialized Git on feat/p1-01-foundation; original handoff retained. No commits/remote/push/merge/deployment.
