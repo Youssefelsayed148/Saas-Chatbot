@@ -1,0 +1,2 @@
+# Bootstrap for a new agent/chat session
+Paste: "Continue building the Website Chatbot SaaS in this repo. Read README_START_HERE.md, AGENTS.md, DECISIONS.md, PROGRESS.md, implementation/MASTER-ROADMAP.md and implementation/PHASE-CHECKLISTS.md. Summarize current phase, last completed ticket with evidence, and open decisions; then continue with the next prompt in implementation/AGENT-PROMPTS.md. Do not push or deploy. Stop at the phase gate."

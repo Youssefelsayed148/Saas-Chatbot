@@ -1,0 +1,3 @@
+# Testing strategy and gates
+Unit: auth, role checks, tenant filters, bot lifecycle, provisioning idempotency, chunk/citation logic. Integration: migrations from empty DB, concurrent writes, job claim/retry, API contract and quota enforcement. E2E: owner onboarding, staff onboarding, source publish, widget chat, tenant separation. Security: SSRF, prompt injection, CSRF, session expiration, public capability abuse, no test production DSN. Quality: Arabic/English answer sets, abstention and citation verification.
+Each ticket done only if implementation, tests, docs, acceptance evidence and limitations reported. No claim of green tests without exact commands/output. Phase gate requires independent review; no deployment without separate approval.
