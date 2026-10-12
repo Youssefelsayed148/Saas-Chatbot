@@ -3,18 +3,18 @@ Change a decision only by adding a dated entry below with rationale, alternative
 
 | ID | Decision | Status |
 |---|---|---|
-| ADR-001 | Build brand-new independent SaaS; Retrivo and Rabbit Hole are references only | Confirmed by user |
+| ADR-001 | Build a brand-new independent SaaS from scratch; no other repo is a dependency | Confirmed by user |
 | ADR-002 | ManyOsirisChat integration after the standalone product is complete | Confirmed by user |
 | ADR-003 | Modular monolith: Next.js/React/TypeScript, FastAPI, PostgreSQL + pgvector | Approved 2026-10-12 |
 | ADR-004 | Auth: built-in server-side cookie sessions, Argon2id hashing, CSRF protection. No email provider or password reset in MVP (reset deferred) | Approved 2026-10-12 |
-| ADR-005 | Embedding model + vector dimension | OPEN — decide in P2-01 after inspecting Retrivo's embedding code. Direction: avoid paid embedding APIs (local model or Ollama) |
+| ADR-005 | Embedding model + vector dimension | OPEN — decided with the owner in design review before P2-02. Direction: avoid paid embedding APIs (local model or Ollama) |
 | ADR-006 | Crawler limits / robots policy / ownership verification | OPEN (decide in P2-04) |
 | ADR-007 | Hosting, object storage, retention, data residency | OPEN (before staging, P5-05) |
 | ADR-008 | Paid plans, payment provider, currencies | OPEN (not in this roadmap; after P5) |
 | ADR-009 | Roles: owner / admin / editor / viewer per tenant, plus `users.is_platform_staff` flag for platform area | Approved 2026-10-12 |
 | ADR-010 | Tenant isolation: app-layer tenant checks in every service + composite FKs `(tenant_id, id)`; no Postgres RLS in MVP | Approved 2026-10-12 |
 | ADR-011 | Background jobs: durable `jobs` table in Postgres (atomic claim with lease + retry), run by `python -m app.worker` from the SAME api codebase/image. No separate worker app, no Redis | Approved 2026-10-12 (proposed by Claude; confirmed with roadmap) |
-| ADR-012 | Reuse policy: owner owns Retrivo and Rabbit Hole, so no license review. Each port is recorded in `docs/14-REPOSITORY-REUSE-MATRIX.md` (source file, what, decision port/adapt/rewrite). Port logic, not schema, branding or global state | Approved 2026-10-12 |
+| ADR-012 | Retired: no reference-repo inspection in the build. Retrieval/ingestion/analytics behaviour is specified by the owner in design review and recorded in docs/07, docs/08 and docs/14 | Approved 2026-10-12 |
 
 ## 2026-10-12 — ADR-003 approval
 Approver: product owner. Rationale: one standalone deployment with clear module boundaries and tenant isolation, minimal infrastructure. Alternatives: historical multi-service control plane and cross-product architecture rejected for MVP. Impact: `apps/web`, `apps/api`, local Compose PostgreSQL.

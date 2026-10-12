@@ -1,11 +1,11 @@
 # Prompts for the coding agent (Codex / Claude Code) — paste one at a time, in order
-Replace placeholders `<RETRIVO_PATH>` and `<RABBIT_PATH>` (absolute paths to your local clones) in the P2 prompts. Each prompt covers one PHASE and ends at its gate: the agent stops and reports; you review the checklist in `PHASE-CHECKLISTS.md` and sign off before pasting the next prompt.
+Specs for parsing, chunking, embeddings, retrieval and analytics are agreed with the owner first and written into `docs/14-AGREED-BUILD-SPECS.md`; paste the P2+ prompts only after the relevant rows are filled. Each prompt covers one PHASE and ends at its gate: the agent stops and reports; you review the checklist in `PHASE-CHECKLISTS.md` and sign off before pasting the next prompt.
 
 ## 0. Standing preamble (include at the top of every prompt)
 ```text
 You are a senior engineer working in the clean repo at the current directory (modular monolith: apps/web Next.js, apps/api FastAPI, Postgres+pgvector, one Alembic history).
-Read first: AGENTS.md, README_START_HERE.md, DECISIONS.md, implementation/MASTER-ROADMAP.md, implementation/PHASE-CHECKLISTS.md, docs/18-EXPECTED-BEHAVIOUR.md, docs/03, 04, 05, 06 and the docs relevant to the phase.
-Rules: work through the phase's tickets IN ORDER, one at a time; after each ticket run lint, format check, mypy, pytest, and (if UI touched) typecheck + Playwright, fix failures, then record exact commands and results in PROGRESS.md and tick the checklist ONLY with evidence. Never fabricate results; if a check cannot run say so. Tenant scope on every tenant-owned query; hidden resources return 404; tests for tenant A vs B with every tenant-owned endpoint. Use only a disposable test DB (name ends with _test). Do not push, deploy, spend money, call paid APIs, or touch the reference repos except read-only where the prompt says. No unrelated refactors. If a decision marked OPEN in DECISIONS.md blocks you, stop and ask. Commit locally after each ticket with a clear message (no push).
+Read first: AGENTS.md, README_START_HERE.md, DECISIONS.md, implementation/MASTER-ROADMAP.md, implementation/PHASE-CHECKLISTS.md, docs/18-EXPECTED-BEHAVIOUR.md, docs/03, 04, 05, 06, docs/14-AGREED-BUILD-SPECS.md and the docs relevant to the phase.
+Rules: work through the phase's tickets IN ORDER, one at a time; after each ticket run lint, format check, mypy, pytest, and (if UI touched) typecheck + Playwright, fix failures, then record exact commands and results in PROGRESS.md and tick the checklist ONLY with evidence. Never fabricate results; if a check cannot run say so. Tenant scope on every tenant-owned query; hidden resources return 404; tests for tenant A vs B with every tenant-owned endpoint. Use only a disposable test DB (name ends with _test). Do not push, deploy, spend money or call paid APIs. Build only what the docs and docs/14 specify; if a needed parameter is TBD, stop and ask. No unrelated refactors. If a decision marked OPEN in DECISIONS.md blocks you, stop and ask. Commit locally after each ticket with a clear message (no push).
 At the end of the phase: write implementation/PHASE-0X/PHASE-REPORT.md (what was built, evidence, limitations, open risks), update PROGRESS.md, and STOP for owner sign-off.
 ```
 
@@ -22,10 +22,10 @@ Then phase verification and PHASE-REPORT.md. STOP.
 ## 2. Phase P2 — Knowledge (P2-01 → P2-06)
 ```text
 [preamble]
-PHASE P2 (P1 signed off). Reference repos, READ-ONLY: Retrivo at <RETRIVO_PATH>, Rabbit Hole at <RABBIT_PATH>. Never modify them or copy credentials/data/branding.
-P2-01 Inspection only (no feature code): read Retrivo's parsing, chunking, embedding, hybrid/semantic retrieval and analytics code, and Rabbit Hole's local-embedding RAG flow. Fill docs/14 port records (file, commit SHA, what, dependencies/risks, port/adapt/rewrite/reject). Recommend ADR-005 (embedding model, dimension, local vs Ollama; must handle Arabic+English; no paid embedding API) with a small benchmark plan, and write it into DECISIONS.md as PROPOSED. STOP and ask the owner to approve ADR-005 before P2-02.
+PHASE P2 (P1 signed off). Build from the specs in docs/14; a TBD row you need means stop and ask.
+P2-01 Spec check (no feature code): confirm docs/14 rows for embeddings, parsing and chunking are filled and ADR-005 is approved. If not, STOP and list what the owner must decide.
 P2-02 Migrations: sources, source_pages, documents, knowledge_revisions (draft/published/archived, bots.published_revision_id), chunks (vector(D) with the approved D, tsvector column + GIN, HNSW/IVFFlat index), jobs. Implement the DB job queue (atomic claim with FOR UPDATE SKIP LOCKED, lease, retry/backoff, cancel) and `python -m app.worker`; add worker to Compose. Tests: two workers never claim the same job; crash → lease expiry → retry; job re-validates tenant+bot.
-P2-03 File upload endpoint (size/type limits, storage interface with local-disk impl) and ported parsing+chunking for PDF/DOCX/TXT/MD/CSV. Job pipeline: parse → chunk → dedupe by content hash → draft revision. Tests with fixture files incl. Arabic text, corrupt and oversize files.
+P2-03 File upload endpoint (size/type limits, storage interface with local-disk impl) and parsing+chunking for PDF/DOCX/TXT/MD/CSV per docs/14. Job pipeline: parse → chunk → dedupe by content hash → draft revision. Tests with fixture files incl. Arabic text, corrupt and oversize files.
 P2-04 URL import: guarded fetcher (http/https only; block private/loopback/link-local/metadata, revalidate resolved IP and every redirect; caps on pages, depth, bytes, time, redirects; robots policy per ADR-006 — propose then ask), HTML→clean text, sanitized. Tests incl. redirect-to-internal, DNS rebinding simulation, oversized response, prompt-injection text kept as data.
 P2-05 Embeddings via the approved provider interface (EmbeddingProvider), batch indexing, idempotent re-ingest, publish/rollback with atomic pointer swap, failed job leaves published knowledge untouched. Tests incl. two tenants with identical content share no rows.
 P2-06 Knowledge UI under /app/[tenant]/bots/[id]/knowledge: upload, add URL, job status with errors+retry, document/chunk preview, publish/rollback, role restrictions. Playwright E2E with a fixture file.
@@ -35,7 +35,7 @@ Phase verification + PHASE-REPORT.md. STOP.
 ## 3. Phase P3 — Chat (P3-01 → P3-05)
 ```text
 [preamble]
-PHASE P3 (P2 signed off). Reuse ideas from Rabbit Hole (grounding/citations, free model) and Retrivo (hybrid retrieval) per docs/14.
+PHASE P3 (P2 signed off). Follow the retrieval and answer-generation specs in docs/14 (stop and ask if TBD).
 P3-01 Retrieval service: hybrid search = Postgres full-text + pgvector similarity with score fusion; ALWAYS filter tenant_id + bot_id + bots.published_revision_id. Tests that fail if any filter is removed; Arabic and English queries.
 P3-02 Chat service: LLMProvider interface; first provider = free model or Ollama configured by env; versioned prompt files; context built only from retrieved chunks; untrusted text treated as data; citation validation; abstention when evidence is weak; answer language follows question. Streaming with graceful non-streaming fallback.
 P3-03 Persist visitor-agnostic conversations/messages/citations (tables with tenant_id) and idempotent usage_events.
@@ -52,7 +52,7 @@ P4-01 Public API: widget config by opaque locator (safe fields only), visitor se
 P4-02 packages/widget: compiled loader + sandboxed iframe chat UI, responsive, keyboard accessible, RTL, versioned asset URL, CSP-friendly. Serve from the web app.
 P4-03 Appearance settings (colour, name, avatar, greeting, placement, language) + Install page with the real snippet and a "test on a sample page" helper.
 P4-04 Conversations list/detail with citations; lead capture with explicit consent text, retention setting, deletion.
-P4-05 Analytics (port useful views from Retrivo per docs/14): volume over time, top questions, unanswered questions, citation/source usage, usage events. Only measured data.
+P4-05 Analytics (metrics per docs/14): volume over time, top questions, unanswered questions, citation/source usage, usage events. Only measured data.
 E2E: two static test sites embedding two different tenants' bots; each answers only from its own knowledge. Phase verification + PHASE-REPORT.md. STOP.
 ```
 

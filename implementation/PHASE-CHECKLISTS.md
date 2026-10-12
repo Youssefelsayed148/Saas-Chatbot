@@ -18,7 +18,7 @@ Legend: [ ] open · [x] done with evidence. Owner sign-off closes each phase.
 - [ ] Phase report written; owner reviewed and signed off
 
 ## P2 Knowledge
-- [ ] P2-01: Retrivo + Rabbit Hole inspected; reuse matrix rows filled; ADR-005 (embeddings) decided and recorded
+- [ ] P2-01: parsing, chunking, embedding and retrieval specs agreed and recorded in docs/14; ADR-005 (embeddings) decided
 - [ ] P2-02: migrations for sources, documents, revisions, chunks, jobs; atomic job claim with lease/retry tested (two workers, one job)
 - [ ] P2-03: PDF/DOCX/TXT/MD/CSV parsed and chunked from fixtures; oversize/unsupported/corrupt files rejected clearly
 - [ ] P2-04: URL import bounded (pages, depth, bytes, time, redirects); private/loopback/metadata targets and redirects-to-internal blocked; prompt-injection text stored as data

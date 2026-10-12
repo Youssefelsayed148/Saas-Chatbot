@@ -8,5 +8,5 @@ Define LLMProvider and EmbeddingProvider interfaces; credentials from secret man
 ## Retrieval
 Hybrid search: keyword (Postgres full-text) + semantic (pgvector) with score fusion, always filtered by tenant + bot + published revision. Embedding model and dimension: ADR-005 (open until P2-01); prefer local/Ollama over paid embedding APIs. First reply model: free model or Ollama behind `LLMProvider`.
 
-## Reuse
-Rabbit Hole grounding/citation validation and retrieval ideas; Retrivo conversational UX and parsers, only after license, provenance, dependency and tests. No wholesale import.
+## Specification status
+Detailed retrieval, chunking and embedding parameters are agreed with the owner in design review and recorded in `docs/14-AGREED-BUILD-SPECS.md` before the ticket that needs them. Anything not yet recorded there is TBD: the agent stops and asks.

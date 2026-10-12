@@ -25,4 +25,4 @@ IDs are durable. Priority: M = MVP required, L = later, D = decision pending.
 | FR-019 | M | Safe data export/delete with tenant verification and audit | Authorized vs unauthorized requests |
 
 ## Requirement discipline
-No inferred functionality is approved merely because it appears in a reference repo. UI must use real API data; no fake success states. All write APIs must validate inputs, permissions, quotas and tenant scope. Open choices appear in `DECISIONS.md`.
+No inferred functionality is approved merely because it appears in an old document or another product. UI must use real API data; no fake success states. All write APIs must validate inputs, permissions, quotas and tenant scope. Open choices appear in `DECISIONS.md`.

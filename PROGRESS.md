@@ -20,3 +20,6 @@ Next action: owner reviews P1-01 evidence. P1-02 requires separate explicit appr
 
 ## 2026-10-12 — Plan simplified (docs only, no code change)
 Roadmap reduced to 5 vertical-slice phases; ADR-004/009/010/011/012 approved; ADR-005 (embeddings) open until P2-01. Added docs/18-EXPECTED-BEHAVIOUR.md, implementation/PHASE-CHECKLISTS.md, implementation/AGENT-PROMPTS.md; rewrote roadmap, Phase 1 spec/register, reuse matrix, architecture, AGENTS.md, README_START_HERE.md. P1-01 committed locally. Next: P1-02 (paste prompt 1 from AGENT-PROMPTS.md).
+
+## 2026-10-12 — Reference repos removed from the plan
+No Retrivo/Rabbit Hole inspection step in the build. Retrieval/ingestion/analytics specs are agreed with the owner and recorded in docs/14-AGREED-BUILD-SPECS.md (all TBD for now). ADR-012 retired.

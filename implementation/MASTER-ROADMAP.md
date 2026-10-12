@@ -8,7 +8,7 @@ Gate: two tenants cannot see each other's data by guessing IDs; viewer cannot mu
 
 ## P2 Knowledge — get a client's data into the bot
 Upload raw files (PDF, DOCX, TXT, CSV/MD) and/or import website pages; parse → chunk → embed → store in pgvector; draft revision → review → publish. Jobs run in the DB-backed worker.
-Tickets: P2-01 inspect Retrivo + Rabbit Hole, fill reuse matrix, decide ADR-005 (no feature code) · P2-02 knowledge schema + job queue/worker · P2-03 file upload, parsing, chunking · P2-04 URL import with SSRF guard · P2-05 embeddings, indexing, revisions, publish/rollback · P2-06 knowledge UI.
+Tickets: P2-01 pipeline specs agreed with owner (docs/14) and ADR-005 decided (no feature code) · P2-02 knowledge schema + job queue/worker · P2-03 file upload, parsing, chunking · P2-04 URL import with SSRF guard · P2-05 embeddings, indexing, revisions, publish/rollback · P2-06 knowledge UI.
 Gate: re-ingesting is idempotent; failed job never changes published knowledge; two tenants with the same URL/file share nothing.
 
 ## P3 Chat — grounded answers
@@ -17,7 +17,7 @@ Tickets: P3-01 retrieval service · P3-02 chat service + provider interface + pr
 Gate: eval set (grounded, unanswerable, prompt-injection, Arabic) meets thresholds in the checklist; cross-tenant retrieval test passes.
 
 ## P4 Widget and client experience
-Public widget config + visitor sessions, embeddable iframe widget, allowed domains, rate limits, install page, conversations view, lead capture with consent, analytics (ported from Retrivo where useful).
+Public widget config + visitor sessions, embeddable iframe widget, allowed domains, rate limits, install page, conversations view, lead capture with consent, analytics.
 Tickets: P4-01 public API + visitor sessions + abuse limits · P4-02 widget package · P4-03 appearance settings + install page · P4-04 conversations + leads · P4-05 analytics.
 Gate: two independent test websites, two tenants, each only answers from its own knowledge.
 

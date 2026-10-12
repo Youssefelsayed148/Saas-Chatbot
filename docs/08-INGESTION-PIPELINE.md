@@ -1,6 +1,6 @@
 # Website ingestion
 ## Sources
-Two input paths feed the same pipeline: (a) uploaded files (PDF, DOCX, TXT, MD, CSV) parsed with logic ported from Retrivo; (b) website URLs fetched by the guarded fetcher. Both produce documents → chunks → embeddings → draft revision. Jobs run in the DB-backed worker (ADR-011).
+Two input paths feed the same pipeline: (a) uploaded files (PDF, DOCX, TXT, MD, CSV) parsed per the specs in `docs/14-AGREED-BUILD-SPECS.md`; (b) website URLs fetched by the guarded fetcher. Both produce documents → chunks → embeddings → draft revision. Jobs run in the DB-backed worker (ADR-011).
 
 ## Stages
 URL submission → scope/ownership policy → secure fetch/crawl → content extraction → canonical URL + content hash dedupe → clean text → chunk → embed → draft index revision → review → publish. Track stage progress and actionable errors per source/job.
