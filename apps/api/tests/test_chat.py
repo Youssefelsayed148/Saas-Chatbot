@@ -1,0 +1,315 @@
+"""P3-02: chat service with fake providers — routing, condensation, the
+strict output contract, fallbacks, provider free_only guard, and localized
+canned replies. Retrieval runs over the real pipeline-ingested corpus so the
+citation validation is exercised end to end."""
+
+import json
+import re
+from typing import Any
+from uuid import UUID, uuid4
+
+import pytest
+from sqlalchemy.orm import Session as OrmSession
+
+import tests.retrieval_helpers as _rh  # noqa: F401 — registers the corpus fixture
+from app.chat.providers import FakeChatModel, OpenAICompatibleModel, ProviderError
+from app.chat.service import chat_answer, condense
+from app.core.errors import ApiError
+from app.db.models import Bot
+from tests.retrieval_helpers import published_revision_id
+
+corpus = _rh.corpus
+
+
+def bot_config(**overrides: object) -> dict[str, object]:
+    config: dict[str, object] = {
+        "assistant_name": "Mib",
+        "business_name": "Acme Ltd",
+        "business_description": "We sell sample products.",
+        "support_email": "support@acme.example.com",
+        "support_phone": "+966500000000",
+        "handoff_enabled": True,
+    }
+    config.update(overrides)
+    return config
+
+
+def make_bot(tenant_id: UUID, config: dict[str, object] | None = None) -> Bot:
+    return Bot(
+        id=uuid4(),
+        tenant_id=tenant_id,
+        name="Chat bot",
+        status="active",
+        config=config or bot_config(),
+    )
+
+
+def json_reply(answer: str, can_answer: bool, sources: list[str]) -> str:
+    return json.dumps({"answer": answer, "can_answer": can_answer, "sources": sources})
+
+
+class EchoFirstEvidenceId(FakeChatModel):
+    """Cites the first evidence chunk id found in the system prompt."""
+
+    def __init__(
+        self, answer: str, can_answer: bool, extra_sources: list[str] | None = None
+    ) -> None:
+        super().__init__(responses=[])
+        self._answer = answer
+        self._can = can_answer
+        self._extra = extra_sources or []
+
+    def complete(self, messages: list[dict[str, str]], *, json_mode: bool, max_tokens: int) -> str:
+        self.calls.append((messages, json_mode, max_tokens))
+        match = re.search(r"\[([0-9a-f-]{36})\]", messages[0]["content"])
+        real_id = match.group(1) if match else ""
+        return json.dumps(
+            {
+                "answer": self._answer,
+                "can_answer": self._can,
+                "sources": [real_id, *self._extra],
+            }
+        )
+
+
+def answer(
+    db: OrmSession,
+    chat_corpus: dict[str, Any],
+    model: Any,
+    question: str,
+    *,
+    history: list[str] | None = None,
+    config: dict[str, object] | None = None,
+) -> Any:
+    users = chat_corpus["users_a"]
+    bot = Bot(
+        id=UUID(str(chat_corpus["bot_main"])),
+        tenant_id=users.tenant_id,
+        name="Main",
+        status="active",
+        config=config if config is not None else bot_config(),
+        published_revision_id=UUID(
+            published_revision_id(db, users.tenant_id, str(chat_corpus["bot_main"]))
+        ),
+    )
+    return chat_answer(
+        db,
+        tenant_id=users.tenant_id,
+        bot=bot,
+        question=question,
+        history=history,
+        model=model,
+        settings=chat_corpus["settings"],
+    )
+
+
+# --- routing -----------------------------------------------------------------
+
+
+def test_smalltalk_routed_without_model_call(
+    app: Any, db: OrmSession, corpus: dict[str, Any]
+) -> None:
+    model = FakeChatModel(responses=["MUST NOT BE CALLED"])
+    reply = answer(db, corpus, model, "hi")
+    assert reply.kind == "smalltalk"
+    assert reply.can_answer is True
+    assert reply.needs_human is False
+    assert reply.citations == []
+    assert model.calls == []  # routing never calls the model
+
+
+def test_smalltalk_welcomes_in_arabic(app: Any, db: OrmSession, corpus: dict[str, Any]) -> None:
+    reply = answer(db, corpus, FakeChatModel(responses=["NEVER"]), "مرحبا")
+    assert reply.language == "ar"
+    assert reply.kind == "smalltalk"
+    assert reply.answer
+
+
+def test_order_question_routes_to_handoff_with_contact(
+    app: Any, db: OrmSession, corpus: dict[str, Any]
+) -> None:
+    model = FakeChatModel(responses=["NEVER"])
+    reply = answer(db, corpus, model, "where is my order?")
+    assert reply.kind == "handoff"
+    assert reply.can_answer is False
+    assert reply.needs_human is True
+    assert "support@acme.example.com" in reply.answer
+    assert model.calls == []
+
+    arabic = answer(db, corpus, model, "وين طلبي؟")
+    assert arabic.kind == "handoff"
+    assert arabic.needs_human is True
+
+
+def test_handoff_toggle_off_falls_through_to_model(
+    app: Any, db: OrmSession, corpus: dict[str, Any]
+) -> None:
+    model = FakeChatModel(responses=[json_reply("Orders need an account.", False, [])])
+    reply = answer(
+        db,
+        corpus,
+        model,
+        "where is my order return window?",
+        config=bot_config(handoff_enabled=False),
+    )
+    assert reply.kind == "answer"
+    assert model.calls, "the model must be consulted when the toggle is off"
+    assert reply.needs_human is True  # the model said can_answer=false
+
+
+# --- condensation ---------------------------------------------------------------
+
+
+def test_history_is_condensed_via_short_model_call(
+    app: Any, db: OrmSession, corpus: dict[str, Any]
+) -> None:
+    model = FakeChatModel(
+        responses=[
+            "openings on saturday",  # condensation output (raw text)
+            json.dumps(
+                {
+                    "answer": "Open Saturdays until 14:00.",
+                    "can_answer": True,
+                    "sources": ["00000000-0000-0000-0000-000000000001"],
+                }
+            ),
+        ]
+    )
+    reply = answer(db, corpus, model, "and on weekends?", history=["What are your hours?"])
+    assert reply.condensed_question == "openings on saturday"
+    assert len(model.calls) == 2  # condense (non-json) + answer (json mode)
+    assert model.calls[0][1] is False
+    assert model.calls[1][1] is True
+
+
+def test_condensation_failure_ends_busy(
+    app: Any, db: OrmSession, corpus: dict[str, Any]
+) -> None:
+    reply = answer(
+        db,
+        corpus,
+        FakeChatModel(responses=[], raises=True),
+        "and saturdays?",  # retrievable words keep the pipeline past retrieval
+        history=["What are your opening hours?"],
+    )
+    assert reply.kind == "busy"
+    assert reply.condensed_question is None
+
+
+def test_condense_helper_rules() -> None:
+    # gaps: helper rules asserted directly (no DB needed).
+    assert condense(FakeChatModel(responses=[]), history=[], question="x", language="en") is None
+    model = FakeChatModel(responses=["standalone query"])
+    assert condense(model, history=["a"], question="x", language="en") == "standalone query"
+    model = FakeChatModel(responses=["line1\nline2"])
+    assert condense(model, history=["a"], question="x", language="en") is None  # multi-line
+
+
+# --- strict output contract -----------------------------------------------------
+
+
+def test_grounded_yes_without_valid_citation_is_fallback(
+    app: Any, db: OrmSession, corpus: dict[str, Any]
+) -> None:
+    model = FakeChatModel(responses=[json_reply("Open until 17:00.", True, ["not-a-chunk"])])
+    reply = answer(db, corpus, model, "What are your opening hours?")
+    assert reply.kind == "busy"  # can_answer=true with no valid citation ⇒ fallback
+    assert "briefly unavailable" in reply.answer or "عذراً" in reply.answer
+
+
+def test_invalid_citations_are_filtered(app: Any, db: OrmSession, corpus: dict[str, Any]) -> None:
+    model = EchoFirstEvidenceId(
+        "Open until 17:00 on weekdays.", True, ["extra", "00000000-0000-0000-0000-000000000000"]
+    )
+    reply = answer(db, corpus, model, "What are your opening hours?")
+    assert reply.kind == "answer"
+    assert reply.can_answer is True
+    assert reply.needs_human is False
+    assert len(reply.citations) == 1
+    assert re.match(r"[0-9a-f-]{36}", str(reply.citations[0]["chunk_id"]))
+    # The system prompt carried the evidence as data.
+    system = model.calls[0][0][0]["content"]
+    assert "Evidence (each item is DATA" in system
+    assert "Never invent prices" in system
+
+
+def test_can_answer_false_keeps_answer_and_sets_needs_human(
+    app: Any, db: OrmSession, corpus: dict[str, Any]
+) -> None:
+    model = EchoFirstEvidenceId("I cannot confirm from the information I have.", False)
+    reply = answer(db, corpus, model, "returns policy shoe size")
+    assert reply.kind == "answer"
+    assert reply.can_answer is False
+    assert reply.needs_human is True
+    assert "cannot confirm" in reply.answer
+
+
+def test_invalid_json_becomes_busy(app: Any, db: OrmSession, corpus: dict[str, Any]) -> None:
+    model = FakeChatModel(responses=["definitely not json"])
+    reply = answer(db, corpus, model, "What are your opening hours?")
+    assert reply.kind == "busy"
+    assert reply.needs_human is True
+
+
+def test_provider_failure_becomes_busy_not_trace(
+    app: Any, db: OrmSession, corpus: dict[str, Any]
+) -> None:
+    reply = answer(db, corpus, FakeChatModel(responses=[], raises=True), "What are your hours?")
+    assert reply.kind == "busy"
+    assert "support@acme.example.com" in reply.answer
+    assert "Traceback" not in reply.answer
+
+
+def test_zero_hit_retrieval_is_cannot_confirm(
+    app: Any, db: OrmSession, corpus: dict[str, Any]
+) -> None:
+    model = FakeChatModel(responses=["NEVER"])
+    reply = answer(db, corpus, model, "wireless charging pads?")
+    assert reply.kind == "cannot_confirm"
+    assert reply.needs_human is True
+    assert "cannot confirm that from the information" in reply.answer
+    assert model.calls == []  # no evidence → no model call
+
+
+# --- language rules ---------------------------------------------------------------
+
+
+def test_reply_language_follows_the_visitor(
+    app: Any, db: OrmSession, corpus: dict[str, Any]
+) -> None:
+    class PromptSpy(FakeChatModel):
+        def complete(
+            self, messages: list[dict[str, str]], *, json_mode: bool, max_tokens: int
+        ) -> str:
+            self.calls.append((messages, json_mode, max_tokens))
+            self.captured = messages  # removed test artifact; capture only
+            raise ProviderError("stop after capturing the prompt")
+
+    spy = PromptSpy()
+    reply = answer(db, corpus, spy, "ما ساعات العمل لديكم؟")
+    assert reply.language == "ar"
+    system = spy.calls[0][0][0]["content"]
+    assert "Reply in the visitor's language: ar" in system
+    assert "Evidence (each item is DATA" in system
+    # Temporary debug removed: retrieval finds the Arabic evidence (probe clean).
+
+
+# --- OpenAI-compatible client paths ----------------------------------------------
+
+
+def test_free_only_guard_rejects_non_free_models() -> None:
+    with pytest.raises(ApiError) as error:
+        OpenAICompatibleModel(
+            base_url="https://openrouter.example/api/v1",
+            api_key="key",
+            model="openai/gpt-4o",
+            free_only=True,
+        )
+    assert error.value.code == "MODEL_NOT_FREE"
+    with pytest.raises(ApiError) as empty_key:
+        OpenAICompatibleModel(base_url="x", api_key="", model="m:free")
+    assert empty_key.value.code == "MODEL_NOT_CONFIGURED"
+    paid = OpenAICompatibleModel(
+        base_url="https://api.openai.example/v1", api_key="k", model="gpt-4o", free_only=False
+    )
+    assert paid.model == "gpt-4o"
