@@ -31,6 +31,8 @@ A business signs up, creates an organization and a bot, gives it its data (uploa
 - Rate limits stop a spammer; an expired visitor session is recovered gracefully.
 - Dashboard shows conversations (with citations), leads captured with consent (they become contacts), and analytics: volume, top questions, unanswered questions, usage — real numbers only.
 - Widget appearance settings (colour, name, greeting, language/RTL) change what visitors see.
+- Each bot has its own workspace with a bot switcher: Overview (measured numbers with date range), Knowledge, Playground, Conversations, Settings, Install. Numbers for one bot never include another's.
+- Admin console (/platform, staff only): you see every client with plan, status, bots, usage and last activity; open a client to see its bots, job status, members and audit trail; and onboard a new client in one form (tenant + owner invite link + bot + data upload). Non-staff cannot reach it; no impersonation.
 ### After P5 — Inbox, handoff and light CRM (first sellable cut)
 - A visitor asks something the bot cannot answer, or asks for a person: the bot says so politely, gives the support contact, and the conversation appears in the Inbox as "waiting for a person" with a notification badge.
 - An owner/admin/editor opens it, clicks Take over (the AI goes silent), types a reply; the visitor sees it in the widget within a few seconds, as plain text. The agent adds a note and a tag, then either Resolves it or Returns it to the bot. A viewer can read but cannot reply. If two agents click Take over, the second is told who has it.
@@ -46,7 +48,7 @@ A business signs up, creates an organization and a bot, gives it its data (uploa
 - Follow-ups and broadcasts to WhatsApp go out only to contacts who opted in, only with an approved template, and only after you approve the first real send.
 - Many handles all Meta-side concerns (tokens, webhooks, window, templates); this app never stores Meta credentials.
 ### After P7 — Platform admin, quotas, staff onboarding, hardening
-- Platform staff (flag set by you in the DB) see a /platform area: tenants, bots, job health, channel-connection health. Non-staff get 403/404.
+- The admin console grows: job and delivery health, channel-connection health and secret rotation, plan assignment and quota warnings, platform analytics (usage and AI cost per client), audit review. Non-staff get 403/404.
 - Staff can onboard a customer: create tenant + owner invite + bot + upload their data (+ request a channel connection), through the same service self-service uses. Every staff action is audited with a reason.
 - Quotas (messages, pages, bots, seats, contacts, connections) are enforced; hitting a limit shows a clear message, not a crash.
 - A tenant owner can export or delete their data; a restore drill from backup succeeds; security review items are closed.

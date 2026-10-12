@@ -1,4 +1,5 @@
 # Roadmap — 7 vertical-slice phases
+Two dashboards: the **client dashboard per chatbot** (grows from P1 to P6) and the **admin console** for staff to manage all clients (basics in P4-06, advanced in P7).
 Product: a Mojeeb-style website AI agent — trained on the client's own data, with a unified inbox, human handoff, light CRM and follow-ups. Website is the native channel; WhatsApp/Messenger/Instagram arrive through ManyOsirisChat (P6), which owns all Meta connectivity. Each phase ends with something a person can use. A phase is DONE only when its checklist in `PHASE-CHECKLISTS.md` is ticked with evidence and the owner signs off. No phase implies deployment approval.
 
 **First sellable cut = end of P5** (website widget + inbox + CRM). P6 adds Meta channels. P7 makes it operable at scale.
@@ -19,9 +20,9 @@ Tickets: P3-01 retrieval service · P3-02 chat service + provider interface + pr
 Gate: eval targets in `docs/14 §10` met with real numbers recorded; cross-tenant retrieval test passes.
 
 ## P4 Widget — the website channel
-Public widget config + visitor sessions, embeddable iframe widget, allowed domains, rate limits, install page, conversations view, lead capture with consent (creates/updates the contact), basic analytics (docs/14 §9).
-Tickets: P4-01 public API + visitor sessions + abuse limits · P4-02 widget package · P4-03 appearance settings + install page · P4-04 conversations + leads → contacts · P4-05 analytics.
-Gate: two independent test websites, two tenants, each only answers from its own knowledge.
+Public widget config + visitor sessions, embeddable iframe widget, allowed domains, rate limits, install page, conversations view, lead capture with consent (creates/updates the contact), the per-bot client dashboard with overview analytics (docs/10, docs/14 §9), and a basic platform admin console so staff can onboard clients (docs/11, ADR-018).
+Tickets: P4-01 public API + visitor sessions + abuse limits · P4-02 widget package · P4-03 appearance settings + install page · P4-04 conversations + leads → contacts · P4-05 per-bot dashboard shell + overview analytics · P4-06 admin console basics: client list, client detail, staff onboarding through the shared ProvisioningService.
+Gate: two independent test websites, two tenants, each only answers from its own knowledge; staff can onboard a new client end to end from /platform; non-staff cannot reach /platform.
 
 ## P5 Inbox, handoff and light CRM — what makes it Mojeeb-like
 Conversation state machine (mode ai/human, status open/waiting_human/resolved), handoff triggers, a unified inbox with live updates, human takeover and return-to-AI, assignment, internal notes, tags, contact profiles with stages and timeline, follow-ups, sentiment and handoff analytics. Specs: docs/14 §14–§17.
@@ -35,8 +36,8 @@ Gate: duplicate and out-of-order events are harmless; a bad signature is rejecte
 Prerequisite: Many exposes (or gets) the endpoints in docs/17 — tracked as a Many-repo workstream, not part of this repo.
 
 ## P7 Platform admin, quotas, onboarding-by-staff, hardening
-Staff area (tenant list, job health, audited support actions), usage quotas (bots, seats, messages, channel connections), staff-initiated onboarding with data upload (website-to-knowledge skill output) via the same provisioning service as self-service, export/delete, backups, security review, staging readiness.
-Tickets: P7-01 platform admin · P7-02 quotas + usage enforcement · P7-03 provisioning service (self-service + staff) · P7-04 data export/delete + audit review · P7-05 release readiness (staging, backups/restore drill, monitoring).
+Advanced admin console (job and delivery health, Many connection health and secret rotation, plans, platform analytics, audit review), usage quotas (bots, seats, messages, channel connections), self-service signup on the same ProvisioningService plus idempotency hardening, export/delete, backups, security review, staging readiness.
+Tickets: P7-01 admin console advanced (operations, connection health, plans, platform analytics) · P7-02 quotas + usage enforcement · P7-03 self-service signup + provisioning idempotency hardening · P7-04 data export/delete + audit review screen · P7-05 release readiness (staging, backups/restore drill, monitoring).
 Gate: non-staff blocked from /platform; quota race test; restore drill passes; independent security review.
 
 Paid billing: not scheduled (ADR-008). Voice/image messages: deferred past v1.

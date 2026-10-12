@@ -30,7 +30,9 @@ JSON error: `{ "error": {"code":"FORBIDDEN","message":"...","request_id":"..."}}
 | GET /api/public/v1/sessions/{session_id}/messages?since=cursor | session capability | Widget polls for agent replies (P5) |
 | POST /api/channels/manyosiris/events | HMAC signature (no cookie) | Inbound Many events, 202 then job (P6) |
 | POST/GET /api/v1/tenants/{tenant_id}/channels/connections | owner/admin + staff approval | Link a bot to a Many channel (P6) |
-| GET /api/v1/platform/tenants | platform staff | Admin listing |
+| GET /api/v1/platform/tenants, /tenants/{id} | platform staff | Client list and detail (P4-06) |
+| POST /api/v1/platform/onboarding | platform staff + Idempotency-Key | Staff onboarding via ProvisioningService; returns owner one-time invite link (P4-06) |
+| GET /api/v1/platform/{jobs,connections,analytics,audit} ; POST /api/v1/platform/{bots,connections}/{id}/pause | platform staff, reason required | Advanced operations (P7) |
 
 ## Contracts must include
 Request/response schemas with example, pagination, ownership checks, idempotency, validation, side effects and stable error codes. Define CSRF protection for cookie auth, secure cookie settings, CORS, rate limits, and origin checks. Public locator is NOT an authentication secret. The inbox, CRM and channel routes are proposals until P5/P6 start. Phase 1 freezes only auth, tenants, bots and platform listing contracts; later routes remain proposals.

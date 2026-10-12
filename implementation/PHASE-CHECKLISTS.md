@@ -45,7 +45,9 @@ Legend: [ ] open · [x] done with evidence. Owner sign-off closes each phase.
 - [ ] P4-02: widget loads from one script tag; iframe sandbox; mobile, keyboard, screen-reader labels, RTL
 - [ ] P4-03: appearance settings saved and reflected; install page shows correct snippet
 - [ ] P4-04: conversations view; leads captured only with consent and create/update a contact; retention setting works
-- [ ] P4-05: analytics show measured numbers only (matches stored events)
+- [ ] P4-05: per-bot dashboard shell (nav: overview, knowledge, playground, conversations, settings, install; no placeholder or fake items for later phases); overview shows measured numbers only (matches stored events) with date range
+- [ ] P4-06: /platform guarded by is_platform_staff (server-validated): client list (plan label, status, bots, last activity, search/filter), client detail (bots, knowledge/job status, members, recent audit)
+- [ ] P4-06: staff onboarding via ProvisioningService (tenant + owner one-time invite link, no email + bot + optional file upload); Idempotency-Key; double submit creates one tenant; actor attributed in audit; no impersonation
 - [ ] Two test websites + two tenants: each answers only from its own knowledge; paused bot and expired session handled
 - [ ] Phase report; owner sign-off
 
@@ -73,9 +75,9 @@ Legend: [ ] open · [x] done with evidence. Owner sign-off closes each phase.
 - [ ] Phase report; owner sign-off
 
 ## P7 Platform admin, quotas, onboarding, hardening
-- [ ] P7-01: /platform area for `is_platform_staff` only; tenant/bot/job health; connection health and secret rotation; actions audited with reason; no impersonation
+- [ ] P7-01: admin console advanced: job/delivery health, Many connection health and secret rotation, plan assignment, platform analytics (messages, tenants, bots, handoff rate, AI usage per client), pause bot/connection; actions audited with reason; no impersonation
 - [ ] P7-02: quotas enforced and race-tested (bots, seats, monthly messages, channel connections, contacts, sentiment runs)
-- [ ] P7-03: ProvisioningService used by both self-service and staff paths; idempotency key; concurrent retries create one bot
+- [ ] P7-03: self-service signup uses the same ProvisioningService as staff onboarding; concurrent retries create exactly one tenant/bot
 - [ ] P7-04: tenant export/delete verified (includes contacts, conversations, identities); audit review screen
 - [ ] P7-05: backup + restore drill done; health/monitoring/alerts defined (including failed deliveries and stuck jobs); staging deploy only after ADR-007 approval
 - [ ] Independent security review (upload hardening, CSRF, session, tenant isolation, prompt injection, HMAC channel endpoint, SSE) closed

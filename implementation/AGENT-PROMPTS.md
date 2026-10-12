@@ -42,7 +42,7 @@ P3-05 Evaluation suite in apps/api/tests/eval: EN + AR fixture corpora and eval.
 Phase verification + PHASE-REPORT.md. STOP. (P3-06 semantic upgrade is NOT started unless the owner approves after reading the eval report.)
 ```
 
-## 4. Phase P4 — Widget and client experience (P4-01 → P4-05)
+## 4. Phase P4 — Widget, per-bot dashboard, admin basics (P4-01 → P4-06)
 ```text
 [preamble]
 PHASE P4 (P3 signed off). Follow docs/09-WIDGET-SPECIFICATION.md.
@@ -50,7 +50,8 @@ P4-01 Public API: widget config by opaque locator (safe fields only), visitor se
 P4-02 packages/widget: compiled loader + sandboxed iframe chat UI, responsive, keyboard accessible, RTL, versioned asset URL, CSP-friendly. Serve from the web app.
 P4-03 Appearance settings (colour, name, avatar, greeting, placement, language) + Install page with the real snippet and a "test on a sample page" helper.
 P4-04 Conversations list/detail with citations; lead capture with explicit consent text that creates or updates a contact (docs/14 §14, §16), retention setting, deletion.
-P4-05 Analytics per docs/14 §9: summary metrics, volume per day, top questions, unanswered-questions list, leads trend, thumbs feedback, CSV export. Only measured data.
+P4-05 Per-bot client dashboard per docs/10: bot workspace shell at /app/[tenant]/bots/[id] with navigation (overview, knowledge, playground, conversations, settings, install; inbox/contacts/channels added in later phases), and Overview analytics per docs/14 §9: summary metrics, volume per day, top questions, unanswered-questions list, leads trend, thumbs feedback, date range, CSV export. Only measured data.
+P4-06 Admin console basics per docs/11 and ADR-018: /platform route group guarded server-side by users.is_platform_staff; client list (search, filter, plan label, status, bot count, last activity), client detail (bots, knowledge and job status, members, recent audit); staff onboarding form calling ProvisioningService (tenant + owner one-time invite link — no email provider — + bot + optional file upload), durable request record, Idempotency-Key, actor attribution in audit; no impersonation. Tests: non-staff 403/404, staff-flag separate from tenant roles, double submit creates one tenant, tenant A/B isolation unaffected.
 E2E: two static test sites embedding two different tenants' bots; each answers only from its own knowledge. Phase verification + PHASE-REPORT.md. STOP.
 ```
 
@@ -82,9 +83,9 @@ Phase verification + PHASE-REPORT.md. STOP. The real staging test with a test Wh
 ```text
 [preamble]
 PHASE P7 (P6 signed off, or P5 if the owner skips Meta for now).
-P7-01 /platform area guarded by users.is_platform_staff (server-validated, separate from tenant roles): tenant directory, bot/source/job health, Many connection health + secret rotation, retry job, pause bot/connection; every support action requires a reason and writes an audit event; no impersonation.
+P7-01 Advanced admin console (extends P4-06): job and delivery health, Many connection health + secret rotation, plan assignment, platform analytics (messages, tenants, bots, handoff rate, AI usage per client), retry job, pause bot/connection; every support action requires a reason and writes an audit event; no impersonation.
 P7-02 Plans as internal labels + enforceable quotas (bots, seats, monthly messages, channel connections, contacts, sentiment runs, ingestion runs, pages) with transactional counters; concurrency test at the boundary; clear errors in API/UI/widget.
-P7-03 ProvisioningService used by BOTH self-service signup and staff-initiated onboarding (tenant + owner invite + bot + optional file ingestion + optional channel connection request), durable request record, Idempotency-Key, concurrent retries create exactly one bot; staff path adds actor attribution only.
+P7-03 Self-service signup on the SAME ProvisioningService built in P4-06; add optional channel-connection request and concurrency hardening so concurrent retries create exactly one tenant/bot; staff path differs only by actor attribution.
 P7-04 Tenant data export and delete (contacts, conversations, identities, knowledge; verified, audited); audit review screen.
 P7-05 Release readiness: backup + restore drill script and evidence, structured logs with request/tenant correlation (no PII), alerts for failed deliveries and stuck jobs, health/readiness, rate limits review, runbook. Staging deployment ONLY after the owner approves hosting (ADR-007) — propose options and stop.
 Security review against docs/06 (upload hardening, CSRF, sessions, tenant isolation, prompt injection, HMAC channel endpoint, SSE) with findings fixed or documented. PHASE-REPORT.md. STOP.

@@ -29,6 +29,8 @@ IDs are durable. Priority: M = MVP required, L = later, D = decision pending.
 | FR-025 | M | Light CRM: contact profile, stage, tags, custom fields, timeline, merge, consent per channel, CSV export, erasure | CRM E2E; erase removes identities and messages |
 | FR-026 | M | Follow-ups: scheduled messages by user or rule; website delivery on next visit; Meta channels only with recorded opt-in | Job tests; no send without opt-in |
 | FR-027 | M | Sentiment label per conversation and handoff/response-time analytics (measured) | Aggregates match stored data |
+| FR-029 | M | Client dashboard per chatbot (overview, inbox, contacts, knowledge, playground, settings, install, channels, follow-ups) — docs/10 | Role-specific E2E; per-bot numbers never mix bots |
+| FR-030 | M | Platform admin console to manage all clients: list, detail, staff onboarding (P4-06); operations, plans, platform analytics, audit review (P7) — docs/11 | Staff-only tests; reason + audit on every support action |
 | FR-028 | L | Voice/image messages, email notifications, deals with amounts, automation builder | Not in v1 |
 
 ## Requirement discipline
