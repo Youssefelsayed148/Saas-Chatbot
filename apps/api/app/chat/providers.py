@@ -8,6 +8,8 @@ Model/chain errors raise `ProviderError` so the chat service can fall back
 or emit the localized busy message (never a stack trace).
 """
 
+import json
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
@@ -139,8 +141,52 @@ class FakeChatModel(ChatModel):
 
 __all__ = [
     "ChatModel",
+    "ExtractiveStubModel",
     "FakeChatModel",
     "OpenAICompatibleModel",
     "ProviderChainAttempt",
     "ProviderError",
 ]
+
+
+class ExtractiveStubModel(ChatModel):
+    """Deterministic offline stub (DEV/TEST/EVAL only — never configured for
+    production): answers extractively from the evidence in the prompt so the
+    grounded pipeline can be exercised without any paid API.
+
+    - json_mode: builds the answer from the first evidence chunk and cites its
+      id (DATA only — never invents facts).
+    - non-json (condensation): returns the standalone query line unchanged.
+    """
+
+    calls: list[tuple[list[dict[str, str]], bool, int]]  # populated in complete
+
+    def __init__(self) -> None:
+        self.calls = []
+
+    def complete(self, messages: list[dict[str, str]], *, json_mode: bool, max_tokens: int) -> str:
+        self.calls.append((messages, json_mode, max_tokens))
+        if not json_mode:
+            # Condensation pass-through: echo the standalone query.
+            for message in messages:
+                if message["role"] == "user" and "Follow-up:" in message["content"]:
+                    return message["content"].split("Follow-up:", 1)[1].strip()
+            return "query"
+        evidence_pattern = re.compile(
+            r"\[([0-9a-f-]{36})\] ([^\n]*)\n(.*?)(?=\n\n\[|\Z)", re.DOTALL
+        )
+        blocks = evidence_pattern.findall(messages[0]["content"])
+        if not blocks:
+            return json.dumps(
+                {
+                    "answer": "I have no data configured for this yet.",
+                    "can_answer": False,
+                    "sources": [],
+                }
+            )
+        chunk_id, _provenance, first_text = blocks[0]
+        answer_source = first_text.strip()
+        if "\n" in answer_source:  # drop the trailing summary wiggle only
+            answer_source = answer_source.split("\n", 1)[0].strip()
+        answer = answer_source[:300]
+        return json.dumps({"answer": answer, "can_answer": True, "sources": [chunk_id]})

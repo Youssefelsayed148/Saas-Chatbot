@@ -6,7 +6,7 @@ from uuid import UUID
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from tests.conftest import csrf_headers
+from tests.conftest import csrf_headers  # re-exported for dependent modules
 
 PASSWORD = "Str0ngPass!"
 
@@ -175,6 +175,7 @@ def cleanup_clients(*groups_or_clients: Any) -> None:
 
 __all__ = [
     "PASSWORD",
+    "csrf_headers",
     "TenantUsers",
     "accept_invitation",
     "audit_actions",

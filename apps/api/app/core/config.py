@@ -44,6 +44,25 @@ class Settings(BaseSettings):
     job_lease_seconds: int = Field(default=900, ge=30)
     job_backoff_seconds: int = Field(default=30, ge=1)
     job_max_attempts: int = Field(default=3, ge=1, le=10)
+    # Retrieval defaults (docs/14 §5) — tune only via a dated note in docs/14.
+    retrieval_top_k: int = Field(default=8, ge=1)
+    retrieval_final_k: int = Field(default=4, ge=1)
+    retrieval_max_evidence_chunks: int = Field(default=8, ge=1)
+    # Chat providers (docs/14 §6, ADR-013): keys come from the environment and
+    # are never logged. Free default = OpenRouter :free chain (fallback list).
+    chat_openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    chat_openrouter_api_key: SecretStr | None = None
+    chat_free_model_chain: list[str] = Field(default_factory=list)
+    chat_openai_base_url: str = "https://api.openai.com/v1"
+    chat_openai_api_key: SecretStr | None = None
+    chat_openai_model: str = ""
+    chat_max_tokens: int = Field(default=700, ge=64, le=2000)
+    # Message retention (docs/14 §7): configurable days; the worker purges.
+    retention_days: int = Field(default=30, ge=1, le=365)
+    retention_purge_interval_seconds: int = Field(default=86_400, ge=60)
+    chat_num_history_messages: int = Field(default=6, ge=0, le=20)
+    # Deterministic offline stub model for tests/E2E. NEVER in production config.
+    chat_stub_model: bool = False
     # Worker loop.
     worker_poll_seconds: float = Field(default=1.0, ge=0.1, le=60)
     worker_heartbeat_file: str = "/tmp/chatbot-worker-heartbeat"

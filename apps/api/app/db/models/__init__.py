@@ -2,6 +2,13 @@
 
 from app.db.models.types import CITEXT, TSVECTOR
 
+from .chat import (
+    Contact,
+    ContactIdentity,
+    Conversation,
+    Message,
+    UsageEvent,
+)
 from .core import AuditEvent, Bot, Invitation, Membership, Session, Tenant, User
 from .knowledge import (
     Chunk,
@@ -17,15 +24,20 @@ __all__ = [
     "Bot",
     "Chunk",
     "CITEXT",
+    "Contact",
+    "ContactIdentity",
+    "Conversation",
     "Document",
     "Invitation",
     "Job",
     "KnowledgeRevision",
     "Membership",
+    "Message",
     "Session",
     "Source",
     "SourcePage",
     "Tenant",
     "TSVECTOR",
+    "UsageEvent",
     "User",
 ]

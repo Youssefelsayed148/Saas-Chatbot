@@ -2,13 +2,15 @@
 plans (configured per plan). Returns None when no key is configured — the
 chat service then emits the not-ready/busy canned reply."""
 
-from functools import lru_cache
-
 from app.chat.providers import ChatModel, OpenAICompatibleModel
 from app.core.config import Settings, get_settings
 
 
 def model_from_settings(settings: Settings) -> ChatModel | None:
+    if settings.chat_stub_model:
+        from app.chat.providers import ExtractiveStubModel
+
+        return ExtractiveStubModel()
     if settings.chat_openrouter_api_key is not None:
         chain = list(settings.chat_free_model_chain)
         if not chain:
@@ -34,15 +36,6 @@ def model_from_settings(settings: Settings) -> ChatModel | None:
     return None
 
 
-@lru_cache
-def _cached_model() -> ChatModel | None:
-    return model_from_settings(get_settings())
-
-
 def default_model() -> ChatModel | None:
-    """Request-time model (cached settings; tests clear the cache)."""
-    return _cached_model()
-
-
-def reset_default_model() -> None:
-    _cached_model.cache_clear()
+    """Request-time model (built per call; construction is cheap)."""
+    return model_from_settings(get_settings())

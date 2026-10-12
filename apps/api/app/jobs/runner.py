@@ -35,4 +35,10 @@ def execute_claimed_job(db: OrmSession, job: Job, settings: Settings, storage: S
 def _run(job: Job, db: OrmSession, settings: Settings, storage: Storage) -> str | None:
     if job.type == "ingest_batch":
         return run_ingest_batch(job, db, settings, storage)
+    if job.type == "retention_purge":
+        from app.chat.conversations import run_retention_purge
+
+        purged = run_retention_purge(db, settings)
+        print(f"jobs: retention purge removed {purged} message(s)", flush=True)
+        return None
     return f"Unknown job type {job.type!r}."

@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.health import router as health_router
 from app.auth.router import router as auth_router
 from app.bots.router import router as bots_router
+from app.chat.router import router as chat_router
 from app.core.errors import REQUEST_ID_HEADER, RequestIdMiddleware, install_error_handlers
 from app.knowledge.router import router as knowledge_router
 from app.tenants.router import router as tenants_router
@@ -29,6 +30,7 @@ def create_app() -> FastAPI:
     application.include_router(tenants_router)
     application.include_router(bots_router)
     application.include_router(knowledge_router)
+    application.include_router(chat_router)
     install_error_handlers(application)
     return application
 

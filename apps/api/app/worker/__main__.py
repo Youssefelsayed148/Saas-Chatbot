@@ -15,6 +15,7 @@ import time
 import uuid
 from datetime import UTC, datetime
 
+from app.chat.conversations import run_retention_purge
 from app.core.config import get_settings
 from app.db.session import create_db_engine, session_factory, set_engine
 from app.jobs.queue import claim_job
@@ -73,9 +74,18 @@ def main() -> None:
     signal.signal(signal.SIGINT, _stop)
 
     print(f"worker: {worker_id} started", flush=True)
+    last_purge = 0.0  # monotonic seconds; first purge runs after the interval
+    started = time.monotonic()
     try:
         while not stop:
             _heartbeat_file_touch()
+            if time.monotonic() - started - last_purge >= settings.retention_purge_interval_seconds:
+                session = session_factory(engine)()
+                try:
+                    run_retention_purge(session, settings)
+                finally:
+                    session.close()
+                last_purge = time.monotonic() - started
             session = session_factory(engine)()
             try:
                 job = claim_job(session, worker_id, settings)
