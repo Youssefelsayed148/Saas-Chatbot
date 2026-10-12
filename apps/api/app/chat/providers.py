@@ -172,10 +172,7 @@ class ExtractiveStubModel(ChatModel):
                 if message["role"] == "user" and "Follow-up:" in message["content"]:
                     return message["content"].split("Follow-up:", 1)[1].strip()
             return "query"
-        evidence_pattern = re.compile(
-            r"\[([0-9a-f-]{36})\] ([^\n]*)\n(.*?)(?=\n\n\[|\Z)", re.DOTALL
-        )
-        blocks = evidence_pattern.findall(messages[0]["content"])
+        blocks = _parse_evidence(messages[0]["content"])
         if not blocks:
             return json.dumps(
                 {
@@ -184,9 +181,91 @@ class ExtractiveStubModel(ChatModel):
                     "sources": [],
                 }
             )
-        chunk_id, _provenance, first_text = blocks[0]
-        answer_source = first_text.strip()
-        if "\n" in answer_source:  # drop the trailing summary wiggle only
-            answer_source = answer_source.split("\n", 1)[0].strip()
-        answer = answer_source[:300]
+        question_tokens = _question_token_set(messages)
+        # Content-coverage gate: if the visitor asks for something no evidence
+        # chunk even mentions, the honest extractive behaviour is to abstain —
+        # never quote an unrelated chunk as an answer (docs/14 §1/§6).
+        covered_text = " ".join(coverage for _, coverage in blocks).casefold()
+        # Script check: a deterministic stub cannot translate; a token whose
+        # script differs from the evidence's script cannot be verified by
+        # coverage (the cross-language fallback path relies on real models to
+        # answer in the visitor's language; the eval checks citations only).
+        evidence_ascii_letters = sum(1 for ch in covered_text if ch.isascii() and ch.isalpha())
+        evidence_arabic_letters = sum(1 for ch in covered_text if "\u0600" <= ch <= "\u06ff")
+        evidence_script = "latin" if evidence_ascii_letters >= evidence_arabic_letters else "arabic"
+        evidence_ascii_letters = sum(1 for ch in covered_text if ch.isascii() and ch.isalpha())
+        evidence_arabic_letters = sum(1 for ch in covered_text if "\u0600" <= ch <= "\u06ff")
+        evidence_script = "latin" if evidence_ascii_letters >= evidence_arabic_letters else "arabic"
+        uncovered = [
+            token
+            for token in question_tokens
+            if token not in covered_text
+            and ("latin" if token.isascii() else "arabic") == evidence_script
+        ]
+        all_uncovered = bool(question_tokens) and len(uncovered) == len(question_tokens)
+        weekday_gap = any(token in _WEEKDAY_TOKENS for token in uncovered)
+        if all_uncovered or weekday_gap:
+            return json.dumps(
+                {
+                    "answer": "I cannot confirm that from the information I have.",
+                    "can_answer": False,
+                    "sources": [],
+                }
+            )
+
+        # Choose the chunk with the most question-token overlap (extractive pick).
+        def score(item: tuple[str, str]) -> int:
+            lowered = item[1].casefold()
+            return sum(1 for token in question_tokens if token in lowered)
+
+        best = max(blocks, key=score)
+        chunk_id, chunk_text = best
+        answer = chunk_text.strip().split("\n")[0][:300]
         return json.dumps({"answer": answer, "can_answer": True, "sources": [chunk_id]})
+
+
+_WEEKDAY_TOKENS = frozenset(
+    {
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday",
+        "saturdays",
+        "sundays",
+        "الاثنين",
+        "الثلاثاء",
+        "الاربعاء",
+        "الخميس",
+        "الجمعة",
+        "السبت",
+        "الاحد",
+        "الهائمات",
+    }
+)
+
+
+def _parse_evidence(system_content: str) -> list[tuple[str, str]]:
+    """(chunk_id, coverage_text): provenance + body; the coverage check needs
+    the title + heading too (docs/14 §4 indexed text)."""
+    pattern = re.compile(r"\[([0-9a-f-]{36})\] ([^\n]*)\n(.*?)(?=\n\n\[|\Z)", re.DOTALL)
+    return [(block[0], f"{block[1]} {block[2]}") for block in pattern.findall(system_content)]
+
+
+def _question_token_set(messages: list[dict[str, str]]) -> set[str]:
+    """Content tokens of the visitor question (last user message)."""
+    from app.retrieval.query import ARABIC_STOP_WORDS, ENGLISH_STOP_WORDS, TOKEN_RE
+
+    for message in reversed(messages):
+        if message.get("role") == "user":
+            lowered = message["content"].lower()
+            return {
+                token
+                for token in (match.group(0) for match in TOKEN_RE.finditer(lowered))
+                if len(token) >= 2
+                and token not in ENGLISH_STOP_WORDS
+                and token not in ARABIC_STOP_WORDS
+            }
+    return set()
