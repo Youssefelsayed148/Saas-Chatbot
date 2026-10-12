@@ -194,8 +194,13 @@ class TenantService:
         return invitation
 
     def accept_invitation(self, db: OrmSession, user: User, token: str) -> Membership:
+        # Lock the invitation row: two concurrent accepts of one token must
+        # serialize, so exactly one performs the accept and the other sees
+        # `accepted_at` set (409) instead of creating a duplicate membership.
         invitation = db.execute(
-            select(Invitation).where(Invitation.token_hash == hash_token(token.strip()))
+            select(Invitation)
+            .where(Invitation.token_hash == hash_token(token.strip()))
+            .with_for_update()
         ).scalar_one_or_none()
         now = datetime.now(UTC)
         if invitation is None:

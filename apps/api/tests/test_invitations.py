@@ -1,7 +1,9 @@
 """P1-03: invitations — one-time links, expiry, revocation, resend, email match, audit."""
 
+import threading
 from typing import Any
 
+from fastapi.testclient import TestClient
 from sqlalchemy import text
 from sqlalchemy.orm import Session as OrmSession
 
@@ -183,5 +185,51 @@ def test_admin_cannot_mint_owner_invitation_and_viewer_blocked(app: Any, db: Orm
             json={"email": "admin-invite@example.com", "role": "viewer"},
         )
         assert created_by_admin.status_code == 201
+    finally:
+        users.cleanup()
+
+
+def test_invitation_double_accept_race_exactly_one_succeeds(app: Any, db: OrmSession) -> None:
+    """Two concurrent accepts of one token: exactly one succeeds (P2-00)."""
+    users = seeded_tenant(app, db)
+    try:
+        invitee, invitee_payload = logged_in(app, "racer@example.com")
+        token, _ = make_invitation(users, "racer@example.com", "editor")
+        try:
+            barrier = threading.Barrier(2)
+            results: list[Any] = []
+
+            def attempt(running_client: TestClient) -> None:
+                barrier.wait()
+                results.append(accept_invitation(running_client, token))
+
+            threads = [
+                threading.Thread(target=attempt, args=(invitee,)),
+                threading.Thread(target=attempt, args=(invitee,)),
+            ]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join(timeout=30)
+            assert len(results) == 2
+            statuses = sorted(response.status_code for response in results)
+            assert statuses == [200, 409], [r.text for r in results]
+            rejected = next(r for r in results if r.status_code == 409)
+            assert rejected.json()["error"]["code"] == "INVITATION_USED"
+
+            # Exactly one membership row was created for the invitee.
+            count = db.execute(
+                text(
+                    "SELECT COUNT(*) FROM memberships "
+                    "WHERE tenant_id = CAST(:tid AS uuid) AND user_id = CAST(:uid AS uuid)"
+                ),
+                {"tid": str(users.tenant_id), "uid": invitee_payload["id"]},
+            ).scalar()
+            assert count == 1
+
+            # The audit trail holds a single accept event.
+            assert len(audit_actions(db, "invitation.accepted", users.tenant_id)) == 1
+        finally:
+            cleanup_clients(invitee)
     finally:
         users.cleanup()
