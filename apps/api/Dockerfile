@@ -5,6 +5,8 @@ COPY apps/api/requirements.lock ./requirements.lock
 RUN pip install --no-cache-dir -r requirements.lock
 COPY apps/api/app ./app
 RUN useradd --create-home api
+# The app_data volume mounts here; both api and worker (non-root) write under it.
+RUN mkdir -p /data/storage && chown -R api:api /data
 USER api
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

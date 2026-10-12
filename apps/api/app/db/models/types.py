@@ -15,3 +15,12 @@ class CITEXT(types.UserDefinedType[Any]):
 
     def get_col_spec(self, **kw: Any) -> str:
         return "CITEXT"
+
+
+class TSVECTOR(types.UserDefinedType[Any]):
+    """PostgreSQL ``tsvector``; the P2 migration declares the GENERATED expressions."""
+
+    cache_ok = True
+
+    def get_col_spec(self, **kw: Any) -> str:
+        return "TSVECTOR"

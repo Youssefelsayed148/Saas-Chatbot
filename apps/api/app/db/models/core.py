@@ -125,6 +125,10 @@ class Bot(Base):
     config: Mapped[dict[str, object]] = mapped_column(
         JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
     )
+    # Set on knowledge publish (P2-03); NULL until the bot has published knowledge.
+    published_revision_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("knowledge_revisions.id", ondelete="SET NULL")
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utcnow
     )
