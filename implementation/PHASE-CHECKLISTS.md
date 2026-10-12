@@ -23,10 +23,11 @@ Legend: [ ] open · [x] done with evidence. Owner sign-off closes each phase.
 - [ ] P2-02: PDF/DOCX/TXT/MD parsed per docs/14 §3 from fixtures (incl. Arabic text); scanned/corrupt/oversize/unsupported files rejected with clear messages
 - [ ] P2-02: Q&A CSV import works with template download and row-level error report (bad priority, empty question/answer, missing columns)
 - [ ] P2-02: chunking matches docs/14 §4 (1500/200, titles kept, short docs = one chunk)
+- [ ] P2-02: Markdown front matter (title, source_url, language, page_type) parsed; non-http(s) source_url dropped; citations show the source_url
+- [ ] P2-02: a sample skill output folder (pages/*.md + qa.csv) uploads end-to-end
 - [ ] P2-03: dedupe by content hash; re-ingest of unchanged source is a no-op; draft → publish → rollback is atomic; failed job leaves published revision intact
 - [ ] P2-03: two tenants ingest identical content → zero shared rows
-- [ ] P2-04: URL import bounded (pages, depth, bytes, time, redirects); private/loopback/link-local/metadata targets and redirects-to-internal blocked; DNS-rebinding test; page text with injection phrases stored as data; JS-only pages reported as "needs rendering"
-- [ ] P2-05: Knowledge UI: upload, add URL, job status with errors + Retry, document/chunk preview, publish/rollback, role restrictions
+- [ ] P2-04: Knowledge UI: upload (multi-file), Q&A CSV with template/error report, job status with errors + Retry, document/chunk preview, publish/rollback, role restrictions
 - [ ] Phase report; owner sign-off
 
 ## P3 Chat
@@ -54,7 +55,7 @@ Legend: [ ] open · [x] done with evidence. Owner sign-off closes each phase.
 - [ ] P5-03: ProvisioningService used by both self-service and staff paths; idempotency key; concurrent retries create one bot
 - [ ] P5-04: tenant export/delete verified; audit review screen
 - [ ] P5-05: backup + restore drill done; health/monitoring/alerts defined; staging deploy only after ADR-007 approval
-- [ ] Independent security review (SSRF, CSRF, session, tenant isolation, prompt injection) closed
+- [ ] Independent security review (upload hardening, CSRF, session, tenant isolation, prompt injection) closed
 - [ ] Phase report; owner sign-off → ready for staging
 
 ## P6 (optional) ManyOsirisChat integration

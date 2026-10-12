@@ -6,7 +6,7 @@ IDs are durable. Priority: M = MVP required, L = later, D = decision pending.
 | FR-002 | M | Organizations with owner, admin, editor, viewer memberships; one user may belong to multiple | Membership tests and org switching |
 | FR-003 | M | Tenant-scoped bots: draft, active, paused, archived; configuration versioning | CRUD, permissions and audit tests |
 | FR-004 | M | Both self-service and staff onboarding call ONE backend provisioning application service | Same resulting resources, distinct actor audit |
-| FR-005 | M | Website source entry, scope and crawl configuration, status and error diagnostics | Bounded crawl fixture and retry |
+| FR-005 | M | Website content onboarding through prepared files (staff skill output: Markdown pages with source URLs + Q&A CSV); source status and error diagnostics | Fixture folder uploads, citations link to source_url, bad files give clear errors |
 | FR-006 | M | Safe extraction, deduplication, chunking, full-text indexing and staged revisions | Repeated crawl is idempotent |
 | FR-007 | M | Explicit publish/rollback of knowledge revision | In-flight chats see one coherent revision |
 | FR-008 | M | Keyword-first RAG answers restricted to published tenant/bot knowledge with validated citations and abstention | Cross-tenant retrieval and hallucination evaluation |

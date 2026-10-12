@@ -17,9 +17,10 @@ The coding agent builds exactly this. Values marked **default** are starting poi
 |---|---|
 | PDF | `pypdf`, one section per page, title "<file> — Page N", strip NUL chars. If no extractable text (scanned) reject with a clear message — no OCR in MVP |
 | DOCX | `python-docx`; split into sections at Heading styles (section title = heading); table rows converted to lines of text |
-| TXT / MD | UTF-8 (fallback latin-1); split at markdown headings, else blank-line paragraphs |
+| TXT / MD | UTF-8 (fallback latin-1); optional YAML front matter (below); split at markdown headings, else blank-line paragraphs |
 | CSV Q&A | columns `question, answer, topic, priority` (case-insensitive, UTF-8 BOM ok); priority integer 0–10 default 0; blank rows skipped; **row-level error report** (row number, reason) and a downloadable template; each valid row becomes ONE chunk "Q: … A: …", never split |
-| URL | static HTML via guarded fetcher (docs/08); strip script/style/nav/footer/aside/cookie banners; title + clean text sections |
+- **Website content arrives as prepared files, not an in-app crawler.** Staff run the `website-to-knowledge` skill (§13) on a client's site; it outputs Markdown page files + a Q&A CSV that are uploaded through the normal file path. There is no URL-import feature in the MVP.
+- Markdown front matter (optional on any .md/.txt file): a block between `---` lines at the top with `title`, `source_url`, `language` (`en`|`ar`), `page_type` (e.g. services, pricing, policy, faq, contact, about), `captured_at` (ISO date). `title` and `source_url` are stored on every chunk of that file; `source_url` is the link shown in citations (must be http/https; anything else is dropped). `language` overrides auto-detection for the file.
 - Limits (**default**): file ≤ 10 MB, ≤ 300 pages/sheets per file, ≤ 20 files per upload batch; per-plan caps in P5.
 - Dedupe: SHA-256 of normalised chunk text per (bot, source); identical chunks are stored once; re-ingesting an unchanged source changes nothing.
 
@@ -65,4 +66,12 @@ Per-bot-agnostic fixture corpora (EN + AR) and `eval.jsonl` cases `{question, la
 Iframe sandbox (docs/09). Welcome message, opening-question chips, typing indicator, source chips (citations), thumbs feedback, scroll-to-bottom, lead form with consent, language/RTL, mobile layout, branding from bot settings fetched at load.
 
 ## 12. Explicitly not built
-Structured product/property search and slot extractors, intent classifier, live catalogue lookups, response cache, version snapshot tables (replaced by revisions), headless-browser scraping (later, isolated), PDF analytics reports, OCR.
+Structured product/property search and slot extractors, intent classifier, live catalogue lookups, response cache, version snapshot tables (replaced by revisions), in-app URL import / crawler (replaced by the staff skill, §13; may return later as an isolated feature), PDF analytics reports, OCR.
+
+## 13. Website-to-knowledge skill (outside the app)
+A Claude skill run by staff (browser-capable session). It is a delivery tool, not part of the product code, and is stored outside this repo. Contract:
+- **Input:** client name, site URL, languages, confirmation that the client authorised collecting the site's content, optional page cap (default 200).
+- **Process:** discover pages (sitemap, navigation, internal links; same domain only), open each in a real browser so JavaScript content is captured, keep business-relevant content (services, products/menus and pricing as shown, policies, FAQs, contact, hours, locations, about), drop navigation, cookie banners, repeated footers, login/cart/checkout pages and duplicates.
+- **Output folder:** `pages/NNN-slug.md` (one file per page with the front matter above and cleaned body text), `qa.csv` (columns `question,answer,topic,priority`, UTF-8 BOM; answers copied or tightly paraphrased from page text, never invented), `coverage.md` (pages visited/skipped with reasons, languages found, and **gaps**: e.g. no return policy, no opening hours, no contact details).
+- **Rules:** quote prices, hours and policy conditions exactly as on the site; never add outside knowledge; keep conditions with their exceptions in the same page file; no personal data of private individuals; record the capture date; flag pages that could not be read.
+- **Human review** of the folder is mandatory before upload; the Knowledge UI preview is the second check.

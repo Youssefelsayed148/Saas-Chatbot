@@ -7,9 +7,9 @@ Tickets: P1-01 toolchain (DONE) · P1-02 schema + auth · P1-03 tenants, roles, 
 Gate: two tenants cannot see each other's data by guessing IDs; viewer cannot mutate; browser E2E creates tenant and bot.
 
 ## P2 Knowledge — get a client's data into the bot
-Upload raw files (PDF, DOCX, TXT/MD, Q&A CSV) and/or import website pages; parse → chunk → dedupe → full-text index → draft revision → review → publish. Jobs run in the DB-backed worker. No embeddings (ADR-005); specs in `docs/14`.
-Tickets: P2-01 knowledge schema (sources, documents, revisions, chunks with generated tsvector columns, jobs) + job queue/worker · P2-02 file upload, parsers, chunking, Q&A CSV import with error report · P2-03 indexing, dedupe, draft/publish/rollback · P2-04 URL import (static HTML) with SSRF guard · P2-05 knowledge UI.
-Gate: re-ingesting is idempotent; failed job never changes published knowledge; two tenants with the same file/URL share nothing.
+Upload raw files (PDF, DOCX, TXT/MD with optional source-URL header, Q&A CSV, including the output folder of the staff website-to-knowledge skill); parse → chunk → dedupe → full-text index → draft revision → review → publish. Jobs run in the DB-backed worker. No embeddings (ADR-005); specs in `docs/14`.
+Tickets: P2-01 knowledge schema (sources, documents, revisions, chunks with generated tsvector columns, jobs) + job queue/worker · P2-02 file upload, parsers, chunking, Q&A CSV import with error report · P2-03 indexing, dedupe, draft/publish/rollback · P2-04 knowledge UI (upload, status, preview, publish/rollback).
+Gate: re-ingesting is idempotent; failed job never changes published knowledge; two tenants with the same file share nothing; citations link to the page's source_url.
 
 ## P3 Chat — grounded answers
 Keyword retrieval restricted to tenant + bot + published revision + language (with cross-language fallback); small-document expansion; ChatModel interface (free OpenRouter chain by default, OpenAI for paid plans); strict JSON answer contract with validated citations and abstention; rule-based routing; Arabic and English; playground; feedback; eval suite.
@@ -22,7 +22,7 @@ Tickets: P4-01 public API + visitor sessions + abuse limits · P4-02 widget pack
 Gate: two independent test websites, two tenants, each only answers from its own knowledge.
 
 ## P5 Platform admin, quotas, onboarding-by-staff, hardening
-Staff area (tenant list, job health, audited support actions), usage quotas, staff-initiated onboarding with data upload (same provisioning service as self-service), export/delete, backups, security review, staging readiness.
+Staff area (tenant list, job health, audited support actions), usage quotas, staff-initiated onboarding with data upload (using the website-to-knowledge skill output) (same provisioning service as self-service), export/delete, backups, security review, staging readiness.
 Tickets: P5-01 platform admin · P5-02 quotas + usage enforcement · P5-03 provisioning service (self-service + staff) · P5-04 data export/delete + audit review · P5-05 release readiness (staging, backups/restore drill, monitoring).
 Gate: non-staff blocked from /platform; quota race test; restore drill passes; independent security review.
 

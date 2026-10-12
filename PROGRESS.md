@@ -26,3 +26,6 @@ No Retrivo/Rabbit Hole inspection step in the build. Retrieval/ingestion/analyti
 
 ## 2026-10-12 — Design review of Rabbit Hole and Retrivo
 Both repos were read together with the owner. Result recorded in docs/14-AGREED-BUILD-SPECS.md: keyword-first retrieval (ADR-005 resolved), free-model chain with OpenAI for paid plans (ADR-013), same-language-first retrieval (ADR-014), static HTML URL import (ADR-006 partly). P2 reduced to 5 tickets without embeddings; P3-06 semantic upgrade is optional and eval-gated. No code changed.
+
+## 2026-10-12 — In-app scraper replaced by staff skill
+ADR-006 resolved: no in-app crawler in MVP; website content comes from the website-to-knowledge skill (docs/14 §13) as Markdown pages with source URLs + Q&A CSV. P2 is now 4 tickets. No code changed.

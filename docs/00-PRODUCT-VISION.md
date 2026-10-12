@@ -4,7 +4,7 @@ A SaaS where a business registers or is onboarded by staff, enters its website, 
 ## Personas
 Visitor (anonymous chat), client owner, client admin/editor/viewer, platform operator/admin, self-service applicant.
 ## V1 success journey
-Create account → create organization → create bot → add verified/approved website → crawl and review knowledge → publish revision → test answers → customize widget → embed → monitor chats and leads. A staff member can initiate the same provisioning operation on behalf of a customer.
+Create account → create organization → create bot → upload knowledge files (prepared from the client's website or documents) → review knowledge → publish revision → test answers → customize widget → embed → monitor chats and leads. A staff member can initiate the same provisioning operation on behalf of a customer.
 ## Non-goals
 No cloning or migrating the three reference products; no ManyOsirisChat runtime dependency; no per-client deployment; no enterprise microservice fabric; no direct social messaging in V1; no arbitrary agent tool execution; no automatic paid billing before provider approval.
 ## Success measures (targets, not established SLAs)

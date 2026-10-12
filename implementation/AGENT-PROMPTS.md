@@ -19,15 +19,14 @@ P1-04 Dashboard UI. Next.js pages: /register, /login, /app (org selector + creat
 Then phase verification and PHASE-REPORT.md. STOP.
 ```
 
-## 2. Phase P2 — Knowledge (P2-01 → P2-05)
+## 2. Phase P2 — Knowledge (P2-01 → P2-04)
 ```text
 [preamble]
-PHASE P2 (P1 signed off). Build exactly what docs/14-AGREED-BUILD-SPECS.md §1, §3, §4, §5 specify. No embeddings, no vector column, no pgvector extension (ADR-005).
+PHASE P2 (P1 signed off). Build exactly what docs/14-AGREED-BUILD-SPECS.md §1, §3, §4, §5, §13 specify. There is NO in-app URL import/crawler (ADR-006); website content arrives as uploaded Markdown page files + a Q&A CSV. No embeddings, no vector column, no pgvector extension (ADR-005).
 P2-01 Migrations: sources, source_pages, documents, knowledge_revisions (draft/published/archived; bots.published_revision_id), chunks (tenant_id, bot_id, revision_id, document_id, title, heading, text, text_norm, language, priority, content_hash, generated tsvector columns fts_en/fts_simple with GIN indexes, composite FK to bots), jobs. DB job queue: atomic claim with FOR UPDATE SKIP LOCKED, lease, retry/backoff, cancel; `python -m app.worker` using the same codebase; add the worker service to Compose. Tests: two workers never claim one job; crash → lease expiry → retry; job re-validates tenant + bot.
-P2-02 File upload endpoint (multipart; size/type limits; storage interface with local-disk implementation) and parsers for PDF (pypdf, per page), DOCX (python-docx, heading sections, tables as text), TXT/MD, plus Q&A CSV import (template download, row-level error report). Chunking per §4 with the language detector and Arabic normalisation of §2. Tests with fixtures incl. Arabic, scanned/corrupt/oversize files, bad CSV rows.
+P2-02 File upload endpoint (multipart; size/type limits; storage interface with local-disk implementation) and parsers for PDF (pypdf, per page), DOCX (python-docx, heading sections, tables as text), TXT/MD, plus Q&A CSV import (template download, row-level error report). Chunking per §4 with the language detector and Arabic normalisation of §2. Parse optional YAML front matter in .md/.txt (title, source_url, language, page_type); store source_url per document and use it for citations (http/https only). Tests with fixtures incl. Arabic, scanned/corrupt/oversize files, bad CSV rows, and a sample skill output folder.
 P2-03 Indexing pipeline job: parse → chunk → dedupe by content hash → write chunks into a draft revision; publish/rollback with atomic pointer swap; failed job never touches published knowledge; unchanged re-ingest is a no-op. Tests incl. two tenants with identical content share no rows.
-P2-04 URL import: guarded fetcher (http/https only; block private/loopback/link-local/metadata, revalidate resolved IP and every redirect; caps on pages, depth, bytes, time, redirects), static HTML → clean text sections; JS-only pages reported as "needs rendering". Propose robots policy and caps (ADR-006) and STOP for approval before finishing this ticket. Tests: redirect-to-internal, DNS-rebinding simulation, oversized response, injection text kept as data.
-P2-05 Knowledge UI at /app/[tenant]/bots/[id]/knowledge: upload, Q&A CSV with template + error report, add URL, job status with errors + retry, document/chunk preview, publish/rollback, role restrictions. Playwright E2E with a fixture file.
+P2-04 Knowledge UI at /app/[tenant]/bots/[id]/knowledge: multi-file upload, Q&A CSV with template + error report, job status with errors + retry, document/chunk preview, publish/rollback, role restrictions. Playwright E2E with a fixture file.
 Phase verification + PHASE-REPORT.md. STOP.
 ```
 
@@ -61,8 +60,8 @@ E2E: two static test sites embedding two different tenants' bots; each answers o
 PHASE P5 (P4 signed off).
 P5-01 /platform area guarded by users.is_platform_staff (server-validated, separate from tenant roles): tenant directory, bot/source/job health, retry job, pause bot; every support action requires a reason and writes an audit event; no impersonation.
 P5-02 Plans as internal labels + enforceable quotas (bots, pages, ingestion runs, monthly messages, seats) with transactional counters; concurrency test at the boundary; clear errors in API/UI/widget.
-P5-03 ProvisioningService used by BOTH self-service signup and staff-initiated onboarding (tenant + owner invite + bot + optional file/URL ingestion), durable request record, Idempotency-Key, concurrent retries create exactly one bot; staff path adds actor attribution only.
+P5-03 ProvisioningService used by BOTH self-service signup and staff-initiated onboarding (tenant + owner invite + bot + optional file ingestion), durable request record, Idempotency-Key, concurrent retries create exactly one bot; staff path adds actor attribution only.
 P5-04 Tenant data export and delete (verified, audited); audit review screen.
 P5-05 Release readiness: backup + restore drill script and evidence, structured logs with request/tenant correlation (no PII), error tracking hook, health/readiness, rate limits review, runbook. Staging deployment ONLY after the owner approves hosting (ADR-007) — propose options and stop.
-Security review against docs/06 (SSRF, CSRF, sessions, tenant isolation, prompt injection) with findings fixed or documented. PHASE-REPORT.md. STOP.
+Security review against docs/06 (upload hardening, CSRF, sessions, tenant isolation, prompt injection) with findings fixed or documented. PHASE-REPORT.md. STOP.
 ```

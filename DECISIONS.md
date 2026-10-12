@@ -8,7 +8,7 @@ Change a decision only by adding a dated entry below with rationale, alternative
 | ADR-003 | Modular monolith: Next.js/React/TypeScript, FastAPI, PostgreSQL (pgvector-capable image; extension unused until the optional semantic upgrade) | Approved 2026-10-12 |
 | ADR-004 | Auth: built-in server-side cookie sessions, Argon2id hashing, CSRF protection. No email provider or password reset in MVP (reset deferred) | Approved 2026-10-12 |
 | ADR-005 | Retrieval/embeddings | RESOLVED 2026-10-12: keyword-first (Postgres full-text), no embeddings or vector column in MVP; optional hybrid/semantic upgrade later, gated by eval results (see docs/14) |
-| ADR-006 | Crawler limits / robots policy / ownership verification | PARTLY DECIDED: static HTML only in MVP behind an SSRF guard; JS rendering (headless browser) only later in an isolated worker. Exact caps and robots policy to propose in P2-04 |
+| ADR-006 | Website ingestion | RESOLVED 2026-10-12: no in-app crawler in the MVP. Website content is collected by a staff-run AI skill that outputs Markdown pages (with source URLs) and a Q&A CSV, uploaded as files (docs/14 §13). An isolated in-app importer may be proposed later |
 | ADR-007 | Hosting, object storage, retention, data residency | OPEN (before staging, P5-05) |
 | ADR-008 | Paid plans, payment provider, currencies | OPEN (not in this roadmap; after P5) |
 | ADR-009 | Roles: owner / admin / editor / viewer per tenant, plus `users.is_platform_staff` flag for platform area | Approved 2026-10-12 |
@@ -29,3 +29,6 @@ npm workspaces with exact versions + lockfile; Python 3.12 venv with pinned requ
 
 ## 2026-10-12 — Retrieval, model and language decisions (ADR-005/006/013/014)
 Approver: product owner, after reading Rabbit Hole and Retrivo in design review. Rationale: Rabbit Hole proves keyword-only Postgres search plus a free model is enough for a grounded EN/AR assistant without embedding API cost; Retrivo contributes parsing, chunking, Q&A CSV onboarding and analytics. Alternatives: hybrid from day one (deferred, eval-gated), free-only or Ollama-only models, strict same-language retrieval, headless-browser scraping in P2 (all rejected for MVP). Details: docs/14-AGREED-BUILD-SPECS.md.
+
+## 2026-10-12 — Website content via staff skill (ADR-006)
+Approver: product owner. Rationale: removes the largest security surface (SSRF, hostile sites, JS rendering) from the product and lets an AI curate relevant content with a human review. Alternatives: guarded in-app crawler (deferred), headless browser in the app (rejected for MVP). Impact: P2 loses the URL-import ticket; clients cannot self-serve website import; website onboarding and refreshes are staff-run.

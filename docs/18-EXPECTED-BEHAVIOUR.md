@@ -13,7 +13,7 @@ A business signs up, creates an organization and a bot, gives it its data (uploa
 - A user from org B who guesses an org-A bot ID gets "not found" — never the data.
 - Nothing on screen is fake: all lists come from the API.
 ### After P2 — Knowledge
-- Open a bot → Knowledge. Upload a PDF/DOCX/TXT/MD file, a Q&A CSV (download the template first; bad rows are listed with reasons), or paste a URL (static pages; JavaScript-only pages are flagged as 'needs rendering'). See a job go queued → running → done, or failed with a readable reason and a Retry button.
+- Open a bot → Knowledge. Upload a PDF/DOCX/TXT/MD file, a Q&A CSV (download the template first; bad rows are listed with reasons). Website content is prepared by staff with the website-to-knowledge skill (a folder of page files + Q&A CSV) and uploaded here; there is no paste-a-URL box in the first release. Citations link back to each page's original URL. See a job go queued → running → done, or failed with a readable reason and a Retry button.
 - See the extracted documents and chunks (preview), counts, and which source each came from.
 - Click Publish: the bot's knowledge switches to the new revision atomically. Roll back to the previous revision works. A failed ingest never changes what is published.
 - Uploading the same file twice does not duplicate content. Another organization with the same file shares nothing.
