@@ -18,22 +18,25 @@ Legend: [ ] open · [x] done with evidence. Owner sign-off closes each phase.
 - [ ] Phase report written; owner reviewed and signed off
 
 ## P2 Knowledge
-- [ ] P2-01: parsing, chunking, embedding and retrieval specs agreed and recorded in docs/14; ADR-005 (embeddings) decided
-- [ ] P2-02: migrations for sources, documents, revisions, chunks, jobs; atomic job claim with lease/retry tested (two workers, one job)
-- [ ] P2-03: PDF/DOCX/TXT/MD/CSV parsed and chunked from fixtures; oversize/unsupported/corrupt files rejected clearly
-- [ ] P2-04: URL import bounded (pages, depth, bytes, time, redirects); private/loopback/metadata targets and redirects-to-internal blocked; prompt-injection text stored as data
-- [ ] P2-05: embeddings stored; re-ingest idempotent (content hash); draft → publish → rollback atomic; failed job leaves published revision intact
-- [ ] P2-05: two tenants ingest identical content → zero shared rows
-- [ ] P2-06: Knowledge UI: upload, job status, errors/retry, preview, publish/rollback
+- [ ] P2-01: migrations for sources, documents, revisions, chunks (generated GIN-indexed tsvector columns), jobs; no vector column
+- [ ] P2-01: atomic job claim (FOR UPDATE SKIP LOCKED) with lease/retry/cancel — two workers never run one job; crash → lease expiry → retry; job re-validates tenant + bot
+- [ ] P2-02: PDF/DOCX/TXT/MD parsed per docs/14 §3 from fixtures (incl. Arabic text); scanned/corrupt/oversize/unsupported files rejected with clear messages
+- [ ] P2-02: Q&A CSV import works with template download and row-level error report (bad priority, empty question/answer, missing columns)
+- [ ] P2-02: chunking matches docs/14 §4 (1500/200, titles kept, short docs = one chunk)
+- [ ] P2-03: dedupe by content hash; re-ingest of unchanged source is a no-op; draft → publish → rollback is atomic; failed job leaves published revision intact
+- [ ] P2-03: two tenants ingest identical content → zero shared rows
+- [ ] P2-04: URL import bounded (pages, depth, bytes, time, redirects); private/loopback/link-local/metadata targets and redirects-to-internal blocked; DNS-rebinding test; page text with injection phrases stored as data; JS-only pages reported as "needs rendering"
+- [ ] P2-05: Knowledge UI: upload, add URL, job status with errors + Retry, document/chunk preview, publish/rollback, role restrictions
 - [ ] Phase report; owner sign-off
 
 ## P3 Chat
-- [ ] P3-01: hybrid retrieval (keyword + semantic) returns only tenant + bot + published-revision chunks (test proves removing the filter fails)
-- [ ] P3-02: LLMProvider interface with first free/Ollama provider; prompts versioned; citations validated; abstains when evidence is missing
-- [ ] P3-02: Arabic, English and mixed questions answered in the question's language
-- [ ] P3-03: conversations, messages, citations, usage events stored (idempotent)
-- [ ] P3-04: Playground shows answer + citations + errors; "not ready" state when nothing published
-- [ ] P3-05: eval suite committed (grounded / unanswerable / injection / Arabic) with thresholds recorded and met
+- [ ] P3-01: retrieval per docs/14 §2, §5: tenant + bot + published-revision + language filters (a test fails if any filter is removed); cross-language fallback; small-document expansion; Arabic normalisation + prefix matching
+- [ ] P3-02: ChatModel interface; free OpenRouter chain + OpenAI option via config; strict JSON contract; invalid JSON or invalid/missing citation → fallback; can_answer=false → needs_human
+- [ ] P3-02: smalltalk and order/account routing work without model calls; replies follow the visitor's language
+- [ ] P3-03: conversations, messages, citations, thumbs feedback, usage events stored (idempotent); retention purge works
+- [ ] P3-04: Playground shows answer + citations + errors; "not ready" state when nothing is published
+- [ ] P3-05: eval suite committed (grounded / unanswerable / injection / cross-language, EN + AR) with real numbers against docs/14 §10 targets
+- [ ] P3-06 (optional): only started if evals show recall gaps — separate approval
 - [ ] Phase report; owner sign-off
 
 ## P4 Widget and client experience

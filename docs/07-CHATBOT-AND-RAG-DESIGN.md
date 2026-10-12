@@ -1,12 +1,12 @@
 # Chatbot engine and RAG specification
-## Runtime
-Resolve tenant/bot from authenticated client request or public widget locator. Verify active bot and published knowledge revision. Normalize query, retrieve top candidate chunks with strict tenant/bot/revision filters, rerank if justified, construct source-bounded context, call configured model, validate citations, return answer or calibrated abstention. Store conversation and usage event with dedupe IDs.
-## Quality
-Answer only using authorized published content; distinguish direct evidence vs missing evidence; cite accessible source URLs; never fabricate prices, policies, inventory or contacts. Handle Arabic/English and mixed-language queries; evaluate on held-out grounded, unanswerable and prompt-injection cases. Record latency, retrieval hit rate, citation precision and cost per turn.
-## Providers
-Define LLMProvider and EmbeddingProvider interfaces; credentials from secret manager/environment, never tenant-visible. Provider/model/dimension and budgets are decisions, not defaults. Keep prompts versioned and per-bot configurable only within safe policy boundaries.
-## Retrieval
-Hybrid search: keyword (Postgres full-text) + semantic (pgvector) with score fusion, always filtered by tenant + bot + published revision. Embedding model and dimension: ADR-005 (open until P2-01); prefer local/Ollama over paid embedding APIs. First reply model: free model or Ollama behind `LLMProvider`.
+## Source of truth
+The agreed, detailed specification is `docs/14-AGREED-BUILD-SPECS.md` (retrieval, languages, parsing, chunking, answer contract, prompts, routing, abuse controls, analytics, evaluation). This file states the principles.
 
-## Specification status
-Detailed retrieval, chunking and embedding parameters are agreed with the owner in design review and recorded in `docs/14-AGREED-BUILD-SPECS.md` before the ticket that needs them. Anything not yet recorded there is TBD: the agent stops and asks.
+## Runtime
+Resolve tenant/bot from an authenticated request or the public widget locator. Verify active bot and published knowledge revision. Detect language, apply rule-based routing (smalltalk, handoff), condense follow-ups, run keyword retrieval filtered by tenant + bot + published revision + language (with the cross-language fallback), build source-bounded context, call the configured chat model for a strict JSON reply, validate citations, return the answer or an abstention. Store the conversation and a usage event with dedupe IDs.
+
+## Quality
+Answer only from authorized published content; cite accessible sources; never fabricate prices, policies, inventory or contacts. Arabic, English and mixed queries. Evaluate on grounded, unanswerable, prompt-injection and cross-language cases. Record latency, fallback rate, citation validity and cost per turn.
+
+## Providers
+`ChatModel` (and later `Embedder`) interfaces; credentials from environment/secret manager, never tenant-visible. Default free OpenRouter models with fallback chain; OpenAI models for paid plans (ADR-013). Prompts are versioned; per-bot customization only through the settings fields in docs/14 §8.

@@ -7,9 +7,9 @@ IDs are durable. Priority: M = MVP required, L = later, D = decision pending.
 | FR-003 | M | Tenant-scoped bots: draft, active, paused, archived; configuration versioning | CRUD, permissions and audit tests |
 | FR-004 | M | Both self-service and staff onboarding call ONE backend provisioning application service | Same resulting resources, distinct actor audit |
 | FR-005 | M | Website source entry, scope and crawl configuration, status and error diagnostics | Bounded crawl fixture and retry |
-| FR-006 | M | Safe extraction, deduplication, chunking, embedding and staged revisions | Repeated crawl is idempotent |
+| FR-006 | M | Safe extraction, deduplication, chunking, full-text indexing and staged revisions | Repeated crawl is idempotent |
 | FR-007 | M | Explicit publish/rollback of knowledge revision | In-flight chats see one coherent revision |
-| FR-008 | M | RAG answers restricted to published tenant/bot knowledge with citations and abstention | Cross-tenant retrieval and hallucination evaluation |
+| FR-008 | M | Keyword-first RAG answers restricted to published tenant/bot knowledge with validated citations and abstention | Cross-tenant retrieval and hallucination evaluation |
 | FR-009 | M | Arabic and English questions, Unicode handling and RTL presentation | Bilingual test corpus |
 | FR-010 | M | Installable website widget, configurable appearance, allowed-domain policy and abuse limits | Two independent websites smoke test |
 | FR-011 | M | Visitor sessions, chat history, streaming or graceful nonstreaming fallback | Session ownership/expiration tests |
@@ -22,6 +22,8 @@ IDs are durable. Priority: M = MVP required, L = later, D = decision pending.
 | FR-018 | L | ManyOsirisChat API integration after standalone product launch | Contract and isolation tests |
 | FR-020 | M | Raw-data onboarding: upload PDF/DOCX/TXT/CSV/MD files, parsed and indexed into a bot's draft knowledge | Fixture files indexed; unsupported/oversized files rejected with clear error |
 | FR-021 | M | Client analytics: conversations, questions asked, unanswered questions, citations, usage (measured, never fabricated) | Counts match stored events |
+| FR-022 | M | Q&A CSV import (question, answer, topic, priority) with template download and row-level error report | Valid rows indexed as single chunks; invalid rows listed with reasons |
+| FR-023 | M | Per-answer thumbs feedback; unanswered-question list for clients | Feedback stored once per message; unanswered list matches can_answer=false turns |
 | FR-019 | M | Safe data export/delete with tenant verification and audit | Authorized vs unauthorized requests |
 
 ## Requirement discipline

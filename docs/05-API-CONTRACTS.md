@@ -12,6 +12,10 @@ JSON error: `{ "error": {"code":"FORBIDDEN","message":"...","request_id":"..."}}
 | GET /api/v1/tenants/{tenant_id}/provisioning/{id} | authorized | Progress |
 | POST /api/v1/tenants/{tenant_id}/bots/{bot_id}/sources | editor+ | Add source |
 | POST /api/v1/tenants/{tenant_id}/bots/{bot_id}/ingestion | editor+ | Start job |
+| POST /api/v1/tenants/{tenant_id}/bots/{bot_id}/sources/files | editor+ | Upload PDF/DOCX/TXT/MD/CSV (multipart) |
+| GET /api/v1/tenants/{tenant_id}/bots/{bot_id}/sources/qa-template | editor+ | Q&A CSV template |
+| POST /api/public/v1/sessions/{session_id}/messages/{message_id}/feedback | session capability | Thumbs up/down |
+| GET /api/v1/tenants/{tenant_id}/bots/{bot_id}/analytics/{summary,volume,top-questions,unanswered,leads} | member | Measured analytics |
 | POST /api/v1/tenants/{tenant_id}/bots/{bot_id}/revisions/{id}/publish | admin+ | Publish knowledge |
 | GET /api/public/v1/widgets/{locator}/config | public | Safe public config only |
 | POST /api/public/v1/widgets/{locator}/sessions | public + abuse controls | Session |

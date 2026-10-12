@@ -13,14 +13,16 @@ A business signs up, creates an organization and a bot, gives it its data (uploa
 - A user from org B who guesses an org-A bot ID gets "not found" — never the data.
 - Nothing on screen is fake: all lists come from the API.
 ### After P2 — Knowledge
-- Open a bot → Knowledge. Upload a PDF/DOCX/TXT/CSV (or paste a URL). See a job go queued → running → done, or failed with a readable reason and a Retry button.
+- Open a bot → Knowledge. Upload a PDF/DOCX/TXT/MD file, a Q&A CSV (download the template first; bad rows are listed with reasons), or paste a URL (static pages; JavaScript-only pages are flagged as 'needs rendering'). See a job go queued → running → done, or failed with a readable reason and a Retry button.
 - See the extracted documents and chunks (preview), counts, and which source each came from.
 - Click Publish: the bot's knowledge switches to the new revision atomically. Roll back to the previous revision works. A failed ingest never changes what is published.
 - Uploading the same file twice does not duplicate content. Another organization with the same file shares nothing.
 ### After P3 — Chat
 - In the Playground, ask a question: streamed or complete answer with source citations (file/page or URL).
 - Ask something not in the data: the bot says it doesn't have that information — no invention.
-- Arabic and English questions both work, answers follow the question's language, Arabic renders right-to-left.
+- Arabic and English questions both work, answers follow the question's language, Arabic renders right-to-left. If your documents are only in English, an Arabic question is still answered (in Arabic) from them.
+- Thumbs up/down on each answer; questions the bot could not answer are listed so you know what content to add.
+- Search is keyword-based: exact wording matters more than for semantic search, so very loose paraphrases may miss. The eval report shows how often; a semantic upgrade is optional later.
 - A "page text" that says "ignore your instructions" does not change the bot's behaviour.
 - Conversations and usage events are stored; a bot with nothing published says it is not ready.
 ### After P4 — Widget and client experience
