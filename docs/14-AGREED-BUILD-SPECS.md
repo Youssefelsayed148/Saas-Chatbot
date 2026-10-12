@@ -102,3 +102,9 @@ A Claude skill run by staff (browser-capable session). It is a delivery tool, no
 
 ## 18. ManyOsirisChat channel contract (ADR-017) — built in P6
 Authoritative detail is in `docs/17-MANYOSIRISCHAT-CHANNEL-INTEGRATION.md`. Summary: HMAC-SHA256 signed JSON (`connection id + timestamp + body`), 5-minute skew, `event_id` dedupe, 202-then-job processing; inbound `message.received` / `message.status`; outbound `POST {many}/api/saas/messages` keyed by our `message_id`; Many enforces Meta rules (window, templates); the SaaS stores no Meta tokens; text only in v1; connections are created explicitly by staff.
+
+## 19. Team invitations (no email provider, ADR-004)
+- Owner/admin creates an invitation (email label, role, expiry default 7 days); the app shows a one-time link containing a random token (only its hash is stored). The inviter copies and sends it by any channel.
+- Accepting: the invitee opens the link, registers or logs in with that email, and a membership is created; the token is single-use and expires. Revoke, resend (new token) and list pending invitations are available. Roles can be changed and members removed (owner cannot be removed or demoted by others; last owner is protected).
+- The same mechanism creates the first owner when staff onboard a client (P4-06): staff get the owner invite link.
+- Tables: `invitations(id, tenant_id, email, role, token_hash, expires_at, accepted_at, revoked_at, created_by)`. Inbox agents (editors) join this way. Every action is audited; tokens are never logged.

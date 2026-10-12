@@ -4,6 +4,8 @@ JSON error: `{ "error": {"code":"FORBIDDEN","message":"...","request_id":"..."}}
 |---|---|---|
 | POST /api/v1/auth/register, /login, /logout | public/session | Auth lifecycle |
 | GET /api/v1/me | session | User + memberships |
+| GET/POST/DELETE /api/v1/tenants/{tenant_id}/invitations ; POST /api/v1/invitations/accept | owner/admin ; accept = session + token | Team invitations by one-time link (docs/14 §19) |
+| GET/PATCH/DELETE /api/v1/tenants/{tenant_id}/members | admin+ | List, change role, remove |
 | POST /api/v1/tenants | session | Create organization |
 | GET /api/v1/tenants/{tenant_id} | member | Tenant details |
 | GET/POST /api/v1/tenants/{tenant_id}/bots | member editor+ for POST | Bot listing/create |

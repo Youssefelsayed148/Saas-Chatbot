@@ -9,7 +9,7 @@ A business signs up, creates an organization and a bot, gives it its data (uploa
 - Open the web app, register, log in, log out. Wrong password → clear error; expired session → sent back to login.
 - Create an organization; you are its owner. Create a second org and switch between them.
 - Create, rename, edit settings of, and archive a bot. Archived bots disappear from the default list but are not deleted.
-- Invite/membership roles exist in the data model; a viewer sees bots but has no create/edit buttons and the API rejects their writes.
+- Owners/admins invite teammates with a one-time link (copy and send it yourself; there is no email). The invitee opens it, registers or logs in and joins with the chosen role. Links expire, work once and can be revoked. A viewer sees bots but has no create/edit buttons and the API rejects their writes.
 - A user from org B who guesses an org-A bot ID gets "not found" — never the data.
 - Nothing on screen is fake: all lists come from the API.
 ### After P2 — Knowledge
