@@ -47,12 +47,25 @@ from tests.knowledge_helpers import (
 from tests.retrieval_helpers import MD_AR_PLURAL, retrieval_settings
 
 EVAL_DIR = Path(__file__).parent
-# implementation/ sits at the REPO ROOT while this file lives in apps/api —
-# walk up to the directory that contains "apps"; an env override lets the
-# check container write the report onto the host mount.
-_REPO_ROOT = Path(__file__).parents[3]
-_REPORT_DIR = Path(os.environ.get("REPO_IMPL_DIR", str(_REPO_ROOT))) / "implementation" / "PHASE-03"
-REPORT_PATH = _REPORT_DIR / "EVAL-REPORT.md"
+
+
+def _report_dir() -> Path:
+    """implementation/PHASE-03 at the REPO ROOT (this file lives in apps/api).
+
+    Walks up to the repository root (mirrors tests.conftest._find_repo_root);
+    ``REPO_IMPL_DIR`` overrides it so the container-based check suite can
+    write the report onto the host mount."""
+    override = os.environ.get("REPO_IMPL_DIR")
+    if override:
+        return Path(override) / "implementation" / "PHASE-03"
+    probe = Path(__file__).resolve()
+    for parent in probe.parents:
+        if (parent / "apps").is_dir() and (parent / "README_START_HERE.md").is_file():
+            return parent / "implementation" / "PHASE-03"
+    raise RuntimeError("Repository root not found for the eval report; set REPO_IMPL_DIR.")
+
+
+REPORT_PATH = _report_dir() / "EVAL-REPORT.md"
 
 TARGETS = {
     "grounded_correct_citation": 90.0,
