@@ -230,6 +230,10 @@ export default function KnowledgePage() {
         <Link href={`/app/${tenantId}/bots/${botId}/settings`}>
           Bot settings
         </Link>
+        {" · "}
+        <Link href={`/app/${tenantId}/bots/${botId}/playground`}>
+          Playground
+        </Link>
       </p>
       <h1>Knowledge</h1>
       {!canEdit && (

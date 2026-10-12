@@ -163,6 +163,10 @@ export default function BotSettingsPage() {
         <Link href={`/app/${tenantId}/bots`}>Back to bots</Link>
         {" · "}
         <Link href={`/app/${tenantId}/bots/${botId}/knowledge`}>Knowledge</Link>
+        {" · "}
+        <Link href={`/app/${tenantId}/bots/${botId}/playground`}>
+          Playground
+        </Link>
       </p>
       <h1>{bot.name} — settings</h1>
       <p data-status={bot.status}>Status: {bot.status}</p>

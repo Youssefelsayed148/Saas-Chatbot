@@ -19,7 +19,19 @@ interface ServerHandle {
 
 export async function startServer(): Promise<ServerHandle> {
   if (await waitFor(HEALTH_URL, 1500)) {
-    console.log(`[e2e] Reusing an already-running API at ${HEALTH_URL}.`);
+    // Reuse is opt-in: silently testing against an unknown running server
+    // (e.g. the compose stack on the dev database) hides the disposable-DB
+    // guarantee and stale builds. Refuse unless explicitly requested.
+    if (process.env.E2E_REUSE_API !== "1") {
+      throw new Error(
+        `Something is already listening on ${HEALTH_URL}. Stop the local ` +
+          "compose stack (docker compose down) or point E2E_API_PORT/CHE " +
+          "elsewhere, or set E2E_REUSE_API=1 to accept the existing server.",
+      );
+    }
+    console.log(
+      `[e2e] Reusing an already-running API at ${HEALTH_URL} (forced).`,
+    );
     const base = process.env.DATABASE_URL ?? readEnvFile().DATABASE_URL;
     return { server: null, databaseUrl: disposableUrl(base ?? "") };
   }
@@ -81,7 +93,13 @@ export async function startServer(): Promise<ServerHandle> {
     ],
     {
       cwd: API_DIR,
-      env: { ...process.env, DATABASE_URL: databaseUrl },
+      env: {
+        ...process.env,
+        DATABASE_URL: databaseUrl,
+        // The playground E2E runs the deterministic offline stub model
+        // (dev-only; production never sets this).
+        CHAT_STUB_MODEL: "1",
+      },
       stdio: "inherit",
     },
   );

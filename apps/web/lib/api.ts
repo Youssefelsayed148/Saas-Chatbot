@@ -543,3 +543,84 @@ export async function publishRevision(
     method: "POST",
   });
 }
+
+// --- playground (P3-04) ------------------------------------------------------
+
+export interface PlaygroundMessage {
+  id: string;
+  sender_type: "visitor" | "ai" | "agent" | "system";
+  text: string;
+  citations:
+    | {
+        chunk_id: string;
+        title: string;
+        heading?: string | null;
+        source_url?: string | null;
+      }[]
+    | null;
+  can_answer: boolean | null;
+  needs_human: boolean;
+  response_ms: number | null;
+  created_at: string;
+}
+
+export interface PlaygroundTurnResponse {
+  conversation_id: string;
+  mode: string;
+  status: string;
+  visitor_message: { id: string; text: string; created_at: string };
+  ai_message: {
+    id: string;
+    text: string;
+    citations: {
+      chunk_id: string;
+      title: string;
+      heading?: string | null;
+      source_url?: string | null;
+    }[];
+    can_answer: boolean;
+    needs_human: boolean;
+    response_ms: number | null;
+    created_at: string;
+  };
+  kind: string;
+  language: string;
+}
+
+export async function playgroundTurn(
+  tenantId: string,
+  botId: string,
+  text: string,
+): Promise<PlaygroundTurnResponse> {
+  return api<PlaygroundTurnResponse>(
+    `tenants/${tenantId}/bots/${botId}/playground/messages`,
+    { method: "POST", body: { text } },
+  );
+}
+
+export interface PlaygroundConversation {
+  conversation_id: string;
+  message_count: number;
+  messages: PlaygroundMessage[];
+}
+
+export async function playgroundConversation(
+  tenantId: string,
+  botId: string,
+): Promise<PlaygroundConversation> {
+  return api<PlaygroundConversation>(
+    `tenants/${tenantId}/bots/${botId}/playground/conversation`,
+  );
+}
+
+export async function messageFeedback(
+  tenantId: string,
+  botId: string,
+  messageId: string,
+  rating: "up" | "down",
+): Promise<void> {
+  await api<unknown>(
+    `tenants/${tenantId}/bots/${botId}/messages/${messageId}/feedback`,
+    { method: "POST", body: { rating } },
+  );
+}
