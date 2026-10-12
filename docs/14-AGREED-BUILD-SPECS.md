@@ -3,7 +3,7 @@ The coding agent builds exactly this. Values marked **default** are starting poi
 
 ## 1. Retrieval strategy: keyword-first (ADR-005 resolved)
 - MVP uses PostgreSQL full-text search only. No embedding model, no vector column, no pgvector extension in migrations until the semantic upgrade (P3-06).
-- Semantic/hybrid (keyword + vector fused with Reciprocal Rank Fusion, k=60) is a later, eval-gated upgrade: add a nullable `embedding` column, per-bot `retrieval_mode = keyword|hybrid`, embeddings from a local/Ollama multilingual model. Triggered only if the eval suite shows paraphrase/typo recall gaps.
+- Semantic/hybrid (keyword + vector fused with Reciprocal Rank Fusion, k=60) is a later, eval-gated upgrade: add a nullable `embedding` column, per-bot `retrieval_mode = keyword|hybrid`, embeddings from a local/Ollama multilingual model. Triggered only if the eval suite shows paraphrase/typo recall gaps; the owner decides at the P3 gate, with Arabic and dialect cases weighted in the eval set.
 - No similarity thresholds, source-type boosts or per-language offsets (these were dataset-specific tuning). Abstention comes from: zero hits, or the model returning `can_answer=false`.
 
 ## 2. Languages (ADR-014)
@@ -66,7 +66,7 @@ Per-bot-agnostic fixture corpora (EN + AR) and `eval.jsonl` cases `{question, la
 Iframe sandbox (docs/09). Welcome message, opening-question chips, typing indicator, source chips (citations), thumbs feedback, scroll-to-bottom, lead form with consent, language/RTL, mobile layout, branding from bot settings fetched at load.
 
 ## 12. Explicitly not built
-Structured product/property search and slot extractors, intent classifier, live catalogue lookups, response cache, version snapshot tables (replaced by revisions), in-app URL import / crawler (replaced by the staff skill, §13; may return later as an isolated feature), PDF analytics reports, OCR.
+Direct Meta integrations inside this repo (ManyOsirisChat owns them, §18), voice/image/media messages, email notifications, structured product/property search and slot extractors, intent classifier, live catalogue lookups, response cache, version snapshot tables (replaced by revisions), in-app URL import / crawler (replaced by the staff skill, §13; may return later as an isolated feature), PDF analytics reports, OCR.
 
 ## 13. Website-to-knowledge skill (outside the app)
 A Claude skill run by staff (browser-capable session). It is a delivery tool, not part of the product code, and is stored outside this repo. Contract:
@@ -75,3 +75,30 @@ A Claude skill run by staff (browser-capable session). It is a delivery tool, no
 - **Output folder:** `pages/NNN-slug.md` (one file per page with the front matter above and cleaned body text), `qa.csv` (columns `question,answer,topic,priority`, UTF-8 BOM; answers copied or tightly paraphrased from page text, never invented), `coverage.md` (pages visited/skipped with reasons, languages found, and **gaps**: e.g. no return policy, no opening hours, no contact details).
 - **Rules:** quote prices, hours and policy conditions exactly as on the site; never add outside knowledge; keep conditions with their exceptions in the same page file; no personal data of private individuals; record the capture date; flag pages that could not be read.
 - **Human review** of the folder is mandatory before upload; the Knowledge UI preview is the second check.
+
+## 14. Conversation core (ADR-015) — built in P3-03, extended in P5
+- `contacts`: one person per tenant (display name, email, phone, stage, tags, custom fields, consent per channel, source channel). Anonymous website visitors have no contact until they give details (lead form) or an agent creates one.
+- `conversations`: tenant, bot, contact (nullable), `channel` (website | whatsapp | messenger | instagram), `connection_id` (null for website), `mode` (ai | human), `status` (open | waiting_human | resolved), `assigned_user_id` (null), `handoff_reason` (null), `last_message_at`, `sentiment` (null until computed).
+- `messages`: `sender_type` (visitor | ai | agent | system), `sender_user_id` (agents only), text, citations (AI only), `can_answer`, `needs_human`, `response_ms`, `channel_message_id`, `delivery_status` (pending | sent | delivered | read | failed) with `error_code`.
+- The same chat pipeline (§5–§7) serves every channel; only the delivery step differs. The pipeline runs only when `mode = ai`.
+
+## 15. Handoff rules and agent takeover (ADR-016)
+- Automatic switch to `status = waiting_human` (mode stays ai until an agent takes over; the visitor gets the localized handoff message with the support contact) when: the bot returns `can_answer=false` twice in a row (**default**, configurable 1–3); the visitor asks for a person (rule-based keyword lists EN/AR); order/account routing from §6; the provider chain fails; a staff-configured keyword (e.g. "complaint"). Negative sentiment is only a flag (P5-05), never an automatic switch.
+- **Take over** (owner/admin/editor): `mode = human`, assigned to that user, AI silent. **Return to AI**: `mode = ai`, assignment cleared. **Resolve**: `status = resolved`. A new visitor message on a resolved conversation reopens it with `mode = ai`.
+- An agent reply is a `messages` row (`sender_type = agent`); on the website the widget shows it within ~3 s (polling), on Many channels it is sent through the contract (§18). Viewer role is read-only. Concurrent takeover by two agents: first write wins, the second gets a 409 and the current owner.
+- Every handoff, takeover, return and resolve writes an audit row and a system message in the thread.
+- Live updates: dashboard uses Server-Sent Events backed by a DB cursor poll (every ~2 s) so it works with several API processes; reconnect resumes from `Last-Event-ID`. In-app notification badge for conversations in `waiting_human` or assigned to you; no email in v1.
+
+## 16. Inbox and light CRM
+- Inbox: list sorted by last activity; filters for status, mode, channel, assignee, tag, unread, language; search over contact name and message text (Postgres full-text); thread view with citations, feedback, notes and system events; reply box (agents), take over / return / resolve / assign buttons; unread counters per user.
+- Internal notes are never visible to visitors. Tags are per-tenant labels on conversations and contacts.
+- Contact profile: details, identities per channel, stage (**default stages**: new, qualified, customer, lost — editable names), tags, custom fields (key/value, tenant-defined, ≤ 20), timeline of conversations, notes, consent state. Merge two contacts by explicit action (audited). CSV export of contacts. Deleting a contact deletes its identities and, on request, its messages (retention, GDPR-style erasure).
+- Not in v1: deals/pipelines with amounts, tasks, email sync, calendars, automations builder.
+
+## 17. Follow-ups, sentiment and extra analytics
+- Follow-up = a scheduled message (`send_at`, text, target conversation/contact, created by a user or a rule such as "no reply for 24 h after a lead form"). A job sends it. **Website:** delivered when the visitor next opens the widget (stored as a pending agent/system message); no push. **Meta channels (P6):** sent through Many only if the contact has recorded opt-in and Many accepts it (window/template).
+- Sentiment: a job classifies a conversation (positive | neutral | negative) with the ChatModel after it goes idle or is resolved; used for flags and aggregates only. Cost-capped by plan.
+- Added analytics: handoff rate, average time to first human reply, conversations per channel, resolved vs open, sentiment distribution, agent workload. Measured data only.
+
+## 18. ManyOsirisChat channel contract (ADR-017) — built in P6
+Authoritative detail is in `docs/17-MANYOSIRISCHAT-CHANNEL-INTEGRATION.md`. Summary: HMAC-SHA256 signed JSON (`connection id + timestamp + body`), 5-minute skew, `event_id` dedupe, 202-then-job processing; inbound `message.received` / `message.status`; outbound `POST {many}/api/saas/messages` keyed by our `message_id`; Many enforces Meta rules (window, templates); the SaaS stores no Meta tokens; text only in v1; connections are created explicitly by staff.

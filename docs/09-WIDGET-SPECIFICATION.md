@@ -3,3 +3,6 @@ One copy/paste script snippet with public locator, rendered in sandboxed iframe.
 States: loading, ready, typing, answer/citations, no knowledge, paused, quota exceeded, network error, reconnect. Mobile responsive, keyboard accessible, screen reader labels, CSP-friendly embed, versioned asset URL. No tenant secrets in embed snippet. Test two domains, two tenants, multiple tabs, invalid locator, disabled bot and expired session.
 
 UX elements to include: welcome message, opening-question chips, typing indicator, source chips for citations, thumbs feedback per answer, scroll-to-bottom, consent-based lead form (see docs/14 §11). The widget is an iframe, not an in-page shadow-root bundle, so unknown client pages cannot reach it.
+
+## Human handoff in the widget (P5)
+The widget shows who is answering (AI or a human, with the agent's display name if the bot allows it), a 'talk to a person' button when handoff is enabled, a 'waiting for a person' state, and agent messages within ~3 s via polling `GET /sessions/{id}/messages?since=cursor` (stops polling when the tab is hidden or closed). A pending follow-up is shown on the visitor's next visit. Agent messages are rendered as plain text (no HTML).

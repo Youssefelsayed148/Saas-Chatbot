@@ -20,7 +20,17 @@ JSON error: `{ "error": {"code":"FORBIDDEN","message":"...","request_id":"..."}}
 | GET /api/public/v1/widgets/{locator}/config | public | Safe public config only |
 | POST /api/public/v1/widgets/{locator}/sessions | public + abuse controls | Session |
 | POST /api/public/v1/sessions/{session_id}/messages | session capability | Chat |
+| GET /api/v1/tenants/{tenant_id}/inbox/conversations | member | Inbox list with filters/search (P5) |
+| GET /api/v1/tenants/{tenant_id}/inbox/stream | member | SSE live updates, resumes via Last-Event-ID (P5) |
+| GET/POST /api/v1/tenants/{tenant_id}/conversations/{id}, /messages | member; reply editor+ | Thread, agent reply (P5) |
+| POST /api/v1/tenants/{tenant_id}/conversations/{id}/{takeover,return-to-ai,resolve,assign} | editor+ | State changes; 409 if already owned (P5) |
+| POST /api/v1/tenants/{tenant_id}/conversations/{id}/notes, tags | editor+ | Internal notes and tags (P5) |
+| GET/POST/PATCH /api/v1/tenants/{tenant_id}/contacts, /contacts/{id}, POST /contacts/{id}/merge, GET /contacts.csv | member; writes editor+ | Light CRM (P5) |
+| POST/GET /api/v1/tenants/{tenant_id}/followups | editor+ | Schedule/list follow-ups (P5) |
+| GET /api/public/v1/sessions/{session_id}/messages?since=cursor | session capability | Widget polls for agent replies (P5) |
+| POST /api/channels/manyosiris/events | HMAC signature (no cookie) | Inbound Many events, 202 then job (P6) |
+| POST/GET /api/v1/tenants/{tenant_id}/channels/connections | owner/admin + staff approval | Link a bot to a Many channel (P6) |
 | GET /api/v1/platform/tenants | platform staff | Admin listing |
 
 ## Contracts must include
-Request/response schemas with example, pagination, ownership checks, idempotency, validation, side effects and stable error codes. Define CSRF protection for cookie auth, secure cookie settings, CORS, rate limits, and origin checks. Public locator is NOT an authentication secret. Phase 1 freezes only auth, tenants, bots and platform listing contracts; later routes remain proposals.
+Request/response schemas with example, pagination, ownership checks, idempotency, validation, side effects and stable error codes. Define CSRF protection for cookie auth, secure cookie settings, CORS, rate limits, and origin checks. Public locator is NOT an authentication secret. The inbox, CRM and channel routes are proposals until P5/P6 start. Phase 1 freezes only auth, tenants, bots and platform listing contracts; later routes remain proposals.

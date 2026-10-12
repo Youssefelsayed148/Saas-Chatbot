@@ -18,13 +18,18 @@ IDs are durable. Priority: M = MVP required, L = later, D = decision pending.
 | FR-014 | M | Leads/contact capture with explicit consent and configurable retention | Consent and deletion tests |
 | FR-015 | M | Usage metering and enforceable quotas by tenant/bot | Concurrency and quota boundary tests |
 | FR-016 | L | Paid subscription checkout, renewals, cancellation and webhooks | Provider-specific contract tests |
-| FR-017 | L | Human handoff, notifications, integrations and advanced analytics | Dedicated acceptance scenarios |
-| FR-018 | L | ManyOsirisChat API integration after standalone product launch | Contract and isolation tests |
+| FR-017 | M | Human handoff and unified inbox: automatic handoff triggers, takeover/return/resolve, assignment, notes, tags, live updates, agent replies visible in the widget (docs/14 §15–§16) | Handoff end-to-end E2E; viewer cannot reply; two-agent takeover race |
+| FR-018 | M | ManyOsirisChat channel integration (P6): signed two-way contract, WhatsApp/Messenger/Instagram conversations through Many, delivery status, no Meta code here (docs/17) | Contract tests with fake Many, signature/replay/duplicate tests, tenant mixing tests |
 | FR-020 | M | Raw-data onboarding: upload PDF/DOCX/TXT/CSV/MD files, parsed and indexed into a bot's draft knowledge | Fixture files indexed; unsupported/oversized files rejected with clear error |
 | FR-021 | M | Client analytics: conversations, questions asked, unanswered questions, citations, usage (measured, never fabricated) | Counts match stored events |
 | FR-022 | M | Q&A CSV import (question, answer, topic, priority) with template download and row-level error report | Valid rows indexed as single chunks; invalid rows listed with reasons |
 | FR-023 | M | Per-answer thumbs feedback; unanswered-question list for clients | Feedback stored once per message; unanswered list matches can_answer=false turns |
 | FR-019 | M | Safe data export/delete with tenant verification and audit | Authorized vs unauthorized requests |
+| FR-024 | M | Channel-agnostic contacts, conversations and messages (channel, sender_type, delivery status) | Same pipeline serves widget and Many events |
+| FR-025 | M | Light CRM: contact profile, stage, tags, custom fields, timeline, merge, consent per channel, CSV export, erasure | CRM E2E; erase removes identities and messages |
+| FR-026 | M | Follow-ups: scheduled messages by user or rule; website delivery on next visit; Meta channels only with recorded opt-in | Job tests; no send without opt-in |
+| FR-027 | M | Sentiment label per conversation and handoff/response-time analytics (measured) | Aggregates match stored data |
+| FR-028 | L | Voice/image messages, email notifications, deals with amounts, automation builder | Not in v1 |
 
 ## Requirement discipline
 No inferred functionality is approved merely because it appears in an old document or another product. UI must use real API data; no fake success states. All write APIs must validate inputs, permissions, quotas and tenant scope. Open choices appear in `DECISIONS.md`.

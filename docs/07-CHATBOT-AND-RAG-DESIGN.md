@@ -10,3 +10,6 @@ Answer only from authorized published content; cite accessible sources; never fa
 
 ## Providers
 `ChatModel` (and later `Embedder`) interfaces; credentials from environment/secret manager, never tenant-visible. Default free OpenRouter models with fallback chain; OpenAI models for paid plans (ADR-013). Prompts are versioned; per-bot customization only through the settings fields in docs/14 §8.
+
+## Channels and handoff
+The pipeline runs only when the conversation `mode` is `ai`, and is identical for the widget and Many channels (docs/14 §14–§15). Handoff triggers set `status = waiting_human` and add a system message; the model never decides to transfer on its own beyond returning `can_answer=false`.

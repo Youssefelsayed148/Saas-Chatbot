@@ -34,29 +34,49 @@ Legend: [ ] open · [x] done with evidence. Owner sign-off closes each phase.
 - [ ] P3-01: retrieval per docs/14 §2, §5: tenant + bot + published-revision + language filters (a test fails if any filter is removed); cross-language fallback; small-document expansion; Arabic normalisation + prefix matching
 - [ ] P3-02: ChatModel interface; free OpenRouter chain + OpenAI option via config; strict JSON contract; invalid JSON or invalid/missing citation → fallback; can_answer=false → needs_human
 - [ ] P3-02: smalltalk and order/account routing work without model calls; replies follow the visitor's language
-- [ ] P3-03: conversations, messages, citations, thumbs feedback, usage events stored (idempotent); retention purge works
+- [ ] P3-03: channel-agnostic contacts, conversations (channel, mode, status) and messages (sender_type, delivery_status) per docs/14 §14; citations, thumbs feedback, usage events stored (idempotent); retention purge works; pipeline runs only in mode=ai
 - [ ] P3-04: Playground shows answer + citations + errors; "not ready" state when nothing is published
 - [ ] P3-05: eval suite committed (grounded / unanswerable / injection / cross-language, EN + AR) with real numbers against docs/14 §10 targets
-- [ ] P3-06 (optional): only started if evals show recall gaps — separate approval
+- [ ] P3-06 (optional): owner decides at the P3 gate from the eval report (Arabic/dialect cases included); separate approval
 - [ ] Phase report; owner sign-off
 
-## P4 Widget and client experience
+## P4 Widget — the website channel
 - [ ] P4-01: public config + session endpoints; locator is not a secret; short-lived session capability; rate limits; allowed-domain check
 - [ ] P4-02: widget loads from one script tag; iframe sandbox; mobile, keyboard, screen-reader labels, RTL
 - [ ] P4-03: appearance settings saved and reflected; install page shows correct snippet
-- [ ] P4-04: conversations view; leads captured only with consent; retention setting works
+- [ ] P4-04: conversations view; leads captured only with consent and create/update a contact; retention setting works
 - [ ] P4-05: analytics show measured numbers only (matches stored events)
 - [ ] Two test websites + two tenants: each answers only from its own knowledge; paused bot and expired session handled
 - [ ] Phase report; owner sign-off
 
-## P5 Platform admin, quotas, onboarding, hardening
-- [ ] P5-01: /platform area for `is_platform_staff` only; tenant/bot/job health; actions audited with reason; no impersonation
-- [ ] P5-02: quotas enforced and race-tested (concurrent requests at the limit)
-- [ ] P5-03: ProvisioningService used by both self-service and staff paths; idempotency key; concurrent retries create one bot
-- [ ] P5-04: tenant export/delete verified; audit review screen
-- [ ] P5-05: backup + restore drill done; health/monitoring/alerts defined; staging deploy only after ADR-007 approval
-- [ ] Independent security review (upload hardening, CSRF, session, tenant isolation, prompt injection) closed
-- [ ] Phase report; owner sign-off → ready for staging
+## P5 Inbox, handoff and light CRM (first sellable cut)
+- [ ] P5-01: handoff triggers per docs/14 §15 (2x can_answer=false, asks for a person EN/AR, order/account, provider failure, staff keyword) set waiting_human with localized message
+- [ ] P5-01: take over / return to AI / resolve / assign work; AI silent in human mode; two-agent takeover race → 409; resolved conversation reopens in AI mode on a new visitor message; audit rows + system messages
+- [ ] P5-01: agent reply is visible in the widget within ~3 s (polling) and rendered as plain text; viewer cannot reply (API 403)
+- [ ] P5-02: inbox list API with filters (status, mode, channel, assignee, tag, unread) and full-text search; tenant A/B isolation test on every endpoint
+- [ ] P5-02: SSE stream tenant-scoped, resumes from Last-Event-ID, works with two API processes; in-app notification counts correct
+- [ ] P5-03: inbox UI: list, filters, thread with citations/notes/system events, reply box, take over/return/resolve/assign, tags, notes; role-aware; loading/empty/error states; Playwright E2E of the full handoff journey (visitor → bot → agent → back to bot)
+- [ ] P5-04: contacts CRUD, identities, stage, tags, custom fields (≤20), timeline, explicit merge (audited), CSV export, erasure removes identities and messages
+- [ ] P5-04: widget lead form → contact (consent recorded)
+- [ ] P5-05: follow-ups scheduled by user or rule and sent by a job; website follow-up shown on next visit; no send without recorded opt-in (Meta channels)
+- [ ] P5-05: sentiment job (cost-capped) and analytics: handoff rate, time to first human reply, per-channel counts, sentiment distribution, agent workload — all match stored data
+- [ ] Phase report; owner sign-off → website product is sellable
 
-## P6 (optional) ManyOsirisChat integration
-- [ ] Separate design ADR approved · [ ] explicit tenant mapping · [ ] contract tests · [ ] canary + rollback plan
+## P6 ManyOsirisChat channel (WhatsApp, Messenger, Instagram)
+- [ ] Prerequisite: Many-side endpoints/delegated mode agreed and available (separate workstream); owner confirms the delegated-mode assumption (ADR-017)
+- [ ] P6-01: channel connections created explicitly (staff); per-connection secret shown once, stored encrypted, rotatable; HMAC verify with constant-time compare, 5-minute window; bad signature/old timestamp/paused connection → rejected; channel_events dedupe by (connection_id, event_id)
+- [ ] P6-02: message.received → contact identity (unique per tenant+connection+external_id) → conversation → same chat/handoff pipeline; unsupported media gets the text-only reply and a human flag; duplicate and out-of-order events harmless; a tenant-A connection can never write into tenant B
+- [ ] P6-03: outbound via POST to Many keyed by message_id with retry/backoff; message.status updates delivery_status monotonically (sent < delivered < read); window_closed/template_required shown in the inbox and not blindly retried; Many-down is visible and recovers
+- [ ] P6-04: follow-ups/broadcasts through Many only with recorded opt-in and approved template_ref; owner-approved before first real send
+- [ ] P6-05: contract tests against a fake Many (signature, replay, duplicates, ordering, errors) in CI; Many-side requirements doc handed over; canary plan with one test number in staging; rollback = pause connection
+- [ ] Staging end-to-end: a message from a test WhatsApp number is answered by the bot, handed off, replied to by an agent from the inbox, with delivery status shown
+- [ ] Phase report; owner sign-off
+
+## P7 Platform admin, quotas, onboarding, hardening
+- [ ] P7-01: /platform area for `is_platform_staff` only; tenant/bot/job health; connection health and secret rotation; actions audited with reason; no impersonation
+- [ ] P7-02: quotas enforced and race-tested (bots, seats, monthly messages, channel connections, contacts, sentiment runs)
+- [ ] P7-03: ProvisioningService used by both self-service and staff paths; idempotency key; concurrent retries create one bot
+- [ ] P7-04: tenant export/delete verified (includes contacts, conversations, identities); audit review screen
+- [ ] P7-05: backup + restore drill done; health/monitoring/alerts defined (including failed deliveries and stuck jobs); staging deploy only after ADR-007 approval
+- [ ] Independent security review (upload hardening, CSRF, session, tenant isolation, prompt injection, HMAC channel endpoint, SSE) closed
+- [ ] Phase report; owner sign-off → ready for staging

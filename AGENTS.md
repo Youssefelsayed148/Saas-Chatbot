@@ -6,3 +6,4 @@ Clean independent SaaS (modular monolith). Source of truth: latest user instruct
 - This is built from scratch. No external repo is a dependency or an input: retrieval, parsing, chunking and search behaviour comes from the specs in docs/07 and docs/08 (agreed with the owner). If a spec parameter is TBD, stop and ask.
 - Protect credentials. No push, merge, deploy, paid API calls or cloud resources without separate approval.
 - Never fabricate test results; record exact commands and outcomes in PROGRESS.md. Stop on blocking ambiguity or an OPEN decision in DECISIONS.md.
+- Meta channels (WhatsApp/Messenger/Instagram) are NEVER implemented here: ManyOsirisChat owns them. Only the signed channel contract in docs/17 is built (P6). No Meta tokens or webhooks in this repo.
