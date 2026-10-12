@@ -1,4 +1,4 @@
-# Local development ? P1-01
+# Local development — P1-02
 
 ## Environment and dependencies
 
@@ -14,13 +14,19 @@ The host database defaults to `127.0.0.1:55432`, avoiding the Windows reserved/o
 npm.cmd ci
 python -m venv .venv
 .venv/Scripts/python.exe -m pip install -r apps/api/requirements-dev.lock
-# Start the database; no application schema or vector extension is created yet.
+# Start the database; the application schema is created by Alembic (below), no vector extension.
 docker compose --env-file .env -f infra/compose.yaml up -d db --wait
+# Create the application schema (users, sessions, tenants, memberships, bots, invitations, audit_events):
+cd apps/api
+../../.venv/Scripts/python.exe -m alembic upgrade head
+cd ..
 # Terminal 1: API reads the root .env and reloads application code.
 .venv/Scripts/python.exe -m uvicorn app.main:app --app-dir apps/api --host 127.0.0.1 --port 8000 --reload
 # Terminal 2:
 npm.cmd run dev
 ```
+
+Migrations downgrade with `python -m alembic downgrade base` (same directory). `alembic current` shows the applied revision.
 
 On Linux/macOS replace `.venv/Scripts/python.exe` with `.venv/bin/python` and `npm.cmd` with `npm`. Run commands from the root unless specified. For backend tools, change directory to apps/api so the pyproject configuration and package imports are resolved without an editable install:
 
@@ -32,7 +38,7 @@ cd apps/api
 ../../.venv/Scripts/python.exe -m pytest
 ```
 
-Tests override application settings and mock database connections. They never execute real SQL against an environment-supplied database. No destructive fixtures or migrations are included.
+Tests use PostgreSQL: the conftest derives a disposable database `chatbot_dev_test` (name must end with `_test`; the guard refuses anything else) from `TEST_DATABASE_URL`, `DATABASE_URL` or the repository `.env`, creates it if missing, and runs Alembic migrations against it — never `create_all`. Alternatively build the API checks image with the pinned development lockfile. The full check sequence is Ruff lint, format check, mypy strict and pytest.
 
 ## Frontend validation (repository root)
 
@@ -71,11 +77,11 @@ Invoke-WebRequest http://127.0.0.1:3000
 docker compose --env-file .env -f infra/compose.yaml down
 ```
 
-Do not print `docker compose config` without `--quiet`: resolved configuration contains the local password. Readiness executes only SELECT 1, with a bounded connection timeout; missing/unreachable databases produce 503 and a safe response without credentials or exception details. Liveness stays available independently. The pgvector image includes the extension files; CREATE EXTENSION and application migrations belong to later approved tickets.
+Do not print `docker compose config` without `--quiet`: resolved configuration contains the local password. Readiness executes only SELECT 1, with a bounded connection timeout; missing/unreachable databases produce 503 and a safe response without credentials or exception details. Liveness stays available independently. The pgvector image includes the extension files; the P1-02 migration creates the built-in `citext` extension (per ADR-005 no vector extension is installed).
 
 ## Security and ticket boundaries
 
-API/web containers run as non-root users. No public deployment, auth, tenant schema, bot CRUD, RAG, ingestion, widget, billing or integration is included. No cross-origin API exposure is needed for this foundation, so CORS is not enabled. PostgreSQL's bootstrap development role is for this isolated local stack only; application roles/least privilege are to be designed before production.
+API/web containers run as non-root users. Auth (register/login/logout/me), tenant/bot/CRM endpoints, RAG, ingestion, widget, billing and integrations beyond P1-02 are not included. P1-02 adds only the foundation schema and the auth lifecycle with cookie sessions (ADR-004); tenant/bot management follows in P1-03. CORS remains limited to localhost:3000 origins with credentials for the local dashboard; production origins are configured at deployment. PostgreSQL's bootstrap development role is for this isolated local stack only; application roles/least privilege are to be designed before production.
 
 The npm development lint chain currently includes GHSA-vfj7-8cjw-p6xm (braces; no patched release at review time): https://github.com/advisories/GHSA-vfj7-8cjw-p6xm. The affected patterns are repository-controlled lint configuration and are not accepted from application requests. Track this until upstream remediation; do not apply forced framework downgrades. Runtime audit results and actual command evidence are recorded in PROGRESS.md.
 

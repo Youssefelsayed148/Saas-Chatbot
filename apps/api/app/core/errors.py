@@ -1,0 +1,66 @@
+"""Stable error format and request-id plumbing (docs/05).
+
+Every error response is ``{"error": {"code", "message", "request_id"}}``.
+Codes are stable strings; messages are specific but never leak internals.
+"""
+
+from uuid import uuid4
+
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.responses import Response
+
+REQUEST_ID_HEADER = "X-Request-ID"
+
+
+class ApiError(Exception):
+    """Raise from services/routers to produce the stable error format."""
+
+    def __init__(self, status_code: int, code: str, message: str) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+        self.code = code
+        self.message = message
+
+
+def error_body(request: Request, code: str, message: str) -> dict[str, dict[str, str]]:
+    request_id = getattr(request.state, "request_id", "") or uuid4().hex
+    return {"error": {"code": code, "message": message, "request_id": request_id}}
+
+
+def install_error_handlers(application: FastAPI) -> None:
+    @application.exception_handler(ApiError)
+    async def handle_api_error(request: Request, exc: ApiError) -> JSONResponse:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=error_body(request, exc.code, exc.message),
+        )
+
+    @application.exception_handler(RequestValidationError)
+    async def handle_validation_error(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
+        # Never echo raw input back (it may contain secrets); only describe the failure.
+        return JSONResponse(
+            status_code=422,
+            content=error_body(request, "VALIDATION_ERROR", "Request body failed validation."),
+        )
+
+    @application.exception_handler(Exception)
+    async def handle_unexpected_error(request: Request, exc: Exception) -> JSONResponse:
+        return JSONResponse(
+            status_code=500,
+            content=error_body(request, "INTERNAL_ERROR", "Unexpected server error."),
+        )
+
+
+class RequestIdMiddleware(BaseHTTPMiddleware):
+    """Assigns a request id, echoes it as a response header, exposes it via request.state."""
+
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        request.state.request_id = request.headers.get(REQUEST_ID_HEADER, "") or uuid4().hex
+        response = await call_next(request)
+        response.headers[REQUEST_ID_HEADER] = request.state.request_id
+        return response

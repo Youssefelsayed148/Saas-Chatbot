@@ -3,11 +3,11 @@ Legend: [ ] open · [x] done with evidence. Owner sign-off closes each phase.
 
 ## P1 Foundation
 - [x] P1-01 toolchain, health/ready, Compose, CI config (evidence: P1-01-REPORT.md; hosted CI not yet run)
-- [ ] P1-02: `alembic upgrade head` from empty DB and `downgrade base` both succeed on a disposable DB
-- [ ] P1-02: unique/FK/composite-FK constraints verified by tests
-- [ ] P1-02: register/login/logout/me work; wrong password, expired and revoked sessions rejected
-- [ ] P1-02: passwords stored as Argon2id; cookie HttpOnly/SameSite; CSRF enforced on writes; no secrets in logs
-- [ ] P1-02: test DB guard refuses non-`_test` databases
+- [x] P1-02: `alembic upgrade head` from empty DB and `downgrade base` both succeed on a disposable DB (evidence: P1-02-REPORT.md — `test_migrations_up_down_cycle` on `chatbot_dev_migration_test`, Windows + Linux container)
+- [x] P1-02: unique/FK/composite-FK constraints verified by tests (P1-02-REPORT.md; test_models_constraints.py 40 passed)
+- [x] P1-02: register/login/logout/me work; wrong password, expired and revoked sessions rejected (P1-02-REPORT.md)
+- [x] P1-02: passwords stored as Argon2id; cookie HttpOnly/SameSite; CSRF enforced on writes; no secrets in logs (P1-02-REPORT.md; Secure asserted in production-config unit test, live smoke over HTTPS pending later phase)
+- [x] P1-02: test DB guard refuses non-`_test` databases (test_database_guard.py)
 - [ ] P1-03: tenant create/list-mine/get; creator becomes owner
 - [ ] P1-03: invitations by one-time link (hash stored, single use, expiry, revoke), accept flow, members list/role change/remove, last-owner protected; expired/used/revoked tokens and role escalation rejected
 - [ ] P1-03: role matrix tested (owner/admin/editor/viewer × every endpoint)

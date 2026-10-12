@@ -14,6 +14,8 @@ USER root
 COPY apps/api/requirements-dev.lock ./requirements-dev.lock
 RUN pip install --no-cache-dir -r requirements-dev.lock
 COPY apps/api/pyproject.toml ./pyproject.toml
+COPY apps/api/alembic.ini ./alembic.ini
+COPY apps/api/alembic ./alembic
 COPY apps/api/tests ./tests
 RUN chown -R api:api /app
 USER api
