@@ -86,3 +86,7 @@ API/web containers run as non-root users. Auth (register/login/logout/me), tenan
 The npm development lint chain currently includes GHSA-vfj7-8cjw-p6xm (braces; no patched release at review time): https://github.com/advisories/GHSA-vfj7-8cjw-p6xm. The affected patterns are repository-controlled lint configuration and are not accepted from application requests. Track this until upstream remediation; do not apply forced framework downgrades. Runtime audit results and actual command evidence are recorded in PROGRESS.md.
 
 A GitHub remote, push, merge and deployment remain unapproved. A generated workflow is not evidence that hosted CI ran.
+
+## P2 additions (knowledge ingestion)
+
+The application schema is created by Alembic; after `git pull` run `cd apps/api && ../../.venv/Scripts/python.exe -m alembic upgrade head` before starting the API. The Compose stack includes a `worker` service (`python -m app.worker`) that claims ingest jobs from the `jobs` table; it shares the `app_data` volume with the API (`STORAGE_ROOT=/data/storage`), so uploaded files land where the worker parses them. Uploaded files are stored under generated tenant/bot-namespaced keys and never served raw. Playwright's knowledge E2E boots its own API and worker against a disposable `_test` database; the harness sets `WORKER_ALLOW_ONLY_TEST_DB=1`, which makes the worker refuse any non-`_test` database. Both processes resolve the default storage root relative to the API directory, so a locally spawned worker sees the files the locally spawned API stored.

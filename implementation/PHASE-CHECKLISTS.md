@@ -1,6 +1,5 @@
 # Phase checklists — tick only with evidence (command + result in PROGRESS.md or the ticket report)
 Legend: [ ] open · [x] done with evidence. Owner sign-off closes each phase.
-
 ## P1 Foundation
 - [x] P1-01 toolchain, health/ready, Compose, CI config (evidence: P1-01-REPORT.md; hosted CI not yet run)
 - [x] P1-02: `alembic upgrade head` from empty DB and `downgrade base` both succeed on a disposable DB (evidence: P1-02-REPORT.md — `test_migrations_up_down_cycle` on `chatbot_dev_migration_test`, Windows + Linux container)
@@ -19,17 +18,21 @@ Legend: [ ] open · [x] done with evidence. Owner sign-off closes each phase.
 - [ ] Phase report written; owner reviewed and signed off
 
 ## P2 Knowledge
-- [ ] P2-01: migrations for sources, documents, revisions, chunks (generated GIN-indexed tsvector columns), jobs; no vector column
-- [ ] P2-01: atomic job claim (FOR UPDATE SKIP LOCKED) with lease/retry/cancel — two workers never run one job; crash → lease expiry → retry; job re-validates tenant + bot
-- [ ] P2-02: PDF/DOCX/TXT/MD parsed per docs/14 §3 from fixtures (incl. Arabic text); scanned/corrupt/oversize/unsupported files rejected with clear messages
-- [ ] P2-02: Q&A CSV import works with template download and row-level error report (bad priority, empty question/answer, missing columns)
-- [ ] P2-02: chunking matches docs/14 §4 (1500/200, titles kept, short docs = one chunk)
-- [ ] P2-02: Markdown front matter (title, source_url, language, page_type) parsed; non-http(s) source_url dropped; citations show the source_url
-- [ ] P2-02: a sample skill output folder (pages/*.md + qa.csv) uploads end-to-end
-- [ ] P2-03: dedupe by content hash; re-ingest of unchanged source is a no-op; draft → publish → rollback is atomic; failed job leaves published revision intact
-- [ ] P2-03: two tenants ingest identical content → zero shared rows
-- [ ] P2-04: Knowledge UI: upload (multi-file), Q&A CSV with template/error report, job status with errors + Retry, document/chunk preview, publish/rollback, role restrictions
-- [ ] Phase report; owner sign-off
+- [x] P2-00: security headers in next.config + Playwright test + live curl proof on the Compose stack; invitation double-accept race test (row-lock fix) (evidence: P2-00-REPORT.md)
+- [x] P2-01: migrations for sources, source_pages, documents, revisions (`bots.published_revision_id`), chunks (generated GIN tsvector columns), jobs; no vector column, up/down cycle on disposable DBs (P2-01-REPORT.md; 0002_knowledge)
+- [x] P2-01: atomic job claim (FOR UPDATE SKIP LOCKED) with lease/retry/backoff/cancel — two workers never run one job; lease expiry reclaims with backoff to `failed`; job re-validates tenant + bot; foreign-bot jobs are impossible at DB level (test_jobs.py, 8 tests, Linux + Windows)
+- [x] P2-01: `python -m app.worker` runs the same codebase; Compose worker service healthy (heartbeat healthcheck, shared `/data/storage` volume, same `_test` guard); the Playwright harness starts a worker (P2-01-REPORT.md; compose ps + worker guard smoke)
+- [x] P2-02: PDF/DOCX/TXT/MD parsed per docs/14 §3 from fixtures (incl. Arabic text); scanned/corrupt/oversize/mislabelled/zip-bomb files rejected with clear messages (test_knowledge_parsers.py, 26 tests)
+- [x] P2-02: Q&A CSV import with template download and row-level error report (bad priority, empty question/answer, missing columns; all-invalid CSV rejected at upload) (P2-02-REPORT.md; test_knowledge_uploads.py)
+- [x] P2-02: chunking matches docs/14 §4 (1500/200, titles+headings preserved, short docs = one chunk, Q&A rows never split; no content loss incl. giant tokens) (chunking tests)
+- [x] P2-02: Markdown front matter (title, source_url, language, page_type) parsed; non-http(s) source_url dropped; source_url stored per document (P2-02/P2-03 reports)
+- [x] P2-02: magic-byte sniffing + streaming size caps in the API + proxy-level cap (`proxyClientMaxBodySize` + `proxy.ts`); parse in worker with timeout; generated storage keys, files never served raw; oversize/CSRF verified through the same-origin Next proxy (Playwright oversize test passed)
+- [x] P2-02: a sample skill output folder (pages/*.md + qa.csv) uploads end-to-end (test_skill_output_folder_uploads_end_to_end + live curl smoke)
+- [x] P2-03: dedupe by content hash; re-ingest of unchanged source is a no-op; draft → publish → rollback atomic pointer swap; failed job leaves the published revision intact (test_knowledge_pipeline.py)
+- [x] P2-03: two tenants ingest identical content → zero shared rows (disjoint chunk id sets + cross-tenant referential check)
+- [x] P2-02/03 endpoints: tenant A/B guessed-UUID 404 + viewer-write-denied tests on every new endpoint (sources, files upload, qa-template, ingestion, jobs, cancel/retry, documents, chunks, revisions, publish)
+- [x] P2-04: Knowledge UI at /app/[tenant]/bots/[id]/knowledge: multi-file upload, Q&A CSV with template + error report, job status with errors + Retry/Cancel, document/chunk preview with revisions, publish/rollback, role restrictions (P2-04-REPORT.md; screenshots-in-trace evidence via Playwright 9 passed)
+- [ ] Phase report written; owner reviewed and signed off
 
 ## P3 Chat
 - [ ] P3-01: retrieval per docs/14 §2, §5: tenant + bot + published-revision + language filters (a test fails if any filter is removed); cross-language fallback; small-document expansion; Arabic normalisation + prefix matching
