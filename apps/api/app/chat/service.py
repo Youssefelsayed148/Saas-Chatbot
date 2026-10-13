@@ -34,6 +34,15 @@ CONDENSE_SYSTEM = (
     "ellipsis. Output ONE line: the standalone query, nothing else."
 )
 
+LANGUAGE_NAMES = {"en": "English", "ar": "Arabic"}
+
+TRANSLATE_SYSTEM_TEMPLATE = (
+    "You translate a customer question so it can be searched in the "
+    "business's own knowledge base. Translate the question into "
+    "{language_name}. Output ONLY the translated question on one line, "
+    "nothing else. Keep every name, number and product word."
+)
+
 
 @dataclass
 class ChatReply:
@@ -102,6 +111,35 @@ def condense(
     if not condensed or "\n" in condensed or len(condensed) > 500:
         return None
     return condensed
+
+
+def translate_query(
+    model: ChatModel,
+    *,
+    question: str,
+    target_language: str,
+) -> str | None:
+    """Cross-script search bridge (P4-00, ADR-014): translate the question
+    into the bot's primary content language with ONE ChatModel call so the
+    fallback retrieval pass can keyword-match it. Any failure keeps the raw
+    question — the fallback pass still tries it."""
+    if not question.strip():
+        return None
+    language_name = LANGUAGE_NAMES.get(target_language, "English")
+    messages = [
+        {
+            "role": "system",
+            "content": TRANSLATE_SYSTEM_TEMPLATE.format(language_name=language_name),
+        },
+        {"role": "user", "content": question},
+    ]
+    try:
+        translated = model.complete(messages, json_mode=False, max_tokens=120).strip()
+    except ProviderError:
+        return None
+    if not translated or "\n" in translated or len(translated) > 500:
+        return None
+    return translated
 
 
 def _parse_reply(raw: str, evidence: list[RetrievedChunk]) -> tuple[str, bool, list[UUID]] | None:
@@ -197,6 +235,11 @@ def chat_answer(
             bot_primary_language=_default_answer_language(bot),
             settings=settings,
             always_include_document_ids={str(value) for value in always_include},
+            # Cross-script bridge (P4-00): translate with ONE model call only
+            # when the language pass is empty and the languages differ.
+            translate_query=lambda raw, target: translate_query(
+                model, question=raw, target_language=target
+            ),
         )
         evidence = retrieval.evidence
 
@@ -233,11 +276,22 @@ def chat_answer(
         language=language,
         evidence_block=block,
     )
-    user_text = (
-        question
-        if condensed in (None, question)
-        else (f"{question}\n\n(Standalone search query: {condensed})")
-    )
+    user_text = question
+    extra: list[str] = []
+    if condensed not in (None, question):
+        extra.append(f"(Standalone search query: {condensed})")
+    if (
+        condensed is None
+        and retrieval is not None
+        and retrieval.used_fallback
+        and retrieval.fallback_query
+    ):
+        # Cross-script case (P4-00): the fallback pass searched the primary
+        # content language with the translated query — give the model the
+        # actual search terms so the answer stays verifiable, not a translation.
+        extra.append(f"(Search query in the knowledge-base language: {retrieval.fallback_query})")
+    if extra:
+        user_text = f"{question}\n\n" + "\n".join(extra)
     messages = [
         {"role": "system", "content": system},
         {"role": "user", "content": user_text},

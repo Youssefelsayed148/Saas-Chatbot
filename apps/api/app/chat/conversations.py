@@ -64,6 +64,48 @@ def get_or_create_playground_conversation(
     return conversation
 
 
+def get_or_create_conversation_for_session(
+    db: OrmSession,
+    *,
+    bot: Bot,
+    visitor_session: Any,
+) -> Conversation:
+    """The website channel keeps ONE conversation per visitor session (P4-01).
+
+    Created lazily on the first message; bound to the session's tenant + bot
+    through composite FKs, so a session can never reach another bot's thread.
+    """
+    conversation = (
+        db.execute(
+            select(Conversation)
+            .where(
+                Conversation.tenant_id == visitor_session.tenant_id,
+                Conversation.session_id == visitor_session.id,
+            )
+            .order_by(Conversation.created_at.desc())
+            .limit(1)
+        )
+        .scalars()
+        .first()
+    )
+    if conversation is not None:
+        return conversation
+    conversation = Conversation(
+        id=uuid4(),
+        tenant_id=visitor_session.tenant_id,
+        bot_id=bot.id,
+        contact_id=None,  # no CRM contact until a captured lead provides one (P4-04)
+        session_id=visitor_session.id,
+        channel="website",
+        mode="ai",
+        status="open",
+        source="website",
+    )
+    db.add(conversation)
+    db.flush()
+    return conversation
+
+
 def get_conversation_or_404(
     db: OrmSession, *, tenant_id: UUID, bot_id: UUID, conversation_id: UUID
 ) -> Conversation:

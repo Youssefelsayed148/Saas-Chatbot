@@ -18,6 +18,7 @@ ranked hits. Defaults: ``top_k=8`` candidates, ``final_k=4`` chunks,
 ``max_evidence_chunks=8`` (tune only via a dated note in docs/14).
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from uuid import UUID
 
@@ -28,6 +29,13 @@ from app.core.config import Settings
 from app.retrieval.query import build_tsquery
 
 SUPPORTED_LANGUAGES = ("en", "ar")
+
+# Cross-script hook (P4-00): when the question-language pass is empty and the
+# question language differs from the bot's primary language, the caller may
+# translate the query into the primary language with ONE ChatModel call
+# (docs/14 §2, ADR-014). Returns the translated query, or None to keep the
+# raw question (provider failure must degrade cleanly).
+TranslateQuery = Callable[[str, str], str | None]
 
 
 @dataclass
@@ -56,6 +64,9 @@ class RetrievalResult:
     applied_language: str
     # Did the pass fall back to the bot's primary content language?
     used_fallback: bool
+    # The query actually used by the fallback pass, when it differs from the
+    # raw question (cross-script translation, P4-00).
+    fallback_query: str | None = None
     candidates: list[RetrievedChunk] = field(default_factory=list)
     evidence: list[RetrievedChunk] = field(default_factory=list)
 
@@ -313,8 +324,14 @@ def retrieve(
     bot_primary_language: str = "en",
     settings: Settings | None = None,
     always_include_document_ids: set[str] | None = None,
+    translate_query: TranslateQuery | None = None,
 ) -> RetrievalResult:
-    """Top-level retrieval: question-language pass + cross-language fallback."""
+    """Top-level retrieval: question-language pass + cross-language fallback.
+
+    When the caller supplies ``translate_query`` (P4-00) and the question
+    language differs from the bot's primary language, the fallback pass runs
+    on the translated query (one ChatModel call); a failed translation keeps
+    the raw question."""
     settings = settings or Settings()
     if question_language not in SUPPORTED_LANGUAGES:
         question_language = "en"
@@ -348,13 +365,18 @@ def retrieve(
             used_fallback=False,
             evidence=[],
         )
+    fallback_query: str | None = None
+    if translate_query is not None:
+        fallback_query = translate_query(question, fallback_language)
+        if not (fallback_query and fallback_query.strip()):
+            fallback_query = None
     evidence = _retrieve_one_pass(
         db,
         tenant_id=tenant_id,
         bot_id=bot_id,
         revision_id=revision_id,
         language=fallback_language,
-        question=question,
+        question=fallback_query or question,
         settings=settings,
         always_include_document_ids=always_include_document_ids,
     )
@@ -362,5 +384,6 @@ def retrieve(
         query_language=question_language,
         applied_language=fallback_language if evidence else question_language,
         used_fallback=True,
+        fallback_query=fallback_query,
         evidence=evidence,
     )

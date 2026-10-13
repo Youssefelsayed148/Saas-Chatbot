@@ -79,6 +79,10 @@ class BotUpdateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: str | None = Field(default=None, min_length=1, max_length=NAME_MAX_LENGTH)
     config: BotConfig | None = None
+    # Widget lifecycle transitions (P4-01, docs/04 statuses): draft→active,
+    # active→paused and paused→active. Archiving stays DELETE-only; drafts cannot
+    # be made and archived bots cannot be revived here.
+    status: str | None = None
 
 
 class BotOut(BaseModel):
@@ -88,5 +92,7 @@ class BotOut(BaseModel):
     name: str
     status: str
     config: dict[str, object]
+    # Opaque public widget locator (P4-01): not a secret, shown on the install page.
+    widget_locator: str | None = None
     created_at: datetime
     updated_at: datetime

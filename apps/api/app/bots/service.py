@@ -2,9 +2,13 @@
 
 Archive is soft: `status` becomes 'archived', the row stays, the default
 listing excludes it. Every privileged write is audited in the same
-transaction as the change (docs/06).
+transaction as the change (docs/06). Bots also carry the opaque public
+widget locator (P4-01, docs/05): assigned once at creation, never rotatable
+by tenant input, and NOT a secret (docs/09) — it only names the bot; all
+authority stays server-side.
 """
 
+import secrets
 from collections.abc import Sequence
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
@@ -18,6 +22,29 @@ from app.core.errors import ApiError
 from app.core.tenancy import TenantContext
 from app.db.models import Bot
 
+ALLOWED_STATUS_TRANSITIONS = {
+    "draft": {"active"},
+    "active": {"paused", "active"},
+    "paused": {"active", "paused"},
+}
+
+
+def validate_status_transition(current: str, requested: str) -> str:
+    if current == requested:
+        return requested
+    if current == "archived":
+        raise ApiError(409, "BOT_ARCHIVED", "An archived bot cannot change status here.")
+    if current == "draft" and requested == "paused":
+        raise ApiError(422, "VALIDATION_ERROR", "Pause an active bot, not a draft.")
+    allowed = ALLOWED_STATUS_TRANSITIONS.get(current, set())
+    if requested not in allowed:
+        raise ApiError(
+            422,
+            "VALIDATION_ERROR",
+            f"Status cannot change from {current} to {requested}.",
+        )
+    return requested
+
 
 class BotService:
     def __init__(self, db: OrmSession) -> None:
@@ -30,6 +57,7 @@ class BotService:
             name=body.name.strip(),
             status="draft",
             config={},
+            widget_locator="w" + secrets.token_hex(16),
         )
         self.db.add(bot)
         self.db.flush()  # bots row must exist before its audit event
@@ -60,12 +88,20 @@ class BotService:
     def update_bot(self, context: TenantContext, bot_id: UUID, body: BotUpdateRequest) -> Bot:
         bot = self.get_archivable_bot(context, bot_id)
         changes: list[str] = []
+        requested_status: str | None = None
+        if body.status is not None:
+            if body.status not in ("draft", "active", "paused", "archived"):
+                raise ApiError(422, "VALIDATION_ERROR", "Unknown bot status.")
+            requested_status = validate_status_transition(bot.status, body.status)
         if body.name is not None and body.name.strip() != bot.name:
             bot.name = body.name.strip()
             changes.append("name")
         if body.config is not None:
             bot.config = self._merge_config(bot, body.config)
             changes.append("config")
+        if requested_status is not None and requested_status != bot.status:
+            bot.status = requested_status
+            changes.append("status")
         if changes:
             bot.updated_at = datetime.now(UTC)
             self.db.add(bot)

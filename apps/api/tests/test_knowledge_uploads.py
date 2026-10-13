@@ -37,7 +37,10 @@ def raw_db(app: FastAPI) -> Iterator[OrmSession]:
     try:
         yield session
     finally:
-        pass
+        # The session must CLOSE here: an open transaction (even a read)
+        # blocks the clean_tables TRUNCATE of the next test forever.
+        session.rollback()
+        session.close()
 
 
 def bot_of_users_response(users: Any) -> str:

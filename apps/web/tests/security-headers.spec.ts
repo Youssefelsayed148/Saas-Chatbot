@@ -18,3 +18,20 @@ test("dashboard responses carry Referrer-Policy, nosniff and frame-ancestors 'no
     );
   }
 });
+
+// P4-02: the widget frame must be frameable by client sites (scoped
+// frame-ancestors), while the dashboard stays unframeable. Next.js applies
+// every matching next.config rule; the LAST value of a header key wins, so
+// the /widget rule is declared AFTER the dashboard rule in next.config.
+test("widget frame page relaxes frame-ancestors only under /widget", async ({
+  request,
+}) => {
+  const frameResponse = await request.get("/widget/frame", { maxRedirects: 0 });
+  expect(frameResponse.ok()).toBeTruthy();
+  expect(frameResponse.headers()["content-security-policy"]).toBe(
+    "frame-ancestors http: https:",
+  );
+  const loaderResponse = await request.get("/widget/v1/loader.js");
+  expect(loaderResponse.ok()).toBeTruthy();
+  expect(loaderResponse.headers()["content-type"]).toContain("javascript");
+});

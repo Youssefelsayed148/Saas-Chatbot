@@ -125,6 +125,10 @@ class Bot(Base):
     config: Mapped[dict[str, object]] = mapped_column(
         JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
     )
+    # Opaque public widget locator (P4-01, docs/04/05): NOT a secret — the
+    # public widget endpoints resolve the bot ONLY through it and never accept
+    # a caller-supplied tenant_id (docs/06). Assigned at creation.
+    widget_locator: Mapped[str | None] = mapped_column(Text, unique=True)
     # Set on knowledge publish (P2-03); NULL until the bot has published knowledge.
     published_revision_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("knowledge_revisions.id", ondelete="SET NULL")

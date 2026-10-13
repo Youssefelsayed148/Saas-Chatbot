@@ -121,6 +121,9 @@ class Conversation(Base):
     tenant_id: Mapped[UUID] = mapped_column(nullable=False)
     bot_id: Mapped[UUID] = mapped_column(nullable=False)
     contact_id: Mapped[UUID | None] = mapped_column()
+    # The widget visitor session that owns this website conversation (P4-01);
+    # NULL for playground (and later channels).
+    session_id: Mapped[UUID | None] = mapped_column()
     # The Meta channel value is channel=s mandate (P6) — never a Meta token here.
     channel: Mapped[str] = mapped_column(Text, nullable=False, default="website")
     connection_id: Mapped[str | None] = mapped_column(Text)
@@ -161,6 +164,12 @@ class Conversation(Base):
             ["tenant_id", "contact_id"],
             ["contacts.tenant_id", "contacts.id"],
             name="fk_conversations_contact",
+            ondelete="SET NULL",
+        ),
+        ForeignKeyConstraint(
+            ["tenant_id", "session_id"],
+            ["visitor_sessions.tenant_id", "visitor_sessions.id"],
+            name="fk_conversations_session",
             ondelete="SET NULL",
         ),
         ForeignKeyConstraint(

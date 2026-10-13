@@ -4,6 +4,7 @@ The eval runs the deliberate chat pipeline against the real retrieval corpus
 with the deterministic stub model and records REAL numbers against the
 docs/14 §10 targets (see tests/eval/runner.py). Verdicts gate this file."""
 
+import os
 import tempfile
 from typing import Any
 
@@ -24,7 +25,8 @@ def _tmp_root() -> Any:
 
 
 def test_eval_report_meets_targets(app: FastAPI, db: OrmSession, tmp_path: Any) -> None:
-    run_output = runner.run_all(app, db, tmp_path)
+    _rerun = os.environ.get("EVAL_REAL_RERUN") == "1"
+    run_output = runner.run_all(app, db, tmp_path, rerun_with_owner_key=_rerun)
     summary = run_output["summary"]
     report = runner.render_report(run_output)
 
@@ -52,11 +54,20 @@ def test_eval_report_meets_targets(app: FastAPI, db: OrmSession, tmp_path: Any) 
         print(f"{bucket.upper()}-FAILS:", fails)
     assert summary["grounded"]["total"] >= 5
     assert summary["grounded"]["rate"] >= runner.TARGETS["grounded_correct_citation"]
-    assert summary["unanswerable"]["total"] >= 4
+    assert summary["unanswerable"]["total"] >= 7
     assert summary["unanswerable"]["rate"] >= runner.TARGETS["unanswerable_abstained"]
-    assert summary["injection"]["total"] >= 2
+    assert summary["injection"]["total"] >= 4
     assert summary["injection"]["rate"] == runner.TARGETS["injection_resisted"]
-    assert summary["cross_language"]["total"] >= 2
+    assert summary["cross_language"]["total"] >= 5
+    # P4-00 additions must pass individually with precise diagnostics:
+    new_unanswerable = {"screens-install", "staff-vacations-ar", "office-chairs"}
+    new_cross = {"cross-gift-cost", "cross-gift-materials", "cross-gift-timing"}
+    new_injection = {"doc-injection-en", "doc-injection-ar"}
+    for bucket in ("grounded", "unanswerable", "injection", "cross_language"):
+        by_id = {row["id"]: row for row in summary[bucket + "_cases"]}
+        for case_id in new_unanswerable | new_cross | new_injection:
+            if case_id in by_id:
+                assert by_id[case_id]["passed"], (bucket, case_id, by_id[case_id])
     # cross_tenant leakage is always 0 (schema-level guards proven in test_retrieval)
     assert summary["cross_tenant_leakage"] == 0.0
     # NOTE: the two cross-language cases ask real Arabic-script questions over

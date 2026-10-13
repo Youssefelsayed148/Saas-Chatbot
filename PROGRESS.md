@@ -2,6 +2,52 @@
 
 2026-10-12 — ADR-003 and P1-01 explicitly approved by product owner.
 
+## 2026-10-13 — PHASE P4 started (branch feat/p1-01-foundation, P1–P3 signed off)
+
+Environment note: no Windows venv is reachable in this session; backend checks run in the
+Linux checks container (`docker build --target checks -f apps/api/Dockerfile -t
+saas-chats-ai-api-checks:p4 .`), the disposable DBs live in the local compose Postgres
+(only the `db` service is up). Node 24 (Linux tarball in `~/.local`) runs the web
+toolchain; `@next/swc-linux-x64-gnu` installed with `--no-save` to keep the lockfile untouched.
+
+## 2026-10-13 — P4-00 implemented (P3 carry-overs)
+
+IMPLEMENTED AND LOCALLY VERIFIED; evidence: [P4-00-REPORT](implementation/PHASE-04/P4-00-REPORT.md).
+- Cross-script retrieval: `retrieve(translate_query=…)` consumes ONE ChatModel translate
+  call before the fallback pass (raw question on failure); works on first messages. Tests:
+  `tests/test_cross_script.py` 3 passed (translate-once + grounded, provider-failure
+  fallback, no call when languages match).
+- `Settings.environment` + `validate_startup_settings` guard: production+stub raises
+  `RuntimeError`; `tests/test_startup_guard.py` 5 passed (create_app included).
+- Eval extended to 25 cases (+3 cross-script over EN-only content via the translate path,
+  +3 unanswerable, +2 document-borne injection with forbidden phrase checks); corpus
+  gained gift-wrap (EN), poisoned delivery (EN) and poisoned support (AR) pages.
+  Numbers (stub run): grounded 8/8, unanswerable 8/8, injection 4/4 (100%), cross-language
+  3/5 — the 3 new cases pass; the 2 legacy bilingual cases remain the recorded P3
+  stub-run limitations. **OpenRouter rerun NOT performed: no key provided** — documented
+  in `implementation/PHASE-03/EVAL-REPORT.md`; the runner supports it behind
+  `CHAT_OPENROUTER_API_KEY` + `run_all(rerun_with_owner_key=True)` once a key exists.
+- Also fixed a P2 pre-existing test-suite deadlock found at HEAD in this environment:
+  `tests/test_knowledge_uploads.py`'s `raw_db` fixture never closed its session, so the
+  next test's teardown `TRUNCATE` blocked forever on a relation lock (worktree froze
+  around 39–60 % of the suite, reproduced on a HEAD-only checkout — not a P4 regression).
+  With the fixture closing, the full suite runs in ~2 minutes.
+
+## 2026-10-13 — P4-01 implemented (public widget API + visitor sessions + abuse limits)
+
+IMPLEMENTED AND LOCALLY VERIFIED; evidence: [P4-01-REPORT](implementation/PHASE-04/P4-01-REPORT.md).
+- Migration `0004_widget_public` (locator column, visitor_sessions, rate_limit_counters,
+  conversations.session_id with composite FKs); up/down covered by test_migrations.
+- Public endpoints under `/api/public/v1` (config / sessions / messages / feedback) with
+  capability-token auth, domain allow-list as defence signal, BOT_PAUSED/BOT_NOT_READY
+  states, quota hook; the SAME P3 pipeline answers.
+- Postgres-backed fixed-window rate limiter in `app/core/ratelimit.py`; the P1 login
+  limiter moved onto it (`app/auth/ratelimit.py` removed, same 429 contract).
+- Bot PATCH accepts audited `status` transitions (draft→active, active↔paused; archive
+  stays DELETE-only). Tests `tests/test_bot_status.py` 5 passed.
+- Test evidence: widget/public suite 14 passed; full backend suite **189 passed** in ~2:05
+  on the disposable DB after the fixture fix; ruff/format/mypy strict clean (99 sources).
+
 ## 2026-10-12 — PHASE P2 SIGNED OFF by owner ("ready to go to phase 3") — Phase P3 authorized
 
 ## 2026-10-13 — PHASE P3 complete (P3-01 → P3-05): retrieval, chat service, conversation core, playground, eval

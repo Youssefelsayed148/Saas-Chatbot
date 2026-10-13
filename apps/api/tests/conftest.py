@@ -20,7 +20,6 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session as OrmSession
 
 from alembic import command
-from app.auth.ratelimit import reset_login_rate_limiter
 from app.core.config import Settings, get_settings
 from app.db.base import Base
 from app.db.session import create_db_engine, session_factory, set_engine, sqlalchemy_url
@@ -154,7 +153,6 @@ def db(engine: Engine) -> Iterator[OrmSession]:
 
 @pytest.fixture
 def app(engine: Engine) -> Iterator[FastAPI]:
-    reset_login_rate_limiter()
     from app.main import create_app
 
     application = create_app()

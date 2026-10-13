@@ -1,0 +1,7 @@
+{
+  "name": "@chatbot/widget",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Embeddable chat widget: one script tag + sandboxed iframe (docs/09).",
+  "main": "src/loader.js"
+}

@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
     database_url: SecretStr | None = None
     database_connect_timeout: int = Field(default=3, ge=1, le=10)
+    # Deployment environment. `production` enforces hard guards (see
+    # validate_startup_settings): the offline stub model and other dev-only
+    # affordances must never run there.
+    environment: str = Field(default="development", pattern="^(development|production|test)$")
 
     # Sessions (ADR-004): opaque server-side tokens; only a SHA-256 hash is stored.
     session_cookie_name: str = "chatbot_session"
@@ -61,6 +65,17 @@ class Settings(BaseSettings):
     retention_days: int = Field(default=30, ge=1, le=365)
     retention_purge_interval_seconds: int = Field(default=86_400, ge=60)
     chat_num_history_messages: int = Field(default=6, ge=0, le=20)
+    # --- P4 widget public API (docs/09, docs/14 §7 defaults) ---
+    # Visitor capability token lifetime (short-lived; the widget requests a
+    # new session when expired).
+    widget_session_ttl_seconds: int = Field(default=1800, ge=60, le=86400)
+    # Session-creation abuse cap per client IP (fixed window).
+    widget_sessions_per_minute_per_ip: int = Field(default=10, ge=1, le=1000)
+    # Message requests per (IP, session) minute window (docs/14 §7 default 20).
+    widget_messages_per_minute: int = Field(default=20, ge=1, le=1000)
+    # Daily message cap per bot (quota hook; enforced against usage events,
+    # raised as QUOTA_EXCEEDED — per-plan quotas formalised in P7).
+    widget_daily_message_cap: int = Field(default=500, ge=1, le=100000)
     # Deterministic offline stub model for tests/E2E. NEVER in production config.
     chat_stub_model: bool = False
     # Worker loop.
@@ -73,3 +88,15 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+def validate_startup_settings(settings: Settings) -> None:
+    """Refuse to start in a configuration that must never serve production.
+
+    The deterministic stub model is a dev/test/eval affordance only
+    (P3 carries this guard forward in P4-00)."""
+    if settings.chat_stub_model and settings.environment == "production":
+        raise RuntimeError(
+            "CHAT_STUB_MODEL cannot be enabled with environment=production; "
+            "the offline stub model is a development/test aid."
+        )

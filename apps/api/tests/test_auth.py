@@ -4,22 +4,25 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-import pytest
 from fastapi import FastAPI, Response
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 from sqlalchemy.orm import Session as OrmSession
 
 from app.auth.cookies import CSRF_HEADER_NAME, SESSION_COOKIE_NAME, set_session_cookie
-from app.auth.ratelimit import LoginRateLimiter, get_login_rate_limiter
-from app.core.config import Settings
-from app.core.errors import ApiError
+from app.core.config import Settings, get_settings
 from tests.conftest import csrf_headers
 
 
 def _set_small_limiter(app: FastAPI, attempts: int = 2, window_seconds: int = 60) -> None:
-    limiter = LoginRateLimiter(max_attempts=attempts, window_seconds=window_seconds)
-    app.dependency_overrides[get_login_rate_limiter] = lambda: limiter
+    """Login limiter settings (Postgres-backed since P4-01): the settings
+    dependency carries the smaller window for a deterministic test."""
+    app.dependency_overrides[get_settings] = lambda: Settings.model_construct(
+        database_url=None,
+        cookie_secure=False,
+        login_rate_limit_attempts=attempts,
+        login_rate_limit_window_seconds=window_seconds,
+    )
 
 
 def _register(client: TestClient, email: str = "owner@example.com") -> dict[str, Any]:
@@ -252,6 +255,8 @@ def test_csrf_rejects_wrong_token(client: TestClient) -> None:
 
 
 def test_login_rate_limited(client: TestClient, app: FastAPI) -> None:
+    """The P4-01 Postgres-backed login limiter: same 429 contract, counts
+    failed attempts, resets when the window ages out (docs/14 §7)."""
     _register(client)
     _set_small_limiter(app, attempts=2)
     first = client.post(
@@ -269,14 +274,30 @@ def test_login_rate_limited(client: TestClient, app: FastAPI) -> None:
     assert _error_code(third) == "RATE_LIMITED"
 
 
-def test_rate_limiter_window_allows_again() -> None:
-    limiter = LoginRateLimiter(max_attempts=1, window_seconds=1)
-    limiter.attempt("1.2.3.4")
-    with pytest.raises(ApiError) as exc_info:
-        limiter.attempt("1.2.3.4")
-    assert exc_info.value.status_code == 429
-    # Window passes -> allowed again.
-    limiter.attempt("1.2.3.4", now=lambda: datetime.now(UTC).timestamp() + 5)
+def test_rate_limiter_window_allows_again(db: OrmSession) -> None:
+    """Postgres counter: the window start is stamped on the row; past the
+    window the count resets to 1 (extends the P1 in-process limiter)."""
+    from datetime import UTC, datetime
+
+    from app.core.ratelimit import rate_limit
+
+    t0 = datetime(2026, 1, 1, 0, 0, 0, tzinfo=UTC)
+    first, _ = rate_limit(db, key="unit:window", limit=1, window_seconds=1, now=t0)
+    assert first == 1
+    # Still inside the window: the count grows past the limit (the caller
+    # turns count > limit into the standard 429).
+    second, _ = rate_limit(db, key="unit:window", limit=1, window_seconds=1, now=t0)
+    assert second == 2
+    db.commit()
+    # Window passes -> allowed again (fresh window count).
+    later, _ = rate_limit(
+        db,
+        key="unit:window",
+        limit=1,
+        window_seconds=1,
+        now=datetime(2026, 1, 1, 0, 0, 5, tzinfo=UTC),
+    )
+    assert later == 1
 
 
 # --- error format & cookie flags -------------------------------------------

@@ -18,6 +18,7 @@ from .knowledge import (
     Source,
     SourcePage,
 )
+from .widget import RateLimitCounter, VisitorSession
 
 __all__ = [
     "AuditEvent",
@@ -33,6 +34,7 @@ __all__ = [
     "KnowledgeRevision",
     "Membership",
     "Message",
+    "RateLimitCounter",
     "Session",
     "Source",
     "SourcePage",
@@ -40,4 +42,5 @@ __all__ = [
     "TSVECTOR",
     "UsageEvent",
     "User",
+    "VisitorSession",
 ]

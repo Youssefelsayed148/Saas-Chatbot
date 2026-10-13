@@ -17,9 +17,27 @@ const config: NextConfig = {
   async headers() {
     return [
       {
+        // Widget embed pages (P4-02): the frame MUST be frameable by client
+        // sites, so this scoped rule loosens frame-ancestors only here while
+        // the dashboard-wide rule below keeps frame-ancestors 'none'.
+        // Next.js applies EVERY matching rule pair, and the LAST value of a
+        // given header key wins — the widget rules come after the global ones.
+        source: "/widget/:path*",
+        headers: [
+          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          {
+            // Any http(s) customer site may frame the widget; the API surface
+            // inside is the public widget contract (capability tokens + rate
+            // limits), never the dashboard.
+            key: "Content-Security-Policy",
+            value: "frame-ancestors http: https:",
+          },
+        ],
+      },
+      {
         // Dashboard-wide hardening (P2-00). frame-ancestors 'none': the dashboard
-        // must never be framed. The P4 widget frame page will need its own
-        // scoped header set; that page does not exist yet.
+        // must never be framed.
         source: "/:path*",
         headers: [
           { key: "Referrer-Policy", value: "no-referrer" },
