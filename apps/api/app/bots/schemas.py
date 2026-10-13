@@ -33,6 +33,8 @@ class BotConfig(BaseModel):
     support_email: EmailStr | None = None
     support_phone: str | None = Field(default=None, max_length=30)
     colour: str | None = None
+    # Widget avatar (P4-03, docs/09): a public http(s) URL only.
+    avatar: str | None = None
     position: str | None = Field(default=None, pattern="^(left|right)$")
     handoff_enabled: bool | None = None
     allowed_domains: list[str] | None = Field(default=None, max_length=50)
@@ -54,6 +56,16 @@ class BotConfig(BaseModel):
         if not COLOUR_RE.fullmatch(value):
             raise ValueError("Colour must be a hex value like #1a2b3c.")
         return value
+
+    @field_validator("avatar")
+    @classmethod
+    def avatar_is_public_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        avatar = value.strip()
+        if not avatar.startswith(("http://", "https://")) or len(avatar) > 500:
+            raise ValueError("Avatar must be a public http(s) URL (max 500 characters).")
+        return avatar
 
     @field_validator("allowed_domains")
     @classmethod

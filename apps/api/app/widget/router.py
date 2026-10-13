@@ -96,6 +96,19 @@ class FeedbackRequest(BaseModel):
     rating: str = Field(pattern="^(up|down)$")
 
 
+class LeadRequest(BaseModel):
+    """Lead form (P4-04, docs/14 §14/§16): consent is REQUIRED, name plus a
+    reachable channel (email or phone). The widget renders the same consent
+    text the contact records (`consent_text_version`)."""
+
+    name: str = Field(min_length=1, max_length=200)
+    email: str | None = Field(default=None, max_length=320)
+    phone: str | None = Field(default=None, max_length=40)
+    consent_accepted: bool = False
+    # The language the widget displayed the consent text in (audit trail).
+    consent_language: str = Field(default="en", pattern="^(en|ar)$")
+
+
 def _session_or_401(
     db: Any, session_id: UUID, settings: Settings, token: str | None
 ) -> VisitorSession:
@@ -221,3 +234,30 @@ def session_feedback(
         rating=body.rating,
     )
     return {"status": "ok"}
+
+
+@router.post("/sessions/{session_id}/lead", status_code=201)
+def session_lead(
+    session_id: UUID,
+    body: LeadRequest,
+    db: DbSession,
+    settings: CurrentSettings,
+    x_session_token: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Lead capture: explicit consent REQUIRED before any contact write."""
+    visitor_session = _session_or_401(db, session_id, settings, x_session_token)
+    email = (body.email or "").strip() or None
+    phone = (body.phone or "").strip() or None
+    if not email and not phone:
+        raise ApiError(422, "VALIDATION_ERROR", "Provide an email address or a phone number.")
+    if email and ("@" not in email):
+        raise ApiError(422, "VALIDATION_ERROR", "Provide a valid email address.")
+    if not body.consent_accepted:
+        raise ApiError(422, "CONSENT_REQUIRED", "Lead details can only be saved with consent.")
+    return service.capture_lead(
+        db,
+        visitor_session=visitor_session,
+        name=body.name.strip(),
+        email=email,
+        phone=phone,
+    )

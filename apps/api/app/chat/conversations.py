@@ -22,6 +22,7 @@ from app.chat.providers import ChatModel
 from app.chat.service import chat_answer
 from app.core.config import Settings
 from app.core.errors import ApiError
+from app.core.ratelimit import purge_expired_windows
 from app.db.models import Bot, Conversation, Message, UsageEvent
 
 MAX_HISTORY = 6
@@ -366,20 +367,35 @@ def record_feedback(
 
 
 def run_retention_purge(db: OrmSession, settings: Settings) -> int:
-    """Delete messages older than the retention window (docs/14 §7).
+    """Delete messages older than each tenant's retention window (docs/14 §7).
 
-    The delete is idempotent and tenant-agnostic (the WHERE clause carries
-    tenant scoping via the table's own tenant_id, never a payload).
-    """
-    cutoff = datetime.now(UTC) - timedelta(seconds=settings.retention_days * 86400)
-    from sqlalchemy import delete
+    Per-tenant windows: `tenants.retention_days` (P4-04) overrides the
+    deployment default (1–365; NULL = global). The delete is idempotent."""
+    from sqlalchemy import delete as _delete
+    from sqlalchemy import select
 
-    result = db.execute(
-        delete(Message).where(
-            Message.created_at < cutoff,
-            Message.created_at.is_not(None),
+    from app.db.models import Tenant
+
+    now = datetime.now(UTC)
+    total = 0
+    tenant_ids = db.execute(select(Tenant.id)).scalars().all()
+    for tenant_id in tenant_ids:
+        tenant = db.get(Tenant, tenant_id)
+        days = (
+            int(tenant.retention_days)
+            if tenant is not None and tenant.retention_days is not None
+            else settings.retention_days
         )
-    )
+        cutoff = now - timedelta(seconds=days * 86400)
+        result = db.execute(
+            _delete(Message).where(
+                Message.tenant_id == tenant_id,
+                Message.created_at < cutoff,
+                Message.created_at.is_not(None),
+            )
+        )
+        deleted = int(getattr(result, "rowcount", 0) or 0)
+        total += deleted
+        purge_expired_windows(db, older_than_epoch=int(now.timestamp()) - days * 86400)
     db.commit()
-    deleted = int(getattr(result, "rowcount", 0) or 0)
-    return deleted
+    return total

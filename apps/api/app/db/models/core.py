@@ -62,6 +62,8 @@ class Tenant(Base):
     id: Mapped[UUID] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     slug: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    # Message retention override (P4-04, docs/14 §7): NULL = deployment default.
+    retention_days: Mapped[int | None] = mapped_column()
     status: Mapped[str] = mapped_column(
         Text,
         nullable=False,

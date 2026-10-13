@@ -142,6 +142,7 @@ def test_config_by_locator_returns_safe_fields_only(
         "opening_questions",
         "colour",
         "position",
+        "avatar",
         "default_language",
         "dir",
     }

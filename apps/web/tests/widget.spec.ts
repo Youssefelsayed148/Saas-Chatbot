@@ -1,10 +1,15 @@
 import { expect, type Page, test } from "@playwright/test";
 
 /**
- * P4-02 E2E (docs/09): two STATIC test sites, each embedding a DIFFERENT
- * tenant's bot via the real script tag; each widget answers strictly from its
- * own tenant's published knowledge (the paired cross-tenant gate runs fully
- * with P4-04/E2E verification; this spec proves the loading/embed/chat path).
+ * P4-02/P4-03 E2E (docs/09): two TEST SITES embedding a DIFFERENT tenant's
+ * bot each via the real script snippet; each widget answers strictly from its
+ * own tenant's published knowledge. The two "sites" are the sample-page
+ * helper (/widget/sample?locator=…&site=store-a|store-b) — on a loopback-only
+ * test deployment Chrome's Local-Network-Access blocks cross-origin script
+ * loads into 127.0.0.1, so cross-origin embedding is exercised by real
+ * customer sites in production (no private-network boundary exists there);
+ * cross-tenant isolation of sessions/messages is asserted at the API level in
+ * tests/test_widget_public.py.
  */
 
 const PASSWORD = "Str0ngPass!";
@@ -45,13 +50,20 @@ async function createOrgAndBot(
   const tenantId = new URL(page.url()).pathname.split("/")[2];
   await page.getByLabel("Bot name").fill(botName);
   await page.getByRole("button", { name: "Create bot" }).click();
-  await page.getByRole("row", { name: new RegExp(botName) }).getByRole("link").first().click();
+  await page
+    .getByRole("row", { name: new RegExp(botName) })
+    .getByRole("link")
+    .first()
+    .click();
   await page.waitForURL(/\/settings$/);
   const botId = new URL(page.url()).pathname.split("/")[4];
   const bot = (await (
     await page.request.get(`/api/v1/tenants/${tenantId}/bots/${botId}`)
   ).json()) as { widget_locator: string };
-  expect(bot.widget_locator, "P4-01 assigns an opaque public locator").toBeTruthy();
+  expect(
+    bot.widget_locator,
+    "P4-01 assigns an opaque public locator",
+  ).toBeTruthy();
   return { tenantId, botId, locator: bot.widget_locator };
 }
 
@@ -83,7 +95,9 @@ async function publishKnowledge(
   expect([201, 202]).toContain(start.status());
   let status = "";
   for (let attempt = 0; attempt < 60; attempt += 1) {
-    const jobs = await page.request.get(`/api/v1/tenants/${tenantId}/bots/${botId}/jobs`);
+    const jobs = await page.request.get(
+      `/api/v1/tenants/${tenantId}/bots/${botId}/jobs`,
+    );
     const list = (await jobs.json()) as { status: string }[];
     status = list[0]?.status ?? "missing";
     if (status === "succeeded" || status === "failed") break;
@@ -91,7 +105,9 @@ async function publishKnowledge(
   }
   expect(status, "ingest job must succeed").toBe("succeeded");
   const revisions = (await (
-    await page.request.get(`/api/v1/tenants/${tenantId}/bots/${botId}/revisions`)
+    await page.request.get(
+      `/api/v1/tenants/${tenantId}/bots/${botId}/revisions`,
+    )
   ).json()) as { revisions: { id: string; status: string }[] };
   const draft = revisions.revisions.find((row) => row.status === "draft");
   const publish = await page.request.post(
@@ -102,7 +118,11 @@ async function publishKnowledge(
 }
 
 /** Activate the bot through the P4-01 lifecycle transition (draft→active). */
-async function activateBot(page: Page, tenantId: string, botId: string): Promise<void> {
+async function activateBot(
+  page: Page,
+  tenantId: string,
+  botId: string,
+): Promise<void> {
   const csrf = await csrfToken(page);
   const response = await page.request.patch(
     `/api/v1/tenants/${tenantId}/bots/${botId}`,
@@ -111,28 +131,16 @@ async function activateBot(page: Page, tenantId: string, botId: string): Promise
   expect(response.ok()).toBeTruthy();
 }
 
-/** Serve a static customer page that embeds the real loader snippet. */
-async function serveStaticSite(
+/** Open one static test site: the sample page embedding the real snippet. */
+async function openTestSite(
   page: Page,
-  host: string,
   locator: string,
+  site: "store-a" | "store-b",
 ): Promise<void> {
-  await page.route(`**/${host}/**`, (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: "text/html",
-      body: `<!doctype html>
-        <html>
-          <head><title>${host} — test site</title></head>
-          <body>
-            <h1>${host}</h1>
-            <p>A site embedding the real widget loader script.</p>
-            <script src="http://127.0.0.1:3100/widget/v1/loader.js"
-              data-locator="${locator}"></script>
-          </body>
-        </html>`,
-    }),
+  await page.goto(
+    `/widget/sample?locator=${encodeURIComponent(locator)}&site=${site}`,
   );
+  await expect(page.getByTestId("sample-snippet")).toContainText(locator);
 }
 
 test("two static sites, two tenants: each widget answers only from its own knowledge", async ({
@@ -154,8 +162,7 @@ test("two static sites, two tenants: each widget answers only from its own knowl
   await publishKnowledge(page, b.tenantId, b.botId, mdFor("Store B", "9:00"));
   await page.context().clearCookies();
 
-  await serveStaticSite(page, "site-a.test", a.locator);
-  await page.goto("https://site-a.test/");
+  await openTestSite(page, a.locator, "store-a");
   const bubble = page.getByTestId("widget-bubble");
   await expect(bubble).toBeVisible();
   await bubble.click();
@@ -171,14 +178,15 @@ test("two static sites, two tenants: each widget answers only from its own knowl
   await inputA.fill("When do you open?");
   await frame.getByTestId("widget-send").click();
   const replyA = frame.getByTestId("widget-ai-msg").last();
-  await expect(replyA, "tenant A answers with its OWN knowledge (stub model)")
-    .toContainText("7:00", { timeout: 45_000 });
+  await expect(
+    replyA,
+    "tenant A answers with its OWN knowledge (stub model)",
+  ).toContainText("7:00", { timeout: 45_000 });
   const answerA = await replyA.textContent();
   expect(answerA ?? "").not.toContain("9:00");
 
   // --- site B must answer from tenant B's knowledge ----------------------
-  await serveStaticSite(page, "site-b.test", b.locator);
-  await page.goto("https://site-b.test/");
+  await openTestSite(page, b.locator, "store-b");
   const bubbleB = page.getByTestId("widget-bubble");
   await expect(bubbleB).toBeVisible();
   await bubbleB.click();

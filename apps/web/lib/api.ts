@@ -70,9 +70,65 @@ export interface Bot {
     position?: "left" | "right";
     handoff_enabled?: boolean;
     allowed_domains?: string[];
+    avatar?: string;
   };
+  widget_locator?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface Conversation {
+  id: string;
+  channel: string;
+  mode: string;
+  status: string;
+  contact_name: string | null;
+  last_message_at: string | null;
+  message_count: number;
+  created_at: string;
+}
+
+export interface ConversationListResponse {
+  conversations: Conversation[];
+  total: number;
+}
+
+export interface ConversationDetailResponse {
+  conversation: Conversation;
+  messages: Array<{
+    id: string;
+    sender_type: string;
+    text: string;
+    citations: Array<{
+      chunk_id: string;
+      title?: string | null;
+      heading?: string | null;
+      source_url?: string | null;
+      page_ref?: string | null;
+    }>;
+    can_answer: boolean | null;
+    needs_human: boolean;
+    created_at: string;
+  }>;
+}
+
+export interface WidgetSendMessageResponse {
+  conversation_id: string;
+  visitor_message: { id: string; text: string; created_at: string };
+  ai_message: {
+    id: string;
+    text: string;
+    citations: Array<{
+      chunk_id: string;
+      title?: string | null;
+      source_url?: string | null;
+    }>;
+    can_answer: boolean | null;
+    needs_human: boolean;
+    created_at: string;
+  };
+  kind: string;
+  language: string;
 }
 
 export interface Member {
@@ -251,7 +307,11 @@ export async function getBot(tenantId: string, botId: string): Promise<Bot> {
 export async function patchBot(
   tenantId: string,
   botId: string,
-  patch: { name?: string; config?: Record<string, unknown> },
+  patch: {
+    name?: string;
+    status?: "active" | "paused";
+    config?: Record<string, unknown>;
+  },
 ): Promise<Bot> {
   return api<Bot>(`tenants/${tenantId}/bots/${botId}`, {
     method: "PATCH",
@@ -264,6 +324,45 @@ export async function archiveBot(
   botId: string,
 ): Promise<Bot> {
   return api<Bot>(`tenants/${tenantId}/bots/${botId}`, { method: "DELETE" });
+}
+
+export async function listConversations(
+  tenantId: string,
+  botId: string,
+  status?: string,
+): Promise<ConversationListResponse> {
+  const suffix = status ? `?status=${encodeURIComponent(status)}` : "";
+  return api<ConversationListResponse>(
+    `tenants/${tenantId}/bots/${botId}/conversations${suffix}`,
+  );
+}
+
+export async function getConversation(
+  tenantId: string,
+  botId: string,
+  conversationId: string,
+): Promise<ConversationDetailResponse> {
+  return api<ConversationDetailResponse>(
+    `tenants/${tenantId}/bots/${botId}/conversations/${conversationId}`,
+  );
+}
+
+export async function deleteConversation(
+  tenantId: string,
+  botId: string,
+  conversationId: string,
+): Promise<{ status: string }> {
+  return api<{ status: string }>(
+    `tenants/${tenantId}/bots/${botId}/conversations/${conversationId}`,
+    { method: "DELETE" },
+  );
+}
+
+export async function updateTenant(
+  tenantId: string,
+  patch: { retention_days?: number | null },
+): Promise<Tenant> {
+  return api<Tenant>(`tenants/${tenantId}`, { method: "PATCH", body: patch });
 }
 
 export async function listMembers(tenantId: string): Promise<Member[]> {

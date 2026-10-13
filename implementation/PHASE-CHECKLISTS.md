@@ -1,6 +1,5 @@
 # Phase checklists — tick only with evidence (command + result in PROGRESS.md or the ticket report)
-Legend: [ ] open · [x] done with evidence. Owner sign-off closes each phase.
-## P1 Foundation
+Legend: [ ] open · [x] done with evidence. Owner sign-off closes each phase.## P1 Foundation
 - [x] P1-01 toolchain, health/ready, Compose, CI config (evidence: P1-01-REPORT.md; hosted CI not yet run)
 - [x] P1-02: `alembic upgrade head` from empty DB and `downgrade base` both succeed on a disposable DB (evidence: P1-02-REPORT.md — `test_migrations_up_down_cycle` on `chatbot_dev_migration_test`, Windows + Linux container)
 - [x] P1-02: unique/FK/composite-FK constraints verified by tests (P1-02-REPORT.md; test_models_constraints.py 40 passed)
@@ -45,10 +44,11 @@ Legend: [ ] open · [x] done with evidence. Owner sign-off closes each phase.
 - [x] Phase report written (owner sign-off pending)
 
 ## P4 Widget — the website channel
-- [ ] P4-01: public config + session endpoints; locator is not a secret; short-lived session capability; rate limits; allowed-domain check
-- [ ] P4-02: widget loads from one script tag; iframe sandbox; mobile, keyboard, screen-reader labels, RTL
-- [ ] P4-03: appearance settings saved and reflected; install page shows correct snippet
-- [ ] P4-04: conversations view; leads captured only with consent and create/update a contact; retention setting works
+- [x] P4-00 (P3 carry-overs): cross-script translate bridge tested (translate-once + first-message + failure fallback + no call on matching languages; tests/test_cross_script.py 3 passed); `environment` setting with a startup guard refusing the stub model in production (test_startup_guard.py 5 passed); eval extended to 25 cases (incl. 3 EN-content/AR-question cross-language and 2 document-borne injections) — stub numbers recorded, OpenRouter rerun NOT performed (no key provided; documented in EVAL-REPORT.md) (evidence: implementation/PHASE-04/P4-00-REPORT.md)
+- [x] P4-01: public config + session endpoints; locator is not a secret; short-lived session capability; rate limits (Postgres-backed, incl. the login limiter take-over); allowed-domain check as defence signal (evidence: implementation/PHASE-04/P4-01-REPORT.md — tests/test_widget_public.py 14 passed, test_bot_status.py 5 passed, migration 0004 up/down test, full backend suite 189 passed)
+- [x] P4-02: widget loads from one script tag; iframe sandbox; mobile, keyboard, screen-reader labels, RTL (evidence: implementation/PHASE-04/P4-02-REPORT.md — packages/widget loader + /widget/frame UI; security-headers.spec.ts 2 passed; widget.spec.ts 2 passed on the REAL stack incl. the two-sites/two-tenants isolation journey)
+- [x] P4-03: appearance settings saved and reflected; install page shows correct snippet (evidence: implementation/PHASE-04/P4-03-REPORT.md — install.spec.ts 1 passed incl. draft-guidance → activate → snippet/locator/sample helper + colour round-trip; avatar validated server-side, test_widget_appearance.py 3 passed)
+- [x] P4-04: conversations view; leads captured only with consent and create/update a contact; retention setting works (evidence: implementation/PHASE-04/P4-04-REPORT.md — test_conversations_view.py 5 passed, test_widget_leads.py 5 passed, conversations.spec.ts 1 passed incl. widget consent form; migration 0005 up/down)
 - [ ] P4-05: per-bot dashboard shell (nav: overview, knowledge, playground, conversations, settings, install; no placeholder or fake items for later phases); overview shows measured numbers only (matches stored events) with date range
 - [ ] P4-06: /platform guarded by is_platform_staff (server-validated): client list (plan label, status, bots, last activity, search/filter), client detail (bots, knowledge/job status, members, recent audit)
 - [ ] P4-06: staff onboarding via ProvisioningService (tenant + owner one-time invite link, no email + bot + optional file upload); Idempotency-Key; double submit creates one tenant; actor attributed in audit; no impersonation

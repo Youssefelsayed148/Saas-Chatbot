@@ -23,6 +23,7 @@ export default function BotSettingsPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [archiving, setArchiving] = useState(false);
+  const [transitioning, setTransitioning] = useState(false);
 
   const [name, setName] = useState("");
   const [assistantName, setAssistantName] = useState("");
@@ -35,6 +36,7 @@ export default function BotSettingsPage() {
   const [supportEmail, setSupportEmail] = useState("");
   const [supportPhone, setSupportPhone] = useState("");
   const [colour, setColour] = useState("");
+  const [avatar, setAvatar] = useState("");
   const [position, setPosition] = useState<"left" | "right" | "">("");
   const [handoffEnabled, setHandoffEnabled] = useState(true);
   const [allowedDomains, setAllowedDomains] = useState("");
@@ -54,6 +56,7 @@ export default function BotSettingsPage() {
       setSupportEmail(loaded.config.support_email ?? "");
       setSupportPhone(loaded.config.support_phone ?? "");
       setColour(loaded.config.colour ?? "");
+      setAvatar(loaded.config.avatar ?? "");
       setPosition(loaded.config.position ?? "");
       setHandoffEnabled(loaded.config.handoff_enabled ?? true);
       setAllowedDomains((loaded.config.allowed_domains ?? []).join("\n"));
@@ -100,6 +103,7 @@ export default function BotSettingsPage() {
       if (supportEmail) config.support_email = supportEmail;
       if (supportPhone) config.support_phone = supportPhone;
       if (colour) config.colour = colour;
+      if (avatar) config.avatar = avatar;
       if (position) config.position = position;
       config.handoff_enabled = handoffEnabled;
       if (allowedDomains) {
@@ -121,6 +125,24 @@ export default function BotSettingsPage() {
       );
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function transitionTo(status: "active" | "paused") {
+    setTransitioning(true);
+    setSaveError(null);
+    try {
+      const updated = await api.patchBot(tenantId, botId, { status });
+      setBot(updated);
+      await load();
+    } catch (caught) {
+      setSaveError(
+        caught instanceof Error
+          ? caught.message
+          : "Could not update the bot status.",
+      );
+    } finally {
+      setTransitioning(false);
     }
   }
 
@@ -167,9 +189,44 @@ export default function BotSettingsPage() {
         <Link href={`/app/${tenantId}/bots/${botId}/playground`}>
           Playground
         </Link>
+        {" · "}
+        <Link href={`/app/${tenantId}/bots/${botId}/install`}>Install</Link>
       </p>
       <h1>{bot.name} — settings</h1>
-      <p data-status={bot.status}>Status: {bot.status}</p>
+      <p data-status={bot.status}>
+        Status: {bot.status}
+        {canEdit && bot.status !== "archived" && (
+          <span>
+            {" "}
+            {bot.status !== "active" && (
+              <button
+                type="button"
+                data-testid="activate-bot"
+                disabled={transitioning}
+                onClick={() => void transitionTo("active")}
+              >
+                {transitioning ? "Activating…" : "Activate bot"}
+              </button>
+            )}
+            {bot.status === "active" && (
+              <button
+                type="button"
+                data-testid="pause-bot"
+                disabled={transitioning}
+                onClick={() => void transitionTo("paused")}
+              >
+                {transitioning ? "Pausing…" : "Pause bot"}
+              </button>
+            )}
+          </span>
+        )}
+      </p>
+      {bot.widget_locator && (
+        <p className="muted">
+          Widget locator:{" "}
+          <code data-testid="settings-locator">{bot.widget_locator}</code>
+        </p>
+      )}
       {!canEdit && (
         <Notice
           message={`Read-only view: editing requires the editor role (you are ${role}).`}
@@ -290,6 +347,15 @@ export default function BotSettingsPage() {
             disabled={!canEdit}
             value={colour}
             onChange={(event) => setColour(event.target.value)}
+          />
+        </label>
+        <label>
+          Widget avatar (public http(s) image URL)
+          <input
+            name="avatar"
+            disabled={!canEdit}
+            value={avatar}
+            onChange={(event) => setAvatar(event.target.value)}
           />
         </label>
         <label>

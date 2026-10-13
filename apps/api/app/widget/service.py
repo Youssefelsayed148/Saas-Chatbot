@@ -29,7 +29,15 @@ from app.chat.models import model_from_settings
 from app.core.config import Settings
 from app.core.errors import ApiError
 from app.core.ratelimit import rate_limit
-from app.db.models import Bot, Conversation, Message, UsageEvent, VisitorSession
+from app.db.models import (
+    Bot,
+    Contact,
+    ContactIdentity,
+    Conversation,
+    Message,
+    UsageEvent,
+    VisitorSession,
+)
 
 RETIRED_WINDOW = 60  # fixed-window width used by the public counters (seconds)
 
@@ -147,6 +155,7 @@ def widget_config(bot: Bot) -> dict[str, Any]:
         "position": config.get("position")
         if config.get("position") in ("left", "right")
         else "right",
+        "avatar": str(config.get("avatar") or "")[:500],
         "default_language": language,
         "dir": "rtl" if language == "ar" else "ltr",
     }
@@ -310,6 +319,139 @@ def session_history(
     return list(
         db.execute(statement.order_by(Message.created_at.asc(), Message.id).limit(limit)).scalars()
     )
+
+
+CONSENT_TEXT_VERSION = "widget-lead/v1 2026-10"
+
+CONSENT_TEXT = {
+    "en": (
+        "I agree that this business may store my name and contact details to "
+        "follow up on this chat."
+    ),
+    "ar": ("أوافق على أن تحفظ هذه الشركة اسمي وبيانات التواصل لمتابعة هذه المحادثة."),
+}
+
+
+def capture_lead(
+    db: OrmSession,
+    *,
+    visitor_session: VisitorSession,
+    name: str,
+    email: str | None,
+    phone: str | None,
+) -> dict[str, Any]:
+    """Lead capture with explicit consent (P4-04, docs/14 §14/§16).
+
+    Requires consent BEFORE any contact write (checked by the router). Creates
+    OR updates one contact per tenant (matched by email, else by phone); the
+    conversation gets bound to the contact; consent is recorded as JSON on
+    the contact (channel + version + timestamp). Attach the session as a
+    website identity (unique per tenant+channel+external id)."""
+    now = datetime.now(UTC)
+    # 1) match an existing reachable contact of this tenant (never another).
+    contact: Contact | None = None
+    if email:
+        contact = (
+            db.execute(
+                select(Contact).where(
+                    Contact.tenant_id == visitor_session.tenant_id,
+                    Contact.email == email,  # citext: case-insensitive match
+                )
+            )
+            .scalars()
+            .first()
+        )
+    if contact is None and phone:
+        contact = (
+            db.execute(
+                select(Contact).where(
+                    Contact.tenant_id == visitor_session.tenant_id,
+                    Contact.phone == phone,
+                )
+            )
+            .scalars()
+            .first()
+        )
+    created = contact is None
+    if contact is None:
+        contact = Contact(
+            id=uuid4(),
+            tenant_id=visitor_session.tenant_id,
+            display_name="",
+            email=email,
+            phone=phone,
+            stage="new",
+            source_channel="website",
+        )
+        db.add(contact)
+    if name and (not contact.display_name or contact.source_channel == "website"):
+        # Website-sourced contacts get their name refreshed by a later lead;
+        # CRM-owned names (P5) are never overwritten.
+        contact.display_name = name
+    consent = dict(contact.consent) if isinstance(contact.consent, dict) else {}
+    consent.setdefault(
+        "website",
+        {"granted_at": now.isoformat(), "text_version": CONSENT_TEXT_VERSION},
+    )
+    contact.consent = consent
+    contact.updated_at = now
+    db.add(contact)
+    db.flush()
+
+    # Website identity for the session (idempotent).
+    identity = (
+        db.execute(
+            select(ContactIdentity).where(
+                ContactIdentity.tenant_id == visitor_session.tenant_id,
+                ContactIdentity.channel == "website",
+                ContactIdentity.external_id == str(visitor_session.id),
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if identity is None:
+        db.add(
+            ContactIdentity(
+                tenant_id=visitor_session.tenant_id,
+                contact_id=contact.id,
+                channel="website",
+                external_id=str(visitor_session.id),
+            )
+        )
+    db.flush()
+
+    # Bind the conversation to the contact (composite FK stays tenant-scoped).
+    conversation = (
+        db.execute(
+            select(Conversation).where(
+                Conversation.tenant_id == visitor_session.tenant_id,
+                Conversation.session_id == visitor_session.id,
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if conversation is not None:
+        conversation.contact_id = contact.id
+        db.add(conversation)
+
+    record_usage_event(
+        db,
+        tenant_id=visitor_session.tenant_id,
+        bot_id=visitor_session.bot_id,
+        kind="lead",
+        external_key=f"lead:{visitor_session.id}",
+        conversation_id=conversation.id if conversation is not None else None,
+    )
+    db.commit()
+    return {
+        "contact_id": str(contact.id),
+        "created": created,
+        "display_name": contact.display_name,
+        "email": str(contact.email) if contact.email else None,
+        "phone": contact.phone,
+    }
 
 
 def widget_feedback(

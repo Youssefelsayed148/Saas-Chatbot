@@ -30,6 +30,16 @@ type WidgetConfig = {
   dir: "ltr" | "rtl";
 };
 
+type LeadFormState = {
+  open: boolean;
+  name: string;
+  email: string;
+  phone: string;
+  consent: boolean;
+  status: "idle" | "saving" | "done" | "error";
+  error: string | null;
+};
+
 interface Turn {
   id: string;
   role: "visitor" | "assistant";
@@ -56,6 +66,28 @@ function localized(key: string, lang: string): string {
       en: "The assistant is not set up yet. Please check back soon.",
       ar: "المساعد غير مهيأ بعد. عد قريباً.",
     },
+    leadTitle: {
+      en: "Leave your details",
+      ar: "اترك بياناتك",
+    },
+    leadName: { en: "Name", ar: "الاسم" },
+    leadEmail: { en: "Email", ar: "البريد الإلكتروني" },
+    leadPhone: { en: "Phone", ar: "الهاتف" },
+    leadConsentAr: {
+      en: "",
+      ar: "أوافق على أن تحفظ هذه الشركة اسمي وبيانات التواصل لمتابعة هذه المحادثة.",
+    },
+    leadConsentEn: {
+      en:
+        "I agree that this business may store my name and contact details to " +
+        "follow up on this chat.",
+      ar: "",
+    },
+    leadSubmit: { en: "Send my details", ar: "أرسل بياناتي" },
+    leadDone: {
+      en: "Thanks — our team will get back to you.",
+      ar: "شكراً — سيتواصل معك فريقنا.",
+    },
     quota: {
       en: "The assistant reached its message limit for today. Please try again tomorrow.",
       ar: "وصل المساعد إلى حد الرسائل لهذا اليوم. يرجى المحاولة غداً.",
@@ -76,7 +108,15 @@ function localized(key: string, lang: string): string {
     cite: { en: "Sources", ar: "المصادر" },
     open: { en: "Open chat window", ar: "افتح نافذة المحادثة" },
     scroll: { en: "Scroll to bottom", ar: "الانتقال إلى الأسفل" },
-    helpful: { en: "Was this helpful?", ar: "هل كان هذا مفيداً؟" },
+    leadHelpful: { en: "Was this helpful?", ar: "هل كان هذا مفيداً؟" },
+    leadConsentRequired: {
+      en: "Please accept the consent text to save your details.",
+      ar: "يرجى الموافقة على نص الموافقة لحفظ بياناتك.",
+    },
+    leadIncomplete: {
+      en: "Enter your name and an email address or phone number.",
+      ar: "اكتب الاسم وبريداً إلكترونياً أو رقماً هاتفياً.",
+    },
   };
   const entry = texts[key];
   if (!entry) return key;
@@ -156,6 +196,12 @@ async function ensureSessionFor(
   return { id: payload.session_id, token: payload.token };
 }
 
+const CONSENT_TEXT_EN =
+  "I agree that this business may store my name and contact details to " +
+  "follow up on this chat.";
+const CONSENT_TEXT_AR =
+  "أوافق على أن تحفظ هذه الشركة اسمي وبيانات التواصل لمتابعة هذه المحادثة.";
+
 class ApiCodeError extends Error {
   code: string;
   constructor(code: string) {
@@ -172,6 +218,15 @@ export default function WidgetFramePage() {
   const [config, setConfig] = useState<WidgetConfig | null>(null);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState("");
+  const [lead, setLead] = useState<LeadFormState>({
+    open: false,
+    name: "",
+    email: "",
+    phone: "",
+    consent: false,
+    status: "idle",
+    error: null,
+  });
   const [typing, setTyping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const locatorRef = useRef<string | null>(null);
@@ -427,6 +482,80 @@ export default function WidgetFramePage() {
     }
   }
 
+  async function submitLead() {
+    if (!lead.consent) {
+      setLead((state) => ({
+        ...state,
+        status: "error",
+        error: localized("leadConsentRequired", lang),
+      }));
+      return;
+    }
+    if (!lead.name.trim() || (!lead.email.trim() && !lead.phone.trim())) {
+      setLead((state) => ({
+        ...state,
+        status: "error",
+        error: localized("leadIncomplete", lang),
+      }));
+      return;
+    }
+    const session = sessionRef.current;
+    if (!session) {
+      const locator = locatorRef.current;
+      if (!locator) return;
+      setLead((state) => ({ ...state, status: "saving" }));
+      sessionRef.current = await ensureSessionFor(locator);
+    }
+    const bound = sessionRef.current;
+    if (!bound) {
+      setLead((state) => ({ ...state, status: "error", error: null }));
+      return;
+    }
+    setLead((state) => ({ ...state, status: "saving", error: null }));
+    try {
+      const response = await fetch(`/api/public/v1/sessions/${bound.id}/lead`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Session-Token": bound.token,
+        },
+        body: JSON.stringify({
+          name: lead.name.trim(),
+          email: lead.email.trim() || null,
+          phone: lead.phone.trim() || null,
+          consent_accepted: true,
+          consent_language: lang,
+        }),
+      });
+      if (response.ok) {
+        setLead((state) => ({
+          ...state,
+          status: "done",
+          open: false,
+          error: null,
+        }));
+      } else {
+        const payloadResponse = (await response.json().catch(() => null)) as {
+          error?: { code?: string };
+        } | null;
+        setLead((state) => ({
+          ...state,
+          status: "error",
+          error:
+            payloadResponse?.error?.code === "CONSENT_REQUIRED"
+              ? localized("leadConsentRequired", lang)
+              : localized("network", lang),
+        }));
+      }
+    } catch {
+      setLead((state) => ({
+        ...state,
+        status: "error",
+        error: localized("network", lang),
+      }));
+    }
+  }
+
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -608,6 +737,131 @@ export default function WidgetFramePage() {
         )}
       </main>
 
+      {status === "ready" && !blocked && lead.status === "done" && (
+        <p role="status" className="widget-note" data-testid="widget-lead-done">
+          {localized("leadDone", lang)}
+        </p>
+      )}
+      {status === "ready" && !blocked && (
+        <section
+          className="widget-lead"
+          aria-label={localized("leadTitle", lang)}
+        >
+          {!lead.open ? (
+            <button
+              type="button"
+              className="widget-chip"
+              data-testid="widget-lead-open"
+              onClick={() => setLead((state) => ({ ...state, open: true }))}
+            >
+              {localized("leadTitle", lang)}
+            </button>
+          ) : (
+            <form
+              className="widget-lead-form"
+              data-testid="widget-lead-form"
+              onSubmit={(leadEvent) => {
+                leadEvent.preventDefault();
+                void submitLead();
+              }}
+            >
+              <h2 dir="auto" className="widget-lead-title">
+                {localized("leadTitle", lang)}
+              </h2>
+              <label dir="auto">
+                <span>{localized("leadName", lang)}</span>
+                <input
+                  dir="auto"
+                  data-testid="widget-lead-name"
+                  maxLength={200}
+                  value={lead.name}
+                  onChange={(leadEvent) =>
+                    setLead((state) => ({
+                      ...state,
+                      name: leadEvent.target.value,
+                    }))
+                  }
+                />
+              </label>
+              <label dir="auto">
+                <span>{localized("leadEmail", lang)}</span>
+                <input
+                  dir="auto"
+                  type="email"
+                  data-testid="widget-lead-email"
+                  maxLength={320}
+                  value={lead.email}
+                  onChange={(leadEvent) =>
+                    setLead((state) => ({
+                      ...state,
+                      email: leadEvent.target.value,
+                    }))
+                  }
+                />
+              </label>
+              <label dir="auto">
+                <span>{localized("leadPhone", lang)}</span>
+                <input
+                  dir="auto"
+                  data-testid="widget-lead-phone"
+                  maxLength={40}
+                  value={lead.phone}
+                  onChange={(leadEvent) =>
+                    setLead((state) => ({
+                      ...state,
+                      phone: leadEvent.target.value,
+                    }))
+                  }
+                />
+              </label>
+              <label dir={dir} className="widget-lead-consent">
+                <input
+                  type="checkbox"
+                  data-testid="widget-lead-consent"
+                  checked={lead.consent}
+                  onChange={(leadEvent) =>
+                    setLead((state) => ({
+                      ...state,
+                      consent: leadEvent.target.checked,
+                    }))
+                  }
+                />
+                <span dir="auto">
+                  {lang === "ar" ? CONSENT_TEXT_AR : CONSENT_TEXT_EN}
+                </span>
+              </label>
+              {lead.error && (
+                <p
+                  role="alert"
+                  className="widget-note error"
+                  data-testid="widget-lead-error"
+                >
+                  {lead.error}
+                </p>
+              )}
+              <div className="widget-lead-actions">
+                <button
+                  type="submit"
+                  data-testid="widget-lead-submit"
+                  disabled={lead.status === "saving"}
+                >
+                  {lead.status === "saving"
+                    ? "…"
+                    : localized("leadSubmit", lang)}
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setLead((state) => ({ ...state, open: false, error: null }))
+                  }
+                >
+                  ✕
+                </button>
+              </div>
+            </form>
+          )}
+        </section>
+      )}
       {status === "ready" && !blocked && (
         <form
           className="widget-composer"
@@ -665,5 +919,12 @@ html,body{height:100%}
 .widget-composer input{flex:1;border:1px solid #b8c4d8;border-radius:0.5rem;padding:0.55rem 0.7rem;font:inherit;min-width:0}
 .widget-composer button{background:#1f7a5c;color:#fff;border:0;border-radius:0.5rem;padding:0.55rem 0.9rem;cursor:pointer}
 .widget-composer button:disabled{opacity:0.6;cursor:progress}
+.widget-lead{padding:0.5rem 0.8rem;border-top:1px solid #e4e9f2;display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center}
+.widget-lead-form{display:flex;flex-direction:column;gap:0.45rem;width:100%}
+.widget-lead-form label{display:flex;flex-direction:column;gap:0.2rem;font-size:0.85rem;color:#344b75}
+.widget-lead-title{font-size:0.95rem;margin:0.1rem 0}
+.widget-lead-consent{flex-direction:row!important;align-items:flex-start;gap:0.4rem}
+.widget-lead-actions{display:flex;gap:0.5rem}
+.widget-lead-actions button:last-child{background:transparent;border:1px solid #b8c4d8;color:#182332}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 `;

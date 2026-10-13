@@ -28,6 +28,7 @@ from app.tenants.schemas import (
     MemberRoleUpdateRequest,
     TenantCreateRequest,
     TenantOut,
+    TenantUpdateRequest,
 )
 from app.tenants.service import TenantService
 
@@ -51,6 +52,19 @@ def create_tenant(
 @router.get("/api/v1/tenants/{tenant_id}", response_model=TenantOut)
 def get_tenant(context: TenantContextDep) -> TenantOut:
     return TenantOut.model_validate(context.tenant)
+
+
+@router.patch("/api/v1/tenants/{tenant_id}", response_model=TenantOut, status_code=200)
+def update_tenant(
+    body: TenantUpdateRequest,
+    context: TenantContextDep,
+    _: CsrfOk,
+) -> TenantOut:
+    """Tenant settings (P4-04): retention window (owner/admin only, audited)."""
+    context.require_role("admin")
+    service = TenantService(context.db)
+    tenant = service.update_tenant(context, body.retention_days)
+    return TenantOut.model_validate(tenant)
 
 
 # --- members (admin+) -------------------------------------------------------

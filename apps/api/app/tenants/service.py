@@ -57,6 +57,27 @@ class TenantService:
             raise ApiError(404, "NOT_FOUND", "Resource not found.")
         return tenant
 
+    def update_tenant(self, context: "TenantContext", retention_days: int | None) -> Tenant:
+        """Tenant-level settings (P4-04): the message retention window (docs/14 §7).
+
+        Owner/admin only (privileged write → audited)."""
+        tenant = context.tenant
+        changed = tenant.retention_days != retention_days
+        tenant.retention_days = retention_days
+        self.db.add(tenant)
+        if changed:
+            record_audit(
+                self.db,
+                action="tenant.updated",
+                tenant_id=context.tenant_id,
+                actor_user_id=context.user.id,
+                target_type="tenant",
+                target_id=str(context.tenant_id),
+                metadata={"fields": ["retention_days"], "retention_days": retention_days},
+            )
+        self.db.commit()
+        return tenant
+
     def memberships_of(self, user_id: object) -> list[tuple[Membership, Tenant]]:
         rows = self.db.execute(
             select(Membership, Tenant)

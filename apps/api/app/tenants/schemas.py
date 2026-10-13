@@ -35,7 +35,16 @@ class TenantOut(BaseModel):
     name: str
     slug: str
     status: str
+    # Message retention override (P4-04); NULL falls back to the deployment default.
+    retention_days: int | None = None
     created_at: datetime
+
+
+class TenantUpdateRequest(BaseModel):
+    """Tenant-level settings (P4-04): retention only for now; owner/admin only."""
+
+    model_config = ConfigDict(extra="forbid")
+    retention_days: int | None = Field(default=None, ge=1, le=365)
 
 
 class MemberOut(BaseModel):

@@ -48,6 +48,55 @@ IMPLEMENTED AND LOCALLY VERIFIED; evidence: [P4-01-REPORT](implementation/PHASE-
 - Test evidence: widget/public suite 14 passed; full backend suite **189 passed** in ~2:05
   on the disposable DB after the fixture fix; ruff/format/mypy strict clean (99 sources).
 
+## 2026-10-13 — P4-02 implemented (widget package: loader + sandboxed frame UI)
+
+IMPLEMENTED AND LOCALLY VERIFIED; evidence: [P4-02-REPORT](implementation/PHASE-04/P4-02-REPORT.md).
+- `packages/widget` loader (ES2020, no deps) at `/widget/v1/loader.js` (versioned path,
+  npm workspace registry updated + lockfile regenerated) creating the bubble +
+  `sandbox="allow-scripts allow-same-origin allow-forms"` iframe at `/widget/frame`.
+- Frame page covers the docs/09 states (loading/typing/citations/paused/not-ready/quota/
+  rate-limited/network-retry), welcome + chips + thumbs + scroll-to-bottom, RTL, keyboard
+  access, Escape→close, localStorage session recovery (silent re-auth on 401), postMessage
+  protocol (locator, size, brand, close).
+- Scoped CSP: `/widget/:path*` (declared AFTER the dashboard rule — NEXT 16 wins with the
+  last value) → `frame-ancestors http: https:`; the dashboard keeps 'none' (P2-00).
+ proven by security-headers.spec 2 passed; widget spec 2 passed (two sites, two tenants,
+ each answers only from its own knowledge). Chromium system libs installed user-space
+ (`/tmp/opencode/debroot`, no sudo) to run Playwright headless on this WSL host.
+- Same-origin limitation documented in the report (loopback + Chrome Local Network
+  Access blocks loopback script loads cross-origin in the LAB); production cross-origin
+  classic scripts don't need CORS; per-session capability tokens bound cross-tenant use.
+
+## 2026-10-13 — P4-03 implemented (appearance settings + install page)
+
+IMPLEMENTED AND LOCALLY VERIFIED; evidence: [P4-03-REPORT](implementation/PHASE-04/P4-03-REPORT.md).
+- Appearance settings (assistant/business, welcome EN/AR, opening questions, default
+  language/RTL, support contact, colour, position, avatar (http(s)-only), handoff toggle,
+  allowed domains) via typed BotConfig; bot Activate/Pause in the UI over the audited
+  PATCH `status` transition.
+- Install tab: real snippet (deployment-aware origin, copy), locator guidance, sample
+  page helper `/widget/sample?locator=…` appending the REAL script element with the
+  user locator (innerHTML scripts never run — explained in the report).
+- Evidence: install.spec 1 passed (draft guidance → activate → snippet → sample journey
+  with bubble), test_widget_appearance.py 3 passed (avatar validation/locator lookup).
+
+## 2026-10-13 — P4-04 implemented (conversations view, consent leads, retention)
+
+IMPLEMENTED AND LOCALLY VERIFIED; evidence: [P4-04-REPORT](implementation/PHASE-04/P4-04-REPORT.md).
+- Conversations list/detail (source!=playground filter) + editor-only delete (screen
+  messages cascade), tenant B/guessed UUIDs 404 incl. DELETE; viewer 403. Lead capture
+  POST /api/public/v1/sessions/{id}/lead — CONSENT REQUIRED, citext email match/phone
+  match updates ONE contact, consent JSON on the contact, session identity + conversation
+  binding, idempotent lead usage event. Retention: migration 0005 (tenants.retention_days,
+  NULL=default; CHECK 1–365), PATCH (admin+, audited), per-tenant purge (7-day tenant
+  purges a 10-day-old message; 5-day untouched) + aged rate-limit buckets cleared.
+- UI: conversations list + thread (citations + needs-human notices + lead badge), widget
+  lead form (EN/AR consent text + checkbox; no write without consent).
+- Evidence: test_conversations_view 5 passed, test_widget_leads 5 passed; conversations
+  E2E 1 PASSED (widget chat + consent + the dashboard journey with visible citations;
+  lead POST 201 through the REAL stack); widget/bots-only batch 90 passed with clean
+  ruff/format/mypy after the backend feature work.
+
 ## 2026-10-12 — PHASE P2 SIGNED OFF by owner ("ready to go to phase 3") — Phase P3 authorized
 
 ## 2026-10-13 — PHASE P3 complete (P3-01 → P3-05): retrieval, chat service, conversation core, playground, eval

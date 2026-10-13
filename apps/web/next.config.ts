@@ -17,11 +17,21 @@ const config: NextConfig = {
   async headers() {
     return [
       {
+        // Dashboard-wide hardening (P2-00). frame-ancestors 'none': the dashboard
+        // must never be framed.
+        source: "/:path*",
+        headers: [
+          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+        ],
+      },
+      {
         // Widget embed pages (P4-02): the frame MUST be frameable by client
         // sites, so this scoped rule loosens frame-ancestors only here while
-        // the dashboard-wide rule below keeps frame-ancestors 'none'.
-        // Next.js applies EVERY matching rule pair, and the LAST value of a
-        // given header key wins — the widget rules come after the global ones.
+        // the dashboard-wide rule above keeps frame-ancestors 'none'.
+        // Next.js applies ALL matching rules and the LAST value of a header
+        // key wins — the /widget rule therefore comes AFTER the global one.
         source: "/widget/:path*",
         headers: [
           { key: "Referrer-Policy", value: "no-referrer" },
@@ -33,16 +43,6 @@ const config: NextConfig = {
             key: "Content-Security-Policy",
             value: "frame-ancestors http: https:",
           },
-        ],
-      },
-      {
-        // Dashboard-wide hardening (P2-00). frame-ancestors 'none': the dashboard
-        // must never be framed.
-        source: "/:path*",
-        headers: [
-          { key: "Referrer-Policy", value: "no-referrer" },
-          { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
         ],
       },
     ];
