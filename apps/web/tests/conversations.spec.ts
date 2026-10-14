@@ -1,116 +1,12 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+
+import { registerAndPrepareBot, uniqueEmail } from "./e2e-helpers";
 
 /**
  * P4-04 E2E: visitor chat → consent-based lead → the dashboard conversations
  * view shows the thread with citations and the captured lead; the tenant
  * retention setting is editable in the UI.
  */
-
-const PASSWORD = "Str0ngPass!";
-
-function uniqueEmail(prefix: string): string {
-  return `${prefix}.${Date.now()}.${Math.floor(Math.random() * 10_000)}@example.com`;
-}
-
-const KNOWLEDGE_MD =
-  "---\ntitle: Opening hours\nsource_url: https://conv.example.com/hours\nlanguage: en\n---\n\n" +
-  "# Opening hours\n\nWe are open Monday to Friday from 9:00 to 17:00.\n";
-
-async function csrfToken(page: Page): Promise<string> {
-  return page
-    .evaluate(() => document.cookie)
-    .then((cookies) => {
-      const entry = cookies
-        .split("; ")
-        .find((part) => part.startsWith("chatbot_csrf="));
-      return entry ? entry.split("=")[1] : "";
-    });
-}
-
-async function registerAndPrepareBot(page: Page): Promise<{
-  tenantId: string;
-  botId: string;
-  locator: string;
-}> {
-  await page.goto("/register");
-  await page.getByLabel("Email").fill(uniqueEmail("conv"));
-  await page.getByLabel("Password").fill(PASSWORD);
-  const registerResponse = page.waitForResponse(
-    (response) =>
-      response.url().endsWith("/api/v1/auth/register") &&
-      response.request().method() === "POST",
-  );
-  await page.getByRole("button", { name: "Create account" }).click();
-  const registration = await registerResponse;
-  console.info(`[e2e] registration response status=${registration.status()}`);
-  expect(registration.status()).toBe(201);
-  await page.waitForURL("/app");
-  await page.getByLabel("Name").fill(`Conversations Org ${Date.now()}`);
-  await page.getByRole("button", { name: "Create" }).click();
-  await page.waitForURL(/\/app\/[0-9a-f-]{36}\/bots$/);
-  const tenantId = new URL(page.url()).pathname.split("/")[2];
-  const botName = `Conversations Bot ${Date.now()}`;
-  await page.getByLabel("Bot name").fill(botName);
-  await page.getByRole("button", { name: "Create bot" }).click();
-  await page
-    .getByRole("row", { name: new RegExp(botName) })
-    .getByRole("link")
-    .first()
-    .click();
-  await page.waitForURL(/\/settings$/);
-  const botId = new URL(page.url()).pathname.split("/")[4];
-  const csrf = await csrfToken(page);
-  const activate = await page.request.patch(
-    `/api/v1/tenants/${tenantId}/bots/${botId}`,
-    { headers: { "X-CSRF-Token": csrf }, data: { status: "active" } },
-  );
-  expect(activate.ok()).toBeTruthy();
-  const upload = await page.request.post(
-    `/api/v1/tenants/${tenantId}/bots/${botId}/sources/files`,
-    {
-      headers: { "X-CSRF-Token": csrf },
-      multipart: {
-        files: {
-          name: "hours.md",
-          mimeType: "text/markdown",
-          buffer: Buffer.from(KNOWLEDGE_MD, "utf-8"),
-        },
-      },
-    },
-  );
-  expect(upload.status()).toBe(201);
-  const start = await page.request.post(
-    `/api/v1/tenants/${tenantId}/bots/${botId}/ingestion`,
-    { headers: { "X-CSRF-Token": csrf }, data: {} },
-  );
-  expect([201, 202]).toContain(start.status());
-  let status = "";
-  for (let attempt = 0; attempt < 60; attempt += 1) {
-    const jobs = await page.request.get(
-      `/api/v1/tenants/${tenantId}/bots/${botId}/jobs`,
-    );
-    const list = (await jobs.json()) as { status: string }[];
-    status = list[0]?.status ?? "missing";
-    if (status === "succeeded" || status === "failed") break;
-    await page.waitForTimeout(500);
-  }
-  expect(status, "ingest job must succeed").toBe("succeeded");
-  const revisions = (await (
-    await page.request.get(
-      `/api/v1/tenants/${tenantId}/bots/${botId}/revisions`,
-    )
-  ).json()) as { revisions: { id: string; status: string }[] };
-  const draft = revisions.revisions.find((row) => row.status === "draft");
-  const publish = await page.request.post(
-    `/api/v1/tenants/${tenantId}/bots/${botId}/revisions/${String(draft?.id)}/publish`,
-    { headers: { "X-CSRF-Token": csrf } },
-  );
-  expect(publish.status()).toBe(200);
-  const bot = (await (
-    await page.request.get(`/api/v1/tenants/${tenantId}/bots/${botId}`)
-  ).json()) as { widget_locator: string };
-  return { tenantId, botId, locator: bot.widget_locator };
-}
 
 test("visitor chat + consent lead appear in the conversations view with citations", async ({
   page,
@@ -204,7 +100,9 @@ test("inbox agent takes over an unanswered widget thread, replies, then returns 
   }
 
   await page.goto(`/app/${tenantId}/inbox/${conversationId}`);
-  await expect(page.getByTestId("inbox-thread")).toContainText("waiting_human");
+  await expect(page.getByTestId("inbox-status")).toHaveText(
+    "Waiting for human",
+  );
   await page.getByRole("button", { name: "Take over" }).click();
   await expect(page.getByText("Human mode")).toBeVisible();
   await page.getByLabel("Reply").fill("An agent is here to help you.");

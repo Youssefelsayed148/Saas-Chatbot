@@ -43,26 +43,26 @@ function pythonBin(): string {
 }
 
 function promoteToStaff(email: string): void {
+  const databaseUrl = process.env.E2E_DATABASE_URL;
+  if (!databaseUrl) {
+    throw new Error(
+      "E2E_DATABASE_URL was not exported by the Playwright API setup.",
+    );
+  }
   execFileSync(
     pythonBin(),
     [
       "-c",
       [
-        "import sys, sqlalchemy, psycopg, urllib.parse",
-        "lines = [l for l in open(sys.argv[2]) if l.startswith('DATABASE_URL=')]",
-        "base = lines[0].split('=', 1)[1].strip().replace('+psycopg', '')",
-        "parsed = urllib.parse.urlparse(base)",
-        "name = parsed.path.lstrip('/')",
-        "if name.endswith('_e2e'): name = name + '_test'",
-        "elif not name.endswith('_test'): name = name + '_e2e_test'",
-        "db = parsed._replace(path='/' + name).geturl()",
-        "with psycopg.connect(db, autocommit=True) as conn:",
-        "    conn.execute('UPDATE users SET is_platform_staff = TRUE WHERE email = %s', (sys.argv[1],))",
-        "print('staff set')",
+        "import sys, sqlalchemy, psycopg",
+        "url = sqlalchemy.make_url(sys.argv[2]).set(drivername='postgresql')",
+        "with psycopg.connect(url.render_as_string(hide_password=False), autocommit=True) as conn:",
+        "    result = conn.execute('UPDATE users SET is_platform_staff = TRUE WHERE email = %s', (sys.argv[1],))",
+        "    if result.rowcount != 1: raise RuntimeError('Expected one registered staff user')",
         "",
       ].join("\n"),
       email,
-      path.join(repoRoot(), ".env"),
+      databaseUrl,
     ],
     { cwd: path.join(repoRoot(), "apps", "api"), stdio: "pipe" },
   );

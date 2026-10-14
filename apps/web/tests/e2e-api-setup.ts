@@ -7,7 +7,6 @@ import {
   API_DIR,
   HEALTH_URL,
   disposableUrl,
-  readEnvFile,
   resolvePython,
   waitFor,
 } from "./e2e-api-common";
@@ -32,15 +31,15 @@ export async function startServer(): Promise<ServerHandle> {
     console.log(
       `[e2e] Reusing an already-running API at ${HEALTH_URL} (forced).`,
     );
-    const base = process.env.DATABASE_URL ?? readEnvFile().DATABASE_URL;
-    return { server: null, databaseUrl: disposableUrl(base ?? "") };
+    const base = process.env.DATABASE_URL;
+    if (!base)
+      throw new Error("Set DATABASE_URL to a disposable PostgreSQL base URL.");
+    return { server: null, databaseUrl: disposableUrl(base) };
   }
 
-  const base = process.env.DATABASE_URL ?? readEnvFile().DATABASE_URL;
+  const base = process.env.DATABASE_URL;
   if (!base) {
-    throw new Error(
-      "No DATABASE_URL found for the E2E backend (env or repository .env).",
-    );
+    throw new Error("Set DATABASE_URL to a disposable PostgreSQL base URL.");
   }
   const databaseUrl = disposableUrl(base);
   console.log(
@@ -129,6 +128,8 @@ export function startWorker(databaseUrl: string): ChildProcess {
 
 export default async function globalSetup(): Promise<void> {
   const handle = await startServer();
+  // Make the exact API database URL available to Playwright worker processes.
+  process.env.E2E_DATABASE_URL = handle.databaseUrl;
   if (handle.server !== null) {
     // Only spawn a worker we own the API/database for (reuse runs keep theirs).
     const worker = startWorker(handle.databaseUrl);

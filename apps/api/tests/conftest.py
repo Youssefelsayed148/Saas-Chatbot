@@ -1,8 +1,8 @@
 """Test fixtures (P1-02).
 
 Guard: tests may only touch disposable databases whose name ends with
-``_test``. The main test database is derived from the development
-DATABASE_URL (from the environment or the repo ``.env``). Migrations run
+``_test``. The database URL must be supplied explicitly through
+``TEST_DATABASE_URL`` or ``DATABASE_URL``. Migrations run
 via Alembic against that disposable database — never ``create_all``.
 """
 
@@ -24,17 +24,6 @@ from app.core.config import Settings, get_settings
 from app.db.base import Base
 from app.db.session import create_db_engine, session_factory, set_engine, sqlalchemy_url
 
-
-def _find_repo_root() -> Path | None:
-    """Locate the repository root (needed only to read the local .env for credentials)."""
-    probe = Path(__file__).resolve()
-    for parent in probe.parents:
-        if (parent / "apps").is_dir() and (parent / "README_START_HERE.md").exists():
-            return parent
-    return None
-
-
-REPO_ROOT = _find_repo_root()
 API_DIR = Path(__file__).resolve().parents[1]
 
 SESSION_SETTINGS = {
@@ -46,18 +35,8 @@ SESSION_SETTINGS = {
 }
 
 
-def _read_repo_env() -> str | None:
-    if REPO_ROOT is None or not (REPO_ROOT / ".env").exists():
-        return None
-    env_path = REPO_ROOT / ".env"
-    for line in env_path.read_text(encoding="utf-8").splitlines():
-        if line.strip().startswith("DATABASE_URL="):
-            return line.split("=", 1)[1].strip()
-    return None
-
-
 def _base_database_url() -> str:
-    url = os.environ.get("TEST_DATABASE_URL") or os.environ.get("DATABASE_URL") or _read_repo_env()
+    url = os.environ.get("TEST_DATABASE_URL") or os.environ.get("DATABASE_URL")
     if not url:
         raise RuntimeError(
             "No DATABASE_URL/TEST_DATABASE_URL found; the disposable test database "
@@ -176,7 +155,6 @@ def csrf_headers(client: TestClient) -> dict[str, str]:
 
 __all__ = [
     "API_DIR",
-    "REPO_ROOT",
     "SESSION_SETTINGS",
     "create_database",
     "csrf_headers",

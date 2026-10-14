@@ -22,3 +22,4 @@ pytest-cache-files-*/
 
 # Uploaded source files (P2) — never committed
 apps/api/.data/
+.test-storage/

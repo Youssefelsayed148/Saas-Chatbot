@@ -22,6 +22,7 @@
   - `npm.cmd run format:check` — EXIT 1 because the repository-level check reports pre-existing `package.json` formatting. The web-only Prettier check above passed.
   - `npm.cmd run build --workspace apps/web -- --webpack` — EXIT 1, Next.js production build returned `spawn EPERM` during compilation.
   - With `DATABASE_URL` set to the disposable test base, `STORAGE_ROOT` set inside the workspace, and `CHAT_STUB_MODEL=1`, `npm.cmd test --workspace apps/web -- --reporter=line` — EXIT 1 before tests launched: Playwright returned `spawn EPERM`.
+- The owner subsequently ran the full browser suite and reported `21 passed, 3 failed`. The three reported failures are addressed by the current changes: header status selector/label, published knowledge before widget session setup, and platform staff promotion through the harness's exact database URL. The browser suite has not been rerun after these fixes.
 
 The earlier Windows API run reported `106 passed, 5 failed, 118 errors`, alongside denied pytest/cache and knowledge-storage writes. In the clean Linux container with test-only storage and a disposable `_test` database, all five inbox-list tests pass and the full API suite passes. No application failure was reproduced in that environment; the prior Windows result is not counted as a pass.
 
@@ -43,4 +44,6 @@ The Playwright config is restored to its original build-and-start command: `npm 
 - The full Playwright suite and the P5-03 handoff journey remain unverified; owner rerun required before closing P5.
 - Hosting (ADR-007) remains open. Nothing was deployed.
 - Follow-ups are website-only and appear when the visitor next reads widget history. No Meta/Many code was added.
+- `docs/14` §15 calls for a generic localized handoff with the support contact. Current visitor handoff copy always uses the orders/accounts/payments wording, including for the unanswered-twice rule; this remains a copy limitation.
+- The earlier `apps/api/tests/conftest.py` and Playwright helpers read `.env` for a database URL. Test code now requires explicitly supplied environment URLs; platform promotion consumes `E2E_DATABASE_URL` exported by the harness. A search of API and web tests found no remaining `.env` file reads.
 - No `.env` file or API key was read, printed, or logged. No paid API, cloud resource, deployment, push, or production database was used.

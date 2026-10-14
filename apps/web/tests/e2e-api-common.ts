@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import path from "node:path";
 
 // npm test runs inside apps/web; find the repository root by walking upward.
@@ -21,20 +21,9 @@ export interface ServerHandle {
   server: ReturnType<typeof spawn> | null;
 }
 
-export function readEnvFile(): Record<string, string> {
-  const envPath = path.join(REPO_ROOT, ".env");
-  if (!existsSync(envPath)) return {};
-  const parsed: Record<string, string> = {};
-  for (const line of readFileSync(envPath, "utf8").split(/\r?\n/)) {
-    const match = /^\s*DATABASE_URL\s*=\s*(\S+)\s*$/.exec(line);
-    if (match) parsed.DATABASE_URL = match[1];
-  }
-  return parsed;
-}
-
 /** Force a disposable `_test` database name derived from the development URL. */
 export function disposableUrl(base: string): string {
-  const url = new URL(base.replace(/\+psycopg$/, ""));
+  const url = new URL(base.replace(/^postgresql\+[^:]+:/, "postgresql:"));
   let name = url.pathname.replace(/^\//, "");
   if (name.endsWith("_e2e")) {
     name = `${name}_test`;

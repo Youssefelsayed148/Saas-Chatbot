@@ -9,6 +9,19 @@ import type { InboxThread, Member } from "@/lib/api";
 import { roleSatisfies, useSession } from "@/lib/session";
 import { Loading, Notice } from "@/lib/ui";
 
+function statusLabel(status: string): string {
+  switch (status) {
+    case "waiting_human":
+      return "Waiting for human";
+    case "resolved":
+      return "Resolved";
+    case "open":
+      return "Open";
+    default:
+      return "Unknown status";
+  }
+}
+
 export default function InboxConversationPage() {
   const params = useParams<{ tenant: string; conversation: string }>();
   const tenantId = params.tenant;
@@ -122,8 +135,11 @@ export default function InboxConversationPage() {
         }}
       >
         <span>
-          {conversation.channel} · <strong>{conversation.status}</strong> ·{" "}
-          {conversation.mode === "human" ? "Human" : "AI"} mode
+          {conversation.channel} ·{" "}
+          <strong data-testid="inbox-status">
+            {statusLabel(conversation.status)}
+          </strong>{" "}
+          · {conversation.mode === "human" ? "Human" : "AI"} mode
         </span>
         {canEdit && conversation.status !== "resolved" && (
           <>
