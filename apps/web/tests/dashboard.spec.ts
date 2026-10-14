@@ -1,44 +1,27 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import { registerOwner, uniqueEmail } from "./e2e-helpers";
+import { promoteToStaff } from "./staff-helpers";
 
 /**
  * P1 E2E: real API only. Requires the FastAPI backend (auto-started by the
  * Playwright global setup against a disposable *_test database).
  */
 
-function uniqueEmail(prefix: string): string {
-  return `${prefix}.${Date.now()}.${Math.floor(Math.random() * 10_000)}@example.com`;
-}
-
 const PASSWORD = "Str0ngPass!";
 
-async function registerUser(page: Page, email: string): Promise<void> {
-  await page.goto("/register");
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Create account" }).click();
-  await page.waitForURL("/app");
-}
-
-test("register, create organization, create bot, archive bot", async ({
+test("owner signup provisions organization and first bot, then archive bot", async ({
   page,
 }) => {
-  const email = uniqueEmail("owner");
-
-  await registerUser(page, email);
+  const orgName = `E2E Org ${Date.now()}`;
+  const { tenantId, botName } = await registerOwner(page, "E2E", {
+    organizationName: orgName,
+  });
+  await page.goto("/app");
   await expect(
     page.getByRole("heading", { name: "Your organizations" }),
   ).toBeVisible();
-
-  // Create the organization.
-  const orgName = `E2E Org ${Date.now()}`;
-  await page.getByLabel("Name").fill(orgName);
-  await page.getByRole("button", { name: "Create" }).click();
-  await page.waitForURL(/\/app\/[0-9a-f-]{36}\/bots$/);
-
-  // Create a bot (creator is owner ⇒ editor-capable).
-  const botName = `E2E Bot ${Date.now()}`;
-  await page.getByLabel("Bot name").fill(botName);
-  await page.getByRole("button", { name: "Create bot" }).click();
+  await expect(page.getByRole("link", { name: orgName })).toBeVisible();
+  await page.goto(`/app/${tenantId}/bots`);
   const row = page.getByRole("row", { name: new RegExp(botName) });
   await expect(row).toBeVisible();
   await expect(row).toContainText("draft");
@@ -64,17 +47,17 @@ test("a second user cannot reach the first user's organization", async ({
 
   const first = await browser.newContext();
   const firstPage = await first.newPage();
-  await registerUser(firstPage, firstEmail);
-  await firstPage.getByLabel("Name").fill(orgName);
-  await firstPage.getByRole("button", { name: "Create" }).click();
-  await firstPage.waitForURL(/\/app\/[0-9a-f-]{36}\/bots$/);
+  await registerOwner(firstPage, "first", {
+    email: firstEmail,
+    organizationName: orgName,
+  });
   const orgPath = new URL(firstPage.url()).pathname; // /app/<tenantId>/bots
 
   // Second browser context: an uninvited user can open only the wrong ids guesses.
   const secondEmail = uniqueEmail("second");
   const second = await browser.newContext();
   const secondPage = await second.newPage();
-  await registerUser(secondPage, secondEmail);
+  await registerOwner(secondPage, "second", { email: secondEmail });
   await secondPage.goto(orgPath);
 
   // The dashboard never renders the foreign org; the API answers 404 and the UI surfaces it.
@@ -94,11 +77,29 @@ test("team management: owner invites, invitee accepts, viewer sees read-only bot
   const ownerEmail = uniqueEmail("owner");
   const first = await browser.newContext();
   const owner = await first.newPage();
-  await registerUser(owner, ownerEmail);
-
-  await owner.getByLabel("Name").fill(`Team Org ${Date.now()}`);
-  await owner.getByRole("button", { name: "Create" }).click();
-  await owner.waitForURL(/\/app\/[0-9a-f-]{36}\/bots$/);
+  const { tenantId } = await registerOwner(owner, "Team", {
+    email: ownerEmail,
+  });
+  // Free PLACEHOLDER allows one bot; preserve editor creation with a staff-assigned Starter plan.
+  promoteToStaff(ownerEmail);
+  const csrf = await owner.evaluate(
+    () =>
+      document.cookie
+        .split("; ")
+        .find((part) => part.startsWith("chatbot_csrf="))
+        ?.split("=")[1] ?? "",
+  );
+  const plan = await owner.request.patch(
+    `/api/v1/platform/tenants/${tenantId}/plan`,
+    {
+      headers: { "X-CSRF-Token": csrf },
+      data: {
+        plan_label: "starter",
+        reason: "E2E editor second bot permission coverage",
+      },
+    },
+  );
+  expect(plan.status()).toBe(200);
 
   // Invite an editor and a viewer.
   await owner.goto(
@@ -147,7 +148,7 @@ test("team management: owner invites, invitee accepts, viewer sees read-only bot
 
 test("expired session sends the user back to login", async ({ page }) => {
   const email = uniqueEmail("expiry");
-  await registerUser(page, email);
+  await registerOwner(page, "expiry", { email });
   // Simulate expiry by poisoning the HttpOnly cookie through the app itself is not
   // possible, so the sign-out mutation is exercised: after logout the protected
   // page redirects to /login (server-side revocation path).

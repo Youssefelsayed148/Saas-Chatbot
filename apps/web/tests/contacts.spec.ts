@@ -1,22 +1,10 @@
 import { expect, test } from "@playwright/test";
-
-const PASSWORD = "Str0ngPass!";
-const uniqueEmail = () =>
-  `crm.${Date.now()}.${Math.floor(Math.random() * 1_000_000)}@example.com`;
+import { registerOwner } from "./e2e-helpers";
 
 test("owner creates, edits, and reviews a contact profile", async ({
   page,
 }) => {
-  await page.goto("/register");
-  await page.getByLabel("Email").fill(uniqueEmail());
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Create account" }).click();
-  await page.waitForURL("/app");
-  await page.getByLabel("Name").fill(`CRM Org ${Date.now()}`);
-  await page.getByRole("button", { name: "Create" }).click();
-  await page.waitForURL(/\/app\/[0-9a-f-]{36}\/bots$/);
-
-  const tenantId = new URL(page.url()).pathname.split("/")[2];
+  const { tenantId } = await registerOwner(page, "CRM");
   await page.goto(`/app/${tenantId}/contacts`);
   await expect(page.getByRole("heading", { name: "Contacts" })).toBeVisible();
   await page.getByLabel("Name", { exact: true }).fill("Ada Lovelace");

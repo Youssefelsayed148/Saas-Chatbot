@@ -124,6 +124,7 @@ test("inbox agent takes over an unanswered widget thread, replies, then returns 
   await page.goto(
     `/widget/sample?locator=${encodeURIComponent(locator)}&site=inbox-e2e`,
   );
+  await page.getByTestId("widget-bubble").first().click({ force: true });
   const visitorFrame = page
     .locator("[data-testid='widget-frame']")
     .first()
@@ -141,6 +142,7 @@ test("inbox agent takes over an unanswered widget thread, replies, then returns 
   await page.goto(
     `/widget/sample?locator=${encodeURIComponent(locator)}&site=inbox-e2e`,
   );
+  await page.getByTestId("widget-bubble").first().click({ force: true });
   const reopenedFrame = page
     .locator("[data-testid='widget-frame']")
     .first()

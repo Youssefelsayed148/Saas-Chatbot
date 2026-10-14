@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { registerOwner } from "./e2e-helpers";
 
 /**
  * P4-03 E2E: appearance settings are saved and reflected, the Install page
@@ -7,30 +8,10 @@ import { expect, type Page, test } from "@playwright/test";
  * by widget.spec.ts).
  */
 
-const PASSWORD = "Str0ngPass!";
-
-function uniqueEmail(prefix: string): string {
-  return `${prefix}.${Date.now()}.${Math.floor(Math.random() * 10_000)}@example.com`;
-}
-
-async function registerUser(page: Page, email: string): Promise<void> {
-  await page.goto("/register");
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Create account" }).click();
-  await page.waitForURL("/app");
-}
-
 async function createOrgAndBot(
   page: Page,
 ): Promise<{ tenantId: string; botId: string; locator: string }> {
-  await page.getByLabel("Name").fill(`Install Org ${Date.now()}`);
-  await page.getByRole("button", { name: "Create" }).click();
-  await page.waitForURL(/\/app\/[0-9a-f-]{36}\/bots$/);
-  const tenantId = new URL(page.url()).pathname.split("/")[2];
-  const botName = `Install Bot ${Date.now()}`;
-  await page.getByLabel("Bot name").fill(botName);
-  await page.getByRole("button", { name: "Create bot" }).click();
+  const { tenantId, botName } = await registerOwner(page, "Install", {});
   await page
     .getByRole("row", { name: new RegExp(botName) })
     .getByRole("link")
@@ -48,7 +29,6 @@ test("activate a draft bot on Settings, then Install shows snippet + sample help
   page,
 }) => {
   test.setTimeout(120_000);
-  await registerUser(page, uniqueEmail("installer"));
   const { tenantId, botId, locator } = await createOrgAndBot(page);
 
   // Draft bot: Install flags the status and offers no sample page yet.

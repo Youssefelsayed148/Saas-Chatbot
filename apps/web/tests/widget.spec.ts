@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { registerOwner } from "./e2e-helpers";
 
 /**
  * P4-02/P4-03 E2E (docs/09): two TEST SITES embedding a DIFFERENT tenant's
@@ -11,12 +12,6 @@ import { expect, type Page, test } from "@playwright/test";
  * cross-tenant isolation of sessions/messages is asserted at the API level in
  * tests/test_widget_public.py.
  */
-
-const PASSWORD = "Str0ngPass!";
-
-function uniqueEmail(prefix: string): string {
-  return `${prefix}.${Date.now()}.${Math.floor(Math.random() * 10_000)}@example.com`;
-}
 
 const mdFor = (name: string, hours: string) =>
   `---\ntitle: ${name} hours\nsource_url: https://${name}.example.com/hours\nlanguage: en\n---\n\n# ${name} opening hours\n\n${name} opens at ${hours} every day.\n`;
@@ -32,24 +27,11 @@ async function csrfToken(page: Page): Promise<string> {
     });
 }
 
-async function registerUser(page: Page, email: string): Promise<void> {
-  await page.goto("/register");
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Create account" }).click();
-  await page.waitForURL("/app");
-}
-
 async function createOrgAndBot(
   page: Page,
   botName: string,
 ): Promise<{ tenantId: string; botId: string; locator: string }> {
-  await page.getByLabel("Name").fill(`Widget Org ${Date.now()}`);
-  await page.getByRole("button", { name: "Create" }).click();
-  await page.waitForURL(/\/app\/[0-9a-f-]{36}\/bots$/);
-  const tenantId = new URL(page.url()).pathname.split("/")[2];
-  await page.getByLabel("Bot name").fill(botName);
-  await page.getByRole("button", { name: "Create bot" }).click();
+  const { tenantId } = await registerOwner(page, "Widget", { botName });
   await page
     .getByRole("row", { name: new RegExp(botName) })
     .getByRole("link")
@@ -149,14 +131,12 @@ test("two static sites, two tenants: each widget answers only from its own knowl
   test.setTimeout(180_000);
 
   // --- tenant A ----------------------------------------------------------
-  await registerUser(page, uniqueEmail("widget-a"));
   const a = await createOrgAndBot(page, "Site A bot");
   await activateBot(page, a.tenantId, a.botId);
   await publishKnowledge(page, a.tenantId, a.botId, mdFor("Store A", "7:00"));
   await page.context().clearCookies();
 
   // --- tenant B ----------------------------------------------------------
-  await registerUser(page, uniqueEmail("widget-b"));
   const b = await createOrgAndBot(page, "Site B bot");
   await activateBot(page, b.tenantId, b.botId);
   await publishKnowledge(page, b.tenantId, b.botId, mdFor("Store B", "9:00"));

@@ -1,4 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
+import { registerOwner, uniqueEmail } from "./e2e-helpers";
+import { assignStarterPlan } from "./staff-helpers";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
@@ -8,29 +10,21 @@ import path from "node:path";
  * chunks, publish, and check the role restrictions.
  */
 
-function uniqueEmail(prefix: string): string {
-  return `${prefix}.${Date.now()}.${Math.floor(Math.random() * 10_000)}@example.com`;
-}
-
 const PASSWORD = "Str0ngPass!";
 const FIXTURE = path.join(__dirname, "fixtures", "knowledge-sample.md");
 
-async function registerUser(page: Page, email: string): Promise<void> {
-  await page.goto("/register");
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Create account" }).click();
-  await page.waitForURL("/app");
-}
-
-async function openKnowledgeAsOwner(page: Page): Promise<void> {
-  await page.getByLabel("Name").fill(`K Org ${Date.now()}`);
-  await page.getByRole("button", { name: "Create" }).click();
-  await page.waitForURL(/\/app\/[0-9a-f-]{36}\/bots$/);
-  await page.getByLabel("Bot name").fill(`Knowledge Bot ${Date.now()}`);
-  await page.getByRole("button", { name: "Create bot" }).click();
+async function openKnowledgeAsOwner(
+  page: Page,
+  starter = false,
+): Promise<void> {
+  const email = uniqueEmail("knower");
+  const { tenantId, botName } = await registerOwner(page, "K", {
+    email,
+    botName: `Knowledge Bot ${Date.now()}`,
+  });
+  if (starter) await assignStarterPlan(page, tenantId, email);
   await page
-    .getByRole("row", { name: /Knowledge Bot/ })
+    .getByRole("row", { name: new RegExp(botName) })
     .getByRole("link")
     .first()
     .click();
@@ -44,7 +38,6 @@ test("upload, ingest through the worker, preview, publish", async ({
   page,
 }) => {
   test.setTimeout(120_000);
-  await registerUser(page, uniqueEmail("knower"));
   await openKnowledgeAsOwner(page);
 
   // The Q&A template link is offered to editors.
@@ -104,8 +97,7 @@ test("oversize uploads are rejected through the same-origin proxy with 413", asy
   page,
 }) => {
   test.setTimeout(90_000);
-  await registerUser(page, uniqueEmail("big"));
-  await openKnowledgeAsOwner(page);
+  await openKnowledgeAsOwner(page, true);
 
   // 10 MB + 1 byte: the API's streaming cap rejects it (the proxy forwards it).
   await page.locator("#knowledge-file-input").setInputFiles({
@@ -125,7 +117,6 @@ test("viewer is read-only on knowledge", async ({ browser }) => {
   test.setTimeout(90_000);
   const first = await browser.newContext();
   const owner = await first.newPage();
-  await registerUser(owner, uniqueEmail("owner"));
   await openKnowledgeAsOwner(owner);
 
   // Invite a viewer through the members page.

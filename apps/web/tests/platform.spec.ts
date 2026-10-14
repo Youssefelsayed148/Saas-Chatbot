@@ -1,8 +1,6 @@
-import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
-import path from "node:path";
-
 import { expect, type Page, test } from "@playwright/test";
+import { registerOwner } from "./e2e-helpers";
+import { promoteToStaff } from "./staff-helpers";
 
 /**
  * P4-06 E2E (docs/11): /platform gated SERVER-SIDE (non-staff redirected);
@@ -12,61 +10,6 @@ import { expect, type Page, test } from "@playwright/test";
  * E2E sets it the way the pytest suite does — a direct UPDATE on the SAME
  * disposable E2E database the harness API serves.
  */
-
-const PASSWORD = "Str0ngPass!";
-
-function repoRoot(): string {
-  let probe = process.cwd();
-  while (probe !== path.parse(probe).root) {
-    if (existsSync(path.join(probe, "README_START_HERE.md"))) return probe;
-    probe = path.dirname(probe);
-  }
-  throw new Error("Repository root not found.");
-}
-
-function pythonBin(): string {
-  const candidates = [
-    process.env.E2E_PYTHON ?? "",
-    path.join(repoRoot(), ".venv", "Scripts", "python.exe"),
-    path.join(repoRoot(), ".venv", "bin", "python"),
-    "python3",
-  ].filter((candidate) => candidate.length > 0);
-  for (const candidate of candidates) {
-    try {
-      execFileSync(candidate, ["-c", "print(1)"], { stdio: "ignore" });
-      return candidate;
-    } catch {
-      // try the next one
-    }
-  }
-  throw new Error("No python found for the staff promotion.");
-}
-
-function promoteToStaff(email: string): void {
-  const databaseUrl = process.env.E2E_DATABASE_URL;
-  if (!databaseUrl) {
-    throw new Error(
-      "E2E_DATABASE_URL was not exported by the Playwright API setup.",
-    );
-  }
-  execFileSync(
-    pythonBin(),
-    [
-      "-c",
-      [
-        "import sys, sqlalchemy, psycopg",
-        "url = sqlalchemy.make_url(sys.argv[2]).set(drivername='postgresql')",
-        "with psycopg.connect(url.render_as_string(hide_password=False), autocommit=True) as conn:",
-        "    result = conn.execute('UPDATE users SET is_platform_staff = TRUE WHERE email = %s', (sys.argv[1],))",
-        "    if result.rowcount != 1: raise RuntimeError('Expected one registered staff user')",
-        "",
-      ].join("\n"),
-      email,
-      databaseUrl,
-    ],
-    { cwd: path.join(repoRoot(), "apps", "api"), stdio: "pipe" },
-  );
-}
 
 async function csrfOf(page: Page): Promise<string> {
   return page
@@ -98,11 +41,7 @@ test("staff list, onboard a client end to end, and open the client detail", asyn
   const staffEmail = `platform.${Date.now()}@example.com`;
 
   // Register through the UI, then promote directly in the E2E database.
-  await page.goto("/register");
-  await page.getByLabel("Email").fill(staffEmail);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Create account" }).click();
-  await page.waitForURL("/app");
+  await registerOwner(page, "Platform", { email: staffEmail });
   promoteToStaff(staffEmail);
 
   await page.goto("/platform");

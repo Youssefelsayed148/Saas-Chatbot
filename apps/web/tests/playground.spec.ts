@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { registerOwner, uniqueEmail } from "./e2e-helpers";
 
 /**
  * P3-04 E2E: the dashboard playground chats over REAL published knowledge
@@ -7,35 +8,18 @@ import { expect, type Page, test } from "@playwright/test";
  * answer + citation + thumbs feedback + error/not-ready states + roles.
  */
 
-function uniqueEmail(prefix: string): string {
-  return `${prefix}.${Date.now()}.${Math.floor(Math.random() * 10_000)}@example.com`;
-}
-
 const PASSWORD = "Str0ngPass!";
 
 const KNOWLEDGE_MD =
   "---\ntitle: Opening hours\nsource_url: https://pg-cited.example.com/hours\nlanguage: en\n---\n\n" +
   "# Opening hours\n\nWe are open Monday to Friday from 9:00 to 17:00 and answer chats instantly.\n";
 
-async function registerUser(page: Page, email: string): Promise<void> {
-  await page.goto("/register");
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Create account" }).click();
-  await page.waitForURL("/app");
-}
-
 async function createOrgAndBot(
   page: Page,
 ): Promise<{ tenantId: string; botId: string }> {
-  await page.getByLabel("Name").fill(`Chat Org ${Date.now()}`);
-  await page.getByRole("button", { name: "Create" }).click();
-  await page.waitForURL(/\/app\/[0-9a-f-]{36}\/bots$/);
-  const tenantId = new URL(page.url()).pathname.split("/")[2];
-  await page.getByLabel("Bot name").fill(`Chat Bot ${Date.now()}`);
-  await page.getByRole("button", { name: "Create bot" }).click();
+  const { tenantId, botName } = await registerOwner(page, "Chat", {});
   await page
-    .getByRole("row", { name: /Chat Bot/ })
+    .getByRole("row", { name: new RegExp(botName) })
     .getByRole("link")
     .first()
     .click();
@@ -110,7 +94,6 @@ test("playground chat: grounded answer, citation, thumbs, thread persists", asyn
   page,
 }) => {
   test.setTimeout(120_000);
-  await registerUser(page, uniqueEmail("chatter"));
   const { tenantId, botId } = await createOrgAndBot(page);
   await publishKnowledge(page, tenantId, botId);
 
@@ -151,7 +134,6 @@ test("an expired session pushes the playground back to login", async ({
   context,
 }) => {
   test.setTimeout(90_000);
-  await registerUser(page, uniqueEmail("notready"));
   await createOrgAndBot(page);
   // Clearing cookies simulates the expired-session event; a protected
   // playground URL then falls back to /login.
@@ -165,7 +147,6 @@ test("an expired session pushes the playground back to login", async ({
 test("viewer is read-only in the playground", async ({ browser }) => {
   const ownerContext = await browser.newContext();
   const owner = await ownerContext.newPage();
-  await registerUser(owner, uniqueEmail("pg-owner"));
   await createOrgAndBot(owner);
 
   // Invite a viewer through the members page.
