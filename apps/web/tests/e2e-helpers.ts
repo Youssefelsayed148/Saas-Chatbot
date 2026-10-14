@@ -9,6 +9,30 @@ export function uniqueEmail(prefix: string): string {
   return `${prefix}.${Date.now()}.${Math.floor(Math.random() * 10_000)}@example.com`;
 }
 
+export async function registerOwner(
+  page: Page,
+  prefix: string,
+  opts: { email?: string; organizationName?: string; botName?: string } = {},
+): Promise<{ tenantId: string; botName: string }> {
+  const botName = opts.botName ?? `${prefix} Bot ${Date.now()}`;
+  await page.goto("/register");
+  await page
+    .getByLabel("Organization name")
+    .fill(opts.organizationName ?? `${prefix} Org ${Date.now()}`);
+  await page.getByLabel("First bot name").fill(botName);
+  await page.getByLabel("Email").fill(opts.email ?? uniqueEmail(prefix));
+  await page.getByLabel("Password").fill(PASSWORD);
+  const registration = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/v1/auth/register") &&
+      response.request().method() === "POST",
+  );
+  await page.getByRole("button", { name: "Create account" }).click();
+  expect((await registration).status()).toBe(201);
+  await page.waitForURL(/\/app\/[0-9a-f-]{36}\/bots$/);
+  return { tenantId: new URL(page.url()).pathname.split("/")[2], botName };
+}
+
 async function csrfToken(page: Page): Promise<string> {
   return page
     .evaluate(() => document.cookie)
@@ -24,24 +48,7 @@ export async function registerAndPrepareBot(
   page: Page,
   prefix = "E2E",
 ): Promise<{ tenantId: string; botId: string; locator: string }> {
-  await page.goto("/register");
-  await page.getByLabel("Email").fill(uniqueEmail(prefix));
-  await page.getByLabel("Password").fill(PASSWORD);
-  const registration = page.waitForResponse(
-    (response) =>
-      response.url().endsWith("/api/v1/auth/register") &&
-      response.request().method() === "POST",
-  );
-  await page.getByRole("button", { name: "Create account" }).click();
-  expect((await registration).status()).toBe(201);
-  await page.waitForURL("/app");
-  await page.getByLabel("Name").fill(`${prefix} Org ${Date.now()}`);
-  await page.getByRole("button", { name: "Create" }).click();
-  await page.waitForURL(/\/app\/[0-9a-f-]{36}\/bots$/);
-  const tenantId = new URL(page.url()).pathname.split("/")[2];
-  const botName = `${prefix} Bot ${Date.now()}`;
-  await page.getByLabel("Bot name").fill(botName);
-  await page.getByRole("button", { name: "Create bot" }).click();
+  const { tenantId, botName } = await registerOwner(page, prefix);
   await page
     .getByRole("row", { name: new RegExp(botName) })
     .getByRole("link")
