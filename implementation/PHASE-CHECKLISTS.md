@@ -62,8 +62,8 @@ Legend: [ ] open · [x] done with evidence. Owner sign-off closes each phase.## 
 - [x] P5-02: inbox list API with filters (status, mode, channel, assignee, tag, unread) and full-text search; tenant A/B isolation test on every endpoint
 - [x] P5-02: SSE stream tenant-scoped, resumes from Last-Event-ID, works with two API processes; in-app notification counts correct
 - [ ] P5-03: inbox UI: list, filters, thread with citations/notes/system events, reply box, take over/return/resolve/assign, tags, notes; role-aware; loading/empty/error states; Playwright E2E of the full handoff journey (visitor → bot → agent → back to bot)
-- [ ] P5-04: contacts CRUD, identities, stage, tags, custom fields (≤20), timeline, explicit merge (audited), CSV export, erasure removes identities and messages
-- [ ] P5-04: widget lead form → contact (consent recorded)
+- [x] P5-04: contacts CRUD, identities, stage, tags, custom fields (≤20), timeline, explicit merge (audited), CSV export, erasure removes identities and messages — API suite and P5-04 report evidence
+- [x] P5-04: widget lead form → contact (consent recorded) — existing widget lead tests in full API suite
 - [ ] P5-05: follow-ups scheduled by user or rule and sent by a job; website follow-up shown on next visit; no send without recorded opt-in (Meta channels)
 - [ ] P5-05: sentiment job (cost-capped) and analytics: handoff rate, time to first human reply, per-channel counts, sentiment distribution, agent workload — all match stored data
 - [ ] Phase report; owner sign-off → website product is sellable

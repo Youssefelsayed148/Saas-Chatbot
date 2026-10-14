@@ -116,6 +116,21 @@ class ContactIdentity(Base):
     )
 
 
+class ContactStage(Base):
+    """Tenant editable labels for the contact lifecycle."""
+
+    __tablename__ = "contact_stages"
+
+    tenant_id: Mapped[UUID] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(Text, primary_key=True)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    __table_args__ = (
+        ForeignKeyConstraint(["tenant_id"], ["tenants.id"], ondelete="CASCADE"),
+        CheckConstraint("length(name) BETWEEN 1 AND 64", name="ck_contact_stages_name"),
+    )
+
+
 class Conversation(Base):
     __tablename__ = "conversations"
 
@@ -389,6 +404,7 @@ class UsageEvent(Base):
 __all__ = [
     "Contact",
     "ContactIdentity",
+    "ContactStage",
     "Conversation",
     "ConversationRead",
     "ConversationTag",

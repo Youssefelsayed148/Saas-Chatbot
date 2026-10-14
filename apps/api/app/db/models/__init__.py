@@ -5,6 +5,7 @@ from app.db.models.types import CITEXT, TSVECTOR
 from .chat import (
     Contact,
     ContactIdentity,
+    ContactStage,
     Conversation,
     ConversationRead,
     ConversationTag,
@@ -39,6 +40,7 @@ __all__ = [
     "CITEXT",
     "Contact",
     "ContactIdentity",
+    "ContactStage",
     "Conversation",
     "ConversationRead",
     "ConversationTag",

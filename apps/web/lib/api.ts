@@ -30,6 +30,99 @@ export class ApiError extends Error {
 
 export type Role = "owner" | "admin" | "editor" | "viewer";
 
+export interface Contact {
+  id: string;
+  display_name: string;
+  email: string | null;
+  phone: string | null;
+  stage: string;
+  tags: string[];
+  custom_fields: Record<string, unknown>;
+  consent: Record<string, unknown>;
+  source_channel: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContactProfile {
+  contact: Contact;
+  identities: { channel: string; external_id: string; created_at: string }[];
+  timeline: {
+    type: string;
+    id?: string;
+    conversation_id?: string;
+    channel?: string;
+    status?: string;
+    text?: string;
+    created_at: string;
+  }[];
+}
+
+const CONTACTS = (tenantId: string) => `tenants/${tenantId}/contacts`;
+
+export async function listContacts(tenantId: string): Promise<Contact[]> {
+  const result = await api<{ contacts: Contact[] }>(CONTACTS(tenantId));
+  return result.contacts;
+}
+
+export function getContact(
+  tenantId: string,
+  contactId: string,
+): Promise<ContactProfile> {
+  return api<ContactProfile>(`${CONTACTS(tenantId)}/${contactId}`);
+}
+
+export function createContact(
+  tenantId: string,
+  body: Partial<Contact>,
+): Promise<Contact> {
+  return api<Contact>(CONTACTS(tenantId), { method: "POST", body });
+}
+
+export function updateContact(
+  tenantId: string,
+  contactId: string,
+  body: Partial<Contact>,
+): Promise<Contact> {
+  return api<Contact>(`${CONTACTS(tenantId)}/${contactId}`, {
+    method: "PATCH",
+    body,
+  });
+}
+
+export function mergeContact(
+  tenantId: string,
+  sourceId: string,
+  targetId: string,
+): Promise<Contact> {
+  return api<Contact>(
+    `${CONTACTS(tenantId)}/${sourceId}/merge?target_id=${encodeURIComponent(targetId)}`,
+    { method: "POST" },
+  );
+}
+
+export function eraseContact(
+  tenantId: string,
+  contactId: string,
+  eraseMessages: boolean,
+): Promise<void> {
+  return api<void>(
+    `${CONTACTS(tenantId)}/${contactId}?erase_messages=${eraseMessages}`,
+    { method: "DELETE" },
+  );
+}
+
+export function renameContactStage(
+  tenantId: string,
+  oldName: string,
+  name: string,
+): Promise<{ name: string }> {
+  return api<{ name: string }>(`${CONTACTS(tenantId)}/stages`, {
+    method: "PATCH",
+    body: { old_name: oldName, name },
+  });
+}
+
 export interface Membership {
   tenant_id: string;
   tenant_name: string;
