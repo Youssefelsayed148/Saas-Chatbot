@@ -103,17 +103,19 @@ test("inbox agent takes over an unanswered widget thread, replies, then returns 
   await expect(page.getByTestId("inbox-status")).toHaveText(
     "Waiting for human",
   );
-  await page.getByRole("button", { name: "Take over" }).click();
-  await expect(page.getByText("Human mode")).toBeVisible();
-  await page.getByLabel("Reply").fill("An agent is here to help you.");
-  await page.getByRole("button", { name: "Send reply" }).click();
+  await page.getByRole("button", { name: "Take over", exact: true }).click();
+  await expect(page.getByText("Human mode", { exact: true })).toBeVisible();
+  await page
+    .getByRole("textbox", { name: "Reply", exact: true })
+    .fill("An agent is here to help you.");
+  await page.getByRole("button", { name: "Send reply", exact: true }).click();
   await expect(page.getByTestId("inbox-thread")).toContainText(
     "An agent is here to help you.",
   );
   await page
-    .getByLabel("Internal note")
+    .getByRole("textbox", { name: "Internal note", exact: true })
     .fill("Follow up about product availability.");
-  await page.getByRole("button", { name: "Add note" }).click();
+  await page.getByRole("button", { name: "Add note", exact: true }).click();
   await expect(page.getByTestId("inbox-thread")).toContainText(
     "Follow up about product availability.",
   );
@@ -132,8 +134,8 @@ test("inbox agent takes over an unanswered widget thread, replies, then returns 
   );
 
   await page.goto(`/app/${tenantId}/inbox/${conversationId}`);
-  await page.getByRole("button", { name: "Return to AI" }).click();
-  await expect(page.getByText("AI mode")).toBeVisible();
+  await page.getByRole("button", { name: "Return to AI", exact: true }).click();
+  await expect(page.getByText("AI mode", { exact: true })).toBeVisible();
   await page.goto(
     `/widget/sample?locator=${encodeURIComponent(locator)}&site=inbox-e2e`,
   );
