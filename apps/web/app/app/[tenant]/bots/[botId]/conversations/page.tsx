@@ -8,6 +8,7 @@ import * as api from "@/lib/api";
 import type { Conversation } from "@/lib/api";
 import { roleSatisfies, useSession } from "@/lib/session";
 import { Empty, Loading, Notice } from "@/lib/ui";
+import BotWorkspaceNav from "@/lib/bot-workspace-nav";
 
 /** P4-04: read-only conversations view (docs/10 Conversations tab) with the
  * tenant retention control (docs/14 §7). Live inbox views arrive in P5. */
@@ -83,13 +84,7 @@ export default function ConversationsPage() {
 
   return (
     <main>
-      <p className="eyebrow">
-        <Link href={`/app/${tenantId}/bots`}>Back to bots</Link>
-        {" · "}
-        <Link href={`/app/${tenantId}/bots/${botId}/settings`}>Settings</Link>
-        {" · "}
-        <Link href={`/app/${tenantId}/bots/${botId}/install`}>Install</Link>
-      </p>
+      <BotWorkspaceNav tenantId={tenantId} botId={botId} />
       <h1>Conversations</h1>
       {error && <Notice message={error} tone="error" />}
       {canTenant && (

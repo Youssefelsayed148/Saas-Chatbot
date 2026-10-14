@@ -8,6 +8,7 @@ import * as api from "@/lib/api";
 import type { Bot } from "@/lib/api";
 import { roleSatisfies, useSession } from "@/lib/session";
 import { Loading, Notice } from "@/lib/ui";
+import BotWorkspaceNav from "@/lib/bot-workspace-nav";
 
 export default function BotSettingsPage() {
   const params = useParams<{ tenant: string; botId: string }>();
@@ -181,17 +182,7 @@ export default function BotSettingsPage() {
 
   return (
     <main>
-      <p className="eyebrow">
-        <Link href={`/app/${tenantId}/bots`}>Back to bots</Link>
-        {" · "}
-        <Link href={`/app/${tenantId}/bots/${botId}/knowledge`}>Knowledge</Link>
-        {" · "}
-        <Link href={`/app/${tenantId}/bots/${botId}/playground`}>
-          Playground
-        </Link>
-        {" · "}
-        <Link href={`/app/${tenantId}/bots/${botId}/install`}>Install</Link>
-      </p>
+      <BotWorkspaceNav tenantId={tenantId} botId={botId} />
       <h1>{bot.name} — settings</h1>
       <p data-status={bot.status}>
         Status: {bot.status}

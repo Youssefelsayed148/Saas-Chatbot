@@ -97,6 +97,58 @@ IMPLEMENTED AND LOCALLY VERIFIED; evidence: [P4-04-REPORT](implementation/PHASE-
   lead POST 201 through the REAL stack); widget/bots-only batch 90 passed with clean
   ruff/format/mypy after the backend feature work.
 
+## 2026-10-13 â€” P4-05 implemented (per-bot workspace shell + measured overview analytics)
+
+IMPLEMENTED AND LOCALLY VERIFIED; evidence: [P4-05-REPORT](implementation/PHASE-04/PHASE-REPORT.md) and per-ticket reports P4-02â€¦P4-04.
+- Workspace shell `lib/bot-workspace-nav.tsx` on ALL bot pages (overview/conversations/
+  knowledge/playground/settings/install â€” exactly the tabs that exist today, docs/10).
+- Measured analytics (docs/14 Â§9) from SQL over usage_events + real conversations â€”
+  playground threads NEVER count: summary (messages/conversations/widget opens/engagement/
+  avg messages + distribution/fallback rate/needs-human/avg response/leads/thumbs), volume
+  per day, top questions, unanswered list, leads trend + contacts; date range (`from`/`to`
+  inclusive, validated 422); CSV exports `conversations.csv` + `leads.csv`.
+- Endpoints GET /analytics/{summary,volume,top-questions,unanswered,leads,csvs} â€” member
+  reads; wrong tenant/bot 404.
+- Tests: tests/test_analytics.py 6 passed (counts incl. leads/thumbs needs_human, volume/
+  top/unanswered/leads, playground exclusion, per-bot scoping + CSVs, viewer role + date
+  validation, window filtering). Playwright overview.spec 2 passed (shell tabs, measured
+  numbers incl. "A-cookie-on-B-bot 404" isolation, unanswered list, CSV).
+
+## 2026-10-13 â€” P4-06 implemented (admin console basics)
+
+IMPLEMENTED AND LOCALLY VERIFIED; evidence: [P4-06 within PHASE-REPORT](implementation/PHASE-04/PHASE-REPORT.md).
+- app/platform/staff.py: is_platform_staff ONLY (never a tenant role); API 403 For non-staff.
+- /platform LAYOUT guard server-side per request (cookies â†’ GET /api/v1/platform/me;
+  redirect to /login otherwise; no client shortcut; PLATFORM_GUARD_ORIGIN deployment
+  override documents the API-origin option; an unauthenticated/non-staff visit renders
+  only the redirected /login page).
+- API: GET /platform/{me,tenants,tenants/{id},onboarding/{id},onboarding.csv} + POST
+  /platform/onboarding (multipart; REQUIRED Idempotency-Key; skill-output files stored
+  under generated tenant keys, kind-checked md/txt/csv/pdf/docx).
+- ProvisioningService (docs/12): tenant â†’ audited; owner INVITATION (one-time link shown
+  once, hash stored, 7 days); optional FIRST BOT; optional files. Durable
+  provisioning_requests rows (mode, idempotency_key unique per scope): replay returns the
+  same row; payload/actor mismatch 409; double submission creates exactly ONE tenant/bot;
+  failed attempts are durably recorded and retried via a new key/payload.
+- Tests: test_platform.py 9 PASSED (non-staff matrix, staff-flag separation, onboarding +
+  audit actor attribution, double submit one tenant, clash 409, missing key 400, optional
+  files, list/detail + unknown 404). migration 0006_provisioning up/down verified.
+- Playwright platform.spec 2 passed (non-staff redirect; staff console end-to-end:
+  list â†’ onboarding form â†’ one-time invite + durable request visible â†’ detail with bots/
+  failure-jobs/members/audit).
+
+## 2026-10-13 â€” P4 PHASE VERIFICATION (full suites)
+
+- Backend: counts per the E2E-API container against chatbot_dev_test with a FRESH DB:
+  ruff check âœ“, ruff format --check âœ“ (118 files), mypy strict âœ“ (114 sources),
+  pytest **216 PASSED** (~176 s) â€” ALL suites on the disposable DB, ends-to-end including
+  migrations 0004â€“0006 (up/down) and platform/conversation-core suites.
+- Web: eslint+prettier+tsc clean; **Playwright full suite 20 PASSED** (all stacked specs:
+  foundation/dashboard/team/knowledge/playground/security-headers + P4 widget/install/
+  conversations/overview/platform).
+- Report gathered in docs/phase4report.md and implementation/PHASE-04/PHASE-REPORT.md.
+- Checklist P4 ticked with evidence; Owner sign-off left UNTOUCHED (docs: STOP).
+
 ## 2026-10-12 â€” PHASE P2 SIGNED OFF by owner ("ready to go to phase 3") â€” Phase P3 authorized
 
 ## 2026-10-13 â€” PHASE P3 complete (P3-01 â†’ P3-05): retrieval, chat service, conversation core, playground, eval
@@ -198,3 +250,52 @@ Owner clarified: this SaaS serves website clients; ManyOsirisChat provides the M
 
 ## 2026-10-12 â€” Two dashboards (ADR-018)
 Client dashboard per chatbot (docs/10) and platform admin console (docs/11) are now named deliverables. Basic admin console + staff onboarding moved into P4 (new ticket P4-06); P7-01/P7-03 narrowed to advanced operations and self-service hardening. Roadmap, checklists, prompts, API routes, FRs and behaviour guide updated. No code changed.
+
+## 2026-10-14 — P4 audit attempt and close-out
+
+Audit: `implementation/PHASE-04/AUDIT.md`. Review covered A1–A9. Static source/test review found no confirmed security defect. The checklist currently contains one P4 row per deliverable, one unticked owner gate, and one P5 header; `docs/phase4report.md` is now a one-line pointer to the canonical implementation report. Checklist diff reviewed: changes are confined to P4-05/P4-06 evidence rows, the two-site evidence row, and the report/owner line; P1–P3 and P5–P7 are unchanged.
+
+Exact verification commands and outcomes from this session:
+- `docker version` — FAILED: permission denied connecting to `npipe:////./pipe/DockerDesktopLinuxEngine`.
+- `python -m ruff check .` (from `apps/api`) — FAILED to start: `No module named ruff`.
+- `npm run lint` (repository root) — EXIT 0; ESLint completed with `--max-warnings 0`.
+- `npx prettier --check app lib tests` (from `apps/web`) — first EXIT 1; listed `app/platform/clients/[clientId]/page.tsx`, `app/platform/page.tsx`, and `lib/api.ts` as unformatted. Applied `npx prettier --write 'app/platform/clients/[clientId]/page.tsx' app/platform/page.tsx lib/api.ts`; rerun EXIT 0: all matched files use Prettier style.
+- `npm run typecheck` (repository root) — Next SWC initialization blocked with `EPERM` creating `C:\Users\Youssef\AppData\Local\next-swc` (outside writable workspace).
+- `npx tsc --noEmit` (from `apps/web`) — EXIT 0.
+- `docker compose -f infra/compose.yaml ps` — not run successfully; Compose could not interpolate the required POSTGRES_USER/POSTGRES_PASSWORD/POSTGRES_DB values, and Docker daemon is unavailable.
+
+No fresh disposable DB was created. Full backend lint/format/mypy/pytest (including the claimed 216 tests), migration 0001–0006 up/down, and the full Playwright suite (claimed 20 tests) are UNVERIFIED. No live model key was available and no paid call was made. Because those checks are required to close A1 and they could not be run here, P5 was not started. P4 owner sign-off remains unticked.
+
+## 2026-10-14 — P4 fresh verification completed
+
+This entry supersedes the earlier same-day note that Docker was unavailable to the sandbox. The sandbox was denied the Docker Desktop named pipe, while an approved out-of-sandbox Docker command showed the engine running (Docker Server 29.8.0). Used the existing healthy local Postgres container; the repository's API, web, and worker services were not running. Test-only containers and databases were isolated to `*_test`; temporary API/worker/checks containers were removed after verification. The existing Postgres service and its volumes were left untouched.
+
+Exact verification and outcomes:
+- Backend command: `docker run --name p4-audit-checks --network saas-chats-ai-dev_default -e DATABASE_URL=<runtime-derived from local Postgres> -v <repo>:/workspace -w /workspace/apps/api saas-chats-ai-api-checks:p4 sh -c 'ruff check . && ruff format --check . && mypy && pytest'` — EXIT 0. Output: `All checks passed!`; `118 files already formatted`; `Success: no issues found in 114 source files`; `216 passed, 1 warning in 89.08s` (Starlette/httpx deprecation).
+- Migration cycle: included in the full run as `tests/test_migrations.py::test_migrations_up_down_cycle` — upgrade head from empty disposable migration DB (0001–0006), downgrade base, upgrade head again; PASS.
+- `npm run lint` (repo root) — EXIT 0.
+- `npx prettier --check app lib tests` (`apps/web`) — EXIT 0 after formatting the three reported files.
+- `npx tsc --noEmit` (`apps/web`) — EXIT 0.
+- `npm run build -- --webpack` (`apps/web`, escalated to allow Next worker processes) — EXIT 0, production build compiled and generated all pages. Default Turbopack build is unavailable because the Windows native SWC binding is missing.
+- `npm test` (`apps/web`) — EXIT 0, **20 passed (2.0m)**. Used `E2E_REUSE_API=1` with the isolated API/worker and E2E DB; temporarily changed Playwright webServer to start the successfully built Webpack bundle without rebuilding, then restored `playwright.config.ts`.
+
+P4 A1 now passes. A2 real-provider eval remains UNVERIFIED because no key was provided; no paid call was attempted. No confirmed FAIL remains. P4 sign-off stays unticked. The pasted request authorizes beginning P5 without treating that as P4 sign-off; proceeding to P5-01.
+
+## 2026-10-14 - P5-01 handoff and agent actions
+
+Implemented website conversation handoff rules and tenant-scoped agent actions. Handoff triggers include repeated unanswerable questions, EN/AR person requests, order/account routing, and provider failure. Human-mode visitor messages are persisted without invoking the model; agent replies are available through the visitor's own session polling as plain text. Takeover, return-to-AI, resolve, and assignment add system events and audit rows; takeover uses row locking and reports a 409 race with the current assignee. Resolved website conversations reopen in AI mode on the next visitor turn. Internal system events are excluded from visitor history.
+
+Verification (exact commands and outcomes):
+- `docker exec p5-01-e2e-api sh -lc 'ruff check . && ruff format --check . && mypy && pytest'` - EXIT 0: Ruff passed; 122 files formatted; strict mypy passed for 118 source files; `220 passed, 1 warning in 95.67s` (Starlette/httpx deprecation).
+- `npm run lint` (repo root), `npx prettier --check app lib tests`, and `npx tsc --noEmit` (from `apps/web`) - EXIT 0.
+- `npm test` (from `apps/web`, P5 widget end-to-end with isolated API/worker and `*_test` DB) - EXIT 0, `20 passed (1.5m)`.
+
+Docker CLI access from the sandbox is denied on the Docker Desktop named pipe; these commands ran in an approved Docker invocation. No external services or paid model calls were used. P4 owner sign-off remains pending; P5-01 is complete and P5-02 is next.
+## 2026-10-14 - P5-01 widget URL regression and full web verification
+
+- Regression: `tests/widget.spec.ts` provides a `javascript:` source_url from the mocked widget API and verifies the citation title is rendered as a span with no javascript link. The frame only links absolute HTTP/HTTPS URLs.
+- `npm run lint` (repository root) - EXIT 0.
+- `npx prettier --check app lib tests` (from `apps/web`) - EXIT 0, all matched files use Prettier style.
+- `npx tsc --noEmit` (from `apps/web`) - EXIT 0.
+- `npm run build -- --webpack` (from `apps/web`) - EXIT 0; production build compiled. Windows native SWC binding is absent, so this uses Next's WASM SWC.
+- `npm test -- --reporter=line` (from `apps/web`; full Playwright suite against the existing isolated E2E API/worker and test DB) - EXIT 0, `21 passed (1.5m)`. Playwright used the already-built bundle; `playwright.config.ts` was restored afterward.

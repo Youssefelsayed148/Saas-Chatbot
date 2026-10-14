@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -8,6 +7,7 @@ import * as api from "@/lib/api";
 import type { PlaygroundMessage } from "@/lib/api";
 import { roleSatisfies, useSession } from "@/lib/session";
 import { Loading, Notice } from "@/lib/ui";
+import BotWorkspaceNav from "@/lib/bot-workspace-nav";
 
 export default function PlaygroundPage() {
   const params = useParams<{ tenant: string; botId: string }>();
@@ -116,15 +116,7 @@ export default function PlaygroundPage() {
 
   return (
     <main>
-      <p className="eyebrow">
-        <Link href={`/app/${tenantId}/bots`}>Back to bots</Link>
-        {" · "}
-        <Link href={`/app/${tenantId}/bots/${botId}/settings`}>
-          Bot settings
-        </Link>
-        {" · "}
-        <Link href={`/app/${tenantId}/bots/${botId}/knowledge`}>Knowledge</Link>
-      </p>
+      <BotWorkspaceNav tenantId={tenantId} botId={botId} />
       <h1>Playground</h1>
       {!canChat && (
         <Notice

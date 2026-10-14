@@ -2,18 +2,18 @@
 
 Date: 2026-10-14 · Branch: `feat/p1-01-foundation`
 
-This audit checks the present worktree. PASS means source and test coverage were reviewed; it does not imply the unrun tests passed. UNVERIFIED means the required runtime evidence could not be produced here. No FAIL was confirmed in this audit. P5 has not started because the fresh-database verification and migration cycles remain unverified.
+This audit checks the present worktree. PASS means the cited source or runtime evidence was checked; UNVERIFIED means the requested evidence could not be produced. No FAIL was confirmed. P5 starts only after the P4 verification recorded below; this does not sign off P4.
 
 ## A1 — Fresh verification
 
 | Item | Result | Evidence |
 |---|---|---|
-| Ruff lint, format, strict mypy, full pytest (expected 216) | UNVERIFIED | Docker daemon unavailable (`docker version`: permission denied connecting to `npipe:////./pipe/DockerDesktopLinuxEngine`); Windows Python has no Ruff module (`python -m ruff check .`: `No module named ruff`). No pytest run. Prior claim is in `PROGRESS.md`, but was not repeated. |
+| Ruff lint, format, strict mypy, full pytest (expected 216) | PASS | Ran the current worktree in `saas-chats-ai-api-checks:p4` against the local Postgres service, with its source mounted at `/workspace` and `DATABASE_URL` runtime-derived from the service environment. Output: `All checks passed!`; `118 files already formatted`; `Success: no issues found in 114 source files`; `216 passed, 1 warning in 89.08s`. The only warning is Starlette's `httpx` TestClient deprecation. |
 | Web lint | PASS | `npm run lint` from repository root exited 0 (`eslint . --max-warnings 0`). |
 | Web format | PASS after correction | Initial `npx prettier --check app lib tests` from `apps/web` identified three files. Ran `npx prettier --write 'app/platform/clients/[clientId]/page.tsx' app/platform/page.tsx lib/api.ts`; reran the check, which reported all matched files use Prettier style. |
 | Web typecheck | PASS | `npx tsc --noEmit` from `apps/web` exited 0. `npm run typecheck` could not initialize Next SWC because its cache path under the user profile is not writable in this sandbox; direct TypeScript check passed against the generated route types. |
-| Full Playwright suite (expected 20) | UNVERIFIED | Requires the documented real API/worker/Next harness and disposable Postgres. Docker is unavailable; no Playwright run. |
-| Alembic revisions 0001–0006 up and down | UNVERIFIED | No reachable local Postgres service on the configured ports was established; Docker is unavailable. No migration cycle run. |
+| Full Playwright suite (expected 20) | PASS | `npm run build -- --webpack` succeeded. Then `npm test` from `apps/web` ran against the real API and worker containers on the isolated E2E database: `20 passed (2.0m)`. The Playwright config's webServer command was temporarily changed to start the already-built bundle, then restored. The normal Turbopack build path is unavailable on this Windows install because its native SWC binding is missing. |
+| Alembic revisions 0001–0006 up and down | PASS | Full pytest ran `tests/test_migrations.py::test_migrations_up_down_cycle`, which upgraded the empty disposable DB to head (0001–0006), downgraded to base, then upgraded to head again. |
 
 ## A2 — P4-00 carry-overs
 
@@ -22,7 +22,7 @@ This audit checks the present worktree. PASS means source and test coverage were
 | Cross-script translation, including first message and fake model tests | PASS | `apps/api/app/chat/service.py:116`; `apps/api/tests/test_cross_script.py:76,108,131` cover first-message translate-once, provider-failure fallback, and same-language no-op. Execution in this audit is unverified under A1. |
 | Production startup refusal with stub model | PASS | `apps/api/app/core/config.py:93`; `apps/api/tests/test_startup_guard.py:22,36`. Execution in this audit is unverified under A1. |
 | Added evaluation cases, including injection inside uploaded documents | PASS | `implementation/PHASE-04/P4-00-REPORT.md` records 25 cases and document-borne injection cases; `implementation/PHASE-03/EVAL-REPORT.md` records stub results. Live rerun is UNVERIFIED here. |
-| Real-key evaluation rerun | UNVERIFIED | No key was provided per `implementation/PHASE-03/EVAL-REPORT.md`; no paid API call was attempted. |
+| Real-key evaluation rerun | UNVERIFIED (no key) | No key was provided per `implementation/PHASE-03/EVAL-REPORT.md`; no paid API call was attempted. The prompt permits recording the honest no-key result. |
 
 ## A3 — Public widget surface
 
@@ -96,4 +96,4 @@ This audit checks the present worktree. PASS means source and test coverage were
 
 ## Close-out decision
 
-No code security defect was confirmed by source review. The initial web formatting failure was corrected and the formatting check now passes. The required clean-database backend suite, migrations, and full Playwright run are UNVERIFIED because Docker Desktop is unavailable and no local Postgres endpoint was established. Do not treat the historical 216/20 claims as freshly verified. This audit therefore does not authorize starting P5 in this environment; resume the P4 verification when the disposable test infrastructure is available, then review the phase gate with the owner.
+No code security defect was confirmed by source review. The initial web formatting failure was corrected and the formatting check now passes. The backend suite, migration cycle, and all 20 Playwright tests were freshly verified against disposable test databases. Remaining UNVERIFIED item: the real-provider evaluation, because no key was supplied. This audit contains no open FAIL. P5 may proceed under the user's pasted authorization; the P4 owner sign-off line remains unticked and unchanged.

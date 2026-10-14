@@ -9,7 +9,16 @@ from .chat import (
     Message,
     UsageEvent,
 )
-from .core import AuditEvent, Bot, Invitation, Membership, Session, Tenant, User
+from .core import (
+    AuditEvent,
+    Bot,
+    Invitation,
+    Membership,
+    ProvisioningRequest,
+    Session,
+    Tenant,
+    User,
+)
 from .knowledge import (
     Chunk,
     Document,
@@ -34,6 +43,7 @@ __all__ = [
     "KnowledgeRevision",
     "Membership",
     "Message",
+    "ProvisioningRequest",
     "RateLimitCounter",
     "Session",
     "Source",

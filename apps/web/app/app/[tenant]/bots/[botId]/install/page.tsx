@@ -13,6 +13,7 @@ import { useEffect, useState } from "react";
 import * as api from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { Loading, Notice } from "@/lib/ui";
+import BotWorkspaceNav from "@/lib/bot-workspace-nav";
 
 function originOf(): string {
   // The snippet must point at whichever host serves the dashboard (so local
@@ -75,17 +76,7 @@ export default function InstallPage() {
 
   return (
     <main>
-      <p className="eyebrow">
-        <Link href={`/app/${tenantId}/bots/${botId}/settings`}>
-          Back to settings
-        </Link>
-        {" · "}
-        <Link href={`/app/${tenantId}/bots/${botId}/knowledge`}>Knowledge</Link>
-        {" · "}
-        <Link href={`/app/${tenantId}/bots/${botId}/playground`}>
-          Playground
-        </Link>
-      </p>
+      <BotWorkspaceNav tenantId={tenantId} botId={botId} />
       <h1>{bot.name} — install</h1>
       <p data-status={bot.status} data-testid="install-status">
         Status: {bot.status}

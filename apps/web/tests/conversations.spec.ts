@@ -13,8 +13,8 @@ function uniqueEmail(prefix: string): string {
 }
 
 const KNOWLEDGE_MD =
-  "---\ntitle: Opening hours\nsource_url: https://conv.example.com/hours\nlanguage: en\n---\n\n"
-  + "# Opening hours\n\nWe are open Monday to Friday from 9:00 to 17:00.\n";
+  "---\ntitle: Opening hours\nsource_url: https://conv.example.com/hours\nlanguage: en\n---\n\n" +
+  "# Opening hours\n\nWe are open Monday to Friday from 9:00 to 17:00.\n";
 
 async function csrfToken(page: Page): Promise<string> {
   return page
@@ -44,7 +44,11 @@ async function registerAndPrepareBot(page: Page): Promise<{
   const botName = `Conversations Bot ${Date.now()}`;
   await page.getByLabel("Bot name").fill(botName);
   await page.getByRole("button", { name: "Create bot" }).click();
-  await page.getByRole("row", { name: new RegExp(botName) }).getByRole("link").first().click();
+  await page
+    .getByRole("row", { name: new RegExp(botName) })
+    .getByRole("link")
+    .first()
+    .click();
   await page.waitForURL(/\/settings$/);
   const botId = new URL(page.url()).pathname.split("/")[4];
   const csrf = await csrfToken(page);
@@ -74,7 +78,9 @@ async function registerAndPrepareBot(page: Page): Promise<{
   expect([201, 202]).toContain(start.status());
   let status = "";
   for (let attempt = 0; attempt < 60; attempt += 1) {
-    const jobs = await page.request.get(`/api/v1/tenants/${tenantId}/bots/${botId}/jobs`);
+    const jobs = await page.request.get(
+      `/api/v1/tenants/${tenantId}/bots/${botId}/jobs`,
+    );
     const list = (await jobs.json()) as { status: string }[];
     status = list[0]?.status ?? "missing";
     if (status === "succeeded" || status === "failed") break;
@@ -82,7 +88,9 @@ async function registerAndPrepareBot(page: Page): Promise<{
   }
   expect(status, "ingest job must succeed").toBe("succeeded");
   const revisions = (await (
-    await page.request.get(`/api/v1/tenants/${tenantId}/bots/${botId}/revisions`)
+    await page.request.get(
+      `/api/v1/tenants/${tenantId}/bots/${botId}/revisions`,
+    )
   ).json()) as { revisions: { id: string; status: string }[] };
   const draft = revisions.revisions.find((row) => row.status === "draft");
   const publish = await page.request.post(
@@ -138,14 +146,15 @@ test("visitor chat + consent lead appear in the conversations view with citation
   // Dashboard: the conversations view shows the thread and the captured lead.
   await page.goto(`/app/${tenantId}/bots/${botId}/conversations`);
   const table = page.getByTestId("conversations");
-  await expect(table.locator("tbody tr").first()).toBeVisible({ timeout: 20_000 });
-  await page
-    .locator("[data-testid='conversations'] a")
-    .first()
-    .click();
+  await expect(table.locator("tbody tr").first()).toBeVisible({
+    timeout: 20_000,
+  });
+  await page.locator("[data-testid='conversations'] a").first().click();
   await page.waitForURL(/\/conversations\/[0-9a-f-]{36}$/);
   await expect(page.getByTestId("conversation-thread")).toBeVisible();
-  await expect(page.getByTestId("conversation-thread")).toContainText("Vera Visitor");
+  await expect(page.getByTestId("conversation-thread")).toContainText(
+    "Vera Visitor",
+  );
   await expect(page.getByTestId("thread-citations").first()).toBeVisible();
   await expect(page.getByTestId("conversation-thread")).toContainText(/9:00/);
 });

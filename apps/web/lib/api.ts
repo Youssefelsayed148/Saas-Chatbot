@@ -93,6 +93,88 @@ export interface ConversationListResponse {
   total: number;
 }
 
+export interface AnalyticsSummaryResponse {
+  messages: number;
+  counted_messages: number;
+  conversations: number;
+  widget_opens: number;
+  engagement_rate: number;
+  avg_messages_per_conversation: number;
+  message_distribution: Record<string, number>;
+  fallback_rate: number;
+  cannot_answer: number;
+  needs_human: number;
+  handoffs: number;
+  avg_response_ms: number;
+  leads: number;
+  thumbs_up: number;
+  thumbs_down: number;
+}
+
+export interface AnalyticsVolumeResponse {
+  days: Array<{ day: string; visitor: number; assistant: number }>;
+}
+
+export interface AnalyticsTopQuestionsResponse {
+  questions: Array<{ question: string; asked: number }>;
+}
+
+export interface AnalyticsUnansweredResponse {
+  questions: Array<{ question: string; asked: number; last: string }>;
+}
+
+export interface AnalyticsLeadsResponse {
+  trend: Array<{ day: string; leads: number }>;
+  contacts: Array<{
+    contact_id: string;
+    display_name: string;
+    email: string | null;
+    phone: string | null;
+    stage: string;
+    created_at: string;
+    conversations: number;
+  }>;
+}
+
+export interface PlatformTenantRow {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+  plan_label: string;
+  bots: number;
+  seats: number;
+  messages_this_month: number;
+  last_activity: string | null;
+}
+
+export interface PlatformTenantDetail {
+  tenant: { id: string; name: string; slug: string; status: string };
+  bots: Array<{ id: string; name: string; status: string; published: boolean }>;
+  failed_jobs: Array<{ id: string; type: string; error: string | null }>;
+  members: Array<{ user_id: string; email: string; role: string }>;
+  recent_audit: Array<{
+    action: string;
+    actor: string | null;
+    target: string | null;
+    at: string;
+  }>;
+  usage_events: number;
+}
+
+export interface PlatformOnboardingResult {
+  request_id: string;
+  status: string;
+  result?: {
+    tenant_id?: string;
+    tenant_slug?: string;
+    bot_id?: string | null;
+    owner_invite?: { link_path?: string };
+    files?: Array<{ display?: string; bot_id?: string }>;
+  };
+  replayed?: boolean;
+}
+
 export interface ConversationDetailResponse {
   conversation: Conversation;
   messages: Array<{
@@ -363,6 +445,130 @@ export async function updateTenant(
   patch: { retention_days?: number | null },
 ): Promise<Tenant> {
   return api<Tenant>(`tenants/${tenantId}`, { method: "PATCH", body: patch });
+}
+
+function analyticsPath(
+  tenantId: string,
+  botId: string,
+  view: string,
+  from: string,
+  to: string,
+): string {
+  return `tenants/${tenantId}/bots/${botId}/analytics/${view}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+}
+
+export async function analyticsSummary(
+  tenantId: string,
+  botId: string,
+  from: string,
+  to: string,
+): Promise<AnalyticsSummaryResponse> {
+  return api<AnalyticsSummaryResponse>(
+    analyticsPath(tenantId, botId, "summary", from, to),
+  );
+}
+
+export async function analyticsVolume(
+  tenantId: string,
+  botId: string,
+  from: string,
+  to: string,
+): Promise<AnalyticsVolumeResponse> {
+  return api<AnalyticsVolumeResponse>(
+    analyticsPath(tenantId, botId, "volume", from, to),
+  );
+}
+
+export async function analyticsTopQuestions(
+  tenantId: string,
+  botId: string,
+  from: string,
+  to: string,
+): Promise<AnalyticsTopQuestionsResponse> {
+  return api<AnalyticsTopQuestionsResponse>(
+    analyticsPath(tenantId, botId, "top-questions", from, to),
+  );
+}
+
+export async function analyticsUnanswered(
+  tenantId: string,
+  botId: string,
+  from: string,
+  to: string,
+): Promise<AnalyticsUnansweredResponse> {
+  return api<AnalyticsUnansweredResponse>(
+    analyticsPath(tenantId, botId, "unanswered", from, to),
+  );
+}
+
+export async function analyticsLeads(
+  tenantId: string,
+  botId: string,
+  from: string,
+  to: string,
+): Promise<AnalyticsLeadsResponse> {
+  return api<AnalyticsLeadsResponse>(
+    analyticsPath(tenantId, botId, "leads", from, to),
+  );
+}
+
+// --- platform console (P4-06; staff-only, guarded server-side) -------------
+
+export async function platformMe(): Promise<Me> {
+  return api<Me>("platform/me");
+}
+
+export async function platformTenants(query: string): Promise<{
+  tenants: PlatformTenantRow[];
+  total: number;
+}> {
+  const suffix = query ? `?${query}` : "";
+  return api<{ tenants: PlatformTenantRow[]; total: number }>(
+    `platform/tenants${suffix}`,
+  );
+}
+
+export async function platformTenantDetail(
+  tenantId: string,
+): Promise<PlatformTenantDetail> {
+  return api<PlatformTenantDetail>(`platform/tenants/${tenantId}`);
+}
+
+export async function platformOnboard(
+  payload: {
+    client_name: string;
+    owner_email: string;
+    bot_name: string | null;
+  },
+  idempotencyKey: string,
+  files: FileList | null,
+): Promise<PlatformOnboardingResult> {
+  const form = new FormData();
+  form.set("client_name", payload.client_name);
+  form.set("owner_email", payload.owner_email);
+  if (payload.bot_name) form.set("bot_name", payload.bot_name);
+  if (files) Array.from(files).forEach((file) => form.append("files", file));
+  const headerValue = readCookie(CSRF_COOKIE) ?? csrfToken;
+  const response = await fetch(`/api/v1/platform/onboarding`, {
+    method: "POST",
+    headers: {
+      "Idempotency-Key": idempotencyKey,
+      ...(headerValue ? { "X-CSRF-Token": headerValue } : {}),
+    },
+    credentials: "same-origin",
+    body: form,
+  });
+  if (!response.ok) {
+    const errorPayload = (await response.json().catch(() => null)) as {
+      error?: { code?: string; message?: string };
+    } | null;
+    throw new ApiError(
+      errorPayload?.error?.code ?? "UNKNOWN_ERROR",
+      response.status,
+      errorPayload?.error?.message ?? `Onboarding failed (${response.status}).`,
+    );
+  }
+  return (await response.json()) as PlatformOnboardingResult;
 }
 
 export async function listMembers(tenantId: string): Promise<Member[]> {

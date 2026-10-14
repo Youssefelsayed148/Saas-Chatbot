@@ -7,7 +7,7 @@ by app-layer tenant scoping plus these composite keys.
 """
 
 from datetime import datetime
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
@@ -19,6 +19,8 @@ from app.db.models.types import CITEXT
 ROLE_VALUES = ("owner", "admin", "editor", "viewer")
 BOT_STATUS_VALUES = ("draft", "active", "paused", "archived")
 TENANT_STATUS_VALUES = ("active", "archived")
+PROVISIONING_MODE_VALUES = ("platform", "self_service")
+PROVISIONING_STATUS_VALUES = ("requested", "provisioning", "ready", "failed")
 
 
 class User(Base):
@@ -182,9 +184,51 @@ class Invitation(Base):
     )
 
 
+class ProvisioningRequest(Base):
+    """Durable onboarding record (P4-06, docs/04: provisioning_requests).
+
+    One row per (mode, idempotency_key); retried submissions RE-READ the same
+    row instead of creating a second tenant/bot. The payload holds
+    configuration words only; no secrets and no raw file content (uploads go
+    through the standard generated storage keys)."""
+
+    __tablename__ = "provisioning_requests"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    tenant_id: Mapped[UUID | None] = mapped_column(ForeignKey("tenants.id", ondelete="SET NULL"))
+    actor_user_id: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    mode: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(Text, nullable=False, default="requested")
+    idempotency_key: Mapped[str] = mapped_column(Text, nullable=False)
+    payload_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    payload: Mapped[dict[str, object]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
+    result: Mapped[dict[str, object]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
+    error: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "mode IN ('platform', 'self_service')", name="ck_provisioning_requests_mode"
+        ),
+        CheckConstraint(
+            "status IN ('requested', 'provisioning', 'ready', 'failed')",
+            name="ck_provisioning_requests_status",
+        ),
+        Index("uq_provisioning_scope_key", "mode", "idempotency_key", unique=True),
+    )
+
+
 class AuditEvent(Base):
     __tablename__ = "audit_events"
-
     id: Mapped[UUID] = mapped_column(primary_key=True)
     tenant_id: Mapped[UUID | None] = mapped_column(ForeignKey("tenants.id", ondelete="SET NULL"))
     actor_user_id: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
@@ -204,6 +248,7 @@ __all__ = [
     "Bot",
     "Invitation",
     "Membership",
+    "ProvisioningRequest",
     "Session",
     "Tenant",
     "User",

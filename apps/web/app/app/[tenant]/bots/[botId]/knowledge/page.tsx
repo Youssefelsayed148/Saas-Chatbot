@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -13,6 +12,7 @@ import type {
 } from "@/lib/api";
 import { roleSatisfies, useSession } from "@/lib/session";
 import { Empty, Loading, Notice } from "@/lib/ui";
+import BotWorkspaceNav from "@/lib/bot-workspace-nav";
 
 const KIND_LABEL: Record<string, string> = {
   pdf: "PDF",
@@ -224,17 +224,7 @@ export default function KnowledgePage() {
 
   return (
     <main>
-      <p className="eyebrow">
-        <Link href={`/app/${tenantId}/bots`}>Back to bots</Link>
-        {" · "}
-        <Link href={`/app/${tenantId}/bots/${botId}/settings`}>
-          Bot settings
-        </Link>
-        {" · "}
-        <Link href={`/app/${tenantId}/bots/${botId}/playground`}>
-          Playground
-        </Link>
-      </p>
+      <BotWorkspaceNav tenantId={tenantId} botId={botId} />
       <h1>Knowledge</h1>
       {!canEdit && (
         <Notice
