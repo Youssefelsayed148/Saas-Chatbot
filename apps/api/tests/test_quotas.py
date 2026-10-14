@@ -246,3 +246,35 @@ def test_sentiment_worker_records_one_measured_classification(db: Any, monkeypat
         )
         == 1
     )
+
+
+def test_accepting_invitation_at_seat_limit_succeeds_but_new_invite_is_refused(
+    app: Any, db: Any
+) -> None:
+    from tests.helpers import accept_invitation, logged_in, make_invitation
+
+    users = seeded_tenant(app, db, prefix="quota-accept")
+    # seeded: owner/admin/editor/viewer = 4 active seats; the invite below is the 5th.
+    token, _ = make_invitation(users, "seat-holder@example.com", "viewer")
+    row = db.execute(select(Tenant).where(Tenant.id == users.tenant_id)).scalar_one()
+    row.quota_overrides = {"seats": 5}
+    db.commit()
+
+    # At the limit, a further invitation is still refused.
+    refused = users.call(
+        "owner",
+        "POST",
+        f"/api/v1/tenants/{users.tenant_id}/invitations",
+        json={"email": "one-too-many@example.com", "role": "viewer"},
+    )
+    assert refused.status_code == 429
+    assert refused.json()["error"]["code"] == "QUOTA_EXCEEDED"
+
+    # The pending invitation already holds its seat, so accepting it must succeed.
+    invitee, _ = logged_in(app, "seat-holder@example.com")
+    try:
+        accepted = accept_invitation(invitee, token)
+        assert accepted.status_code == 200, accepted.text
+    finally:
+        invitee.close()
+    users.cleanup()

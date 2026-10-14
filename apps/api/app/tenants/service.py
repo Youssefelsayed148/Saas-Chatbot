@@ -250,7 +250,10 @@ class TenantService:
             )
         ).scalar_one_or_none()
         if existing_membership is None or existing_membership.status != "active":
-            require_capacity(db, tenant, "seats")
+            # The pending invitation being accepted already holds a seat in the
+            # usage count, so accepting needs no extra seat (amount=0); it is only
+            # refused if the tenant is already over its limit.
+            require_capacity(db, tenant, "seats", amount=0)
 
         existing = db.execute(
             select(Membership).where(
