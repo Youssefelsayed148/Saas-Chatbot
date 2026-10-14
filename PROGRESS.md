@@ -435,23 +435,29 @@ Unverified: P7-01 operations UI browser check remains unverified; P7-02 blocked 
 
 Built: Central PLACEHOLDER plan table, tenant scoped counters/enforcement, 80% warnings, reason-audited staff overrides, measured provider token recording, friendly widget quota response, and resolved-conversation sentiment jobs.
 Tested: `python -m compileall -q app/quotas app/knowledge/ingest.py app/knowledge/service.py app/tenants/service.py app/platform/router.py app/widget/service.py app/chat/providers.py app/chat/conversations.py app/inbox/router.py` — EXIT 0; web lint/typecheck/Prettier — EXIT 0.
-Unverified: `python -m pytest -q tests/test_quotas.py tests/test_platform_ops.py --tb=short` — Python has no pytest installed. Owner command after installing project dev dependencies and setting a disposable plain URL: `$env:TEST_DATABASE_URL='postgresql://<user>:<password>@<host>/<base_db>'; python -m pytest -q tests/test_quotas.py tests/test_platform_ops.py --tb=short`. Ruff/mypy unavailable in this Python environment; no browser suite run.
+Unverified: `python -m pytest -q tests/test_quotas.py tests/test_platform_ops.py --tb=short` — Python has no pytest installed. Owner command (run from `apps/api`) after installing project dev dependencies and setting a disposable plain URL: `$env:TEST_DATABASE_URL='postgresql://<user>:<password>@<host>/<base_db>'; python -m pytest -q tests/test_quotas.py tests/test_platform_ops.py --tb=short`. Ruff/mypy unavailable in that Python environment; no browser suite run.
 
 ## 2026-10-14 — P7-03 self-service signup
 
 Built: Registration now creates a Free PLACEHOLDER tenant, direct owner membership, and first bot through the shared ProvisioningService; deterministic per-user idempotency handles concurrent retries.
 Tested: Python compileall — EXIT 0; web lint, typecheck, and Prettier — EXIT 0.
-Unverified: `python -m pytest -q tests/test_self_service_signup.py --tb=short` — Python has no pytest installed. Owner command with a disposable plain URL: `$env:TEST_DATABASE_URL='postgresql://<user>:<password>@<host>/<base_db>'; python -m pytest -q tests/test_self_service_signup.py --tb=short`.
+Unverified: `python -m pytest -q tests/test_self_service_signup.py --tb=short` — Python has no pytest installed. Owner command (run from `apps/api`) with a disposable plain URL: `$env:TEST_DATABASE_URL='postgresql://<user>:<password>@<host>/<base_db>'; python -m pytest -q tests/test_self_service_signup.py --tb=short`.
 
 ## 2026-10-14 — P7-04 tenant data and audit review
 
 Built: Added admin-only JSON export (including raw uploaded source bytes, parsed knowledge, contacts, identities, conversations, messages, usage, and audit), owner-only reason/confirmation tenant deletion, tenant audit search, and the data screen.
 Tested: Python compileall — EXIT 0; web lint, typecheck, and Prettier — EXIT 0.
-Unverified: `python -m pytest -q tests/test_tenant_data.py --tb=short` — Python has no pytest installed. Owner command with a disposable plain URL: `$env:TEST_DATABASE_URL='postgresql://<user>:<password>@<host>/<base_db>'; python -m pytest -q tests/test_tenant_data.py --tb=short`. Local storage cleanup remains best-effort on OS unlink errors (see KNOWN-ISSUES.md).
+Unverified: `python -m pytest -q tests/test_tenant_data.py --tb=short` — Python has no pytest installed. Owner command (run from `apps/api`) with a disposable plain URL: `$env:TEST_DATABASE_URL='postgresql://<user>:<password>@<host>/<base_db>'; python -m pytest -q tests/test_tenant_data.py --tb=short`. Local storage cleanup remains best-effort on OS unlink errors (see KNOWN-ISSUES.md).
 
 ## 2026-10-14 — P2 ingestion hardening carryovers
 
 Built: Replaced interruptible-thread parser timeout with a spawned subprocess that is terminated at the wall-clock limit; added timeout and chunked multipart upload regressions; routed knowledge/provisioning/data file access through the `Storage` factory; fixed concurrent signup error import and typed measured-token extraction; added `expire_all()` before DB assertions reading API-updated rows.
 Tested: Ruff check and format check — EXIT 0; strict mypy on six affected API modules — EXIT 0; `python -m compileall -q` on affected app/test modules — EXIT 0.
-Unverified: `python -m pytest -q apps/api/tests/test_knowledge_parsers.py apps/api/tests/test_knowledge_uploads.py apps/api/tests/test_quotas.py apps/api/tests/test_platform_ops.py --tb=short` could not initialize because no disposable DB URL is configured. Owner command: `$env:TEST_DATABASE_URL='postgresql://<user>:<password>@<host>/<base_db>'; python -m pytest -q apps/api/tests/test_knowledge_parsers.py apps/api/tests/test_knowledge_uploads.py apps/api/tests/test_quotas.py apps/api/tests/test_platform_ops.py --tb=short`.
+Unverified: `python -m pytest -q apps/api/tests/test_knowledge_parsers.py apps/api/tests/test_knowledge_uploads.py apps/api/tests/test_quotas.py apps/api/tests/test_platform_ops.py --tb=short` could not initialize because no disposable DB URL is configured. Owner command (run from `apps/api`): `$env:TEST_DATABASE_URL='postgresql://<user>:<password>@<host>/<base_db>'; python -m pytest -q tests/test_knowledge_parsers.py tests/test_knowledge_uploads.py tests/test_quotas.py tests/test_platform_ops.py --tb=short`.
+
+## 2026-10-14 — P7-05 release readiness review package
+
+Built: Added draft runbook, backup/restore procedure, monitoring/alert definitions, security review record, and ADR-007 hosting options; all unresolved choices and verification gaps are explicit.
+Tested: Documentation cross-checked against open ADR-007, P7 checklist, current Storage interface, and P6 channel boundary; no deploy or database restore was performed.
+Unverified: Disposable backup/restore drill, independent security review, production alert delivery, and full Playwright run remain open. Full suite owner command after ADR-007/environment review: `npm.cmd test --workspace apps/web`; full API owner command (run from `apps/api`) requires a disposable plain URL: `$env:TEST_DATABASE_URL='postgresql://<user>:<password>@<host>/<base_db>'; python -m pytest -q --tb=short`. Existing browser failures were not chased, and no phase sign-off was ticked.
 
