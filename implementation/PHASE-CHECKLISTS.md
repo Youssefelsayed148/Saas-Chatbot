@@ -65,7 +65,7 @@ Legend: [ ] open · [x] done with evidence. Owner sign-off closes each phase.## 
 - [x] P5-04: contacts CRUD, identities, stage, tags, custom fields (≤20), timeline, explicit merge (audited), CSV export, erasure removes identities and messages — API suite and P5-04 report evidence
 - [x] P5-04: widget lead form → contact (consent recorded) — existing widget lead tests in full API suite
 - [ ] P5-05: follow-ups scheduled by user or rule and sent by a job; website follow-up shown on next visit; no send without recorded opt-in (Meta channels)
-- [ ] P5-05: sentiment job (cost-capped) and analytics: handoff rate, time to first human reply, per-channel counts, sentiment distribution, agent workload — all match stored data
+- [ ] P5-05: aggregate view only; job deferred to P7-02. Analytics: handoff rate, time to first human reply, per-channel counts, stored sentiment distribution, agent workload — all match measured data
 - [ ] Phase report; owner sign-off → website product is sellable
 
 ## P6 ManyOsirisChat channel (WhatsApp, Messenger, Instagram)

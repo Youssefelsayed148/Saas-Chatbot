@@ -323,3 +323,54 @@ Verification (exact commands and outcomes):
 
 No key or `.env` value was read or printed. No production limits were changed, no external or paid APIs were called, and no deployment occurred.
 
+## 2026-10-14 - P5-03 inbox UI and operator thread
+
+Added the tenant inbox and conversation thread screens. The inbox exposes status, mode, channel, member/unassigned, tag, unread, and full-text filters; unread/assignment counts; live updates through the existing SSE stream; loading, empty, and error states. The thread renders visitor, AI, agent, and system events with citations, visitor feedback, and answer/handoff indicators, and offers editor-gated takeover, return-to-AI, resolve, assign, reply, tags, and read state. Internal notes are separately labeled system events and are audited; the widget polling regression assertion confirms notes do not reach visitors. Added Inbox to the shared app navigation.
+
+Verification (exact commands and outcomes):
+- `docker exec p5-01-e2e-api sh -lc 'ruff check . && ruff format --check . && mypy && pytest -q'` - EXIT 0: 225 passed, 1 existing Starlette/httpx deprecation warning (run before the final note-visibility assertion).
+- `docker exec p5-01-e2e-api sh -lc 'ruff check app/inbox/router.py tests/test_handoff.py && ruff format --check app/inbox/router.py tests/test_handoff.py && pytest -q tests/test_handoff.py'` - EXIT 0: 4 passed, 1 existing Starlette/httpx deprecation warning; this includes note authorization, audit, visitor-polling exclusion, and inbox feedback display.\n- `docker exec p5-01-e2e-api sh -lc 'ruff check app/inbox/router.py tests/test_handoff.py && ruff format --check app/inbox/router.py tests/test_handoff.py && mypy app/inbox/router.py && pytest -q tests/test_handoff.py'` - EXIT 0: Ruff/mypy passed; 4 passed, 1 existing Starlette/httpx deprecation warning.
+- `npm run typecheck` (`apps/web`) - EXIT 0.
+- `npm run lint` (`apps/web`) - EXIT 0.
+- `npx prettier --check app/app/'[tenant]'/inbox/page.tsx app/app/'[tenant]'/inbox/'[conversation]'/page.tsx lib/api.ts lib/app-header.tsx tests/conversations.spec.ts` (`apps/web`) - EXIT 0.
+- `npm run build -- --webpack` (`apps/web`) - EXIT 0; Webpack production build completed using Next's WASM SWC fallback.
+- `$env:E2E_REUSE_API='1'; npx playwright test tests/conversations.spec.ts -g 'inbox agent takes over'` (`apps/web`) - EXIT 1; latest attempt timed out at 180 s waiting for the organization `Name` field before the visitor flow. Earlier retries encountered duplicate sample-widget frames and an unauthenticated APIRequestContext 404. The requested end-to-end journey is added but is NOT verified.
+
+The E2E failure occurs before the inbox interaction and no successful P5-03 browser journey is claimed. No `.env` edits, external services, deployments, or paid model calls.
+
+## 2026-10-14 - P5-05 follow-ups and analytics; P5-03 final verification attempt
+
+P5-05 implementation adds durable website follow-up scheduling/cancellation, a worker queue job, one-time display on the visitor's next widget history read, and tenant-scoped measured handoff analytics. No sentiment model job or cost cap was added: per owner direction, sentiment classification/cost caps are deferred to P7; P5 analytics only aggregates stored sentiment values.
+
+P5-05 evidence and exact outcomes:
+- Earlier focused disposable-container run: `pytest -q tests/test_followups_analytics.py` - EXIT 0, 2 passed, 1 existing Starlette/httpx deprecation warning.
+- Current local `mypy` - EXIT 0, 134 source files. `ruff check` and `ruff format --check` - EXIT 0 after three import/style fixes.
+- `npm.cmd run lint --workspace apps/web` - EXIT 0. `npm.cmd run typecheck --workspace apps/web` - EXIT 0. Prettier check on P5-05 and inbox files - EXIT 0.
+- `npm.cmd run build --workspace apps/web` - EXIT 1: Turbopack unsupported with the available Windows WASM-only SWC. `npm.cmd run build --workspace apps/web -- --webpack` - EXIT 1: Next.js build failed with `spawn EPERM`.
+- Current focused local `pytest -q tests/test_followups_analytics.py --basetemp=...` - EXIT 1, both test setups errored when knowledge fixtures attempted to write to configured local storage (`The upload could not be stored`, INTERNAL_ERROR). Full local `pytest -q` - EXIT 1: 106 passed, 5 failed, 118 errors; the local Windows run also hit denied cache/temp and knowledge storage paths. Five failures are in existing inbox listing tests. The earlier focused disposable-container pass remains valid; this later local full-suite run is not a pass.
+- Follow-up Playwright browser journey failed earlier with HTTP 409 because the E2E bot was activated but had no published knowledge revision; production availability validation was not changed.
+
+P5-03 last-run evidence and exact outcomes:
+- Updated `apps/web/tests/conversations.spec.ts` to log registration HTTP status, assert 201, use unique lead emails, scope the widget to the first frame, and keep dashboard API calls on `page.request` (the authenticated browser context, with CSRF on writes).
+- Fresh disposable DB `rate_limit_counters` query after the browser attempt returned `(total=0, registration_buckets=0, peak_count=0)`, so the suspected Postgres rate limiter was not hit in that DB. No production limit was weakened.
+- `npm.cmd test --workspace apps/web -- --reporter=line` - EXIT 1 before tests launched: Playwright process spawn failed with `EPERM`. No successful P5-03 E2E is claimed.
+- `apps/web/playwright.config.ts` remains temporarily set to start the existing build without rebuilding; restore it to `npm run build && npm run start -- --port 3100` before any later Playwright run.
+
+The P5-03 E2E checklist remains unticked. P5-05 checklist lines remain open because the full suite/browser evidence did not complete and sentiment is carried to P7. No owner sign-off is ticked. No `.env` or key was read, printed, or logged; the E2E harness retains `CHAT_STUB_MODEL=1`.
+
+## 2026-10-14 — P5 close attempt and verification gate
+
+The inbox listing failures recorded by the earlier Windows run were investigated in a clean Linux API container. No failure reproduced there. The five inbox-list tests passed against a fresh fixture-created `_test` database, and the full API suite passed. Added a cross-feature regression assertion that a follow-up delivered from the visitor history is listed once as the inbox's latest message. `apps/web/playwright.config.ts` was verified restored to `npm run build && npm run start -- --port 3100`.
+
+Exact commands and outcomes:
+- `docker run --rm --name p5-close-inbox --network saas-chats-ai-dev_default -e DATABASE_URL=<temporary disposable PostgreSQL URL; password redacted> -e STORAGE_ROOT=/tmp/p5-test-storage -v "${PWD}:/workspace" -w /workspace/apps/api saas-chats-ai-p5-close-checks sh -lc 'pytest -q tests/test_inbox_list.py --tb=short'` — EXIT 0, `5 passed, 1 warning in 5.92s` (Starlette/httpx deprecation).
+- `docker run --rm --name p5-close-api-full --network saas-chats-ai-dev_default -e DATABASE_URL=<temporary disposable PostgreSQL URL; password redacted> -e STORAGE_ROOT=/tmp/p5-test-storage -v "${PWD}:/workspace" -w /workspace/apps/api saas-chats-ai-p5-close-checks sh -lc 'ruff check . && ruff format --check . && mypy && pytest -q'` — EXIT 0; Ruff passed; 138 files formatted; mypy passed for 134 source files; `228 passed, 1 warning in 117.02s`.
+- `docker run --rm --name p5-close-regression --network saas-chats-ai-dev_default -e DATABASE_URL=<temporary disposable PostgreSQL URL; password redacted> -e STORAGE_ROOT=/tmp/p5-test-storage -v "${PWD}:/workspace" -w /workspace/apps/api saas-chats-ai-p5-close-checks sh -lc 'pytest -q tests/test_inbox_list.py tests/test_followups_analytics.py --tb=short'` — EXIT 0, `7 passed, 1 warning in 8.54s`.
+- `npm.cmd run lint --workspace apps/web` — EXIT 0.
+- `npx.cmd prettier --check app lib tests` (from `apps/web`) — EXIT 0.
+- `npm.cmd run typecheck --workspace apps/web` — EXIT 0; Next used WASM SWC fallback.
+- `npm.cmd run format:check` — EXIT 1; repository-wide Prettier reports existing `package.json` formatting. The web-only formatting check passed.
+- `npm.cmd run build --workspace apps/web -- --webpack` — EXIT 1 before build completion: Windows `spawn EPERM` during Next compilation.
+- With `DATABASE_URL` set to the disposable base DB, `STORAGE_ROOT` set under the workspace, and `CHAT_STUB_MODEL=1`, `npm.cmd test --workspace apps/web -- --reporter=line` — EXIT 1 before browser startup: Playwright `spawn EPERM`.
+
+Gate status: **STOP before Part 2.** The full Playwright suite, including the P5-03 handoff journey, remains unverified. The owner must run the PowerShell command block in `implementation/PHASE-05/PHASE-REPORT.md` from an unrestricted terminal. P5-03/P5-05 and phase owner sign-off remain unticked. The owner decision moving sentiment classification/cost caps to P7-02 is recorded in `DECISIONS.md`; P5 analytics shows “Sentiment not measured yet” when the aggregate is empty. No `.env` or API key value was read, printed, or logged; temporary database credentials are omitted here.

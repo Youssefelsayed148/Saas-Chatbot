@@ -42,3 +42,6 @@ Approver: product owner ("this saas will be for the websites clients deployment 
 
 ## 2026-10-12 — Client dashboard per bot and admin console (ADR-018)
 Approver: product owner ("a dashboard for the client per chatbot and one for the admins to manage all clients"). Rationale: the admin area was one late ticket (P7) but clients must be onboarded long before; the per-bot view was scattered. Alternatives: keep admin in P7 (rejected: onboarding would be manual SQL). Impact: P4 gains P4-06 (admin console basics + staff onboarding via ProvisioningService); P7-01/P7-03 narrow to advanced operations, quotas, platform analytics and self-service hardening.
+
+## 2026-10-14 — Sentiment classification deferred to P7-02
+Approver: product owner (decision recorded in the current instruction). Rationale: build sentiment classification together with P7-02 quotas so plan-based cost caps are enforced transactionally. Alternatives: implement the model job and cost caps in P5-05 (deferred). Impact: P5-05 may show only an aggregate of sentiment values already present; it must say “Sentiment not measured yet” when no results exist. P7-02 will add the sentiment job on the free ChatModel chain with a plan quota and aggregate-only use.
