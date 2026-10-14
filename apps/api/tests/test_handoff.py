@@ -40,6 +40,7 @@ def test_handoff_state_cycle_viewer_tenant_and_widget_scope(
         ("POST", "/resolve", None),
         ("POST", "/assign", {"assigned_user_id": None}),
         ("POST", "/messages", {"text": "viewer must not reply"}),
+        ("POST", "/notes", {"text": "viewer must not add note"}),
     ]
     for method, suffix, body in route_actions:
         kwargs: dict[str, Any] = {"headers": csrf_headers(viewer)} if method == "POST" else {}
@@ -82,12 +83,36 @@ def test_handoff_state_cycle_viewer_tenant_and_widget_scope(
     assert reply_message["sender_type"] == "agent"
     assert reply_message["citations"] == []
 
+    note = editor.post(
+        path + "/notes",
+        json={"text": "Check the order details before follow-up."},
+        headers=csrf_headers(editor),
+    )
+    assert note.status_code == 201, note.text
+    note_messages = owner.get(path).json()["messages"]
+    assert any(
+        message["sender_type"] == "system"
+        and message["text"] == "Internal note: Check the order details before follow-up."
+        for message in note_messages
+    )
+    ai_message_id = setup["turn"]["ai_message"]["id"]
+    feedback = client.post(
+        f"/api/public/v1/sessions/{session['session_id']}/messages/{ai_message_id}/feedback",
+        json={"rating": "up"},
+        headers={"X-Session-Token": session["token"]},
+    )
+    assert feedback.status_code == 200, feedback.text
+    detail_messages = owner.get(path).json()["messages"]
+    ai_detail = next(message for message in detail_messages if message["id"] == ai_message_id)
+    assert ai_detail["feedback"] == ["up"]
+
     # The capability token sees only its session, and agent text has no citations.
     polled = client.get(
         f"/api/public/v1/sessions/{session['session_id']}/messages",
         headers={"X-Session-Token": session["token"]},
     )
     assert polled.status_code == 200
+    assert not any("Internal note:" in row["text"] for row in polled.json())
     assert any(
         row["id"] == reply_message["id"] and row["text"] == reply_message["text"]
         for row in polled.json()
@@ -133,6 +158,7 @@ def test_handoff_state_cycle_viewer_tenant_and_widget_scope(
         "conversation.taken_over",
         "conversation.returned_to_ai",
         "conversation.resolved",
+        "conversation.note_added",
     } <= set(actions)
 
 

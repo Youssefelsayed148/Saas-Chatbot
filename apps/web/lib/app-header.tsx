@@ -55,6 +55,20 @@ export function AppHeader({ tenantId }: { tenantId?: string }) {
                 Bots
               </Link>
               <Link
+                href={`/app/${tenantId}/inbox`}
+                aria-current={pathname?.includes("/inbox") ? "page" : undefined}
+              >
+                Inbox
+              </Link>
+              <Link
+                href={`/app/${tenantId}/contacts`}
+                aria-current={
+                  pathname?.includes("/contacts") ? "page" : undefined
+                }
+              >
+                Contacts
+              </Link>
+              <Link
                 href={`/app/${tenantId}/settings/members`}
                 aria-current={
                   pathname?.endsWith("/members") ? "page" : undefined

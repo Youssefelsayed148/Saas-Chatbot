@@ -58,6 +58,28 @@ export interface ContactProfile {
   }[];
 }
 
+export interface FollowUp {
+  id: string;
+  conversation_id: string;
+  contact_id: string | null;
+  send_at: string;
+  text: string;
+  status: "scheduled" | "ready" | "delivered" | "cancelled";
+  created_at: string;
+  delivered_at: string | null;
+}
+
+export interface HandoffAnalytics {
+  total_conversations: number;
+  handoff_count: number;
+  handoff_rate: number | null;
+  average_first_human_reply_seconds: number | null;
+  conversations_by_channel: Record<string, number>;
+  resolved_vs_open: { resolved: number; open: number };
+  sentiment_distribution: Record<string, number>;
+  agent_workload: Record<string, number>;
+}
+
 const CONTACTS = (tenantId: string) => `tenants/${tenantId}/contacts`;
 
 export async function listContacts(tenantId: string): Promise<Contact[]> {
@@ -121,6 +143,40 @@ export function renameContactStage(
     method: "PATCH",
     body: { old_name: oldName, name },
   });
+}
+
+export function listFollowUps(
+  tenantId: string,
+): Promise<{ follow_ups: FollowUp[] }> {
+  return api<{ follow_ups: FollowUp[] }>(`tenants/${tenantId}/follow-ups`);
+}
+
+export function createFollowUp(
+  tenantId: string,
+  body: {
+    conversation_id: string;
+    contact_id: string;
+    send_at: string;
+    text: string;
+  },
+): Promise<FollowUp> {
+  return api<FollowUp>(`tenants/${tenantId}/follow-ups`, {
+    method: "POST",
+    body,
+  });
+}
+
+export function cancelFollowUp(
+  tenantId: string,
+  followUpId: string,
+): Promise<void> {
+  return api<void>(`tenants/${tenantId}/follow-ups/${followUpId}`, {
+    method: "DELETE",
+  });
+}
+
+export function handoffAnalytics(tenantId: string): Promise<HandoffAnalytics> {
+  return api<HandoffAnalytics>(`tenants/${tenantId}/analytics`);
 }
 
 export interface Membership {
@@ -285,6 +341,148 @@ export interface ConversationDetailResponse {
     needs_human: boolean;
     created_at: string;
   }>;
+}
+
+export interface InboxConversation {
+  id: string;
+  bot_id: string;
+  contact_id: string | null;
+  channel: string;
+  mode: string;
+  status: string;
+  assigned_user_id: string | null;
+  handoff_reason: string | null;
+  last_message_at: string | null;
+  last_message?: string | null;
+  unread_count?: number;
+  tags?: string[];
+}
+
+export interface InboxResponse {
+  conversations: InboxConversation[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface InboxCounts {
+  waiting_human: number;
+  assigned_to_me: number;
+  unread_messages: number;
+  unread_conversations: number;
+}
+
+export interface InboxMessage {
+  id: string;
+  sender_type: string;
+  sender_user_id?: string | null;
+  text: string;
+  citations: Array<{
+    chunk_id: string;
+    title?: string | null;
+    heading?: string | null;
+    source_url?: string | null;
+    page_ref?: string | null;
+  }>;
+  can_answer: boolean | null;
+  needs_human: boolean;
+  feedback?: Array<"up" | "down">;
+  created_at: string;
+}
+
+export interface InboxThread {
+  conversation: InboxConversation;
+  messages: InboxMessage[];
+}
+
+export async function listInbox(
+  tenantId: string,
+  filters: Record<string, string | boolean | undefined> = {},
+): Promise<InboxResponse> {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value !== undefined && value !== "") query.set(key, String(value));
+  }
+  const suffix = query.size ? `?${query.toString()}` : "";
+  return api<InboxResponse>(`tenants/${tenantId}/inbox${suffix}`);
+}
+
+export async function inboxCounts(tenantId: string): Promise<InboxCounts> {
+  return api<InboxCounts>(`tenants/${tenantId}/inbox/counts`);
+}
+
+export async function getInboxThread(
+  tenantId: string,
+  conversationId: string,
+): Promise<InboxThread> {
+  return api<InboxThread>(
+    `tenants/${tenantId}/conversations/${conversationId}`,
+  );
+}
+
+export async function inboxAction(
+  tenantId: string,
+  conversationId: string,
+  action: "takeover" | "return-to-ai" | "resolve" | "assign",
+  body?: unknown,
+): Promise<unknown> {
+  return api(`tenants/${tenantId}/conversations/${conversationId}/${action}`, {
+    method: "POST",
+    ...(body === undefined ? {} : { body }),
+  });
+}
+
+export async function sendAgentReply(
+  tenantId: string,
+  conversationId: string,
+  text: string,
+): Promise<{ message: InboxMessage }> {
+  return api(`tenants/${tenantId}/conversations/${conversationId}/messages`, {
+    method: "POST",
+    body: { text },
+  });
+}
+
+export async function addConversationNote(
+  tenantId: string,
+  conversationId: string,
+  text: string,
+): Promise<void> {
+  return api(`tenants/${tenantId}/conversations/${conversationId}/notes`, {
+    method: "POST",
+    body: { text },
+  });
+}
+
+export async function markInboxRead(
+  tenantId: string,
+  conversationId: string,
+): Promise<void> {
+  return api(`tenants/${tenantId}/inbox/${conversationId}/read`, {
+    method: "POST",
+  });
+}
+
+export async function addInboxTag(
+  tenantId: string,
+  conversationId: string,
+  tag: string,
+): Promise<void> {
+  return api(`tenants/${tenantId}/inbox/${conversationId}/tags`, {
+    method: "POST",
+    body: { tag },
+  });
+}
+
+export async function removeInboxTag(
+  tenantId: string,
+  conversationId: string,
+  tag: string,
+): Promise<void> {
+  return api(
+    `tenants/${tenantId}/inbox/${conversationId}/tags/${encodeURIComponent(tag)}`,
+    { method: "DELETE" },
+  );
 }
 
 export interface WidgetSendMessageResponse {

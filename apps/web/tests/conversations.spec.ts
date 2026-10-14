@@ -35,7 +35,15 @@ async function registerAndPrepareBot(page: Page): Promise<{
   await page.goto("/register");
   await page.getByLabel("Email").fill(uniqueEmail("conv"));
   await page.getByLabel("Password").fill(PASSWORD);
+  const registerResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/v1/auth/register") &&
+      response.request().method() === "POST",
+  );
   await page.getByRole("button", { name: "Create account" }).click();
+  const registration = await registerResponse;
+  console.info(`[e2e] registration response status=${registration.status()}`);
+  expect(registration.status()).toBe(201);
   await page.waitForURL("/app");
   await page.getByLabel("Name").fill(`Conversations Org ${Date.now()}`);
   await page.getByRole("button", { name: "Create" }).click();
@@ -118,7 +126,9 @@ test("visitor chat + consent lead appear in the conversations view with citation
   await expect(bubble).toBeVisible();
   await bubble.click();
   const frame = page
-    .frameLocator("[data-testid='widget-frame']")
+    .locator("[data-testid='widget-frame']")
+    .first()
+    .contentFrame()
     .locator("[data-testid='widget-frame-body']");
   const input = frame.getByTestId("widget-input");
   await expect(input).toBeVisible();
@@ -132,7 +142,7 @@ test("visitor chat + consent lead appear in the conversations view with citation
   await frame.getByTestId("widget-lead-open").click();
   const form = frame.getByTestId("widget-lead-form");
   await form.getByTestId("widget-lead-name").fill("Vera Visitor");
-  await form.getByTestId("widget-lead-email").fill("vera@example.com");
+  await form.getByTestId("widget-lead-email").fill(uniqueEmail("vera"));
   // consent is REQUIRED — submitting empty consent keeps the detail open
   await form.getByTestId("widget-lead-submit").click();
   await expect(frame.getByTestId("widget-lead-error")).toBeVisible();
@@ -157,4 +167,88 @@ test("visitor chat + consent lead appear in the conversations view with citation
   );
   await expect(page.getByTestId("thread-citations").first()).toBeVisible();
   await expect(page.getByTestId("conversation-thread")).toContainText(/9:00/);
+});
+
+test("inbox agent takes over an unanswered widget thread, replies, then returns it to AI", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  const { tenantId, locator } = await registerAndPrepareBot(page);
+
+  await page.goto(
+    `/widget/sample?locator=${encodeURIComponent(locator)}&site=inbox-e2e`,
+  );
+  await page.getByTestId("widget-bubble").first().click({ force: true });
+  const frame = page
+    .locator("[data-testid='widget-frame']")
+    .first()
+    .contentFrame()
+    .locator("[data-testid='widget-frame-body']");
+  const input = frame.getByTestId("widget-input");
+  await expect(input).toBeVisible();
+
+  let conversationId = "";
+  for (let turn = 0; turn < 2; turn += 1) {
+    await input.fill("Do you sell purple elephants?");
+    const responsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/public/v1/sessions/") &&
+        response.url().endsWith("/messages") &&
+        response.request().method() === "POST",
+    );
+    await frame.getByTestId("widget-send").click();
+    const response = await responsePromise;
+    expect(response.ok()).toBeTruthy();
+    const payload = (await response.json()) as { conversation_id: string };
+    conversationId = payload.conversation_id;
+  }
+
+  await page.goto(`/app/${tenantId}/inbox/${conversationId}`);
+  await expect(page.getByTestId("inbox-thread")).toContainText("waiting_human");
+  await page.getByRole("button", { name: "Take over" }).click();
+  await expect(page.getByText("Human mode")).toBeVisible();
+  await page.getByLabel("Reply").fill("An agent is here to help you.");
+  await page.getByRole("button", { name: "Send reply" }).click();
+  await expect(page.getByTestId("inbox-thread")).toContainText(
+    "An agent is here to help you.",
+  );
+  await page
+    .getByLabel("Internal note")
+    .fill("Follow up about product availability.");
+  await page.getByRole("button", { name: "Add note" }).click();
+  await expect(page.getByTestId("inbox-thread")).toContainText(
+    "Follow up about product availability.",
+  );
+
+  await page.goto(
+    `/widget/sample?locator=${encodeURIComponent(locator)}&site=inbox-e2e`,
+  );
+  const visitorFrame = page
+    .locator("[data-testid='widget-frame']")
+    .first()
+    .contentFrame()
+    .locator("[data-testid='widget-frame-body']");
+  await expect(visitorFrame.getByTestId("widget-ai-msg")).toContainText(
+    "An agent is here to help you.",
+    { timeout: 20_000 },
+  );
+
+  await page.goto(`/app/${tenantId}/inbox/${conversationId}`);
+  await page.getByRole("button", { name: "Return to AI" }).click();
+  await expect(page.getByText("AI mode")).toBeVisible();
+  await page.goto(
+    `/widget/sample?locator=${encodeURIComponent(locator)}&site=inbox-e2e`,
+  );
+  const reopenedFrame = page
+    .locator("[data-testid='widget-frame']")
+    .first()
+    .contentFrame()
+    .locator("[data-testid='widget-frame-body']");
+  await reopenedFrame
+    .getByTestId("widget-input")
+    .fill("Another question after returning to AI");
+  await reopenedFrame.getByTestId("widget-send").click();
+  await expect(reopenedFrame.getByTestId("widget-ai-msg").last()).toBeVisible({
+    timeout: 45_000,
+  });
 });

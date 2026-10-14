@@ -12,7 +12,7 @@ from app.chat.conversations import append_message, messages_of
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
 from app.core.tenancy import TenantContext, TenantContextDep
-from app.db.models import Conversation, Membership
+from app.db.models import Conversation, Membership, UsageEvent
 from app.inbox.handoff import add_system_message
 
 router = APIRouter(prefix="/api/v1/tenants/{tenant_id}/conversations")
@@ -25,6 +25,10 @@ class AssignRequest(BaseModel):
 
 
 class AgentReplyRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=4000)
+
+
+class InternalNoteRequest(BaseModel):
     text: str = Field(min_length=1, max_length=4000)
 
 
@@ -67,6 +71,22 @@ def conversation_detail(
 ) -> dict[str, Any]:
     row = _conversation(context, conversation_id)
     messages = messages_of(context.db, row, settings=settings, limit=200)
+    message_ids = [message.id for message in messages]
+    feedback_by_message: dict[UUID, list[str]] = {}
+    if message_ids:
+        feedback_rows = context.db.execute(
+            select(UsageEvent.message_id, UsageEvent.kind).where(
+                UsageEvent.tenant_id == context.tenant_id,
+                UsageEvent.conversation_id == row.id,
+                UsageEvent.message_id.in_(message_ids),
+                UsageEvent.kind.in_(("feedback_up", "feedback_down")),
+            )
+        )
+        for message_id, kind in feedback_rows:
+            if message_id is not None:
+                feedback_by_message.setdefault(message_id, []).append(
+                    "up" if kind == "feedback_up" else "down"
+                )
     return {
         "conversation": _state(row),
         "messages": [
@@ -78,6 +98,7 @@ def conversation_detail(
                 "citations": message.citations or [],
                 "can_answer": message.can_answer,
                 "needs_human": message.needs_human,
+                "feedback": feedback_by_message.get(message.id, []),
                 "created_at": message.created_at.isoformat(),
             }
             for message in messages
@@ -236,3 +257,27 @@ def agent_reply(
             "created_at": message.created_at.isoformat(),
         }
     }
+
+
+@router.post("/{conversation_id}/notes", status_code=201)
+def add_internal_note(
+    conversation_id: UUID,
+    body: InternalNoteRequest,
+    context: TenantContextDep,
+    _: CsrfOk,
+) -> dict[str, str]:
+    """Persist an audited operator-only note in the system event stream."""
+    context.require_role("editor")
+    row = _conversation(context, conversation_id, lock=True)
+    text = body.text.strip()
+    if not text:
+        raise ApiError(422, "VALIDATION_ERROR", "Note cannot be empty.")
+    add_system_message(
+        context.db,
+        conversation=row,
+        text=f"Internal note: {text}",
+        action="conversation.note_added",
+        actor_user_id=context.user.id,
+    )
+    context.db.commit()
+    return {"status": "created"}
