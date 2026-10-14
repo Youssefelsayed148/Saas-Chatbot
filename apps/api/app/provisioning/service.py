@@ -379,7 +379,13 @@ class ProvisioningService:
     ) -> Any:
         from app.db.models import Bot
 
-        bot = Bot(id=uuid4(), tenant_id=tenant_id, name=bot_name.strip(), config={})
+        bot = Bot(
+            id=uuid4(),
+            tenant_id=tenant_id,
+            name=bot_name.strip(),
+            config={},
+            widget_locator="w" + secrets.token_hex(16),
+        )
         self.db.add(bot)
         self.db.flush()
         record_audit(

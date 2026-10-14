@@ -241,3 +241,26 @@ def test_client_list_and_detail_are_reachable_by_staff_only(
         else None
     )
     del outsider, bot_a, owner_a
+
+
+def test_staff_onboarded_bot_has_widget_locator_and_public_config_is_reachable(
+    app: Any, db: Any, corpus: dict[str, Any]
+) -> None:
+    from fastapi.testclient import TestClient
+
+    staff_client = staff_login(app, db)
+    response = platform_call(
+        staff_client,
+        "POST",
+        "/onboarding",
+        data=ONBOARD_FORM,
+        headers={"Idempotency-Key": "ob-locator"},
+    )
+    assert response.status_code == 201, response.text
+    bot_id = response.json()["result"]["bot_id"]
+    locator = db.execute(
+        text("SELECT widget_locator FROM bots WHERE id = CAST(:b AS uuid)"), {"b": bot_id}
+    ).scalar_one()
+    assert locator
+    public = TestClient(app).get(f"/api/public/v1/widgets/{locator}/config")
+    assert public.status_code == 200, public.text

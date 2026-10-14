@@ -63,3 +63,22 @@ def test_self_service_signup_retries_create_one_tenant_and_bot(app: Any, db: Any
     assert mismatch.status_code == 409
     client_a.close()
     client_b.close()
+
+
+def test_self_service_bot_has_widget_locator_and_public_config_is_reachable(
+    app: Any, db: Any
+) -> None:
+    client, _ = logged_in(app, "p7-locator@example.com")
+    response = client.post(
+        "/api/v1/provisioning/self-service",
+        json={"client_name": "Locator Co", "bot_name": "Website bot"},
+        headers=csrf_headers(client),
+    )
+    assert response.status_code == 201, response.text
+    bot_id = UUID(response.json()["result"]["bot_id"])
+    db.expire_all()
+    locator = db.execute(select(Bot.widget_locator).where(Bot.id == bot_id)).scalar_one()
+    assert locator
+    public = TestClient(app).get(f"/api/public/v1/widgets/{locator}/config")
+    assert public.status_code == 200, public.text
+    client.close()
