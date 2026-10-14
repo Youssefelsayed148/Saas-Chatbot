@@ -17,7 +17,7 @@ from tests.fixtures_factory import (
     make_docx,
     make_pdf_pages,
 )
-from tests.helpers import make_bot, seeded_tenant
+from tests.helpers import csrf_headers, make_bot, seeded_tenant
 from tests.knowledge_helpers import MD_AR, MD_EN, upload_settings, upload_sources
 
 
@@ -129,12 +129,15 @@ def test_upload_accepts_chunked_multipart_without_content_length(
         yield f"\r\n--{boundary}--\r\n".encode()
 
     try:
-        response = users.call(
-            "owner",
+        owner_client = users.as_user("owner")
+        response = owner_client.request(
             "POST",
             f"/api/v1/tenants/{users.tenant_id}/bots/{bot_id}/sources/files",
             content=multipart_chunks(),
-            headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+            headers={
+                **csrf_headers(owner_client),
+                "Content-Type": f"multipart/form-data; boundary={boundary}",
+            },
         )
         assert response.status_code == 201, response.text
         assert response.json()[0]["original_name"] == "chunked.md"
@@ -149,7 +152,9 @@ def test_oversize_file_rejected_with_413(
     storage_rooted_app: FastAPI, raw_db: OrmSession, tmp_path: Any
 ) -> None:
     try:
-        users = seeded_tenant(storage_rooted_app, raw_db, prefix="up-big")
+        # seeded_tenant defaults to the "business" plan (25 MB upload cap, P7-02
+        # quotas); pin "starter" here so the file-size assertion below (10 MB) holds.
+        users = seeded_tenant(storage_rooted_app, raw_db, prefix="up-big", plan_label="starter")
         bot_id = bot_of_users_response(users)
         blob = b"a" * (10 * 1024 * 1024 + 1)
         response = upload_sources(users, bot_id, [("big.md", blob)], tmp_path)
