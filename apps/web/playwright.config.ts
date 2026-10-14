@@ -7,7 +7,8 @@ export default defineConfig({
   // The dashboard flows are shared journeys (register → org → bot → archive);
   // serial single-worker runs keep them deterministic.
   workers: 1,
-  globalTimeout: 240000,
+  // Whole-run budget: web build + API boot + all specs. 240s was too small (overview.spec alone allows 240s).
+  globalTimeout: 1_800_000,
   globalSetup: "./tests/e2e-api-setup.ts",
   globalTeardown: "./tests/e2e-api-teardown.ts",
   use: { baseURL: "http://127.0.0.1:3100", trace: "retain-on-failure" },
