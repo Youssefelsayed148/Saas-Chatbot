@@ -251,33 +251,33 @@ Owner clarified: this SaaS serves website clients; ManyOsirisChat provides the M
 ## 2026-10-12 ‚Äî Two dashboards (ADR-018)
 Client dashboard per chatbot (docs/10) and platform admin console (docs/11) are now named deliverables. Basic admin console + staff onboarding moved into P4 (new ticket P4-06); P7-01/P7-03 narrowed to advanced operations and self-service hardening. Roadmap, checklists, prompts, API routes, FRs and behaviour guide updated. No code changed.
 
-## 2026-10-14 ó P4 audit attempt and close-out
+## 2026-10-14 ‚Äî P4 audit attempt and close-out
 
-Audit: `implementation/PHASE-04/AUDIT.md`. Review covered A1ñA9. Static source/test review found no confirmed security defect. The checklist currently contains one P4 row per deliverable, one unticked owner gate, and one P5 header; `docs/phase4report.md` is now a one-line pointer to the canonical implementation report. Checklist diff reviewed: changes are confined to P4-05/P4-06 evidence rows, the two-site evidence row, and the report/owner line; P1ñP3 and P5ñP7 are unchanged.
+Audit: `implementation/PHASE-04/AUDIT.md`. Review covered A1‚ÄìA9. Static source/test review found no confirmed security defect. The checklist currently contains one P4 row per deliverable, one unticked owner gate, and one P5 header; `docs/phase4report.md` is now a one-line pointer to the canonical implementation report. Checklist diff reviewed: changes are confined to P4-05/P4-06 evidence rows, the two-site evidence row, and the report/owner line; P1‚ÄìP3 and P5‚ÄìP7 are unchanged.
 
 Exact verification commands and outcomes from this session:
-- `docker version` ó FAILED: permission denied connecting to `npipe:////./pipe/DockerDesktopLinuxEngine`.
-- `python -m ruff check .` (from `apps/api`) ó FAILED to start: `No module named ruff`.
-- `npm run lint` (repository root) ó EXIT 0; ESLint completed with `--max-warnings 0`.
-- `npx prettier --check app lib tests` (from `apps/web`) ó first EXIT 1; listed `app/platform/clients/[clientId]/page.tsx`, `app/platform/page.tsx`, and `lib/api.ts` as unformatted. Applied `npx prettier --write 'app/platform/clients/[clientId]/page.tsx' app/platform/page.tsx lib/api.ts`; rerun EXIT 0: all matched files use Prettier style.
-- `npm run typecheck` (repository root) ó Next SWC initialization blocked with `EPERM` creating `C:\Users\Youssef\AppData\Local\next-swc` (outside writable workspace).
-- `npx tsc --noEmit` (from `apps/web`) ó EXIT 0.
-- `docker compose -f infra/compose.yaml ps` ó not run successfully; Compose could not interpolate the required POSTGRES_USER/POSTGRES_PASSWORD/POSTGRES_DB values, and Docker daemon is unavailable.
+- `docker version` ‚Äî FAILED: permission denied connecting to `npipe:////./pipe/DockerDesktopLinuxEngine`.
+- `python -m ruff check .` (from `apps/api`) ‚Äî FAILED to start: `No module named ruff`.
+- `npm run lint` (repository root) ‚Äî EXIT 0; ESLint completed with `--max-warnings 0`.
+- `npx prettier --check app lib tests` (from `apps/web`) ‚Äî first EXIT 1; listed `app/platform/clients/[clientId]/page.tsx`, `app/platform/page.tsx`, and `lib/api.ts` as unformatted. Applied `npx prettier --write 'app/platform/clients/[clientId]/page.tsx' app/platform/page.tsx lib/api.ts`; rerun EXIT 0: all matched files use Prettier style.
+- `npm run typecheck` (repository root) ‚Äî Next SWC initialization blocked with `EPERM` creating `C:\Users\Youssef\AppData\Local\next-swc` (outside writable workspace).
+- `npx tsc --noEmit` (from `apps/web`) ‚Äî EXIT 0.
+- `docker compose -f infra/compose.yaml ps` ‚Äî not run successfully; Compose could not interpolate the required POSTGRES_USER/POSTGRES_PASSWORD/POSTGRES_DB values, and Docker daemon is unavailable.
 
-No fresh disposable DB was created. Full backend lint/format/mypy/pytest (including the claimed 216 tests), migration 0001ñ0006 up/down, and the full Playwright suite (claimed 20 tests) are UNVERIFIED. No live model key was available and no paid call was made. Because those checks are required to close A1 and they could not be run here, P5 was not started. P4 owner sign-off remains unticked.
+No fresh disposable DB was created. Full backend lint/format/mypy/pytest (including the claimed 216 tests), migration 0001‚Äì0006 up/down, and the full Playwright suite (claimed 20 tests) are UNVERIFIED. No live model key was available and no paid call was made. Because those checks are required to close A1 and they could not be run here, P5 was not started. P4 owner sign-off remains unticked.
 
-## 2026-10-14 ó P4 fresh verification completed
+## 2026-10-14 ‚Äî P4 fresh verification completed
 
 This entry supersedes the earlier same-day note that Docker was unavailable to the sandbox. The sandbox was denied the Docker Desktop named pipe, while an approved out-of-sandbox Docker command showed the engine running (Docker Server 29.8.0). Used the existing healthy local Postgres container; the repository's API, web, and worker services were not running. Test-only containers and databases were isolated to `*_test`; temporary API/worker/checks containers were removed after verification. The existing Postgres service and its volumes were left untouched.
 
 Exact verification and outcomes:
-- Backend command: `docker run --name p4-audit-checks --network saas-chats-ai-dev_default -e DATABASE_URL=<runtime-derived from local Postgres> -v <repo>:/workspace -w /workspace/apps/api saas-chats-ai-api-checks:p4 sh -c 'ruff check . && ruff format --check . && mypy && pytest'` ó EXIT 0. Output: `All checks passed!`; `118 files already formatted`; `Success: no issues found in 114 source files`; `216 passed, 1 warning in 89.08s` (Starlette/httpx deprecation).
-- Migration cycle: included in the full run as `tests/test_migrations.py::test_migrations_up_down_cycle` ó upgrade head from empty disposable migration DB (0001ñ0006), downgrade base, upgrade head again; PASS.
-- `npm run lint` (repo root) ó EXIT 0.
-- `npx prettier --check app lib tests` (`apps/web`) ó EXIT 0 after formatting the three reported files.
-- `npx tsc --noEmit` (`apps/web`) ó EXIT 0.
-- `npm run build -- --webpack` (`apps/web`, escalated to allow Next worker processes) ó EXIT 0, production build compiled and generated all pages. Default Turbopack build is unavailable because the Windows native SWC binding is missing.
-- `npm test` (`apps/web`) ó EXIT 0, **20 passed (2.0m)**. Used `E2E_REUSE_API=1` with the isolated API/worker and E2E DB; temporarily changed Playwright webServer to start the successfully built Webpack bundle without rebuilding, then restored `playwright.config.ts`.
+- Backend command: `docker run --name p4-audit-checks --network saas-chats-ai-dev_default -e DATABASE_URL=<runtime-derived from local Postgres> -v <repo>:/workspace -w /workspace/apps/api saas-chats-ai-api-checks:p4 sh -c 'ruff check . && ruff format --check . && mypy && pytest'` ‚Äî EXIT 0. Output: `All checks passed!`; `118 files already formatted`; `Success: no issues found in 114 source files`; `216 passed, 1 warning in 89.08s` (Starlette/httpx deprecation).
+- Migration cycle: included in the full run as `tests/test_migrations.py::test_migrations_up_down_cycle` ‚Äî upgrade head from empty disposable migration DB (0001‚Äì0006), downgrade base, upgrade head again; PASS.
+- `npm run lint` (repo root) ‚Äî EXIT 0.
+- `npx prettier --check app lib tests` (`apps/web`) ‚Äî EXIT 0 after formatting the three reported files.
+- `npx tsc --noEmit` (`apps/web`) ‚Äî EXIT 0.
+- `npm run build -- --webpack` (`apps/web`, escalated to allow Next worker processes) ‚Äî EXIT 0, production build compiled and generated all pages. Default Turbopack build is unavailable because the Windows native SWC binding is missing.
+- `npm test` (`apps/web`) ‚Äî EXIT 0, **20 passed (2.0m)**. Used `E2E_REUSE_API=1` with the isolated API/worker and E2E DB; temporarily changed Playwright webServer to start the successfully built Webpack bundle without rebuilding, then restored `playwright.config.ts`.
 
 P4 A1 now passes. A2 real-provider eval remains UNVERIFIED because no key was provided; no paid call was attempted. No confirmed FAIL remains. P4 sign-off stays unticked. The pasted request authorizes beginning P5 without treating that as P4 sign-off; proceeding to P5-01.
 
@@ -358,32 +358,46 @@ P5-03 last-run evidence and exact outcomes:
 
 The P5-03 E2E checklist remains unticked. P5-05 checklist lines remain open because the full suite/browser evidence did not complete and sentiment is carried to P7. No owner sign-off is ticked. No `.env` or key was read, printed, or logged; the E2E harness retains `CHAT_STUB_MODEL=1`.
 
-## 2026-10-14 ó P5 close attempt and verification gate
+## 2026-10-14 ‚Äî P5 close attempt and verification gate
 
 The inbox listing failures recorded by the earlier Windows run were investigated in a clean Linux API container. No failure reproduced there. The five inbox-list tests passed against a fresh fixture-created `_test` database, and the full API suite passed. Added a cross-feature regression assertion that a follow-up delivered from the visitor history is listed once as the inbox's latest message. `apps/web/playwright.config.ts` was verified restored to `npm run build && npm run start -- --port 3100`.
 
 Exact commands and outcomes:
-- `docker run --rm --name p5-close-inbox --network saas-chats-ai-dev_default -e DATABASE_URL=<temporary disposable PostgreSQL URL; password redacted> -e STORAGE_ROOT=/tmp/p5-test-storage -v "${PWD}:/workspace" -w /workspace/apps/api saas-chats-ai-p5-close-checks sh -lc 'pytest -q tests/test_inbox_list.py --tb=short'` ó EXIT 0, `5 passed, 1 warning in 5.92s` (Starlette/httpx deprecation).
-- `docker run --rm --name p5-close-api-full --network saas-chats-ai-dev_default -e DATABASE_URL=<temporary disposable PostgreSQL URL; password redacted> -e STORAGE_ROOT=/tmp/p5-test-storage -v "${PWD}:/workspace" -w /workspace/apps/api saas-chats-ai-p5-close-checks sh -lc 'ruff check . && ruff format --check . && mypy && pytest -q'` ó EXIT 0; Ruff passed; 138 files formatted; mypy passed for 134 source files; `228 passed, 1 warning in 117.02s`.
-- `docker run --rm --name p5-close-regression --network saas-chats-ai-dev_default -e DATABASE_URL=<temporary disposable PostgreSQL URL; password redacted> -e STORAGE_ROOT=/tmp/p5-test-storage -v "${PWD}:/workspace" -w /workspace/apps/api saas-chats-ai-p5-close-checks sh -lc 'pytest -q tests/test_inbox_list.py tests/test_followups_analytics.py --tb=short'` ó EXIT 0, `7 passed, 1 warning in 8.54s`.
-- `npm.cmd run lint --workspace apps/web` ó EXIT 0.
-- `npx.cmd prettier --check app lib tests` (from `apps/web`) ó EXIT 0.
-- `npm.cmd run typecheck --workspace apps/web` ó EXIT 0; Next used WASM SWC fallback.
-- `npm.cmd run format:check` ó EXIT 1; repository-wide Prettier reports existing `package.json` formatting. The web-only formatting check passed.
-- `npm.cmd run build --workspace apps/web -- --webpack` ó EXIT 1 before build completion: Windows `spawn EPERM` during Next compilation.
-- With `DATABASE_URL` set to the disposable base DB, `STORAGE_ROOT` set under the workspace, and `CHAT_STUB_MODEL=1`, `npm.cmd test --workspace apps/web -- --reporter=line` ó EXIT 1 before browser startup: Playwright `spawn EPERM`.
+- `docker run --rm --name p5-close-inbox --network saas-chats-ai-dev_default -e DATABASE_URL=<temporary disposable PostgreSQL URL; password redacted> -e STORAGE_ROOT=/tmp/p5-test-storage -v "${PWD}:/workspace" -w /workspace/apps/api saas-chats-ai-p5-close-checks sh -lc 'pytest -q tests/test_inbox_list.py --tb=short'` ‚Äî EXIT 0, `5 passed, 1 warning in 5.92s` (Starlette/httpx deprecation).
+- `docker run --rm --name p5-close-api-full --network saas-chats-ai-dev_default -e DATABASE_URL=<temporary disposable PostgreSQL URL; password redacted> -e STORAGE_ROOT=/tmp/p5-test-storage -v "${PWD}:/workspace" -w /workspace/apps/api saas-chats-ai-p5-close-checks sh -lc 'ruff check . && ruff format --check . && mypy && pytest -q'` ‚Äî EXIT 0; Ruff passed; 138 files formatted; mypy passed for 134 source files; `228 passed, 1 warning in 117.02s`.
+- `docker run --rm --name p5-close-regression --network saas-chats-ai-dev_default -e DATABASE_URL=<temporary disposable PostgreSQL URL; password redacted> -e STORAGE_ROOT=/tmp/p5-test-storage -v "${PWD}:/workspace" -w /workspace/apps/api saas-chats-ai-p5-close-checks sh -lc 'pytest -q tests/test_inbox_list.py tests/test_followups_analytics.py --tb=short'` ‚Äî EXIT 0, `7 passed, 1 warning in 8.54s`.
+- `npm.cmd run lint --workspace apps/web` ‚Äî EXIT 0.
+- `npx.cmd prettier --check app lib tests` (from `apps/web`) ‚Äî EXIT 0.
+- `npm.cmd run typecheck --workspace apps/web` ‚Äî EXIT 0; Next used WASM SWC fallback.
+- `npm.cmd run format:check` ‚Äî EXIT 1; repository-wide Prettier reports existing `package.json` formatting. The web-only formatting check passed.
+- `npm.cmd run build --workspace apps/web -- --webpack` ‚Äî EXIT 1 before build completion: Windows `spawn EPERM` during Next compilation.
+- With `DATABASE_URL` set to the disposable base DB, `STORAGE_ROOT` set under the workspace, and `CHAT_STUB_MODEL=1`, `npm.cmd test --workspace apps/web -- --reporter=line` ‚Äî EXIT 1 before browser startup: Playwright `spawn EPERM`.
 
-Gate status: **STOP before Part 2.** The full Playwright suite, including the P5-03 handoff journey, remains unverified. The owner must run the PowerShell command block in `implementation/PHASE-05/PHASE-REPORT.md` from an unrestricted terminal. P5-03/P5-05 and phase owner sign-off remain unticked. The owner decision moving sentiment classification/cost caps to P7-02 is recorded in `DECISIONS.md`; P5 analytics shows ìSentiment not measured yetî when the aggregate is empty. No `.env` or API key value was read, printed, or logged; temporary database credentials are omitted here.
+Gate status: **STOP before Part 2.** The full Playwright suite, including the P5-03 handoff journey, remains unverified. The owner must run the PowerShell command block in `implementation/PHASE-05/PHASE-REPORT.md` from an unrestricted terminal. P5-03/P5-05 and phase owner sign-off remain unticked. The owner decision moving sentiment classification/cost caps to P7-02 is recorded in `DECISIONS.md`; P5 analytics shows ‚ÄúSentiment not measured yet‚Äù when the aggregate is empty. No `.env` or API key value was read, printed, or logged; temporary database credentials are omitted here.
 
-## 2026-10-14 ó P5 owner Playwright failures corrected
+## 2026-10-14 ‚Äî P5 owner Playwright failures corrected
 
-Owner-reported full browser run: 21 passed, 3 failed. Applied fixes for the three reported failures: the inbox header exposes `data-testid="inbox-status"` with human-readable state; the follow-up journey now shares the bot setup that ingests and publishes knowledge before opening a widget session; platform staff promotion uses the exact `E2E_DATABASE_URL` exported by global setup. The unanswered-twice visitor copy currently uses the same orders/accounts/payments message as other handoff reasons; this is documented as a docs/14 ß15 copy limitation.
+Owner-reported full browser run: 21 passed, 3 failed. Applied fixes for the three reported failures: the inbox header exposes `data-testid="inbox-status"` with human-readable state; the follow-up journey now shares the bot setup that ingests and publishes knowledge before opening a widget session; platform staff promotion uses the exact `E2E_DATABASE_URL` exported by global setup. The unanswered-twice visitor copy currently uses the same orders/accounts/payments message as other handoff reasons; this is documented as a docs/14 ¬ß15 copy limitation.
 
 Removed `.env` reads from both Playwright and API test setup. Playwright now requires `DATABASE_URL` explicitly, exports the derived URL to `E2E_DATABASE_URL`, and the API pytest fixture requires `TEST_DATABASE_URL` or `DATABASE_URL`. A targeted source search of `apps/api/tests` and `apps/web/tests` found no remaining `.env` file reads. No `.env` file or key was opened or printed.
 
 Verification (commands and exact outcomes):
-- `npm.cmd run lint --workspace apps/web` ó EXIT 0.
-- `npx.cmd prettier --check app lib tests` (from `apps/web`) ó EXIT 0, all matched files formatted.
-- `npm.cmd run typecheck --workspace apps/web` ó EXIT 0, Next route types generated and TypeScript passed.
-- `docker run --rm --name p5-fix-api --network saas-chats-ai-dev_default -e DATABASE_URL=<temporary disposable PostgreSQL URL; password omitted> -e STORAGE_ROOT=/tmp/p5-fix-storage -v "${PWD}:/workspace" -w /workspace/apps/api saas-chats-ai-p5-close-checks sh -lc 'ruff check . && ruff format --check . && mypy && pytest -q'` ó EXIT 0; Ruff passed; 138 files formatted; mypy passed for 134 source files; `228 passed, 1 warning in 126.76s` (Starlette/httpx deprecation). The fixture created only `*_test` databases.
+- `npm.cmd run lint --workspace apps/web` ‚Äî EXIT 0.
+- `npx.cmd prettier --check app lib tests` (from `apps/web`) ‚Äî EXIT 0, all matched files formatted.
+- `npm.cmd run typecheck --workspace apps/web` ‚Äî EXIT 0, Next route types generated and TypeScript passed.
+- `docker run --rm --name p5-fix-api --network saas-chats-ai-dev_default -e DATABASE_URL=<temporary disposable PostgreSQL URL; password omitted> -e STORAGE_ROOT=/tmp/p5-fix-storage -v "${PWD}:/workspace" -w /workspace/apps/api saas-chats-ai-p5-close-checks sh -lc 'ruff check . && ruff format --check . && mypy && pytest -q'` ‚Äî EXIT 0; Ruff passed; 138 files formatted; mypy passed for 134 source files; `228 passed, 1 warning in 126.76s` (Starlette/httpx deprecation). The fixture created only `*_test` databases.
 - Full Playwright rerun after these changes: NOT RUN. The owner will rerun it using the PowerShell command in `implementation/PHASE-05/PHASE-REPORT.md`, with an explicitly entered disposable `DATABASE_URL` and `CHAT_STUB_MODEL=1`.
+
+## 2026-10-14 - Inbox handoff locator and mode indicator
+
+Inspected the owner's saved Playwright artifact at `apps/web/test-results/conversations-inbox-agent--b6981-plies-then-returns-it-to-AI-chromium/error-context.md`. The rendered conversation controls show `website ¬∑ Open ¬∑ Human mode`, followed by `Return to AI`; the thread and `Reply and notes` region are present. The Reply and Internal note textboxes have those accessible names. Before a value is entered, `Send reply` and `Add note` are correctly disabled. The failure occurred because the mode text shared a combined inline element with the channel and status, so exact text matching could not find an independent `Human mode` node.
+
+Added `data-testid="inbox-mode"` to the mode indicator and asserted the mode and status after takeover and return to AI. Reviewed the full journey against the page markup: exact textbox and button locators match; the widget uses `widget-ai-msg` for all non-visitor turns, so the visitor assertion now filters for the agent's exact reply; after returning to AI, the test waits for one new assistant message. The visitor-visible agent reply and the post-return assistant response assertions remain active. No Playwright rerun was performed in this session; the saved owner artifact is the rendered-page evidence.
+
+Exact verification commands and outcomes:
+- `npm.cmd run lint --workspace apps/web` - EXIT 0 (previous locator-fix turn) and EXIT 0 (this turn).
+- `npm.cmd run typecheck --workspace apps/web` - EXIT 0 (previous locator-fix turn) and EXIT 0; Next route types generated and TypeScript passed (this turn).
+- `npx.cmd prettier --check app lib tests` (from `apps/web`) - EXIT 0 (previous locator-fix turn) and EXIT 0; all matched files use Prettier style (this turn).
+- `npx.cmd prettier --write 'app/app/[tenant]/inbox/[conversation]/page.tsx' tests/conversations.spec.ts` (from `apps/web`) - EXIT 0; page formatted, test unchanged.
+- `docker version --format '{{.Server.Version}}'` - unavailable; permission denied connecting to `npipe:////./pipe/dockerDesktopLinuxEngine`. No local Linux-container/browser rerun was possible.
+- No `.env` or key was read.
