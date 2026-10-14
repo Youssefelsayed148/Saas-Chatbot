@@ -139,7 +139,10 @@ export default function InboxConversationPage() {
           <strong data-testid="inbox-status">
             {statusLabel(conversation.status)}
           </strong>{" "}
-          · {conversation.mode === "human" ? "Human" : "AI"} mode
+          ·{" "}
+          <span data-testid="inbox-mode">
+            {conversation.mode === "human" ? "Human" : "AI"} mode
+          </span>
         </span>
         {canEdit && conversation.status !== "resolved" && (
           <>

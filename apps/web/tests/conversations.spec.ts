@@ -104,7 +104,8 @@ test("inbox agent takes over an unanswered widget thread, replies, then returns 
     "Waiting for human",
   );
   await page.getByRole("button", { name: "Take over", exact: true }).click();
-  await expect(page.getByText("Human mode", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("inbox-status")).toHaveText("Open");
+  await expect(page.getByTestId("inbox-mode")).toHaveText("Human mode");
   await page
     .getByRole("textbox", { name: "Reply", exact: true })
     .fill("An agent is here to help you.");
@@ -128,14 +129,15 @@ test("inbox agent takes over an unanswered widget thread, replies, then returns 
     .first()
     .contentFrame()
     .locator("[data-testid='widget-frame-body']");
-  await expect(visitorFrame.getByTestId("widget-ai-msg")).toContainText(
-    "An agent is here to help you.",
-    { timeout: 20_000 },
-  );
+  await expect(
+    visitorFrame
+      .getByTestId("widget-ai-msg")
+      .filter({ hasText: "An agent is here to help you." }),
+  ).toContainText("An agent is here to help you.", { timeout: 20_000 });
 
   await page.goto(`/app/${tenantId}/inbox/${conversationId}`);
   await page.getByRole("button", { name: "Return to AI", exact: true }).click();
-  await expect(page.getByText("AI mode", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("inbox-mode")).toHaveText("AI mode");
   await page.goto(
     `/widget/sample?locator=${encodeURIComponent(locator)}&site=inbox-e2e`,
   );
@@ -144,11 +146,14 @@ test("inbox agent takes over an unanswered widget thread, replies, then returns 
     .first()
     .contentFrame()
     .locator("[data-testid='widget-frame-body']");
+  const reopenedReplies = reopenedFrame.getByTestId("widget-ai-msg");
+  const replyCountBefore = await reopenedReplies.count();
   await reopenedFrame
     .getByTestId("widget-input")
     .fill("Another question after returning to AI");
   await reopenedFrame.getByTestId("widget-send").click();
-  await expect(reopenedFrame.getByTestId("widget-ai-msg").last()).toBeVisible({
+  await expect(reopenedReplies).toHaveCount(replyCountBefore + 1, {
     timeout: 45_000,
   });
+  await expect(reopenedReplies.last()).toBeVisible();
 });
