@@ -16,6 +16,7 @@ from app.inbox.listing import router as inbox_listing_router
 from app.inbox.router import router as inbox_router
 from app.knowledge.router import router as knowledge_router
 from app.platform.router import router as platform_router
+from app.provisioning.router import router as provisioning_router
 from app.tenants.router import router as tenants_router
 from app.widget.router import router as widget_router
 
@@ -53,6 +54,7 @@ def create_app() -> FastAPI:
     application.include_router(handoff_analytics_router)
     application.include_router(widget_router)
     application.include_router(platform_router)
+    application.include_router(provisioning_router)
     install_error_handlers(application)
     return application
 

@@ -18,14 +18,15 @@ from datetime import UTC, datetime, timedelta
 from typing import Any, BinaryIO
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
 from app.core.audit import record_audit
 from app.core.config import Settings
 from app.core.errors import ApiError
-from app.db.models import Invitation, ProvisioningRequest, Tenant, User
+from app.db.models import Invitation, Membership, ProvisioningRequest, Tenant, User
+from app.quotas.plans import PLAN_LABELS
 
 OWNER_INVITATION_EXPIRY_DAYS = 7  # docs/14 §19 default
 _MAX_FILES = 20
@@ -35,8 +36,16 @@ class ProvisioningPayload(BaseModel):
     client_name: str = Field(min_length=1, max_length=200)
     owner_email: EmailStr
     bot_name: str | None = Field(default=None, min_length=1, max_length=100)
-    plan_label: str = "starter"  # internal label; real plans arrive in P7
+    plan_label: str = "starter"  # PLACEHOLDER plan from quotas.plans
     notes: str | None = Field(default=None, max_length=500)
+
+    @field_validator("plan_label")
+    @classmethod
+    def known_plan_label(cls, value: str) -> str:
+        cleaned = value.strip().lower()
+        if cleaned not in PLAN_LABELS:
+            raise ValueError("Choose a PLACEHOLDER plan: free, starter, pro, or business.")
+        return cleaned
 
 
 def _hash_payload(payload: ProvisioningPayload, files: Sequence[tuple[str, bytes]]) -> str:
@@ -170,6 +179,79 @@ class ProvisioningService:
         self.db.commit()
         return {"request_id": str(row.id), "status": "ready", "result": result}
 
+    def onboard_self_service(
+        self,
+        *,
+        actor: User,
+        payload: ProvisioningPayload,
+        idempotency_key: str,
+    ) -> dict[str, Any]:
+        """Create one free tenant and bot for a new account, idempotently."""
+        if actor.is_platform_staff:
+            raise ApiError(403, "FORBIDDEN", "Self-service signup is for client accounts.")
+        if not payload.bot_name:
+            raise ApiError(422, "VALIDATION_ERROR", "A bot name is required for signup.")
+        mode = "self_service"
+        payload_hash = _hash_payload(payload, [])
+        prior = self._existing(
+            mode=mode, idempotency_key=idempotency_key, payload_hash=payload_hash, actor=actor
+        )
+        if prior is not None:
+            return {
+                "request_id": str(prior.id),
+                "status": prior.status,
+                "tenant_id": str(prior.tenant_id) if prior.tenant_id else None,
+                "result": dict(prior.result),
+                "replayed": True,
+            }
+        already_member = self.db.execute(
+            select(Membership.tenant_id).where(
+                Membership.user_id == actor.id, Membership.status == "active"
+            ).limit(1)
+        ).first()
+        if already_member is not None:
+            raise ApiError(409, "ALREADY_PROVISIONED", "This account already belongs to an organization.")
+        row = ProvisioningRequest(
+            id=generate_request_id(),
+            actor_user_id=actor.id,
+            mode=mode,
+            status="requested",
+            idempotency_key=idempotency_key,
+            payload_hash=payload_hash,
+            payload=payload.model_dump(exclude_none=True),
+        )
+        self.db.add(row)
+        try:
+            self.db.flush()
+            row.status = "provisioning"
+            result = self._provision(
+                row, actor=actor, payload=payload, files=(), self_service=True
+            )
+            row.status = "ready"
+            row.tenant_id = UUID(str(result["tenant_id"]))
+            row.result = dict(result)
+            self.db.add(row)
+            self.db.commit()
+            return {"request_id": str(row.id), "status": "ready", "result": result}
+        except IntegrityError:
+            self.db.rollback()
+            # A concurrent retry may have inserted and completed the same key.
+            prior = self._existing(
+                mode=mode, idempotency_key=idempotency_key, payload_hash=payload_hash, actor=actor
+            )
+            if prior is not None:
+                return {
+                    "request_id": str(prior.id),
+                    "status": prior.status,
+                    "tenant_id": str(prior.tenant_id) if prior.tenant_id else None,
+                    "result": dict(prior.result),
+                    "replayed": True,
+                }
+            raise ApiError(409, "PROVISIONING_CONFLICT", "Signup could not be completed safely.") from None
+        except Exception:
+            self.db.rollback()
+            raise
+
     # --- provisioning steps ---------------------------------------------------
 
     def _provision(
@@ -179,54 +261,70 @@ class ProvisioningService:
         actor: User,
         payload: ProvisioningPayload,
         files: Sequence[tuple[str, bytes]],
+        self_service: bool = False,
     ) -> dict[str, Any]:
         slug = self._unique_slug(payload.client_name)
         tenant = Tenant(
             id=uuid4(),
             name=payload.client_name.strip(),
             slug=slug,
-            plan_label=payload.plan_label or "starter",
+            plan_label="free" if self_service else (payload.plan_label or "starter"),
         )
         self.db.add(tenant)
         self.db.flush()  # tenant must exist before its audit row
         record_audit(
             self.db,
-            action="platform.onboarding.tenant_created",
+            action=("self_service.tenant_created" if self_service else "platform.onboarding.tenant_created"),
             tenant_id=tenant.id,
             actor_user_id=actor.id,
             target_type="tenant",
             target_id=str(tenant.id),
-            metadata={"request_id": str(row.id), "plan_label": payload.plan_label},
+            metadata={"request_id": str(row.id), "plan_label": tenant.plan_label},
         )
 
         # Owner one-time invitation (docs/14 §19): raw token is shown ONCE in
         # the response; only its SHA-256 hash is stored. Ownership arrives
         # when the invited user accepts (no email provider).
-        raw_token = secrets.token_urlsafe(24)
-        invitation = Invitation(
-            id=uuid4(),
-            tenant_id=tenant.id,
-            email=payload.owner_email,  # CITEXT: case-insensitive
-            role="owner",
-            token_hash=self._token_hash(raw_token),
-            expires_at=datetime.now(UTC) + timedelta(days=OWNER_INVITATION_EXPIRY_DAYS),
-            created_by=actor.id,
-        )
-        self.db.add(invitation)
-        self.db.flush()
-        record_audit(
-            self.db,
-            action="platform.onboarding.owner_invited",
-            tenant_id=tenant.id,
-            actor_user_id=actor.id,
-            target_type="invitation",
-            target_id=str(invitation.id),
-            metadata={"request_id": str(row.id)},
-        )
+        raw_token: str | None = None
+        invitation: Invitation | None = None
+        if self_service:
+            membership = Membership(tenant_id=tenant.id, user_id=actor.id, role="owner")
+            self.db.add(membership)
+            record_audit(
+                self.db,
+                action="self_service.owner_assigned",
+                tenant_id=tenant.id,
+                actor_user_id=actor.id,
+                target_type="membership",
+                target_id=str(actor.id),
+                metadata={"request_id": str(row.id)},
+            )
+        else:
+            raw_token = secrets.token_urlsafe(24)
+            invitation = Invitation(
+                id=uuid4(),
+                tenant_id=tenant.id,
+                email=payload.owner_email,
+                role="owner",
+                token_hash=self._token_hash(raw_token),
+                expires_at=datetime.now(UTC) + timedelta(days=OWNER_INVITATION_EXPIRY_DAYS),
+                created_by=actor.id,
+            )
+            self.db.add(invitation)
+            self.db.flush()
+            record_audit(
+                self.db,
+                action="platform.onboarding.owner_invited",
+                tenant_id=tenant.id,
+                actor_user_id=actor.id,
+                target_type="invitation",
+                target_id=str(invitation.id),
+                metadata={"request_id": str(row.id)},
+            )
 
         bot_id: str | None = None
         if payload.bot_name:
-            bot = self._make_bot(tenant.id, payload.bot_name, actor, row.id)
+            bot = self._make_bot(tenant.id, payload.bot_name, actor, row.id, self_service=self_service)
             bot_id = str(bot.id)
 
         stored_files: list[dict[str, str]] = []
@@ -237,10 +335,10 @@ class ProvisioningService:
             "tenant_id": str(tenant.id),
             "tenant_slug": slug,
             "bot_id": bot_id,
-            "owner_invite": {
+            "owner_invite": None if self_service else {
                 "email": str(payload.owner_email),
-                "link_path": f"/accept-invite?token={raw_token}",  # shown once
-                "expires_at": invitation.expires_at.isoformat(),
+                "link_path": f"/accept-invite?token={raw_token}",
+                "expires_at": invitation.expires_at.isoformat() if invitation else None,
             },
             "files": stored_files,
         }
@@ -259,7 +357,9 @@ class ProvisioningService:
             candidate = f"{slug_base}-{index}"
         return candidate
 
-    def _make_bot(self, tenant_id: UUID, bot_name: str, actor: User, request_id: UUID) -> Any:
+    def _make_bot(
+        self, tenant_id: UUID, bot_name: str, actor: User, request_id: UUID, *, self_service: bool = False
+    ) -> Any:
         from app.db.models import Bot
 
         bot = Bot(id=uuid4(), tenant_id=tenant_id, name=bot_name.strip(), config={})
@@ -267,7 +367,7 @@ class ProvisioningService:
         self.db.flush()
         record_audit(
             self.db,
-            action="platform.onboarding.bot_created",
+            action=("self_service.bot_created" if self_service else "platform.onboarding.bot_created"),
             tenant_id=tenant_id,
             actor_user_id=actor.id,
             target_type="bot",

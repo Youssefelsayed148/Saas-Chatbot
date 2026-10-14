@@ -15,11 +15,14 @@ function RegisterForm() {
   const { refresh } = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [clientName, setClientName] = useState("");
+  const [botName, setBotName] = useState("Website assistant");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const next = searchParams.get("next") ?? "";
   const destination =
     next.startsWith("/") && !next.startsWith("//") ? next : "/app";
+  const isInviteSignup = destination.startsWith("/accept-invite");
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -30,9 +33,26 @@ function RegisterForm() {
     }
     setSubmitting(true);
     try {
-      await api.register(email, password);
+      try {
+        await api.register(email, password);
+      } catch (caught) {
+        if (
+          !(caught instanceof api.ApiError) ||
+          caught.code !== "EMAIL_TAKEN"
+        ) {
+          throw caught;
+        }
+        // Recover a signup whose account commit succeeded before its
+        // provisioning response reached the browser.
+        await api.login(email, password);
+      }
       await refresh(); // update the session context before navigating
-      router.push(destination);
+      if (isInviteSignup) {
+        router.push(destination);
+      } else {
+        const signup = await api.selfServiceSignup(clientName, botName);
+        router.push(`/app/${signup.result.tenant_id}/bots`);
+      }
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "Registration failed.",
@@ -47,6 +67,30 @@ function RegisterForm() {
       <p className="eyebrow">Website Chatbot SaaS</p>
       <h1>Register</h1>
       <form onSubmit={onSubmit}>
+        {!isInviteSignup && (
+          <>
+            <label>
+              Organization name
+              <input
+                name="client-name"
+                required
+                maxLength={200}
+                value={clientName}
+                onChange={(event) => setClientName(event.target.value)}
+              />
+            </label>
+            <label>
+              First bot name
+              <input
+                name="bot-name"
+                required
+                maxLength={100}
+                value={botName}
+                onChange={(event) => setBotName(event.target.value)}
+              />
+            </label>
+          </>
+        )}
         <label>
           Email
           <input

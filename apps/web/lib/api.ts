@@ -757,6 +757,18 @@ export async function register(email: string, password: string): Promise<Me> {
   });
 }
 
+export async function selfServiceSignup(
+  clientName: string,
+  botName: string,
+): Promise<{
+  result: { tenant_id: string; tenant_slug: string; bot_id: string };
+}> {
+  return api("provisioning/self-service", {
+    method: "POST",
+    body: { client_name: clientName, bot_name: botName },
+  });
+}
+
 export async function login(email: string, password: string): Promise<Me> {
   return api<Me>("auth/login", { method: "POST", body: { email, password } });
 }
