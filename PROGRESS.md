@@ -453,7 +453,7 @@ Unverified: `python -m pytest -q tests/test_tenant_data.py --tb=short` — Pytho
 
 Built: Replaced interruptible-thread parser timeout with a spawned subprocess that is terminated at the wall-clock limit; added timeout and chunked multipart upload regressions; routed knowledge/provisioning/data file access through the `Storage` factory; fixed concurrent signup error import and typed measured-token extraction; added `expire_all()` before DB assertions reading API-updated rows.
 Tested: Ruff check and format check — EXIT 0; strict mypy on six affected API modules — EXIT 0; `python -m compileall -q` on affected app/test modules — EXIT 0.
-Unverified: `python -m pytest -q apps/api/tests/test_knowledge_parsers.py apps/api/tests/test_knowledge_uploads.py apps/api/tests/test_quotas.py apps/api/tests/test_platform_ops.py --tb=short` could not initialize because no disposable DB URL is configured. Owner command (run from `apps/api`): `$env:TEST_DATABASE_URL='postgresql://<user>:<password>@<host>/<base_db>'; python -m pytest -q tests/test_knowledge_parsers.py tests/test_knowledge_uploads.py tests/test_quotas.py tests/test_platform_ops.py --tb=short`.
+Unverified: the root-invoked API pytest command could not initialize because no disposable DB URL is configured. Owner command (run from `apps/api`): `$env:TEST_DATABASE_URL='postgresql://<user>:<password>@<host>/<base_db>'; python -m pytest -q tests/test_knowledge_parsers.py tests/test_knowledge_uploads.py tests/test_quotas.py tests/test_platform_ops.py --tb=short`.
 
 ## 2026-10-14 — P7-05 release readiness review package
 
