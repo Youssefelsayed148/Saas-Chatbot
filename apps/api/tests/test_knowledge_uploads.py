@@ -112,6 +112,36 @@ def test_upload_sets_sha256_and_size(
         pass
 
 
+def test_upload_accepts_chunked_multipart_without_content_length(
+    storage_rooted_app: FastAPI, raw_db: OrmSession, tmp_path: Any
+) -> None:
+    users = seeded_tenant(storage_rooted_app, raw_db, prefix="up-chunked")
+    bot_id = bot_of_users_response(users)
+    boundary = "p7-chunked-upload-boundary"
+    content = MD_EN.read_bytes()
+
+    def multipart_chunks() -> Iterator[bytes]:
+        yield f"--{boundary}\r\n".encode()
+        yield b'Content-Disposition: form-data; name="files"; filename="chunked.md"\r\n'
+        yield b"Content-Type: text/markdown; charset=utf-8\r\n\r\n"
+        for offset in range(0, len(content), 13):
+            yield content[offset : offset + 13]
+        yield f"\r\n--{boundary}--\r\n".encode()
+
+    try:
+        response = users.call(
+            "owner",
+            "POST",
+            f"/api/v1/tenants/{users.tenant_id}/bots/{bot_id}/sources/files",
+            content=multipart_chunks(),
+            headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+        )
+        assert response.status_code == 201, response.text
+        assert response.json()[0]["original_name"] == "chunked.md"
+    finally:
+        users.cleanup()
+
+
 # --- hardening ---------------------------------------------------------------
 
 

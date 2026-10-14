@@ -10,8 +10,10 @@ as-is). The job re-validates tenant + bot before doing anything; a bot of
 another tenant (or any missing resource) fails the job permanently.
 """
 
-from concurrent.futures import Future, ThreadPoolExecutor
-from concurrent.futures import TimeoutError as FutureTimeoutError
+from collections.abc import Callable
+from multiprocessing import get_context
+from queue import Empty
+from typing import Any, cast
 from uuid import UUID
 
 from sqlalchemy import delete, func, select
@@ -53,15 +55,17 @@ def parse_limits_from(settings: Settings) -> ParseLimits:
     )
 
 
-def _parse_sync(source: Source, data: bytes, limits: ParseLimits) -> list[ParsedPage]:
+def _parse_payload(
+    kind: str, original_name: str, data: bytes, limits: ParseLimits
+) -> list[ParsedPage]:
     """Parse one stored source by its kind (docs/14 §3)."""
-    if source.kind == "pdf":
-        return parse_pdf(data, source.original_name, limits)
-    if source.kind == "docx":
-        return parse_docx(data, source.original_name, limits)
-    if source.kind in ("txt", "md"):
-        return parse_text(data, source.original_name)
-    if source.kind == "qa_csv":
+    if kind == "pdf":
+        return parse_pdf(data, original_name, limits)
+    if kind == "docx":
+        return parse_docx(data, original_name, limits)
+    if kind in ("txt", "md"):
+        return parse_text(data, original_name)
+    if kind == "qa_csv":
         result = parse_qa_csv(data)
         if result.valid_rows == 0:
             first = result.errors[0]["reason"] if result.errors else "no valid rows"
@@ -79,7 +83,7 @@ def _parse_sync(source: Source, data: bytes, limits: ParseLimits) -> list[Parsed
         return [
             ParsedPage(
                 page_number=None,
-                title=source.original_name,
+                title=original_name,
                 text="\n\n".join(section.text for section in sections),
                 sections=sections,
             )
@@ -87,19 +91,66 @@ def _parse_sync(source: Source, data: bytes, limits: ParseLimits) -> list[Parsed
     raise ParseError("Unsupported source kind.")  # pragma: no cover
 
 
-def parse_source(source: Source, data: bytes, settings: Settings) -> list[ParsedPage]:
-    """Parse in the worker bounded by a wall-clock timeout (docs/06)."""
-    executor = ThreadPoolExecutor(max_workers=1)
-    future: Future[list[ParsedPage]] = executor.submit(
-        _parse_sync, source, data, parse_limits_from(settings)
-    )
+def _parse_process_entry(
+    output: Any,
+    parser: Callable[[str, str, bytes, ParseLimits], list[ParsedPage]],
+    kind: str,
+    original_name: str,
+    data: bytes,
+    limits: ParseLimits,
+) -> None:
+    """Spawn target. It receives bytes only; it has no database or storage handles."""
     try:
-        return future.result(timeout=settings.parse_timeout_seconds)
-    except FutureTimeoutError as error:
-        raise ParseError("Parsing timed out; the file is too complex to process.") from error
+        result = parser(kind, original_name, data, limits)
+        output.put(("ok", result))
+    except ParseError as error:
+        output.put(("parse_error", error.message))
+    except Exception:
+        output.put(("unexpected", None))
+
+
+def parse_source(
+    source: Source,
+    data: bytes,
+    settings: Settings,
+    *,
+    parser: Callable[[str, str, bytes, ParseLimits], list[ParsedPage]] = _parse_payload,
+) -> list[ParsedPage]:
+    """Parse in an isolated subprocess that is killed at the wall-clock limit."""
+    context = get_context("spawn")
+    output = context.Queue(maxsize=1)
+    process = context.Process(
+        target=_parse_process_entry,
+        args=(output, parser, source.kind, source.original_name, data, parse_limits_from(settings)),
+        daemon=True,
+    )
+    process.start()
+    try:
+        try:
+            status, result = output.get(timeout=settings.parse_timeout_seconds)
+        except Empty as error:
+            if process.is_alive():
+                process.terminate()
+                process.join(timeout=1)
+            if process.is_alive():
+                process.kill()
+                process.join()
+            raise ParseError("Parsing timed out; the file is too complex to process.") from error
+        process.join(timeout=1)
+        if process.is_alive():
+            process.terminate()
+            process.join()
+        if status == "parse_error":
+            raise ParseError(str(result))
+        if status != "ok":
+            raise ParseError("The file could not be processed.")
+        return cast(list[ParsedPage], result)
     finally:
-        # Do not wait for a runaway parse; capped inputs keep it bounded.
-        executor.shutdown(wait=False)
+        if process.is_alive():
+            process.terminate()
+            process.join(timeout=1)
+        output.cancel_join_thread()
+        output.close()
 
 
 # --- planning ------------------------------------------------------------
@@ -542,15 +593,16 @@ def process_source(
     )
     old_source_pages = int(
         db.execute(
-            select(func.count())
-            .select_from(SourcePage)
-            .where(SourcePage.source_id == source.id)
+            select(func.count()).select_from(SourcePage).where(SourcePage.source_id == source.id)
         ).scalar_one()
     )
     page_limit = limits_for(tenant).pages_per_bot
     if existing_pages - old_source_pages + len(page_plans) > page_limit:
         source.status = "failed"
-        source.error = f"This file would exceed the PLACEHOLDER plan limit of {page_limit} knowledge pages per bot."
+        source.error = (
+            f"This file would exceed the PLACEHOLDER plan limit of {page_limit} "
+            "knowledge pages per bot."
+        )
         db.commit()
         return source.error
 

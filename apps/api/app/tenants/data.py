@@ -42,7 +42,7 @@ from app.db.models import (
     User,
     VisitorSession,
 )
-from app.knowledge.storage import LocalStorage
+from app.knowledge.storage import Storage, get_storage
 
 router = APIRouter(prefix="/api/v1/tenants/{tenant_id}/data", tags=["tenant-data"])
 CsrfOk = Annotated[None, Depends(cookies.require_csrf)]
@@ -87,7 +87,7 @@ def export_tenant_data(
     invitations = _rows(db, Invitation, tenant_id)
     sources = _rows(db, Source, tenant_id)
     audit_rows = _rows(db, AuditEvent, tenant_id)
-    storage = LocalStorage(settings) if sources else None
+    storage: Storage | None = get_storage(settings) if sources else None
     source_files: list[dict[str, Any]] = []
     for source in sources:
         try:
@@ -116,31 +116,226 @@ def export_tenant_data(
     export_data: dict[str, Any] = {
         "format": "saas-chats-ai-tenant-export/v1",
         "exported_at": datetime.now(UTC).isoformat(),
-        "tenant": _serialize([tenant], ("id", "name", "slug", "status", "plan_label", "created_at"))[0],
+        "tenant": _serialize(
+            [tenant], ("id", "name", "slug", "status", "plan_label", "created_at")
+        )[0],
         "members": [
-            {"user_id": member.user_id, "email": user.email, "role": member.role, "status": member.status}
+            {
+                "user_id": member.user_id,
+                "email": user.email,
+                "role": member.role,
+                "status": member.status,
+            }
             for member, user in member_rows
         ],
-        "invitations": _serialize(invitations, ("id", "email", "role", "expires_at", "accepted_at", "revoked_at", "created_at")),
-        "bots": _serialize(_rows(db, Bot, tenant_id), ("id", "name", "status", "config", "created_at", "updated_at")),
-        "contacts": _serialize(_rows(db, Contact, tenant_id), ("id", "display_name", "email", "phone", "stage", "tags", "custom_fields", "consent", "source_channel", "created_at", "updated_at")),
-        "contact_identities": _serialize(_rows(db, ContactIdentity, tenant_id), ("id", "contact_id", "channel", "external_id", "created_at")),
+        "invitations": _serialize(
+            invitations,
+            ("id", "email", "role", "expires_at", "accepted_at", "revoked_at", "created_at"),
+        ),
+        "bots": _serialize(
+            _rows(db, Bot, tenant_id),
+            ("id", "name", "status", "config", "created_at", "updated_at"),
+        ),
+        "contacts": _serialize(
+            _rows(db, Contact, tenant_id),
+            (
+                "id",
+                "display_name",
+                "email",
+                "phone",
+                "stage",
+                "tags",
+                "custom_fields",
+                "consent",
+                "source_channel",
+                "created_at",
+                "updated_at",
+            ),
+        ),
+        "contact_identities": _serialize(
+            _rows(db, ContactIdentity, tenant_id),
+            ("id", "contact_id", "channel", "external_id", "created_at"),
+        ),
         "contact_stages": _serialize(_rows(db, ContactStage, tenant_id), ("name", "sort_order")),
-        "conversations": _serialize(_rows(db, Conversation, tenant_id), ("id", "bot_id", "contact_id", "channel", "connection_id", "mode", "status", "assigned_user_id", "handoff_reason", "last_message_at", "sentiment", "source", "created_at", "updated_at")),
-        "messages": _serialize(_rows(db, Message, tenant_id), ("id", "bot_id", "conversation_id", "sender_type", "sender_user_id", "text", "citations", "can_answer", "needs_human", "response_ms", "delivery_status", "error_code", "created_at")),
-        "conversation_reads": _serialize(_rows(db, ConversationRead, tenant_id), ("conversation_id", "user_id", "last_read_at", "last_read_message_id", "updated_at")),
-        "conversation_tags": _serialize(_rows(db, ConversationTag, tenant_id), ("conversation_id", "tag", "created_at")),
-        "inbox_events": _serialize(_rows(db, InboxEvent, tenant_id), ("id", "conversation_id", "message_id", "event_type", "created_at")),
-        "follow_ups": _serialize(_rows(db, FollowUp, tenant_id), ("id", "bot_id", "conversation_id", "contact_id", "text", "send_at", "status", "created_by", "created_at", "delivered_at")),
-        "usage_events": _serialize(_rows(db, UsageEvent, tenant_id), ("id", "bot_id", "kind", "message_id", "conversation_id", "payload", "external_key", "created_at")),
-        "jobs": _serialize(_rows(db, Job, tenant_id), ("id", "bot_id", "type", "status", "payload", "attempts", "max_attempts", "run_at", "error", "created_at", "updated_at")),
-        "sources": _serialize(sources, ("id", "bot_id", "kind", "original_name", "size_bytes", "sha256", "status", "error", "row_errors", "valid_rows", "total_rows", "created_at")),
+        "conversations": _serialize(
+            _rows(db, Conversation, tenant_id),
+            (
+                "id",
+                "bot_id",
+                "contact_id",
+                "channel",
+                "connection_id",
+                "mode",
+                "status",
+                "assigned_user_id",
+                "handoff_reason",
+                "last_message_at",
+                "sentiment",
+                "source",
+                "created_at",
+                "updated_at",
+            ),
+        ),
+        "messages": _serialize(
+            _rows(db, Message, tenant_id),
+            (
+                "id",
+                "bot_id",
+                "conversation_id",
+                "sender_type",
+                "sender_user_id",
+                "text",
+                "citations",
+                "can_answer",
+                "needs_human",
+                "response_ms",
+                "delivery_status",
+                "error_code",
+                "created_at",
+            ),
+        ),
+        "conversation_reads": _serialize(
+            _rows(db, ConversationRead, tenant_id),
+            ("conversation_id", "user_id", "last_read_at", "last_read_message_id", "updated_at"),
+        ),
+        "conversation_tags": _serialize(
+            _rows(db, ConversationTag, tenant_id), ("conversation_id", "tag", "created_at")
+        ),
+        "inbox_events": _serialize(
+            _rows(db, InboxEvent, tenant_id),
+            ("id", "conversation_id", "message_id", "event_type", "created_at"),
+        ),
+        "follow_ups": _serialize(
+            _rows(db, FollowUp, tenant_id),
+            (
+                "id",
+                "bot_id",
+                "conversation_id",
+                "contact_id",
+                "text",
+                "send_at",
+                "status",
+                "created_by",
+                "created_at",
+                "delivered_at",
+            ),
+        ),
+        "usage_events": _serialize(
+            _rows(db, UsageEvent, tenant_id),
+            (
+                "id",
+                "bot_id",
+                "kind",
+                "message_id",
+                "conversation_id",
+                "payload",
+                "external_key",
+                "created_at",
+            ),
+        ),
+        "jobs": _serialize(
+            _rows(db, Job, tenant_id),
+            (
+                "id",
+                "bot_id",
+                "type",
+                "status",
+                "payload",
+                "attempts",
+                "max_attempts",
+                "run_at",
+                "error",
+                "created_at",
+                "updated_at",
+            ),
+        ),
+        "sources": _serialize(
+            sources,
+            (
+                "id",
+                "bot_id",
+                "kind",
+                "original_name",
+                "size_bytes",
+                "sha256",
+                "status",
+                "error",
+                "row_errors",
+                "valid_rows",
+                "total_rows",
+                "created_at",
+            ),
+        ),
         "source_files": source_files,
-        "source_pages": _serialize(_rows(db, SourcePage, tenant_id), ("id", "bot_id", "source_id", "page_number", "title", "source_url", "page_type", "language", "raw_text", "created_at")),
-        "knowledge_revisions": _serialize(_rows(db, KnowledgeRevision, tenant_id), ("id", "bot_id", "status", "published_at", "created_at")),
-        "documents": _serialize(_rows(db, Document, tenant_id), ("id", "bot_id", "revision_id", "source_id", "title", "heading", "source_url", "page_ref", "ordinal", "language", "priority", "text", "total_chars", "created_at")),
-        "chunks": _serialize(_rows(db, Chunk, tenant_id), ("id", "bot_id", "revision_id", "source_id", "document_id", "title", "heading", "text", "text_norm", "language", "priority", "content_hash", "ordinal", "created_at")),
-        "audit_events": _serialize(audit_rows, ("id", "actor_user_id", "action", "target_type", "target_id", "metadata_json", "created_at")),
+        "source_pages": _serialize(
+            _rows(db, SourcePage, tenant_id),
+            (
+                "id",
+                "bot_id",
+                "source_id",
+                "page_number",
+                "title",
+                "source_url",
+                "page_type",
+                "language",
+                "raw_text",
+                "created_at",
+            ),
+        ),
+        "knowledge_revisions": _serialize(
+            _rows(db, KnowledgeRevision, tenant_id),
+            ("id", "bot_id", "status", "published_at", "created_at"),
+        ),
+        "documents": _serialize(
+            _rows(db, Document, tenant_id),
+            (
+                "id",
+                "bot_id",
+                "revision_id",
+                "source_id",
+                "title",
+                "heading",
+                "source_url",
+                "page_ref",
+                "ordinal",
+                "language",
+                "priority",
+                "text",
+                "total_chars",
+                "created_at",
+            ),
+        ),
+        "chunks": _serialize(
+            _rows(db, Chunk, tenant_id),
+            (
+                "id",
+                "bot_id",
+                "revision_id",
+                "source_id",
+                "document_id",
+                "title",
+                "heading",
+                "text",
+                "text_norm",
+                "language",
+                "priority",
+                "content_hash",
+                "ordinal",
+                "created_at",
+            ),
+        ),
+        "audit_events": _serialize(
+            audit_rows,
+            (
+                "id",
+                "actor_user_id",
+                "action",
+                "target_type",
+                "target_id",
+                "metadata_json",
+                "created_at",
+            ),
+        ),
     }
     record_audit(
         db,
@@ -162,11 +357,23 @@ def export_tenant_data(
         .limit(1)
     ).scalar_one()
     export_data["audit_events"].append(
-        {"id": exported_audit.id, "actor_user_id": exported_audit.actor_user_id, "action": exported_audit.action, "target_type": exported_audit.target_type, "target_id": exported_audit.target_id, "metadata_json": exported_audit.metadata_json, "created_at": exported_audit.created_at}
+        {
+            "id": exported_audit.id,
+            "actor_user_id": exported_audit.actor_user_id,
+            "action": exported_audit.action,
+            "target_type": exported_audit.target_type,
+            "target_id": exported_audit.target_id,
+            "metadata_json": exported_audit.metadata_json,
+            "created_at": exported_audit.created_at,
+        }
     )
     db.commit()
     return Response(
-        content=json.dumps(export_data, ensure_ascii=False, default=lambda value: value.isoformat() if isinstance(value, datetime) else str(value)),
+        content=json.dumps(
+            export_data,
+            ensure_ascii=False,
+            default=lambda value: value.isoformat() if isinstance(value, datetime) else str(value),
+        ),
         media_type="application/json; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="tenant-{tenant_id}-export.json"'},
     )
@@ -187,7 +394,15 @@ def tenant_audit_review(
     )
     return {
         "events": [
-            {"id": str(row.id), "action": row.action, "actor_user_id": str(row.actor_user_id) if row.actor_user_id else None, "target_type": row.target_type, "target_id": row.target_id, "metadata": row.metadata_json, "created_at": row.created_at.isoformat()}
+            {
+                "id": str(row.id),
+                "action": row.action,
+                "actor_user_id": str(row.actor_user_id) if row.actor_user_id else None,
+                "target_type": row.target_type,
+                "target_id": row.target_id,
+                "metadata": row.metadata_json,
+                "created_at": row.created_at.isoformat(),
+            }
             for row in rows
         ]
     }
@@ -203,7 +418,9 @@ def delete_tenant_data(
     context.require_role("owner")
     tenant: Tenant = context.tenant
     if body.confirm_name.strip() != tenant.name:
-        raise ApiError(422, "CONFIRMATION_MISMATCH", "Enter the organization name exactly to confirm deletion.")
+        raise ApiError(
+            422, "CONFIRMATION_MISMATCH", "Enter the organization name exactly to confirm deletion."
+        )
     tenant_id = tenant.id
     storage_keys = [source.storage_key for source in _rows(context.db, Source, tenant_id)]
     session_ids = list(
@@ -245,7 +462,7 @@ def delete_tenant_data(
     context.db.delete(tenant)
     context.db.commit()
     if storage_keys:
-        storage = LocalStorage(settings)
+        storage = get_storage(settings)
         for key in storage_keys:
             storage.delete(key)
     return Response(status_code=204)

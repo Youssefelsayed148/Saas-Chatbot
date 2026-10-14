@@ -20,6 +20,7 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as OrmSession
 
 from app.core.audit import record_audit
@@ -205,12 +206,14 @@ class ProvisioningService:
                 "replayed": True,
             }
         already_member = self.db.execute(
-            select(Membership.tenant_id).where(
-                Membership.user_id == actor.id, Membership.status == "active"
-            ).limit(1)
+            select(Membership.tenant_id)
+            .where(Membership.user_id == actor.id, Membership.status == "active")
+            .limit(1)
         ).first()
         if already_member is not None:
-            raise ApiError(409, "ALREADY_PROVISIONED", "This account already belongs to an organization.")
+            raise ApiError(
+                409, "ALREADY_PROVISIONED", "This account already belongs to an organization."
+            )
         row = ProvisioningRequest(
             id=generate_request_id(),
             actor_user_id=actor.id,
@@ -224,9 +227,7 @@ class ProvisioningService:
         try:
             self.db.flush()
             row.status = "provisioning"
-            result = self._provision(
-                row, actor=actor, payload=payload, files=(), self_service=True
-            )
+            result = self._provision(row, actor=actor, payload=payload, files=(), self_service=True)
             row.status = "ready"
             row.tenant_id = UUID(str(result["tenant_id"]))
             row.result = dict(result)
@@ -247,7 +248,9 @@ class ProvisioningService:
                     "result": dict(prior.result),
                     "replayed": True,
                 }
-            raise ApiError(409, "PROVISIONING_CONFLICT", "Signup could not be completed safely.") from None
+            raise ApiError(
+                409, "PROVISIONING_CONFLICT", "Signup could not be completed safely."
+            ) from None
         except Exception:
             self.db.rollback()
             raise
@@ -274,7 +277,11 @@ class ProvisioningService:
         self.db.flush()  # tenant must exist before its audit row
         record_audit(
             self.db,
-            action=("self_service.tenant_created" if self_service else "platform.onboarding.tenant_created"),
+            action=(
+                "self_service.tenant_created"
+                if self_service
+                else "platform.onboarding.tenant_created"
+            ),
             tenant_id=tenant.id,
             actor_user_id=actor.id,
             target_type="tenant",
@@ -324,7 +331,9 @@ class ProvisioningService:
 
         bot_id: str | None = None
         if payload.bot_name:
-            bot = self._make_bot(tenant.id, payload.bot_name, actor, row.id, self_service=self_service)
+            bot = self._make_bot(
+                tenant.id, payload.bot_name, actor, row.id, self_service=self_service
+            )
             bot_id = str(bot.id)
 
         stored_files: list[dict[str, str]] = []
@@ -335,7 +344,9 @@ class ProvisioningService:
             "tenant_id": str(tenant.id),
             "tenant_slug": slug,
             "bot_id": bot_id,
-            "owner_invite": None if self_service else {
+            "owner_invite": None
+            if self_service
+            else {
                 "email": str(payload.owner_email),
                 "link_path": f"/accept-invite?token={raw_token}",
                 "expires_at": invitation.expires_at.isoformat() if invitation else None,
@@ -358,7 +369,13 @@ class ProvisioningService:
         return candidate
 
     def _make_bot(
-        self, tenant_id: UUID, bot_name: str, actor: User, request_id: UUID, *, self_service: bool = False
+        self,
+        tenant_id: UUID,
+        bot_name: str,
+        actor: User,
+        request_id: UUID,
+        *,
+        self_service: bool = False,
     ) -> Any:
         from app.db.models import Bot
 
@@ -367,7 +384,9 @@ class ProvisioningService:
         self.db.flush()
         record_audit(
             self.db,
-            action=("self_service.bot_created" if self_service else "platform.onboarding.bot_created"),
+            action=(
+                "self_service.bot_created" if self_service else "platform.onboarding.bot_created"
+            ),
             tenant_id=tenant_id,
             actor_user_id=actor.id,
             target_type="bot",
@@ -385,9 +404,9 @@ class ProvisioningService:
         uploaded into that bot through the normal Knowledge flow, whose parsers
         apply. Files are never served raw (docs/06)."""
         from app.db.models import Bot
-        from app.knowledge.storage import LocalStorage
+        from app.knowledge.storage import get_storage
 
-        storage = LocalStorage(self.settings)
+        storage = get_storage(self.settings)
         bot = (
             self.db.execute(
                 select(Bot).where(Bot.tenant_id == tenant_id).order_by(Bot.created_at.desc())

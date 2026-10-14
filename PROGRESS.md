@@ -448,3 +448,10 @@ Unverified: `python -m pytest -q tests/test_self_service_signup.py --tb=short` �
 Built: Added admin-only JSON export (including raw uploaded source bytes, parsed knowledge, contacts, identities, conversations, messages, usage, and audit), owner-only reason/confirmation tenant deletion, tenant audit search, and the data screen.
 Tested: Python compileall — EXIT 0; web lint, typecheck, and Prettier — EXIT 0.
 Unverified: `python -m pytest -q tests/test_tenant_data.py --tb=short` — Python has no pytest installed. Owner command with a disposable plain URL: `$env:TEST_DATABASE_URL='postgresql://<user>:<password>@<host>/<base_db>'; python -m pytest -q tests/test_tenant_data.py --tb=short`. Local storage cleanup remains best-effort on OS unlink errors (see KNOWN-ISSUES.md).
+
+## 2026-10-14 — P2 ingestion hardening carryovers
+
+Built: Replaced interruptible-thread parser timeout with a spawned subprocess that is terminated at the wall-clock limit; added timeout and chunked multipart upload regressions; routed knowledge/provisioning/data file access through the `Storage` factory; fixed concurrent signup error import and typed measured-token extraction; added `expire_all()` before DB assertions reading API-updated rows.
+Tested: Ruff check and format check — EXIT 0; strict mypy on six affected API modules — EXIT 0; `python -m compileall -q` on affected app/test modules — EXIT 0.
+Unverified: `python -m pytest -q apps/api/tests/test_knowledge_parsers.py apps/api/tests/test_knowledge_uploads.py apps/api/tests/test_quotas.py apps/api/tests/test_platform_ops.py --tb=short` could not initialize because no disposable DB URL is configured. Owner command: `$env:TEST_DATABASE_URL='postgresql://<user>:<password>@<host>/<base_db>'; python -m pytest -q apps/api/tests/test_knowledge_parsers.py apps/api/tests/test_knowledge_uploads.py apps/api/tests/test_quotas.py apps/api/tests/test_platform_ops.py --tb=short`.
+

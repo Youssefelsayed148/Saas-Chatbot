@@ -3,16 +3,20 @@
 Covers docs/14 §2 (languages), §3 (parsing rules + limits), §4 (chunking).
 """
 
+import time
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 
 from app.core.config import Settings
+from app.db.models import Source
 from app.knowledge.chunking import split_text
 from app.knowledge.csv_qa import CsvStructureError, parse_qa_csv, qa_template_csv
+from app.knowledge.ingest import parse_source
 from app.knowledge.language import content_hash, detect_language, normalise_text
 from app.knowledge.parsers import ParseLimits, parse_docx, parse_pdf, parse_text
-from app.knowledge.parsing import ParseError
+from app.knowledge.parsing import ParsedPage, ParseError
 from tests.fixtures_factory import (
     make_corrupt_pdf,
     make_docx,
@@ -25,16 +29,41 @@ from tests.fixtures_factory import (
 FIXTURES = Path(__file__).parent / "fixtures"
 
 
+def _slow_parse_for_timeout_test(
+    kind: str, original_name: str, data: bytes, parser_limits: ParseLimits
+) -> list[ParsedPage]:
+    del kind, original_name, data, parser_limits
+    time.sleep(5)
+    return []
+
+
 def parse_limits_settings(**overrides: int) -> Settings:
     """Parser limits matching the product defaults (docs/14 §3)."""
     return Settings.model_construct(
         max_pdf_pages=overrides.get("max_pdf_pages", 300),
         max_docx_uncompressed_bytes=100 << 20,
         max_docx_zip_ratio=200,
-        parse_timeout_seconds=60,
+        parse_timeout_seconds=overrides.get("parse_timeout_seconds", 60),
         chunk_size=1500,
         chunk_overlap=200,
     )
+
+
+def test_parse_subprocess_is_terminated_at_timeout() -> None:
+    settings = parse_limits_settings(parse_timeout_seconds=2)
+    source = Source(
+        id=uuid4(),
+        tenant_id=uuid4(),
+        bot_id=uuid4(),
+        kind="txt",
+        original_name="slow.txt",
+        storage_key="not-used",
+        size_bytes=1,
+        sha256="0" * 64,
+        created_by=uuid4(),
+    )
+    with pytest.raises(ParseError, match="Parsing timed out"):
+        parse_source(source, b"x", settings, parser=_slow_parse_for_timeout_test)
 
 
 def limits(settings: Settings) -> ParseLimits:

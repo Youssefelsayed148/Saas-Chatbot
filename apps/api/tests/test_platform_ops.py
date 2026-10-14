@@ -10,9 +10,7 @@ from tests.helpers import make_bot, seeded_tenant
 from tests.test_platform import platform_call, staff_login
 
 
-def test_platform_ops_require_staff_reason_and_record_audit(
-    app: Any, db: Any
-) -> None:
+def test_platform_ops_require_staff_reason_and_record_audit(app: Any, db: Any) -> None:
     tenant = seeded_tenant(app, db, prefix="p7ops")
     bot = make_bot(tenant, "Ops bot")
     staff = staff_login(app, db)
@@ -60,9 +58,7 @@ def test_platform_ops_require_staff_reason_and_record_audit(
     assert cancelled.json()["status"] == "cancelled"
 
 
-def test_plan_assignment_and_platform_analytics_are_measured(
-    app: Any, db: Any
-) -> None:
+def test_plan_assignment_and_platform_analytics_are_measured(app: Any, db: Any) -> None:
     tenant = seeded_tenant(app, db, prefix="p7plan")
     staff = staff_login(app, db)
     assignment = platform_call(
@@ -87,9 +83,7 @@ def test_plan_assignment_and_platform_analytics_are_measured(
     assert any(item["action"] == "platform.tenant.plan_assigned" for item in audit.json()["events"])
 
 
-def test_platform_job_health_and_unknown_job_hidden(
-    app: Any, db: Any
-) -> None:
+def test_platform_job_health_and_unknown_job_hidden(app: Any, db: Any) -> None:
     staff = staff_login(app, db)
     result = platform_call(staff, "GET", "/operations/jobs")
     assert result.status_code == 200
@@ -100,9 +94,7 @@ def test_platform_job_health_and_unknown_job_hidden(
     assert missing.status_code == 404
 
 
-def test_platform_pause_bot_requires_reason_and_is_audited(
-    app: Any, db: Any
-) -> None:
+def test_platform_pause_bot_requires_reason_and_is_audited(app: Any, db: Any) -> None:
     tenant = seeded_tenant(app, db, prefix="p7pause")
     bot = make_bot(tenant, "Pause me")
     staff = staff_login(app, db)
@@ -114,6 +106,7 @@ def test_platform_pause_bot_requires_reason_and_is_audited(
     )
     assert response.status_code == 200, response.text
     assert response.json()["status"] == "paused"
+    db.expire_all()
     audit = db.execute(
         select(AuditEvent).where(AuditEvent.action == "platform.bot.paused")
     ).scalar_one()

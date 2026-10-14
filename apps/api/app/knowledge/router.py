@@ -16,7 +16,7 @@ from app.core.config import Settings, get_settings
 from app.core.tenancy import TenantContextDep
 from app.db.models import Job
 from app.knowledge import schemas, service
-from app.knowledge.storage import LocalStorage
+from app.knowledge.storage import get_storage
 
 router = APIRouter(prefix="/api/v1/tenants/{tenant_id}/bots/{bot_id}")
 
@@ -79,7 +79,7 @@ def upload_sources(
     """Store uploaded files as sources (editor+). Parsing happens in a worker job."""
     context.require_role("editor")
     uploads: list[tuple[str | None, Any]] = [(file.filename, file.file) for file in files]
-    rows = service.upload_files(context, bot_id, uploads, settings, storage=LocalStorage(settings))
+    rows = service.upload_files(context, bot_id, uploads, settings, storage=get_storage(settings))
     return _sources_out(rows)
 
 

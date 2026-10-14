@@ -81,7 +81,14 @@ class LocalStorage(Storage):
 _storage: Storage | None = None
 
 
-def get_storage() -> Storage:
+def get_storage(settings: Settings | None = None) -> Storage:
+    """Resolve the configured storage adapter.
+
+    Request-scoped settings are respected by API routes and tests. The worker
+    can omit settings and reuse its process-wide adapter.
+    """
+    if settings is not None:
+        return LocalStorage(settings)
     global _storage
     if _storage is None:
         from app.core.config import get_settings
