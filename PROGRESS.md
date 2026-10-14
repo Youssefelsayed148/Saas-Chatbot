@@ -401,3 +401,32 @@ Exact verification commands and outcomes:
 - `npx.cmd prettier --write 'app/app/[tenant]/inbox/[conversation]/page.tsx' tests/conversations.spec.ts` (from `apps/web`) - EXIT 0; page formatted, test unchanged.
 - `docker version --format '{{.Server.Version}}'` - unavailable; permission denied connecting to `npipe:////./pipe/dockerDesktopLinuxEngine`. No local Linux-container/browser rerun was possible.
 - No `.env` or key was read.
+
+## 2026-10-14 — P5 browser gate deferred; bounded widget/API check
+
+P5 browser gate open: handoff journey widget step; widget.spec:146 flaky ECONNRESET once; 22/24
+
+- The existing Linux API regression test `apps/api/tests/test_handoff.py::test_handoff_state_cycle_viewer_tenant_and_widget_scope` creates an agent reply in human mode, GETs `/api/public/v1/sessions/{session_id}/messages` with that session's capability token, asserts the agent message ID/text is present, and asserts internal notes are absent. This covers the requested API-level behavior.
+- `apps/web/app/widget/frame/page.tsx` restores session history and polls the same endpoint; every non-visitor turn renders with `data-testid="widget-ai-msg"`. `conversations.spec.ts` filters that element by the agent's exact text, so the locator matches the renderer; no product bug or locator correction was indicated by code inspection.
+- Linux container rerun could not be performed: `docker version --format '{{.Server.Version}}'` exited 1 with permission denied connecting to `npipe:////./pipe/dockerDesktopLinuxEngine`. No test result is claimed for this turn.
+- Owner deferred the browser gate. P5-03, both P5-05 items, and phase sign-off remain unticked. Execution plan is P5 → all P7-01..P7-05 → P6. Full green Playwright is mandatory in P7-05 and before P6.
+- No `.env` was read.
+
+## 2026-10-14 — P7 scope correction and P7-01
+
+P7 scope is corrected across `implementation/MASTER-ROADMAP.md`, `implementation/AGENT-PROMPTS.md`, `implementation/PHASE-CHECKLISTS.md`, `docs/11-PLATFORM-ADMIN.md`, `docs/18-EXPECTED-BEHAVIOUR.md`, and `README_START_HERE.md`: P7-01 admin operations, P7-02 quotas plus sentiment job, P7-03 self-service signup, P7-04 export/delete plus audit, and P7-05 release readiness all precede P6. Only Many-dependent channel integration/operations are in P6. No sign-off was ticked.
+
+P7-01 implemented: plan labels persist on tenants; staff can inspect job health, retry/cancel jobs with required reason and actor audit, assign plans with a reason/audit, pause bots with a reason/audit, read measured aggregate/per-client usage analytics, search audit events, and use a new operations UI. AI cost is intentionally not reported: the current model does not retain provider token usage or rate inputs, so a numeric estimate would be fabricated. Many delivery and connection health remain P6-specific.
+
+Exact checks and outcomes:
+- `python -m pytest -q apps/api/tests/test_platform_ops.py --tb=short` — EXIT 1, Python did not have pytest installed.
+- `.venv\Scripts\python.exe -m pytest -q apps/api/tests/test_platform_ops.py --tb=short` — EXIT 1, 4 setup errors because no explicit `DATABASE_URL`/`TEST_DATABASE_URL` was supplied; no `.env` was read.
+- Ruff check and format check on the six changed API source/test/migration files — EXIT 0. Strict mypy on router, model, provisioning service, and P7-01 tests — EXIT 0 (4 sources).
+- `npm run lint --workspace apps/web` — EXIT 0; Prettier check on touched web files — EXIT 0; `npm run typecheck --workspace apps/web` — EXIT 0.
+- Database migration upgrade/downgrade, API integration tests, and browser UI remain unverified until an explicit disposable test DB and browser-capable environment are available. No deploy. No `.env` was read.
+
+## 2026-10-14 — P7-01 commit and known issue inventory
+
+Built: Committed P7-01 migration, platform API/service changes, operations UI, and owner test fixes as `58ed96d`; created the OPEN issue inventory.
+Tested: Owner verified `test_platform_ops.py` — 4 passed on a disposable DB (reported by owner; not rerun here).
+Unverified: P7-01 operations UI browser check remains unverified; P7-02 blocked because approved docs specify no quota/cost-cap values.
