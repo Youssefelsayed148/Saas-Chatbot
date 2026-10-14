@@ -39,7 +39,7 @@ from app.db.models.types import TSVECTOR
 # --- allowed/checked values -------------------------------------------------
 SOURCE_KIND_VALUES = ("pdf", "docx", "txt", "md", "qa_csv")
 SOURCE_STATUS_VALUES = ("stored", "queued", "ingested", "failed")
-JOB_TYPE_VALUES = ("ingest_batch", "retention_purge")
+JOB_TYPE_VALUES = ("ingest_batch", "retention_purge", "follow_up_delivery")
 JOB_STATUS_VALUES = ("pending", "running", "succeeded", "failed", "cancelled")
 REVISION_STATUS_VALUES = ("draft", "published", "archived")
 LANGUAGE_VALUES = ("en", "ar")
@@ -80,7 +80,10 @@ class Job(Base):
     )
 
     __table_args__ = (
-        CheckConstraint("type IN ('ingest_batch', 'retention_purge')", name="ck_jobs_type"),
+        CheckConstraint(
+            "type IN ('ingest_batch', 'retention_purge', 'follow_up_delivery')",
+            name="ck_jobs_type",
+        ),
         CheckConstraint(
             "status IN ('pending', 'running', 'succeeded', 'failed', 'cancelled')",
             name="ck_jobs_status",

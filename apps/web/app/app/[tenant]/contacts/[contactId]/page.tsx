@@ -24,12 +24,24 @@ export default function ContactPage() {
   const [fields, setFields] = useState("");
   const [mergeTarget, setMergeTarget] = useState("");
   const [contacts, setContacts] = useState<api.Contact[]>([]);
+  const [followUps, setFollowUps] = useState<api.FollowUp[]>([]);
+  const [selectedConversation, setSelectedConversation] = useState("");
+  const [sendAt, setSendAt] = useState("");
+  const [followUpText, setFollowUpText] = useState("");
 
   const load = useCallback(async () => {
     try {
-      const item = await api.getContact(tenantId, contactId);
+      const [item, scheduled] = await Promise.all([
+        api.getContact(tenantId, contactId),
+        api.listFollowUps(tenantId),
+      ]);
       setProfile(item);
       setFields(JSON.stringify(item.contact.custom_fields, null, 2));
+      setFollowUps(
+        scheduled.follow_ups.filter(
+          (followUp) => followUp.contact_id === contactId,
+        ),
+      );
       setError(null);
     } catch (caught) {
       setError(
@@ -91,6 +103,38 @@ export default function ContactPage() {
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "Could not erase contact.",
+      );
+    }
+  }
+  async function scheduleFollowUp(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedConversation || !sendAt) return;
+    try {
+      await api.createFollowUp(tenantId, {
+        conversation_id: selectedConversation,
+        contact_id: contactId,
+        send_at: new Date(sendAt).toISOString(),
+        text: followUpText,
+      });
+      setFollowUpText("");
+      await load();
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Could not schedule follow-up.",
+      );
+    }
+  }
+  async function cancelFollowUp(followUpId: string) {
+    try {
+      await api.cancelFollowUp(tenantId, followUpId);
+      await load();
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Could not cancel follow-up.",
       );
     }
   }
@@ -230,6 +274,82 @@ export default function ContactPage() {
             ) : (
               <p>No conversations or notes.</p>
             )}
+          </section>
+          <section className="card">
+            <h2>Website follow-ups</h2>
+            {canEdit &&
+              profile.timeline.some(
+                (item) => item.type === "conversation" && item.id,
+              ) && (
+                <form onSubmit={scheduleFollowUp}>
+                  <label>
+                    Conversation{" "}
+                    <select
+                      required
+                      value={selectedConversation}
+                      onChange={(e) => setSelectedConversation(e.target.value)}
+                    >
+                      <option value="">Choose conversation</option>
+                      {profile.timeline
+                        .filter(
+                          (item) => item.type === "conversation" && item.id,
+                        )
+                        .map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.channel} Â· {item.status} Â·{" "}
+                            {new Date(item.created_at).toLocaleDateString()}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                  <label>
+                    Send after{" "}
+                    <input
+                      type="datetime-local"
+                      required
+                      value={sendAt}
+                      onChange={(e) => setSendAt(e.target.value)}
+                    />
+                  </label>
+                  <label>
+                    Message{" "}
+                    <textarea
+                      required
+                      minLength={1}
+                      maxLength={4000}
+                      value={followUpText}
+                      onChange={(e) => setFollowUpText(e.target.value)}
+                    />
+                  </label>
+                  <button type="submit">Schedule follow-up</button>
+                </form>
+              )}
+            {followUps.length > 0 ? (
+              <ul>
+                {followUps.map((followUp) => (
+                  <li key={followUp.id}>
+                    {followUp.status} Â·{" "}
+                    {new Date(followUp.send_at).toLocaleString()} Â·{" "}
+                    {followUp.text}{" "}
+                    {canEdit &&
+                      ["scheduled", "ready"].includes(followUp.status) && (
+                        <button
+                          type="button"
+                          onClick={() => void cancelFollowUp(followUp.id)}
+                        >
+                          Cancel
+                        </button>
+                      )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>No follow-ups scheduled for this contact.</p>
+            )}
+            <p>
+              Website follow-ups appear in the visitor’s thread when the widget
+              next loads the conversation. No message is pushed.
+            </p>
           </section>
           {roleSatisfies(role, "admin") && (
             <section className="card">

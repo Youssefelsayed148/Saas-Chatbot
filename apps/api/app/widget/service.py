@@ -309,6 +309,10 @@ def session_history(
     )
     if conversation is None:
         return []
+    from app.followups.service import deliver_ready_follow_ups
+
+    if deliver_ready_follow_ups(db, conversation=conversation, visitor_session=visitor_session):
+        db.commit()
     since_retention = datetime.now(UTC) - timedelta(seconds=settings.retention_days * 86400)
     statement = select(Message).where(
         Message.conversation_id == conversation.id,

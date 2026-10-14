@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session as OrmSession
 
 from app.core.config import Settings
 from app.db.models import Job
+from app.followups.service import mark_follow_up_ready
 from app.jobs.queue import release_job
 from app.knowledge.ingest import JobFatal, run_ingest_batch
 from app.knowledge.storage import Storage
@@ -41,4 +42,6 @@ def _run(job: Job, db: OrmSession, settings: Settings, storage: Storage) -> str 
         purged = run_retention_purge(db, settings)
         print(f"jobs: retention purge removed {purged} message(s)", flush=True)
         return None
+    if job.type == "follow_up_delivery":
+        return mark_follow_up_ready(db, job)
     return f"Unknown job type {job.type!r}."

@@ -131,6 +131,50 @@ class ContactStage(Base):
     )
 
 
+class FollowUp(Base):
+    """Scheduled website message, released to the widget on the next visit."""
+
+    __tablename__ = "follow_ups"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    tenant_id: Mapped[UUID] = mapped_column(nullable=False)
+    bot_id: Mapped[UUID] = mapped_column(nullable=False)
+    conversation_id: Mapped[UUID] = mapped_column(nullable=False)
+    contact_id: Mapped[UUID | None] = mapped_column()
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    send_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    status: Mapped[str] = mapped_column(Text, nullable=False, default="scheduled")
+    created_by: Mapped[UUID | None] = mapped_column()
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('scheduled', 'ready', 'delivered', 'cancelled')",
+            name="ck_follow_ups_status",
+        ),
+        ForeignKeyConstraint(
+            ["tenant_id", "bot_id", "conversation_id"],
+            ["conversations.tenant_id", "conversations.bot_id", "conversations.id"],
+            name="fk_follow_ups_conversation",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["tenant_id", "contact_id"],
+            ["contacts.tenant_id", "contacts.id"],
+            name="fk_follow_ups_contact",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["created_by"], ["users.id"], name="fk_follow_ups_creator", ondelete="SET NULL"
+        ),
+        Index("ix_follow_ups_due", "status", "send_at"),
+        Index("ix_follow_ups_tenant_bot", "tenant_id", "bot_id", "status"),
+    )
+
+
 class Conversation(Base):
     __tablename__ = "conversations"
 
