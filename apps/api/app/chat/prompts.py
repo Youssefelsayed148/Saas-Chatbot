@@ -45,8 +45,8 @@ CANNED = {
             "Please contact {support_contact} — our team will help you."
         ),
         "handoff": (
-            "That needs our team: orders, accounts and payments are handled by a"
-            " person. Please contact {support_contact} and we will take it from there."
+            "That needs help from a person on our team. Please contact "
+            "{support_contact} and we will take it from there."
         ),
         "not_ready": "The assistant is not set up for this bot yet.",
         "hello_default": "Hello! How can I help?",
@@ -60,8 +60,7 @@ CANNED = {
             "يرجى التواصل مع {support_contact} وسيسعد فريقنا بمساعدتك."
         ),
         "handoff": (
-            "هذا يحتاج فريقنا: الطلبات والحسابات والمدفوعات يتولّها شخص. "
-            "يرجى التواصل مع {support_contact} وسنكمل معك."
+            "هذا يحتاج مساعدة شخص من فريقنا. يرجى التواصل مع {support_contact} وسنكمل معك."
         ),
         "not_ready": "المساعد غير مهيأ لهذا الروبوت بعد.",
         "hello_default": "أهلاً بك! كيف أستطيع مساعدتك؟",

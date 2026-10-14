@@ -17,6 +17,15 @@ from tests.test_conversations_view import seed_setup
 corpus = _rh.corpus
 
 
+def test_handoff_reply_copy_is_business_generic() -> None:
+    from app.chat.prompts import canned
+
+    for language in ("en", "ar"):
+        message = canned("handoff", language, support_contact="help@example.com")
+        assert "help@example.com" in message
+        assert not any(word in message.casefold() for word in ("orders", "accounts", "payments"))
+
+
 def _actions_path(tenant_id: UUID, conversation_id: str) -> str:
     return f"/api/v1/tenants/{tenant_id}/conversations/{conversation_id}"
 
@@ -71,6 +80,7 @@ def test_handoff_state_cycle_viewer_tenant_and_widget_scope(
     )
     assert visitor_turn.status_code == 201, visitor_turn.text
     assert visitor_turn.json()["ai_message"] is None
+    visitor_cursor = visitor_turn.json()["visitor_message"]["created_at"]
 
     editor = users.as_user("editor")
     reply = editor.post(
@@ -110,6 +120,7 @@ def test_handoff_state_cycle_viewer_tenant_and_widget_scope(
     polled = client.get(
         f"/api/public/v1/sessions/{session['session_id']}/messages",
         headers={"X-Session-Token": session["token"]},
+        params={"since": visitor_cursor},
     )
     assert polled.status_code == 200
     assert not any("Internal note:" in row["text"] for row in polled.json())

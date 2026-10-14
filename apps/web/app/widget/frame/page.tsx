@@ -314,7 +314,14 @@ export default function WidgetFramePage() {
         `/api/public/v1/sessions/${session.id}/messages${query}`,
         { headers: { "X-Session-Token": session.token } },
       );
-      if (!response.ok) return;
+      if (!response.ok) {
+        if (
+          new URLSearchParams(window.location.search).get("debugWidget") === "1"
+        ) {
+          console.debug("[widget-debug] poll response", response.status);
+        }
+        return;
+      }
       const rows = (await response.json()) as Array<{
         id: string;
         sender_type: string;
@@ -323,6 +330,15 @@ export default function WidgetFramePage() {
         needs_human: boolean;
         created_at: string;
       }>;
+      if (
+        new URLSearchParams(window.location.search).get("debugWidget") === "1"
+      ) {
+        console.debug(
+          "[widget-debug] poll rows",
+          rows.length,
+          rows.map((row) => row.sender_type),
+        );
+      }
       if (rows.length === 0) return;
       lastPollAtRef.current = rows.at(-1)?.created_at ?? lastPollAtRef.current;
       setTurns((current) => {
@@ -348,6 +364,11 @@ export default function WidgetFramePage() {
         ];
       });
     } catch {
+      if (
+        new URLSearchParams(window.location.search).get("debugWidget") === "1"
+      ) {
+        console.debug("[widget-debug] poll failed");
+      }
       // Polling is best effort; the next interval retries without changing the thread.
     } finally {
       pollingRef.current = false;

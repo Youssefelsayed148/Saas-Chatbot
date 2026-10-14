@@ -1,5 +1,11 @@
 # Execution checkpoint
 
+## 2026-10-14 — P5 close-out part 1 (handoff widget and ECONNRESET)
+
+Built: API regression now polls the actual widget endpoint with the visitor token and `since` cursor after an agent reply; handoff copy is generic in EN/AR; opt-in `?debugWidget=1` records poll status/count/sender types only. Trace found no API sender filter, token/scope mismatch, handoff polling stop, or selector mismatch. ECONNRESET cause is still unknown because no failing request/stack was supplied; startup already gates API on `/health` and Playwright on the Next server URL.
+Tested: `ruff check` / `ruff format --check` for the changed API files, strict mypy, Python compileall, web ESLint, `next typegen && tsc --noEmit`, and Prettier on the changed widget file all EXIT 0. `git diff --check` reports one pre-existing trailing blank line in `implementation/AGENT-PROMPTS.md` (not changed here). API integration needs the owner's disposable PostgreSQL DB and was not run; Playwright is unavailable in this sandbox.
+Unverified: Browser handoff and `widget.spec:146` remain unverified until the owner runs Playwright. `widget.spec:146` diagnostic rerun: add `&debugWidget=1` to the widget sample URL and inspect browser console for `[widget-debug]` poll status/rows/failure. P5-03, P5-05, and sign-off remain unticked.
+
 2026-10-12 — ADR-003 and P1-01 explicitly approved by product owner.
 
 ## 2026-10-13 — PHASE P4 started (branch feat/p1-01-foundation, P1–P3 signed off)

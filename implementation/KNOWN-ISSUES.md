@@ -2,9 +2,9 @@
 
 Status: OPEN
 
-- Handoff journey: visitor widget never shows the agent reply within 20s in `conversations.spec` — source: owner-provided issue list (2026-10-14); cause unknown.
-- `widget.spec:146` is flaky with `ECONNRESET` — source: owner-provided issue list (2026-10-14).
-- Unanswered-twice handoff reply uses orders/accounts wording — source: owner-provided issue list (2026-10-14).
+- Handoff journey: API trace and regression cover agent visibility through the real visitor token and `since` cursor; widget/browser root cause remains unverified. `?debugWidget=1` now logs poll status, sender types/count, or failure without message text or credentials — source: code trace and owner issue (2026-10-14).
+- `widget.spec:146` ECONNRESET: its server path is traced (Playwright starts API/worker, waits for `/health`, then starts built Next server), but the failing request/stack was not supplied; cause remains unknown. Owner should capture reset details on rerun — source: code trace and owner issue (2026-10-14).
+- Unanswered-twice handoff reply used orders/accounts/payments wording for both languages; both canned messages now use generic human-assistance wording, covered by an API regression assertion.
 - AI cost analytics unavailable because provider pricing data is not stored; provider-returned usage is recorded when available — source: P7-02 implementation and `docs/13-SUBSCRIPTIONS-AND-USAGE.md` (2026-10-14).
 - P5-03, P5-05, and phase sign-off remain unticked — source: `implementation/PHASE-CHECKLISTS.md` (2026-10-14).
 - P7-01 operations UI browser check is UNVERIFIED — source: owner instruction (2026-10-14).
