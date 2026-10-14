@@ -202,3 +202,80 @@ test("two static sites, two tenants: each widget answers only from its own knowl
   const answerB = await replyB.textContent();
   expect(answerB ?? "").not.toContain("7:00");
 });
+
+test("javascript source URLs are never rendered as clickable citation links", async ({
+  page,
+}) => {
+  const locator = "unsafe-source-url-test";
+  await page.route(`**/api/public/v1/widgets/${locator}/config`, (route) =>
+    route.fulfill({
+      json: {
+        available: true,
+        reason: null,
+        config: {
+          bot_name: "Test bot",
+          assistant_name: "Assistant",
+          welcome_message: { en: "Welcome", ar: "مرحبا" },
+          opening_questions: [],
+          colour: "#1f7a5c",
+          position: "right",
+          default_language: "en",
+          dir: "ltr",
+        },
+      },
+    }),
+  );
+  await page.route("**/api/public/v1/widgets/*/sessions", (route) =>
+    route.fulfill({
+      json: {
+        session_id: "00000000-0000-4000-8000-000000000001",
+        token: "test-session-token",
+        expires_at: "2099-01-01T00:00:00Z",
+        config: {},
+      },
+    }),
+  );
+  await page.route("**/api/public/v1/sessions/*/messages", async (route) => {
+    if (route.request().method() !== "POST") {
+      await route.fulfill({ json: [] });
+      return;
+    }
+    await route.fulfill({
+      json: {
+        conversation_id: "00000000-0000-4000-8000-000000000002",
+        visitor_message: {
+          id: "00000000-0000-4000-8000-000000000003",
+          created_at: "2026-01-01T00:00:00Z",
+        },
+        ai_message: {
+          id: "00000000-0000-4000-8000-000000000004",
+          text: "Here is the answer.",
+          citations: [
+            {
+              chunk_id: "unsafe-source",
+              title: "Unsafe source",
+              source_url: "javascript:alert(document.domain)",
+              page_ref: null,
+            },
+          ],
+          needs_human: false,
+          created_at: "2026-01-01T00:00:01Z",
+        },
+        kind: "answer",
+        language: "en",
+      },
+    });
+  });
+
+  await page.goto(`/widget/frame?locator=${locator}`);
+  const frame = page.getByTestId("widget-frame-body");
+  await expect(frame.getByTestId("widget-title")).toContainText("Test bot");
+  await frame.getByTestId("widget-input").fill("Tell me something");
+  await frame.getByTestId("widget-send").click();
+  await expect(frame.getByText("Here is the answer.")).toBeVisible();
+  await expect(frame.getByText("Unsafe source")).toBeVisible();
+  await expect(frame.locator('a[href^="javascript:"]')).toHaveCount(0);
+  await expect(
+    frame.getByText("Unsafe source").evaluate((node) => node.tagName),
+  ).resolves.toBe("SPAN");
+});

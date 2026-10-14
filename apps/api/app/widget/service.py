@@ -313,6 +313,8 @@ def session_history(
     statement = select(Message).where(
         Message.conversation_id == conversation.id,
         Message.created_at > since_retention,
+        # Internal state changes and notes are never exposed to visitors.
+        Message.sender_type != "system",
     )
     if since is not None:
         statement = statement.where(Message.created_at > since)

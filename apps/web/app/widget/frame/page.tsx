@@ -127,6 +127,18 @@ function localTurnId(): string {
   return `local-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
 }
 
+function safeSourceUrl(sourceUrl: string | null): string | null {
+  if (!sourceUrl) return null;
+  try {
+    const parsed = new URL(sourceUrl);
+    return parsed.protocol === "http:" || parsed.protocol === "https:"
+      ? parsed.href
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 function restoreSession(locator: string): { id: string; token: string } | null {
   try {
     const raw = window.localStorage.getItem(`chatbot-session-${locator}`);
@@ -231,6 +243,8 @@ export default function WidgetFramePage() {
   const [error, setError] = useState<string | null>(null);
   const locatorRef = useRef<string | null>(null);
   const sessionRef = useRef<{ id: string; token: string } | null>(null);
+  const lastPollAtRef = useRef<string | null>(null);
+  const pollingRef = useRef(false);
   const lang = config?.default_language ?? "en";
   const dir = config?.dir ?? "ltr";
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -270,7 +284,9 @@ export default function WidgetFramePage() {
       citations: CitedSource[] | null;
       can_answer: boolean | null;
       needs_human: boolean;
+      created_at: string;
     }>;
+    lastPollAtRef.current = rows.at(-1)?.created_at ?? null;
     const restored: Turn[] = rows.map((row) => ({
       id: row.id,
       role: row.sender_type === "visitor" ? "visitor" : "assistant",
@@ -284,6 +300,66 @@ export default function WidgetFramePage() {
       setTurns(restored);
     }
   }
+
+  async function pollSession() {
+    const session = sessionRef.current;
+    if (!session || pollingRef.current) return;
+    pollingRef.current = true;
+    try {
+      const since = lastPollAtRef.current
+        ? new Date(Date.parse(lastPollAtRef.current) - 1).toISOString()
+        : null;
+      const query = since ? `?since=${encodeURIComponent(since)}` : "";
+      const response = await fetch(
+        `/api/public/v1/sessions/${session.id}/messages${query}`,
+        { headers: { "X-Session-Token": session.token } },
+      );
+      if (!response.ok) return;
+      const rows = (await response.json()) as Array<{
+        id: string;
+        sender_type: string;
+        text: string;
+        citations: CitedSource[] | null;
+        needs_human: boolean;
+        created_at: string;
+      }>;
+      if (rows.length === 0) return;
+      lastPollAtRef.current = rows.at(-1)?.created_at ?? lastPollAtRef.current;
+      setTurns((current) => {
+        const known = new Set(current.map((turn) => turn.id));
+        return [
+          ...current,
+          ...rows
+            .filter((row) => !known.has(row.id))
+            .map((row) => ({
+              id: row.id,
+              role:
+                row.sender_type === "visitor"
+                  ? ("visitor" as const)
+                  : ("assistant" as const),
+              text: row.text,
+              // Agent messages are plain text; citations are only returned for AI rows.
+              citations:
+                row.sender_type === "ai"
+                  ? (row.citations ?? undefined)
+                  : undefined,
+              needsHuman: row.needs_human,
+            })),
+        ];
+      });
+    } catch {
+      // Polling is best effort; the next interval retries without changing the thread.
+    } finally {
+      pollingRef.current = false;
+    }
+  }
+
+  useEffect(() => {
+    if (status !== "ready" || !config) return;
+    const timer = window.setInterval(() => void pollSession(), 2000);
+    return () => window.clearInterval(timer);
+    // Session refs change without a render; the interval reads the latest ref.
+  }, [status, config]);
 
   function setTypedError(code: string) {
     if (code === "BOT_PAUSED") setReason("paused");
@@ -422,23 +498,40 @@ export default function WidgetFramePage() {
         return;
       }
       const payload = (await response.json()) as {
+        visitor_message: { id: string; created_at: string };
         ai_message: {
           id: string;
           text: string;
           citations: CitedSource[];
           needs_human: boolean;
-        };
+          created_at: string;
+        } | null;
       };
-      setTurns((current) => [
-        ...current,
-        {
-          id: payload.ai_message.id,
-          role: "assistant",
-          text: payload.ai_message.text,
-          citations: payload.ai_message.citations,
-          needsHuman: payload.ai_message.needs_human,
-        },
-      ]);
+      lastPollAtRef.current =
+        payload.ai_message?.created_at ?? payload.visitor_message.created_at;
+      setTurns((current) => {
+        const withVisitorId = current.map((turn) =>
+          turn.id === localTurn.id
+            ? { ...turn, id: payload.visitor_message.id }
+            : turn,
+        );
+        if (
+          !payload.ai_message ||
+          withVisitorId.some((turn) => turn.id === payload.ai_message?.id)
+        ) {
+          return withVisitorId;
+        }
+        return [
+          ...withVisitorId,
+          {
+            id: payload.ai_message.id,
+            role: "assistant",
+            text: payload.ai_message.text,
+            citations: payload.ai_message.citations,
+            needsHuman: payload.ai_message.needs_human,
+          },
+        ];
+      });
       setReason(null);
     } catch (caught) {
       if (caught instanceof ApiCodeError) {
@@ -652,24 +745,27 @@ export default function WidgetFramePage() {
                       className="widget-citations"
                       aria-label={localized("cite", lang)}
                     >
-                      {turn.citations.map((citation) => (
-                        <li
-                          key={citation.chunk_id}
-                          className="widget-source-chip"
-                        >
-                          {citation.source_url ? (
-                            <a
-                              href={citation.source_url}
-                              rel="noreferrer noopener"
-                              target="_blank"
-                            >
-                              {citation.title ?? localized("cite", lang)}
-                            </a>
-                          ) : (
-                            <span>{citation.title ?? ""}</span>
-                          )}
-                        </li>
-                      ))}
+                      {turn.citations.map((citation) => {
+                        const sourceUrl = safeSourceUrl(citation.source_url);
+                        return (
+                          <li
+                            key={citation.chunk_id}
+                            className="widget-source-chip"
+                          >
+                            {sourceUrl ? (
+                              <a
+                                href={sourceUrl}
+                                rel="noreferrer noopener"
+                                target="_blank"
+                              >
+                                {citation.title ?? localized("cite", lang)}
+                              </a>
+                            ) : (
+                              <span>{citation.title ?? ""}</span>
+                            )}
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
                   {turn.role === "assistant" &&

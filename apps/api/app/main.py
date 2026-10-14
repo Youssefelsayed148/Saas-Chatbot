@@ -9,6 +9,7 @@ from app.chat.router import router as chat_router
 from app.conversations.router import router as conversations_router
 from app.core.config import get_settings, validate_startup_settings
 from app.core.errors import REQUEST_ID_HEADER, RequestIdMiddleware, install_error_handlers
+from app.inbox.router import router as inbox_router
 from app.knowledge.router import router as knowledge_router
 from app.platform.router import router as platform_router
 from app.tenants.router import router as tenants_router
@@ -40,6 +41,7 @@ def create_app() -> FastAPI:
     application.include_router(knowledge_router)
     application.include_router(chat_router)
     application.include_router(conversations_router)
+    application.include_router(inbox_router)
     application.include_router(analytics_router)
     application.include_router(widget_router)
     application.include_router(platform_router)

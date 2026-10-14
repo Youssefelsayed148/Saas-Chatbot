@@ -37,6 +37,9 @@ class BotConfig(BaseModel):
     avatar: str | None = None
     position: str | None = Field(default=None, pattern="^(left|right)$")
     handoff_enabled: bool | None = None
+    handoff_after_unanswered: int | None = Field(default=None, ge=1, le=3)
+    handoff_keywords_en: list[str] | None = Field(default=None, max_length=20)
+    handoff_keywords_ar: list[str] | None = Field(default=None, max_length=20)
     allowed_domains: list[str] | None = Field(default=None, max_length=50)
 
     @field_validator("opening_questions")

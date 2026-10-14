@@ -24,6 +24,8 @@ from app.core.config import Settings
 from app.core.errors import ApiError
 from app.core.ratelimit import purge_expired_windows
 from app.db.models import Bot, Conversation, Message, UsageEvent
+from app.inbox.handoff import decide_handoff, start_handoff, visitor_handoff_reply
+from app.knowledge.language import detect_language
 
 MAX_HISTORY = 6
 
@@ -233,16 +235,50 @@ def visitor_chat_turn(
     model: ChatModel | None = None,
     settings: Settings | None = None,
 ) -> dict[str, Any]:
-    """One visitor turn through the pipeline (mode must be `ai`)."""
+    """Persist a visitor turn and run the pipeline only in AI mode."""
     settings = settings or Settings()
-    if conversation.mode != "ai":
-        raise ApiError(409, "CONVERSATION_IN_HUMAN_MODE", "The AI is currently silent.")
     if not question.strip():
         raise ApiError(422, "VALIDATION_ERROR", "The message is empty.")
     if len(question) > 1000:
         raise ApiError(422, "VALIDATION_ERROR", "Messages are limited to 1000 characters.")
+    if conversation.source != "website" and conversation.mode != "ai":
+        raise ApiError(409, "CONVERSATION_IN_HUMAN_MODE", "The AI is currently silent.")
+
+    language = detect_language(question) or (
+        str(bot.config.get("default_language", "en")) if isinstance(bot.config, dict) else "en"
+    )
+    if conversation.source == "website" and conversation.status == "resolved":
+        conversation.status = "open"
+        conversation.mode = "ai"
+        conversation.assigned_user_id = None
+        conversation.handoff_reason = None
+        db.add(conversation)
+        append_message(
+            db,
+            conversation,
+            sender_type="system",
+            text=(
+                "تم فتح المحادثة من جديد بعد رسالة الزائر."
+                if language == "ar"
+                else "The conversation reopened after a new visitor message."
+            ),
+        )
 
     visitor_message = append_message(db, conversation, sender_type="visitor", text=question)
+
+    if conversation.mode == "human":
+        db.commit()
+        return {
+            "conversation_id": str(conversation.id),
+            "visitor_message": {
+                "id": str(visitor_message.id),
+                "text": visitor_message.text,
+                "created_at": visitor_message.created_at.isoformat(),
+            },
+            "ai_message": None,
+            "kind": "waiting_human",
+            "language": language,
+        }
 
     model = model or default_model()
     if model is None:
@@ -285,6 +321,21 @@ def visitor_chat_turn(
         message_id=ai_message.id,
         conversation_id=conversation.id,
     )
+    decision = decide_handoff(
+        db,
+        bot=bot,
+        conversation=conversation,
+        question=question,
+        language=reply.language,
+        reply_kind=reply.kind,
+        can_answer=reply.can_answer,
+    )
+    if decision is not None:
+        start_handoff(db, bot=bot, conversation=conversation, decision=decision)
+        ai_message.text = visitor_handoff_reply(bot, reply.language)
+        ai_message.citations = None
+        ai_message.can_answer = False
+        ai_message.needs_human = True
     db.commit()
     return {
         "conversation_id": str(conversation.id),

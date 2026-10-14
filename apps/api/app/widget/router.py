@@ -68,7 +68,7 @@ class MessagePart(BaseModel):
 class MessageTurnResponse(BaseModel):
     conversation_id: str
     visitor_message: dict[str, Any]
-    ai_message: dict[str, Any]
+    ai_message: dict[str, Any] | None
     kind: str
     language: str
 

@@ -18,16 +18,32 @@ REQUEST_ID_HEADER = "X-Request-ID"
 class ApiError(Exception):
     """Raise from services/routers to produce the stable error format."""
 
-    def __init__(self, status_code: int, code: str, message: str) -> None:
+    def __init__(
+        self,
+        status_code: int,
+        code: str,
+        message: str,
+        *,
+        details: dict[str, str] | None = None,
+    ) -> None:
         super().__init__(message)
         self.status_code = status_code
         self.code = code
         self.message = message
+        self.details = details or {}
 
 
-def error_body(request: Request, code: str, message: str) -> dict[str, dict[str, str]]:
+def error_body(
+    request: Request,
+    code: str,
+    message: str,
+    details: dict[str, str] | None = None,
+) -> dict[str, dict[str, object]]:
     request_id = getattr(request.state, "request_id", "") or uuid4().hex
-    return {"error": {"code": code, "message": message, "request_id": request_id}}
+    error: dict[str, object] = {"code": code, "message": message, "request_id": request_id}
+    if details:
+        error["details"] = details
+    return {"error": error}
 
 
 def install_error_handlers(application: FastAPI) -> None:
@@ -35,7 +51,7 @@ def install_error_handlers(application: FastAPI) -> None:
     async def handle_api_error(request: Request, exc: ApiError) -> JSONResponse:
         return JSONResponse(
             status_code=exc.status_code,
-            content=error_body(request, exc.code, exc.message),
+            content=error_body(request, exc.code, exc.message, exc.details),
         )
 
     @application.exception_handler(RequestValidationError)
