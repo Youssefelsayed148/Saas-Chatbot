@@ -77,7 +77,9 @@ class TenantUsers:
             client.close()
 
 
-def seeded_tenant(app: FastAPI, db: Any, prefix: str = "seed") -> TenantUsers:
+def seeded_tenant(
+    app: FastAPI, db: Any, prefix: str = "seed", plan_label: str = "business"
+) -> TenantUsers:
     """Register an owner, create the tenant, then add admin/editor/viewer rows."""
     owner_client, owner_payload = logged_in(app, f"{prefix}-owner@example.com")
     try:
@@ -91,6 +93,11 @@ def seeded_tenant(app: FastAPI, db: Any, prefix: str = "seed") -> TenantUsers:
     )
     from sqlalchemy import text
 
+    # Unrelated tests must not trip placeholder quotas; quota tests set their own plan/overrides.
+    db.execute(
+        text("UPDATE tenants SET plan_label = :plan WHERE id = CAST(:tid AS uuid)"),
+        {"plan": plan_label, "tid": str(tenant_id)},
+    )
     for role in ("admin", "editor", "viewer"):
         db.execute(
             text(
