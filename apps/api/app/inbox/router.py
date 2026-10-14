@@ -174,6 +174,7 @@ def resolve(
     conversation_id: UUID,
     context: TenantContextDep,
     _: CsrfOk,
+    settings: CurrentSettings,
 ) -> dict[str, Any]:
     context.require_role("editor")
     row = _conversation(context, conversation_id, lock=True)
@@ -186,6 +187,9 @@ def resolve(
             action="conversation.resolved",
             actor_user_id=context.user.id,
         )
+        from app.quotas.sentiment import enqueue_for_resolved_conversation
+
+        enqueue_for_resolved_conversation(context.db, conversation=row, settings=settings)
         context.db.commit()
     return {"conversation": _state(row)}
 

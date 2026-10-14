@@ -9,6 +9,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request, Response
+from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
 from app.auth import cookies
@@ -37,6 +38,27 @@ router = APIRouter(tags=["tenants"])
 DbSession = Annotated[OrmSession, Depends(get_session)]
 CsrfOk = Annotated[None, Depends(cookies.require_csrf)]
 CurrentSettingsDep = Annotated[Settings, Depends(get_settings)]
+
+
+@router.get("/api/v1/tenants/{tenant_id}/quota")
+def quota_status(context: TenantContextDep) -> dict[str, object]:
+    """Viewer-accessible current usage and PLACEHOLDER plan limits."""
+    from app.quotas.service import usage_snapshot
+
+    return usage_snapshot(context.db, context.tenant)
+
+
+@router.get("/api/v1/tenants/{tenant_id}/bots/{bot_id}/quota")
+def bot_quota_status(bot_id: UUID, context: TenantContextDep) -> dict[str, object]:
+    from app.db.models import Bot
+    from app.quotas.service import usage_snapshot
+
+    bot = context.db.execute(
+        select(Bot).where(Bot.id == bot_id, Bot.tenant_id == context.tenant_id)
+    ).scalar_one_or_none()
+    if bot is None:
+        raise ApiError(404, "NOT_FOUND", "Resource not found.")
+    return usage_snapshot(context.db, context.tenant, bot_id=bot.id)
 
 
 @router.post("/api/v1/tenants", response_model=TenantOut, status_code=201)

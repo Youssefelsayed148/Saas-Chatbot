@@ -344,6 +344,30 @@ export interface PlatformAnalytics {
   }>;
 }
 
+export interface PlatformQuotaPlans {
+  placeholder: true;
+  plans: Record<string, Record<string, number>>;
+}
+
+export interface TenantQuotaStatus {
+  placeholder: true;
+  plan: string;
+  usage: Record<string, number>;
+  limits: Record<string, number>;
+  warnings: string[];
+  measured_tokens_this_month: number;
+}
+
+export async function tenantQuota(
+  tenantId: string,
+): Promise<TenantQuotaStatus> {
+  return api(`tenants/${tenantId}/quota`);
+}
+
+export async function platformQuotas(): Promise<PlatformQuotaPlans> {
+  return api("platform/quotas");
+}
+
 export async function platformJobHealth(): Promise<{
   counts: Record<string, number>;
   jobs: PlatformJob[];
@@ -388,6 +412,17 @@ export async function platformAssignPlan(
   return api(`platform/tenants/${tenantId}/plan`, {
     method: "PATCH",
     body: { plan_label: planLabel, reason },
+  });
+}
+
+export async function platformQuotaOverride(
+  tenantId: string,
+  limits: Record<string, number>,
+  reason: string,
+): Promise<{ tenant_id: string; limits: Record<string, number> }> {
+  return api(`platform/tenants/${tenantId}/quota-overrides`, {
+    method: "PATCH",
+    body: { limits, reason },
   });
 }
 

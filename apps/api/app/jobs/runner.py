@@ -44,4 +44,8 @@ def _run(job: Job, db: OrmSession, settings: Settings, storage: Storage) -> str 
         return None
     if job.type == "follow_up_delivery":
         return mark_follow_up_ready(db, job)
+    if job.type == "sentiment_classify":
+        from app.quotas.sentiment import run_sentiment_job
+
+        return run_sentiment_job(db, job, settings)
     return f"Unknown job type {job.type!r}."

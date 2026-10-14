@@ -31,6 +31,7 @@ from app.jobs.queue import enqueue_job, request_cancel, requeue_for_retry
 from app.knowledge.csv_qa import CsvStructureError, parse_qa_csv, qa_template_csv
 from app.knowledge.parsers import detect_and_validate
 from app.knowledge.storage import Storage, get_storage
+from app.quotas.service import lock_tenant, limits_for
 
 UPLOAD_CHUNK_SIZE = 256 * 1024
 
@@ -78,6 +79,11 @@ def upload_files(
     keys are generated; user input never reaches the filesystem path.
     """
     bot = _get_editable_bot(context, bot_id)
+    tenant = lock_tenant(context.db, context.tenant_id)
+    limits = limits_for(tenant)
+    upload_settings = settings.model_copy(
+        update={"max_upload_file_bytes": limits.upload_file_mb * 1024 * 1024}
+    )
     if not files:
         raise ApiError(422, "VALIDATION_ERROR", "No files were uploaded.")
     if len(files) > settings.max_upload_files:
@@ -91,7 +97,7 @@ def upload_files(
     checked: list[tuple[str, str, bytes]] = []
     for filename, stream in files:
         display = safe_display_name(filename or "upload")
-        data = read_upload(stream, settings)
+        data = read_upload(stream, upload_settings)
         try:
             kind = detect_and_validate(filename, data)
         except ValueError as error:

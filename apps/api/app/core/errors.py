@@ -24,7 +24,7 @@ class ApiError(Exception):
         code: str,
         message: str,
         *,
-        details: dict[str, str] | None = None,
+        details: dict[str, object] | None = None,
     ) -> None:
         super().__init__(message)
         self.status_code = status_code
@@ -37,7 +37,7 @@ def error_body(
     request: Request,
     code: str,
     message: str,
-    details: dict[str, str] | None = None,
+    details: dict[str, object] | None = None,
 ) -> dict[str, dict[str, object]]:
     request_id = getattr(request.state, "request_id", "") or uuid4().hex
     error: dict[str, object] = {"code": code, "message": message, "request_id": request_id}

@@ -430,3 +430,9 @@ Exact checks and outcomes:
 Built: Committed P7-01 migration, platform API/service changes, operations UI, and owner test fixes as `58ed96d`; created the OPEN issue inventory.
 Tested: Owner verified `test_platform_ops.py` — 4 passed on a disposable DB (reported by owner; not rerun here).
 Unverified: P7-01 operations UI browser check remains unverified; P7-02 blocked because approved docs specify no quota/cost-cap values.
+
+## 2026-10-14 — P7-02 quotas and sentiment queue
+
+Built: Central PLACEHOLDER plan table, tenant scoped counters/enforcement, 80% warnings, reason-audited staff overrides, measured provider token recording, friendly widget quota response, and resolved-conversation sentiment jobs.
+Tested: `python -m compileall -q app/quotas app/knowledge/ingest.py app/knowledge/service.py app/tenants/service.py app/platform/router.py app/widget/service.py app/chat/providers.py app/chat/conversations.py app/inbox/router.py` — EXIT 0; web lint/typecheck/Prettier — EXIT 0.
+Unverified: `python -m pytest -q tests/test_quotas.py tests/test_platform_ops.py --tb=short` — Python has no pytest installed. Owner command after installing project dev dependencies and setting a disposable plain URL: `$env:TEST_DATABASE_URL='postgresql://<user>:<password>@<host>/<base_db>'; python -m pytest -q tests/test_quotas.py tests/test_platform_ops.py --tb=short`. Ruff/mypy unavailable in this Python environment; no browser suite run.

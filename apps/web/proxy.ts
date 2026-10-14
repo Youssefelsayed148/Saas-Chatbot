@@ -6,13 +6,12 @@ import { NextResponse, type NextRequest } from "next/server";
  * The proxy forwards /api requests to the FastAPI process. Next's headers()
  * config and the backend's own limits apply downstream, but the proxy must
  * refuse oversized multipart bodies BEFORE spending the bandwidth/storage:
- * a Content-Length above the upload cap (10 MB per file, 20 files per batch ⇒
- * the API accepts up to 200 MB per request worst case; we guard at 220 MB)
- * is rejected here with 413. Missing/absent Content-Length (chunked bodies)
+ * a Content-Length above the maximum PLACEHOLDER cap (25 MB x 20 files,
+ * plus multipart overhead; 520 MB total) is rejected here with 413. Missing/absent Content-Length (chunked bodies)
  * cannot be validated here and fall through to the API's streaming check.
  */
 
-const MAX_ACCEPTED_BODY_BYTES = 220 * 1024 * 1024;
+const MAX_ACCEPTED_BODY_BYTES = 520 * 1024 * 1024;
 
 export function proxy(request: NextRequest) {
   const length = request.headers.get("content-length");

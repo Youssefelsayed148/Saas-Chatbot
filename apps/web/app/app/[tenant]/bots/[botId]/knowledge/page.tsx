@@ -250,7 +250,7 @@ export default function KnowledgePage() {
         </p>
         <form onSubmit={onUpload}>
           <label>
-            Files (max 20, each ≤10 MB)
+            Files (max 20, up to 25 MB each by PLACEHOLDER plan)
             <input
               id="knowledge-file-input"
               type="file"

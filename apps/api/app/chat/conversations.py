@@ -330,6 +330,11 @@ def visitor_chat_turn(
         external_key=f"message:{ai_message.id}",
         message_id=ai_message.id,
         conversation_id=conversation.id,
+        payload=(
+            {"provider_usage": model.usage_totals}
+            if model.usage_totals is not None
+            else {}
+        ),
     )
     decision = decide_handoff(
         db,

@@ -23,6 +23,7 @@ from app.core.errors import ApiError
 from app.core.tenancy import ROLE_LEVELS, TenantContext
 from app.db.models import Invitation, Membership, Tenant, User
 from app.tenants.schemas import MAX_INVITATION_EXPIRY_DAYS
+from app.quotas.service import lock_tenant, require_capacity
 
 SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 DEFAULT_INVITATION_EXPIRY_DAYS = 7
@@ -117,6 +118,8 @@ class TenantService:
         role: str,
         expiry_days: int,
     ) -> tuple[Invitation, str]:
+        tenant = lock_tenant(self.db, context.tenant_id)
+        require_capacity(self.db, tenant, "seats")
         # Admins may not mint owner invitations (owner transfer, docs/06).
         if role == "owner" and context.role != "owner":
             raise ApiError(403, "FORBIDDEN", "Only an owner can create owner invitations.")
@@ -238,6 +241,16 @@ class TenantService:
                 "INVITEE_EMAIL_MISMATCH",
                 "Register or log in with the address the invitation was sent to.",
             )
+
+        tenant = lock_tenant(db, invitation.tenant_id)
+        existing_membership = db.execute(
+            select(Membership).where(
+                Membership.tenant_id == invitation.tenant_id,
+                Membership.user_id == user.id,
+            )
+        ).scalar_one_or_none()
+        if existing_membership is None or existing_membership.status != "active":
+            require_capacity(db, tenant, "seats")
 
         existing = db.execute(
             select(Membership).where(

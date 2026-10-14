@@ -14,7 +14,7 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeoutError
 from uuid import UUID
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as OrmSession
 
@@ -35,6 +35,7 @@ from app.knowledge.language import content_hash, detect_language, normalise_text
 from app.knowledge.parsers import ParseLimits, parse_docx, parse_pdf, parse_text
 from app.knowledge.parsing import ParsedPage, ParsedSection, ParseError
 from app.knowledge.storage import Storage
+from app.quotas.service import limits_for, lock_tenant
 
 
 class JobFatal(Exception):
@@ -530,6 +531,28 @@ def process_source(
         source.error = "No readable text was found in the file."
         db.commit()
         return "No readable text was found in the file."
+
+    tenant = lock_tenant(db, source.tenant_id)
+    existing_pages = int(
+        db.execute(
+            select(func.count())
+            .select_from(SourcePage)
+            .where(SourcePage.tenant_id == source.tenant_id, SourcePage.bot_id == bot.id)
+        ).scalar_one()
+    )
+    old_source_pages = int(
+        db.execute(
+            select(func.count())
+            .select_from(SourcePage)
+            .where(SourcePage.source_id == source.id)
+        ).scalar_one()
+    )
+    page_limit = limits_for(tenant).pages_per_bot
+    if existing_pages - old_source_pages + len(page_plans) > page_limit:
+        source.status = "failed"
+        source.error = f"This file would exceed the PLACEHOLDER plan limit of {page_limit} knowledge pages per bot."
+        db.commit()
+        return source.error
 
     # Unchanged re-ingest is a no-op (docs/14 §3).
     planned_docs, planned_chunks = _planned_state(document_plans)

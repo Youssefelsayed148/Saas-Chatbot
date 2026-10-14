@@ -21,6 +21,7 @@ from app.core.audit import record_audit
 from app.core.errors import ApiError
 from app.core.tenancy import TenantContext
 from app.db.models import Bot
+from app.quotas.service import lock_tenant, require_capacity
 
 ALLOWED_STATUS_TRANSITIONS = {
     "draft": {"active"},
@@ -51,6 +52,8 @@ class BotService:
         self.db = db
 
     def create_bot(self, context: TenantContext, body: BotCreateRequest) -> Bot:
+        tenant = lock_tenant(self.db, context.tenant_id)
+        require_capacity(self.db, tenant, "bots")
         bot = Bot(
             id=uuid4(),
             tenant_id=context.tenant_id,

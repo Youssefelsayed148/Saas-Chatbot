@@ -15,20 +15,24 @@ export default function PlatformOperationsPage() {
   const [audit, setAudit] = useState<Awaited<
     ReturnType<typeof api.platformAudit>
   > | null>(null);
+  const [quotas, setQuotas] = useState<api.PlatformQuotaPlans | null>(null);
   const [query, setQuery] = useState("");
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   async function load() {
     try {
-      const [nextHealth, nextAnalytics, nextAudit] = await Promise.all([
-        api.platformJobHealth(),
-        api.platformAnalytics(),
-        api.platformAudit(query),
-      ]);
+      const [nextHealth, nextAnalytics, nextAudit, nextQuotas] =
+        await Promise.all([
+          api.platformJobHealth(),
+          api.platformAnalytics(),
+          api.platformAudit(query),
+          api.platformQuotas(),
+        ]);
       setHealth(nextHealth);
       setAnalytics(nextAnalytics);
       setAudit(nextAudit);
+      setQuotas(nextQuotas);
       setError(null);
     } catch (caught) {
       setError(
@@ -61,10 +65,37 @@ export default function PlatformOperationsPage() {
         <a href="/platform">Back to clients</a>
       </p>
       {error && <Notice message={error} tone="error" />}
-      {!health || !analytics || !audit ? (
+      {!health || !analytics || !audit || !quotas ? (
         <Loading label="Loading platform operations…" />
       ) : (
         <>
+          <section aria-label="Placeholder quota plans">
+            <h2>PLACEHOLDER quota limits</h2>
+            <p>
+              PLACEHOLDER values for verification only. Pricing and final plan
+              limits are TBD; no token or currency spend cap is enforced.
+            </p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Limit</th>
+                  {Object.keys(quotas.plans).map((plan) => (
+                    <th key={plan}>{plan}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {Object.keys(quotas.plans.free).map((limit) => (
+                  <tr key={limit}>
+                    <th>{limit.replaceAll("_", " ")}</th>
+                    {Object.entries(quotas.plans).map(([plan, values]) => (
+                      <td key={plan}>{values[limit]}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
           <section
             aria-label="Platform analytics"
             data-testid="platform-analytics"

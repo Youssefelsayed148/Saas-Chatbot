@@ -19,6 +19,8 @@ from app.core.errors import ApiError
 class ChatModel(ABC):
     """Interface for the answering provider (P3-05 swaps in fakes)."""
 
+    usage_totals: dict[str, int] | None = None
+
     @abstractmethod
     def complete(self, messages: list[dict[str, str]], *, json_mode: bool, max_tokens: int) -> str:
         """One synchronous completion."""
@@ -71,6 +73,7 @@ class OpenAICompatibleModel(ChatModel):
         self.timeout_seconds = timeout_seconds
         self.retries = retries
         self.temperature = temperature
+        self.usage_totals = None
 
     def complete(self, messages: list[dict[str, str]], *, json_mode: bool, max_tokens: int) -> str:
         from httpx import Client, HTTPError
@@ -116,6 +119,21 @@ class OpenAICompatibleModel(ChatModel):
                 if not isinstance(content, str) or not content.strip():
                     last_error = ProviderError(f"model {model}: empty completion")
                     continue
+                usage = payload.get("usage")
+                if isinstance(usage, dict):
+                    measured = {
+                        key: value
+                        for key, value in usage.items()
+                        if key in ("prompt_tokens", "completion_tokens", "total_tokens")
+                        and isinstance(value, int)
+                        and value >= 0
+                    }
+                    if measured:
+                        totals = self.usage_totals or {}
+                        self.usage_totals = {
+                            key: totals.get(key, 0) + value
+                            for key, value in measured.items()
+                        }
                 return content
             if last_error is not None:
                 chain.append(ProviderChainAttempt(model=model, error=str(last_error)))

@@ -71,6 +71,9 @@ class Tenant(Base):
     plan_label: Mapped[str] = mapped_column(
         Text, nullable=False, default="starter", server_default=text("'starter'")
     )
+    quota_overrides: Mapped[dict[str, object]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
     status: Mapped[str] = mapped_column(
         Text,
         nullable=False,

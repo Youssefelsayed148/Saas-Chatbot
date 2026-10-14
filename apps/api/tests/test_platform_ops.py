@@ -69,17 +69,17 @@ def test_plan_assignment_and_platform_analytics_are_measured(
         staff,
         "PATCH",
         f"/tenants/{tenant.tenant_id}/plan",
-        json={"plan_label": "growth", "reason": "Owner approved plan change"},
+        json={"plan_label": "pro", "reason": "Owner approved plan change"},
     )
     assert assignment.status_code == 200, assignment.text
-    assert assignment.json()["plan_label"] == "growth"
+    assert assignment.json()["plan_label"] == "pro"
     listing = platform_call(staff, "GET", "/tenants?q=p7plan")
     row = next(item for item in listing.json()["tenants"] if item["id"] == str(tenant.tenant_id))
-    assert row["plan_label"] == "growth"
+    assert row["plan_label"] == "pro"
     analytics = platform_call(staff, "GET", "/analytics")
     assert analytics.status_code == 200
     assert any(
-        client["tenant_id"] == str(tenant.tenant_id) and client["plan_label"] == "growth"
+        client["tenant_id"] == str(tenant.tenant_id) and client["plan_label"] == "pro"
         for client in analytics.json()["clients"]
     )
     audit = platform_call(staff, "GET", "/audit?q=plan_assigned")

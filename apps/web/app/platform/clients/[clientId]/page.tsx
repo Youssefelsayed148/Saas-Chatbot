@@ -16,6 +16,7 @@ export default function PlatformClientPage() {
   const [error, setError] = useState<string | null>(null);
   const [planLabel, setPlanLabel] = useState("");
   const [reason, setReason] = useState("");
+  const [quotaOverrides, setQuotaOverrides] = useState('{"bots": 4}');
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -70,6 +71,20 @@ export default function PlatformClientPage() {
     }
   }
 
+  async function saveQuotaOverrides(event: React.FormEvent) {
+    event.preventDefault();
+    if (!detail) return;
+    try {
+      const limits = JSON.parse(quotaOverrides) as Record<string, number>;
+      await api.platformQuotaOverride(detail.tenant.id, limits, reason);
+      setError(null);
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : "Quota override failed.",
+      );
+    }
+  }
+
   return (
     <main>
       <h1 data-testid="client-detail-name">
@@ -121,6 +136,9 @@ export default function PlatformClientPage() {
           </section>
           <section aria-label="Plan assignment" data-testid="client-plan">
             <h2>Plan assignment</h2>
+            <p>
+              PLACEHOLDER plans and limits; final pricing and limits are TBD.
+            </p>
             <form onSubmit={(event) => void assignPlan(event)}>
               <label>
                 Plan label{" "}
@@ -142,6 +160,21 @@ export default function PlatformClientPage() {
                 />
               </label>
               <button type="submit">Save plan</button>
+            </form>
+            <form onSubmit={(event) => void saveQuotaOverrides(event)}>
+              <label>
+                PLACEHOLDER quota overrides (JSON)
+                <textarea
+                  value={quotaOverrides}
+                  onChange={(event) => setQuotaOverrides(event.target.value)}
+                  rows={3}
+                  maxLength={1000}
+                  required
+                />
+              </label>
+              <button type="submit" disabled={reason.trim().length < 3}>
+                Save override with reason
+              </button>
             </form>
           </section>
           <section aria-label="Failed jobs" data-testid="client-detail-jobs">

@@ -27,6 +27,7 @@ export default function BotsListPage() {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [archiving, setArchiving] = useState<string | null>(null);
+  const [quota, setQuota] = useState<api.TenantQuotaStatus | null>(null);
 
   const role = roleIn(tenantId);
   const canEdit = roleSatisfies(role, "editor");
@@ -34,8 +35,10 @@ export default function BotsListPage() {
   const load = useCallback(async () => {
     try {
       const nextBots = await api.listBots(tenantId, showArchived);
+      const nextQuota = await api.tenantQuota(tenantId);
       setBotsError(null);
       setBots(nextBots);
+      setQuota(nextQuota);
     } catch (caught) {
       setBotsError(
         caught instanceof Error ? caught.message : "Could not load bots.",
@@ -96,6 +99,27 @@ export default function BotsListPage() {
       {!sessionLoading && sessionError && (
         <Notice message={sessionError} tone="error" />
       )}
+      {!sessionLoading && !sessionError && quota && (
+        <section aria-label="PLACEHOLDER plan usage">
+          <h2>PLACEHOLDER plan usage</h2>
+          <p>
+            {quota.plan} plan · Bots {quota.usage.bots}/{quota.limits.bots} ·
+            Seats {quota.usage.seats}/{quota.limits.seats} · Contacts{" "}
+            {quota.usage.contacts}/{quota.limits.contacts} · Monthly messages{" "}
+            {quota.usage.monthly_messages}/{quota.limits.monthly_messages}
+          </p>
+          {quota.warnings.length > 0 && (
+            <p role="status">
+              Approaching the PLACEHOLDER limit for {quota.warnings.join(", ")}.
+            </p>
+          )}
+          <p className="muted">
+            PLACEHOLDER limits for verification; final pricing and limits are
+            TBD. Measured provider tokens this month:{" "}
+            {quota.measured_tokens_this_month}.
+          </p>
+        </section>
+      )}
       {!sessionLoading && !sessionError && (
         <section aria-label="Create bot">
           {canEdit ? (
@@ -112,7 +136,11 @@ export default function BotsListPage() {
               </label>
               <button
                 type="submit"
-                disabled={creating || name.trim().length === 0}
+                disabled={
+                  creating ||
+                  name.trim().length === 0 ||
+                  Boolean(quota && quota.usage.bots >= quota.limits.bots)
+                }
               >
                 {creating ? "Creating…" : "Create bot"}
               </button>

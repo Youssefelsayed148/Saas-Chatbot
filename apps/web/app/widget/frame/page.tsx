@@ -89,7 +89,7 @@ function localized(key: string, lang: string): string {
       ar: "شكراً — سيتواصل معك فريقنا.",
     },
     quota: {
-      en: "The assistant reached its message limit for today. Please try again tomorrow.",
+      en: "The assistant is temporarily unavailable. Please try again later.",
       ar: "وصل المساعد إلى حد الرسائل لهذا اليوم. يرجى المحاولة غداً.",
     },
     rateLimited: {

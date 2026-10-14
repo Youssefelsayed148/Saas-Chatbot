@@ -16,6 +16,7 @@ from app.core.audit import record_audit
 from app.core.errors import ApiError
 from app.core.tenancy import TenantContext, TenantContextDep
 from app.db.models import Contact, ContactIdentity, ContactStage, Conversation, Message
+from app.quotas.service import lock_tenant, require_capacity
 
 router = APIRouter(prefix="/api/v1/tenants/{tenant_id}/contacts", tags=["contacts"])
 CsrfOk = Annotated[None, Depends(cookies.require_csrf)]
@@ -103,6 +104,8 @@ def list_contacts(
 @router.post("", status_code=201)
 def create_contact(body: ContactCreate, context: TenantContextDep, _: CsrfOk) -> ContactOut:
     context.require_role("editor")
+    tenant = lock_tenant(context.db, context.tenant_id)
+    require_capacity(context.db, tenant, "contacts")
     _ensure_reachable_and_unique(
         context,
         email=str(body.email) if body.email else None,

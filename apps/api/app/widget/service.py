@@ -38,6 +38,7 @@ from app.db.models import (
     UsageEvent,
     VisitorSession,
 )
+from app.quotas.service import lock_tenant, require_capacity
 
 RETIRED_WINDOW = 60  # fixed-window width used by the public counters (seconds)
 
@@ -265,6 +266,8 @@ def widget_message_turn(
     )
     if count > settings.widget_messages_per_minute:
         raise ApiError(429, "RATE_LIMITED", "Too many messages. Please slow down.")
+    tenant = lock_tenant(db, visitor_session.tenant_id)
+    require_capacity(db, tenant, "monthly_messages")
     check_daily_message_quota(db, bot, settings)
 
     conversation = get_or_create_conversation_for_session(

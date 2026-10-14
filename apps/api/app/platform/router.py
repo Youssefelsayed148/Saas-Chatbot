@@ -46,6 +46,7 @@ from app.db.session import get_session
 from app.jobs.queue import request_cancel, requeue_for_retry
 from app.platform.staff import PlatformStaffDep
 from app.provisioning.service import ProvisioningPayload, ProvisioningService
+from app.quotas.service import PLAN_LABELS, PLACEHOLDER_PLAN_LIMITS
 
 router = APIRouter(prefix="/api/v1/platform")
 
@@ -69,11 +70,36 @@ class PlanAssignment(ReasonAction):
     plan_label: str = Field(min_length=1, max_length=40)
 
 
+class QuotaOverride(ReasonAction):
+    limits: dict[str, int] = Field(max_length=8)
+
+    @field_validator("limits")
+    @classmethod
+    def limits_are_nonnegative(cls, value: dict[str, int]) -> dict[str, int]:
+        from app.quotas.service import COUNTERS
+
+        if not value or any(key not in COUNTERS or limit < 0 for key, limit in value.items()):
+            raise ValueError("Provide known quota names with non-negative integer limits.")
+        return value
+
+
 @router.get("/me")
 def platform_me(staff: PlatformStaffDep) -> dict[str, Any]:
     """Staff marker for the console UI — the /platform layout uses this per
     request (server-side guard, no impersonation path exists)."""
     return {"id": str(staff.id), "email": str(staff.email)}
+
+
+@router.get("/quotas")
+def platform_quotas(staff: PlatformStaffDep) -> dict[str, Any]:
+    del staff
+    return {
+        "placeholder": True,
+        "plans": {
+            name: limits.__dict__
+            for name, limits in PLACEHOLDER_PLAN_LIMITS.items()
+        },
+    }
 
 
 @router.get("/tenants")
@@ -221,10 +247,10 @@ def platform_assign_plan(
     if tenant is None:
         raise ApiError(404, "NOT_FOUND", "Resource not found.")
     label = payload.plan_label.strip()
-    if not label:
-        raise ApiError(422, "VALIDATION_ERROR", "Plan label cannot be blank.")
+    if label.lower() not in PLAN_LABELS:
+        raise ApiError(422, "VALIDATION_ERROR", "Choose a PLACEHOLDER plan: free, starter, pro, or business.")
     previous = tenant.plan_label
-    tenant.plan_label = label
+    tenant.plan_label = label.lower()
     record_audit(
         db,
         action="platform.tenant.plan_assigned",
@@ -232,10 +258,31 @@ def platform_assign_plan(
         actor_user_id=staff.id,
         target_type="tenant",
         target_id=str(tenant.id),
-        metadata={"reason": payload.reason.strip(), "from": previous, "to": label},
+        metadata={"reason": payload.reason.strip(), "from": previous, "to": label.lower()},
     )
     db.commit()
-    return {"tenant_id": str(tenant.id), "plan_label": label}
+    return {"tenant_id": str(tenant.id), "plan_label": label.lower()}
+
+
+@router.patch("/tenants/{tenant_id}/quota-overrides")
+def platform_quota_override(
+    tenant_id: UUID, payload: QuotaOverride, staff: PlatformStaffDep, db: DbSession
+) -> dict[str, Any]:
+    tenant = db.get(Tenant, tenant_id)
+    if tenant is None:
+        raise ApiError(404, "NOT_FOUND", "Resource not found.")
+    tenant.quota_overrides = {**tenant.quota_overrides, **payload.limits}
+    record_audit(
+        db,
+        action="platform.tenant.quota_override",
+        tenant_id=tenant.id,
+        actor_user_id=staff.id,
+        target_type="tenant",
+        target_id=str(tenant.id),
+        metadata={"reason": payload.reason, "limits": payload.limits},
+    )
+    db.commit()
+    return {"tenant_id": str(tenant.id), "limits": tenant.quota_overrides}
 
 
 @router.post("/bots/{bot_id}/pause")
