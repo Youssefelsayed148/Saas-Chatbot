@@ -149,6 +149,10 @@ test("inbox agent takes over an unanswered widget thread, replies, then returns 
     .contentFrame()
     .locator("[data-testid='widget-frame-body']");
   const reopenedReplies = reopenedFrame.getByTestId("widget-ai-msg");
+  // count() does not wait: let the restored history (incl. the agent reply) render first.
+  await expect(
+    reopenedReplies.filter({ hasText: "An agent is here to help you." }),
+  ).toBeVisible();
   const replyCountBefore = await reopenedReplies.count();
   await reopenedFrame
     .getByTestId("widget-input")
