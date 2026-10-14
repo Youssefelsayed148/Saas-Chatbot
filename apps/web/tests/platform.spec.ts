@@ -71,7 +71,11 @@ test("staff list, onboard a client end to end, and open the client detail", asyn
   await expect(page.getByTestId("platform-tenants")).toContainText(clientName);
 
   // Open the client detail: bot + members + audit rows render.
-  await page.locator("[data-testid='platform-tenants'] a").first().click();
+  // Pick the row by name: right after Search the list can still hold unfiltered rows.
+  await page
+    .locator("[data-testid='platform-tenants'] a", { hasText: clientName })
+    .first()
+    .click();
   await page.waitForURL(/\/platform\/clients\/[0-9a-f-]{36}$/);
   await expect(page.getByTestId("client-detail-name")).toContainText(
     clientName,
