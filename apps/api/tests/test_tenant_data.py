@@ -127,6 +127,7 @@ def test_tenant_delete_requires_owner_confirmation_and_cascades_data(app: Any, d
     )
     db.add(conversation)
     db.commit()
+    contact_id = contact.id
     path = f"/api/v1/tenants/{tenant_id}/data"
     body = {"confirm_name": "Org delete-a", "reason": "Owner requested full data removal"}
     assert tenant_a.call("viewer", "DELETE", path, json=body).status_code == 403
@@ -137,7 +138,7 @@ def test_tenant_delete_requires_owner_confirmation_and_cascades_data(app: Any, d
     assert deleted.status_code == 204
     db.expire_all()
     assert db.execute(select(Tenant).where(Tenant.id == tenant_id)).scalar_one_or_none() is None
-    assert db.execute(select(Contact).where(Contact.id == contact.id)).scalar_one_or_none() is None
+    assert db.execute(select(Contact).where(Contact.id == contact_id)).scalar_one_or_none() is None
     assert db.execute(
         select(AuditEvent).where(
             AuditEvent.action == "tenant.data.deleted", AuditEvent.target_id == str(tenant_id)
