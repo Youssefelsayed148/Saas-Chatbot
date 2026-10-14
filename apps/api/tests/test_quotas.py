@@ -191,9 +191,11 @@ def test_sentiment_worker_records_one_measured_classification(db: Any, monkeypat
 
     tenant = Tenant(id=uuid4(), name="Sentiment", slug="sentiment-worker", plan_label="starter")
     db.add(tenant)
+    db.flush()  # composite tenant FKs need the tenant row first
     # A membership is unnecessary for worker-owned rows; create a bot and conversation directly.
     bot = Bot(id=uuid4(), tenant_id=tenant.id, name="Sentiment bot", status="active", config={})
     db.add(bot)
+    db.flush()  # composite (tenant_id, bot_id) FK needs the bot row first
     conversation = Conversation(
         tenant_id=tenant.id,
         bot_id=bot.id,
