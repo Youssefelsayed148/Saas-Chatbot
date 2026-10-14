@@ -18,6 +18,7 @@ from app.knowledge.router import router as knowledge_router
 from app.platform.router import router as platform_router
 from app.provisioning.router import router as provisioning_router
 from app.tenants.router import router as tenants_router
+from app.tenants.data import router as tenant_data_router
 from app.widget.router import router as widget_router
 
 # Same-origin deployment (web + api under one gateway in production). Local dev uses
@@ -42,6 +43,7 @@ def create_app() -> FastAPI:
     application.include_router(health_router)
     application.include_router(auth_router)
     application.include_router(tenants_router)
+    application.include_router(tenant_data_router)
     application.include_router(bots_router)
     application.include_router(knowledge_router)
     application.include_router(chat_router)

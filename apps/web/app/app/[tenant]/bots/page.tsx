@@ -31,6 +31,7 @@ export default function BotsListPage() {
 
   const role = roleIn(tenantId);
   const canEdit = roleSatisfies(role, "editor");
+  const canAdmin = roleSatisfies(role, "admin");
 
   const load = useCallback(async () => {
     try {
@@ -95,6 +96,13 @@ export default function BotsListPage() {
     <main>
       <p className="eyebrow">Chatbots</p>
       <h1>Bots</h1>
+      {canAdmin && (
+        <p>
+          <Link href={`/app/${tenantId}/settings/data`}>
+            Tenant data and audit
+          </Link>
+        </p>
+      )}
       {sessionLoading && <Loading label="Loading session…" />}
       {!sessionLoading && sessionError && (
         <Notice message={sessionError} tone="error" />

@@ -10,3 +10,4 @@ Status: OPEN
 - P7-01 operations UI browser check is UNVERIFIED — source: owner instruction (2026-10-14).
 - Quota values are placeholders, pricing TBD — source: owner decision and `docs/13-SUBSCRIPTIONS-AND-USAGE.md` (2026-10-14).
 - P2 parser timeout uses a worker thread; timing out the future does not stop the underlying parse operation — source: `apps/api/app/knowledge/ingest.py::parse_source` (2026-10-14 code inspection).
+- Tenant deletion cleans uploaded files through the current storage interface, whose local delete is best-effort if the OS refuses unlink — source: `apps/api/app/knowledge/storage.py::LocalStorage.delete` (2026-10-14 code inspection).

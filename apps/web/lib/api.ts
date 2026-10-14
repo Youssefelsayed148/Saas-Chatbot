@@ -794,6 +794,41 @@ export async function getTenant(tenantId: string): Promise<Tenant> {
   return api<Tenant>(`tenants/${tenantId}`);
 }
 
+export interface TenantAuditEvent {
+  id: string;
+  action: string;
+  actor_user_id: string | null;
+  target_type: string | null;
+  target_id: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export async function tenantAudit(
+  tenantId: string,
+  query = "",
+): Promise<{ events: TenantAuditEvent[] }> {
+  const suffix = query ? `?q=${encodeURIComponent(query)}` : "";
+  return api(`tenants/${tenantId}/data/audit${suffix}`);
+}
+
+export async function exportTenantData(
+  tenantId: string,
+): Promise<Record<string, unknown>> {
+  return api(`tenants/${tenantId}/data/export`);
+}
+
+export async function deleteTenantData(
+  tenantId: string,
+  confirmName: string,
+  reason: string,
+): Promise<void> {
+  await api(`tenants/${tenantId}/data`, {
+    method: "DELETE",
+    body: { confirm_name: confirmName, reason },
+  });
+}
+
 export async function listBots(
   tenantId: string,
   includeArchived = false,
