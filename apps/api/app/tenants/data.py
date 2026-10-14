@@ -459,7 +459,10 @@ def delete_tenant_data(
         metadata={"reason": body.reason, "storage_file_count": len(storage_keys)},
     )
     context.db.flush()
-    context.db.delete(tenant)
+    # Core DELETE: child rows go via ON DELETE CASCADE; the ORM would try to null
+    # memberships.tenant_id (a primary-key column) instead.
+    context.db.expunge(tenant)
+    context.db.execute(delete(Tenant).where(Tenant.id == tenant_id))
     context.db.commit()
     if storage_keys:
         storage = get_storage(settings)
