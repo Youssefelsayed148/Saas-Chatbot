@@ -87,6 +87,11 @@ export default function PlatformHomePage() {
       <p className="eyebrow" data-testid="platform-staff-badge">
         Platform staff console
       </p>
+      <p>
+        <a href="/platform/operations">
+          Operations, analytics, and audit review
+        </a>
+      </p>
 
       <form
         aria-label="Client search"

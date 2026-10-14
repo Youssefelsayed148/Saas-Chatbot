@@ -66,6 +66,11 @@ class Tenant(Base):
     slug: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     # Message retention override (P4-04, docs/14 §7): NULL = deployment default.
     retention_days: Mapped[int | None] = mapped_column()
+    # Internal plan label for platform operations (P7-01); entitlements are
+    # enforced separately by P7-02. No billing provider is implied (ADR-008).
+    plan_label: Mapped[str] = mapped_column(
+        Text, nullable=False, default="starter", server_default=text("'starter'")
+    )
     status: Mapped[str] = mapped_column(
         Text,
         nullable=False,

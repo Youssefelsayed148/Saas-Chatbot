@@ -181,7 +181,12 @@ class ProvisioningService:
         files: Sequence[tuple[str, bytes]],
     ) -> dict[str, Any]:
         slug = self._unique_slug(payload.client_name)
-        tenant = Tenant(id=uuid4(), name=payload.client_name.strip(), slug=slug)
+        tenant = Tenant(
+            id=uuid4(),
+            name=payload.client_name.strip(),
+            slug=slug,
+            plan_label=payload.plan_label or "starter",
+        )
         self.db.add(tenant)
         self.db.flush()  # tenant must exist before its audit row
         record_audit(

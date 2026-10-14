@@ -14,12 +14,16 @@ export default function PlatformClientPage() {
   const clientId = params.clientId;
   const [detail, setDetail] = useState<api.PlatformTenantDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [planLabel, setPlanLabel] = useState("");
+  const [reason, setReason] = useState("");
 
   useEffect(() => {
     const timer = setTimeout(() => {
       void (async () => {
         try {
-          setDetail(await api.platformTenantDetail(clientId));
+          const loaded = await api.platformTenantDetail(clientId);
+          setDetail(loaded);
+          setPlanLabel(loaded.tenant.plan_label);
           setError(null);
         } catch (caught) {
           setError(caught instanceof Error ? caught.message : "Not found.");
@@ -28,6 +32,43 @@ export default function PlatformClientPage() {
     }, 0);
     return () => clearTimeout(timer);
   }, [clientId]);
+
+  async function assignPlan(event: React.FormEvent) {
+    event.preventDefault();
+    if (!detail) return;
+    try {
+      const updated = await api.platformAssignPlan(
+        detail.tenant.id,
+        planLabel,
+        reason,
+      );
+      setDetail({
+        ...detail,
+        tenant: { ...detail.tenant, plan_label: updated.plan_label },
+      });
+      setError(null);
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : "Plan update failed.",
+      );
+    }
+  }
+
+  async function pauseBot(botId: string) {
+    if (!detail) return;
+    try {
+      await api.platformPauseBot(botId, reason);
+      setDetail({
+        ...detail,
+        bots: detail.bots.map((bot) =>
+          bot.id === botId ? { ...bot, status: "paused" } : bot,
+        ),
+      });
+      setError(null);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Bot pause failed.");
+    }
+  }
 
   return (
     <main>
@@ -61,10 +102,47 @@ export default function PlatformClientPage() {
                     {bot.published
                       ? " · knowledge published"
                       : " · nothing published"}
+                    {bot.status !== "paused" && bot.status !== "archived" && (
+                      <>
+                        {" "}
+                        <button
+                          type="button"
+                          disabled={reason.trim().length < 3}
+                          onClick={() => void pauseBot(bot.id)}
+                        >
+                          Pause bot
+                        </button>
+                      </>
+                    )}
                   </li>
                 ))}
               </ul>
             )}
+          </section>
+          <section aria-label="Plan assignment" data-testid="client-plan">
+            <h2>Plan assignment</h2>
+            <form onSubmit={(event) => void assignPlan(event)}>
+              <label>
+                Plan label{" "}
+                <input
+                  value={planLabel || detail.tenant.plan_label}
+                  onChange={(event) => setPlanLabel(event.target.value)}
+                  maxLength={40}
+                  required
+                />
+              </label>
+              <label>
+                Reason{" "}
+                <input
+                  value={reason}
+                  onChange={(event) => setReason(event.target.value)}
+                  minLength={3}
+                  maxLength={500}
+                  required
+                />
+              </label>
+              <button type="submit">Save plan</button>
+            </form>
           </section>
           <section aria-label="Failed jobs" data-testid="client-detail-jobs">
             <h2>Knowledge/ingest failures</h2>

@@ -298,7 +298,13 @@ export interface PlatformTenantRow {
 }
 
 export interface PlatformTenantDetail {
-  tenant: { id: string; name: string; slug: string; status: string };
+  tenant: {
+    id: string;
+    name: string;
+    slug: string;
+    status: string;
+    plan_label: string;
+  };
   bots: Array<{ id: string; name: string; status: string; published: boolean }>;
   failed_jobs: Array<{ id: string; type: string; error: string | null }>;
   members: Array<{ user_id: string; email: string; role: string }>;
@@ -309,6 +315,90 @@ export interface PlatformTenantDetail {
     at: string;
   }>;
   usage_events: number;
+}
+
+export interface PlatformJob {
+  id: string;
+  tenant_id: string;
+  bot_id: string;
+  type: string;
+  status: string;
+  attempts: number;
+  run_at: string;
+  updated_at: string;
+  error: string | null;
+}
+
+export interface PlatformAnalytics {
+  tenants: number;
+  bots: number;
+  conversations: number;
+  messages: number;
+  handoffs: number;
+  handoff_rate: number;
+  clients: Array<{
+    tenant_id: string;
+    name: string;
+    plan_label: string;
+    usage: Record<string, number>;
+  }>;
+}
+
+export async function platformJobHealth(): Promise<{
+  counts: Record<string, number>;
+  jobs: PlatformJob[];
+}> {
+  return api("platform/operations/jobs");
+}
+
+export async function platformJobAction(
+  jobId: string,
+  action: "retry" | "cancel",
+  reason: string,
+): Promise<{ id: string; status: string }> {
+  return api(`platform/operations/jobs/${jobId}/${action}`, {
+    method: "POST",
+    body: { reason },
+  });
+}
+
+export async function platformAnalytics(): Promise<PlatformAnalytics> {
+  return api("platform/analytics");
+}
+
+export async function platformAudit(query: string): Promise<{
+  events: Array<{
+    tenant_id: string | null;
+    action: string;
+    actor_user_id: string | null;
+    target_type: string | null;
+    target_id: string | null;
+    created_at: string;
+  }>;
+}> {
+  const suffix = query ? `?q=${encodeURIComponent(query)}` : "";
+  return api(`platform/audit${suffix}`);
+}
+
+export async function platformAssignPlan(
+  tenantId: string,
+  planLabel: string,
+  reason: string,
+): Promise<{ tenant_id: string; plan_label: string }> {
+  return api(`platform/tenants/${tenantId}/plan`, {
+    method: "PATCH",
+    body: { plan_label: planLabel, reason },
+  });
+}
+
+export async function platformPauseBot(
+  botId: string,
+  reason: string,
+): Promise<{ bot_id: string; status: string }> {
+  return api(`platform/bots/${botId}/pause`, {
+    method: "POST",
+    body: { reason },
+  });
 }
 
 export interface PlatformOnboardingResult {

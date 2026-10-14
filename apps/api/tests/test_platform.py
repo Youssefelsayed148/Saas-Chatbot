@@ -61,6 +61,9 @@ def test_non_staff_get_403_everywhere(corpus: dict[str, Any], app: Any, db: Any)
         ("GET", "/me"),
         ("GET", "/tenants"),
         ("GET", f"/tenants/{tenant_id}"),
+        ("GET", "/operations/jobs"),
+        ("GET", "/analytics"),
+        ("GET", "/audit"),
         ("POST", "/onboarding"),
     ):
         response = owner_client.request(method, f"/api/v1/platform{path}")
