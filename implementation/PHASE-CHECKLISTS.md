@@ -59,8 +59,8 @@ Legend: [ ] open · [x] done with evidence. Owner sign-off closes each phase.## 
 - [x] P5-01: handoff triggers per docs/14 §15 (2x can_answer=false, asks for a person EN/AR, order/account, provider failure, staff keyword) set waiting_human with localized message
 - [x] P5-01: take over / return to AI / resolve / assign work; AI silent in human mode; two-agent takeover race → 409; resolved conversation reopens in AI mode on a new visitor message; audit rows + system messages
 - [x] P5-01: agent reply is visible in the widget within ~3 s (polling) and rendered as plain text; viewer cannot reply (API 403)
-- [ ] P5-02: inbox list API with filters (status, mode, channel, assignee, tag, unread) and full-text search; tenant A/B isolation test on every endpoint
-- [ ] P5-02: SSE stream tenant-scoped, resumes from Last-Event-ID, works with two API processes; in-app notification counts correct
+- [x] P5-02: inbox list API with filters (status, mode, channel, assignee, tag, unread) and full-text search; tenant A/B isolation test on every endpoint
+- [x] P5-02: SSE stream tenant-scoped, resumes from Last-Event-ID, works with two API processes; in-app notification counts correct
 - [ ] P5-03: inbox UI: list, filters, thread with citations/notes/system events, reply box, take over/return/resolve/assign, tags, notes; role-aware; loading/empty/error states; Playwright E2E of the full handoff journey (visitor → bot → agent → back to bot)
 - [ ] P5-04: contacts CRUD, identities, stage, tags, custom fields (≤20), timeline, explicit merge (audited), CSV export, erasure removes identities and messages
 - [ ] P5-04: widget lead form → contact (consent recorded)

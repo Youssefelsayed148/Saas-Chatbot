@@ -18,11 +18,13 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
     ForeignKeyConstraint,
+    Identity,
     Index,
     Integer,
     Text,
@@ -264,6 +266,85 @@ class Message(Base):
     )
 
 
+class ConversationRead(Base):
+    """Per-member read cursor for inbox unread counts (P5-02)."""
+
+    __tablename__ = "conversation_reads"
+
+    tenant_id: Mapped[UUID] = mapped_column(primary_key=True)
+    conversation_id: Mapped[UUID] = mapped_column(primary_key=True)
+    user_id: Mapped[UUID] = mapped_column(primary_key=True)
+    last_read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_read_message_id: Mapped[UUID | None] = mapped_column()
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "conversation_id"],
+            ["conversations.tenant_id", "conversations.id"],
+            name="fk_conversation_reads_conversation",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["tenant_id", "user_id"],
+            ["memberships.tenant_id", "memberships.user_id"],
+            name="fk_conversation_reads_member",
+            ondelete="CASCADE",
+        ),
+        Index("ix_conversation_reads_member", "tenant_id", "user_id", "updated_at"),
+    )
+
+
+class ConversationTag(Base):
+    """Tenant-owned conversation tag (P5-02 filter; editing is shared with P5-03)."""
+
+    __tablename__ = "conversation_tags"
+
+    tenant_id: Mapped[UUID] = mapped_column(primary_key=True)
+    conversation_id: Mapped[UUID] = mapped_column(primary_key=True)
+    tag: Mapped[str] = mapped_column(Text, primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "conversation_id"],
+            ["conversations.tenant_id", "conversations.id"],
+            name="fk_conversation_tags_conversation",
+            ondelete="CASCADE",
+        ),
+        Index("ix_conversation_tags_lookup", "tenant_id", "tag", "conversation_id"),
+    )
+
+
+class InboxEvent(Base):
+    """Durable, tenant-scoped cursor for cross-process SSE (P5-02)."""
+
+    __tablename__ = "inbox_events"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    tenant_id: Mapped[UUID] = mapped_column(nullable=False)
+    conversation_id: Mapped[UUID] = mapped_column(nullable=False)
+    message_id: Mapped[UUID | None] = mapped_column()
+    event_type: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "conversation_id"],
+            ["conversations.tenant_id", "conversations.id"],
+            name="fk_inbox_events_conversation",
+            ondelete="CASCADE",
+        ),
+        Index("ix_inbox_events_tenant_cursor", "tenant_id", "id"),
+    )
+
+
 class UsageEvent(Base):
     """Idempotent analytics counters (docs/14 §9/§7). One external key per row."""
 
@@ -305,4 +386,13 @@ class UsageEvent(Base):
     )
 
 
-__all__ = ["Contact", "ContactIdentity", "Conversation", "Message", "UsageEvent"]
+__all__ = [
+    "Contact",
+    "ContactIdentity",
+    "Conversation",
+    "ConversationRead",
+    "ConversationTag",
+    "InboxEvent",
+    "Message",
+    "UsageEvent",
+]

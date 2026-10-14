@@ -24,6 +24,7 @@ from app.core.config import Settings
 from app.core.errors import ApiError
 from app.core.ratelimit import purge_expired_windows
 from app.db.models import Bot, Conversation, Message, UsageEvent
+from app.inbox.events import add_inbox_event
 from app.inbox.handoff import decide_handoff, start_handoff, visitor_handoff_reply
 from app.knowledge.language import detect_language
 
@@ -152,8 +153,17 @@ def append_message(
         needs_human=needs_human,
         response_ms=response_ms,
         delivery_status="sent" if sender_type == "ai" else None,
+        created_at=now,
     )
     db.add(message)
+    if conversation.source == "website":
+        add_inbox_event(
+            db,
+            tenant_id=conversation.tenant_id,
+            conversation_id=conversation.id,
+            message_id=message.id,
+            event_type="message.created",
+        )
     conversation.last_message_at = now
     conversation.updated_at = now
     db.add(conversation)
