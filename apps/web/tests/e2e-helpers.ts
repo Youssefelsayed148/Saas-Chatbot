@@ -6,7 +6,8 @@ const KNOWLEDGE_MD =
   "# Opening hours\n\nWe are open Monday to Friday from 9:00 to 17:00.\n";
 
 export function uniqueEmail(prefix: string): string {
-  return `${prefix}.${Date.now()}.${Math.floor(Math.random() * 10_000)}@example.com`;
+  const local = prefix.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  return `${local}.${Date.now()}.${Math.floor(Math.random() * 10_000)}@example.com`;
 }
 
 export async function registerOwner(
