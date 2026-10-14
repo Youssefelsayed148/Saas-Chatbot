@@ -34,6 +34,16 @@ async function openKnowledgeAsOwner(
   await expect(page.getByRole("heading", { name: "Knowledge" })).toBeVisible();
 }
 
+test("fresh signup shows the knowledge upload controls without a reload", async ({
+  page,
+}) => {
+  // Regression: the session was not refreshed after self-service provisioning,
+  // so the new owner looked like a viewer until a manual reload.
+  await openKnowledgeAsOwner(page);
+  await expect(page.locator("#knowledge-file-input")).toBeVisible();
+  await expect(page.locator("#knowledge-file-input")).toBeEnabled();
+});
+
 test("upload, ingest through the worker, preview, publish", async ({
   page,
 }) => {

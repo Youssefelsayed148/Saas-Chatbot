@@ -51,6 +51,9 @@ function RegisterForm() {
         router.push(destination);
       } else {
         const signup = await api.selfServiceSignup(clientName, botName);
+        // Provisioning just created the membership: reload the session so
+        // role-gated pages (e.g. knowledge uploads) see the new tenant.
+        await refresh();
         router.push(`/app/${signup.result.tenant_id}/bots`);
       }
     } catch (caught) {
