@@ -127,6 +127,20 @@ function localTurnId(): string {
   return `local-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
 }
 
+function widgetDebugEnabled(): boolean {
+  if (new URLSearchParams(window.location.search).get("debugWidget") === "1") {
+    return true;
+  }
+  try {
+    return (
+      new URLSearchParams(window.parent.location.search).get("debugWidget") ===
+      "1"
+    );
+  } catch {
+    return false;
+  }
+}
+
 function safeSourceUrl(sourceUrl: string | null): string | null {
   if (!sourceUrl) return null;
   try {
@@ -315,9 +329,7 @@ export default function WidgetFramePage() {
         { headers: { "X-Session-Token": session.token } },
       );
       if (!response.ok) {
-        if (
-          new URLSearchParams(window.location.search).get("debugWidget") === "1"
-        ) {
+        if (widgetDebugEnabled()) {
           console.debug("[widget-debug] poll response", response.status);
         }
         return;
@@ -330,9 +342,7 @@ export default function WidgetFramePage() {
         needs_human: boolean;
         created_at: string;
       }>;
-      if (
-        new URLSearchParams(window.location.search).get("debugWidget") === "1"
-      ) {
+      if (widgetDebugEnabled()) {
         console.debug(
           "[widget-debug] poll rows",
           rows.length,
@@ -364,9 +374,7 @@ export default function WidgetFramePage() {
         ];
       });
     } catch {
-      if (
-        new URLSearchParams(window.location.search).get("debugWidget") === "1"
-      ) {
+      if (widgetDebugEnabled()) {
         console.debug("[widget-debug] poll failed");
       }
       // Polling is best effort; the next interval retries without changing the thread.
