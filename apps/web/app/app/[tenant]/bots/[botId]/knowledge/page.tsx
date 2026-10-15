@@ -3,6 +3,7 @@
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { LabelBadge } from "@/lib/labels";
 import * as api from "@/lib/api";
 import type {
   KnowledgeDocument,
@@ -226,6 +227,9 @@ export default function KnowledgePage() {
     <main>
       <BotWorkspaceNav tenantId={tenantId} botId={botId} />
       <h1>Knowledge</h1>
+      <p className="page-purpose">
+        Upload files, review what was learned and publish trusted answers.
+      </p>
       {!canEdit && (
         <Notice
           message={`Read-only view: uploads and ingest require the editor role (you are ${role}).`}
@@ -292,7 +296,9 @@ export default function KnowledgePage() {
         {sources === null ? (
           <Loading label="Loading files…" />
         ) : sources.length === 0 ? (
-          <Empty>No files uploaded yet.</Empty>
+          <Empty>
+            No files uploaded yet. Use Upload files above to add knowledge.
+          </Empty>
         ) : (
           <ul data-testid="sources-list">
             {sources.map((source) => (
@@ -334,7 +340,12 @@ export default function KnowledgePage() {
           <ul data-testid="jobs-list">
             {jobs.map((job) => (
               <li key={job.id} data-job-status={job.status}>
-                <span data-testid="job-status">{job.status}</span>
+                <span data-testid="job-status" data-status={job.status}>
+                  <LabelBadge value={job.status} />
+                </span>
+                {(job.status === "pending" || job.status === "running") && (
+                  <progress aria-label="Ingestion in progress" />
+                )}
                 {" · started "}
                 {new Date(job.created_at).toLocaleTimeString()}
                 {job.attempts > 1 && <> · attempt {job.attempts}</>}
@@ -445,9 +456,9 @@ export default function KnowledgePage() {
           <ul data-testid="revisions-list">
             {revisions.revisions.map((revision) => (
               <li key={revision.id} data-revision-status={revision.status}>
-                <strong>{revision.status}</strong> · {revision.document_count}{" "}
-                documents · {revision.chunk_count} chunks ·{" "}
-                {new Date(revision.created_at).toLocaleString()}
+                <LabelBadge value={revision.status} /> ·{" "}
+                {revision.document_count} documents · {revision.chunk_count}{" "}
+                chunks · {new Date(revision.created_at).toLocaleString()}
                 {revision.published_at
                   ? ` · published ${new Date(revision.published_at).toLocaleString()}`
                   : ""}

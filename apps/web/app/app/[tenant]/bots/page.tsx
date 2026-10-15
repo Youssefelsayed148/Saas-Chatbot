@@ -6,7 +6,8 @@ import { useCallback, useEffect, useState } from "react";
 
 import * as api from "@/lib/api";
 import { roleSatisfies, useSession } from "@/lib/session";
-import { Empty, Loading, Notice } from "@/lib/ui";
+import { LabelBadge } from "@/lib/labels";
+import { Empty, Loading, Notice, ConfirmAction } from "@/lib/ui";
 import type { Bot } from "@/lib/api";
 
 export default function BotsListPage() {
@@ -96,6 +97,9 @@ export default function BotsListPage() {
     <main>
       <p className="eyebrow">Chatbots</p>
       <h1>Bots</h1>
+      <p className="page-purpose">
+        Build, train and install the assistants that help your visitors.
+      </p>
       {canAdmin && (
         <p>
           <Link href={`/app/${tenantId}/settings/data`}>
@@ -129,7 +133,8 @@ export default function BotsListPage() {
         </section>
       )}
       {!sessionLoading && !sessionError && (
-        <section aria-label="Create bot">
+        <section aria-label="Create bot" className="create-bot-panel">
+          <h2>Create an assistant</h2>
           {canEdit ? (
             <form onSubmit={onCreate}>
               <label>
@@ -167,7 +172,10 @@ export default function BotsListPage() {
       {botsError && <Notice message={botsError} tone="error" />}
       {bots && bots.length === 0 && (
         <Empty>
-          No bots yet{showArchived ? " (no archived bots either)." : "."}
+          No bots yet{showArchived ? " (no archived bots either)." : "."}{" "}
+          {canEdit
+            ? "Create a bot above to get started."
+            : "Ask an editor to create a bot."}
         </Empty>
       )}
       {bots && bots.length > 0 && (
@@ -188,16 +196,20 @@ export default function BotsListPage() {
                     {bot.name}
                   </Link>
                 </td>
-                <td data-status={bot.status}>{bot.status}</td>
+                <td data-status={bot.status}>
+                  <LabelBadge value={bot.status} />
+                </td>
                 <td>
                   {canEdit && bot.status !== "archived" && (
-                    <button
-                      type="button"
+                    <ConfirmAction
+                      title={`Archive ${bot.name}?`}
+                      description="The bot will leave your default list. Its data is retained and it remains available in archived bots."
                       disabled={archiving === bot.id}
-                      onClick={() => onArchive(bot)}
+                      onConfirm={() => void onArchive(bot)}
+                      confirmLabel="Archive bot"
                     >
-                      {archiving === bot.id ? "Archiving…" : "Archive"}
-                    </button>
+                      {archiving === bot.id ? "Archiving?" : "Archive"}
+                    </ConfirmAction>
                   )}
                 </td>
               </tr>

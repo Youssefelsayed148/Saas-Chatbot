@@ -86,6 +86,9 @@ export default function ConversationsPage() {
     <main>
       <BotWorkspaceNav tenantId={tenantId} botId={botId} />
       <h1>Conversations</h1>
+      <p className="page-purpose">
+        Review saved visitor conversations and manage retention.
+      </p>
       {error && <Notice message={error} tone="error" />}
       {canTenant && (
         <section aria-label="Retention" style={{ margin: "0.6rem 0" }}>

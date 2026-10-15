@@ -955,3 +955,110 @@ progress::-webkit-progress-value {
     flex-wrap: wrap;
   }
 }
+
+/* Bot workspace: keep native tables and controls, improve hierarchy. */
+.create-bot-panel form {
+  flex-direction: row;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+.create-bot-panel label {
+  flex: 1;
+  min-inline-size: 150px;
+}
+.create-bot-panel form > button {
+  align-self: auto;
+}
+.badge[data-value="active"],
+.badge[data-value="published"],
+.badge[data-value="succeeded"],
+.badge[data-value="resolved"] {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.badge[data-value="failed"],
+.badge[data-value="archived"] {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.badge[data-value="waiting_human"],
+.badge[data-value="paused"],
+.badge[data-value="pending"],
+.badge[data-value="running"] {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+[data-testid="sources-list"],
+[data-testid="jobs-list"],
+[data-testid="documents-list"],
+[data-testid="revisions-list"] {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 0.8rem;
+}
+[data-testid="sources-list"] > li,
+[data-testid="jobs-list"] > li,
+[data-testid="documents-list"] > li,
+[data-testid="revisions-list"] > li {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+}
+[data-testid="jobs-list"] button,
+[data-testid="revisions-list"] button {
+  margin-inline-start: 0.8rem;
+  font-size: 0.8rem;
+}
+[data-testid="chunk-list"] > li {
+  padding-block: 0.7rem;
+  border-block-end: 1px solid var(--border);
+  white-space: pre-wrap;
+}
+[data-testid="thread"] > ol,
+[data-testid="conversation-thread"] > ol,
+[data-testid="inbox-thread"] > ol {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+[data-role] {
+  padding: 1rem 1.2rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface-raised);
+  max-inline-size: 88%;
+  overflow-wrap: anywhere;
+}
+[data-role="visitor"] {
+  align-self: flex-end;
+  background: var(--accent-soft);
+}
+[data-role="ai"],
+[data-role="agent"] {
+  align-self: flex-start;
+}
+[data-role="note"] {
+  background: var(--warning-soft);
+}
+[data-role="system"] {
+  max-inline-size: 100%;
+  font-size: 0.8rem;
+  color: var(--muted);
+  background: var(--bg);
+}
+[data-testid="citations"],
+[data-testid="thread-citations"] {
+  font-size: 0.75rem;
+  padding-inline-start: 1rem;
+}
+[data-testid="install-snippet"] {
+  border-color: var(--accent);
+}
+.bot-nav-bot strong {
+  max-inline-size: 30ch;
+  overflow-wrap: anywhere;
+}
