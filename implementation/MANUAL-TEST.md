@@ -76,7 +76,7 @@ Set these in your root `.env` (Compose passes them through) or in the shell for 
 
 - `CHAT_OPENROUTER_API_KEY` — your OpenRouter key.
 - `CHAT_FREE_MODEL_CHAIN` — model ids to use, **required**. With a key but an empty chain the factory returns no model and chat replies with the canned "not ready/busy" message. (Check `.env.example` / docs/14 for the list format.)
-- `CHAT_STUB_MODEL` must be **unset or false**. When true it wins over any key and uses the offline extractive stub (it never calls a model; answers just echo the first evidence chunk). Docker Compose never passes `CHAT_STUB_MODEL`, so compose runs are never stubbed; dev-server shells may be, if you exported it earlier.
+- `CHAT_STUB_MODEL` must be **unset or false**. When true it wins over any key and uses the offline extractive stub (it never calls a model; answers just echo the first evidence chunk). Docker Compose passes `CHAT_STUB_MODEL=${CHAT_STUB_MODEL:-false}` to api and worker, so compose runs are stubbed only if you set it in `.env` or your shell; dev-server shells may be too, if you exported it earlier.
 
 Confirm which model is active (prints only the class name, never the key), run in the same environment as the API:
 

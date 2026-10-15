@@ -1,0 +1,5 @@
+# Root entrypoint so `docker compose up --build` works from the repo root.
+# The stack itself lives in infra/compose.yaml (still usable with -f infra/compose.yaml).
+name: saas-chats-ai-dev
+include:
+  - path: infra/compose.yaml

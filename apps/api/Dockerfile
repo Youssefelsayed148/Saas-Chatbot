@@ -4,6 +4,10 @@ WORKDIR /app
 COPY apps/api/requirements.lock ./requirements.lock
 RUN pip install --no-cache-dir -r requirements.lock
 COPY apps/api/app ./app
+# Migrations run on API start and the demo seed runs from this image, so both ship in it.
+COPY apps/api/alembic.ini ./alembic.ini
+COPY apps/api/alembic ./alembic
+COPY apps/api/scripts ./scripts
 RUN useradd --create-home api
 # The app_data volume mounts here; both api and worker (non-root) write under it.
 RUN mkdir -p /data/storage && chown -R api:api /data

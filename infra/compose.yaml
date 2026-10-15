@@ -23,14 +23,24 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       STORAGE_ROOT: /data/storage
       CHAT_OPENROUTER_API_KEY: ${CHAT_OPENROUTER_API_KEY:-}
-      CHAT_FREE_MODEL_CHAIN: ${CHAT_FREE_MODEL_CHAIN:-}
+      CHAT_FREE_MODEL_CHAIN: ${CHAT_FREE_MODEL_CHAIN:-[]}
       CHAT_OPENAI_API_KEY: ${CHAT_OPENAI_API_KEY:-}
       CHAT_OPENAI_MODEL: ${CHAT_OPENAI_MODEL:-}
+      # Offline extractive stub; off unless explicitly enabled (refused in production).
+      CHAT_STUB_MODEL: ${CHAT_STUB_MODEL:-false}
+    # Only this service migrates (the worker waits for it to be healthy), so there is
+    # a single migrator; `alembic upgrade head` is a no-op when already at head.
+    command:
+      [
+        "sh",
+        "-c",
+        "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000",
+      ]
     volumes:
       # Uploaded source files are written by the API and parsed by the worker.
       - app_data:/data
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:${API_PORT:-8000}:8000"
     depends_on:
       db:
         condition: service_healthy
@@ -45,6 +55,7 @@ services:
       interval: 10s
       timeout: 6s
       retries: 5
+      start_period: 60s
   worker:
     build:
       context: ..
@@ -55,16 +66,18 @@ services:
       STORAGE_ROOT: /data/storage
       WORKER_HEARTBEAT_FILE: /tmp/worker-heartbeat
       CHAT_OPENROUTER_API_KEY: ${CHAT_OPENROUTER_API_KEY:-}
-      CHAT_FREE_MODEL_CHAIN: ${CHAT_FREE_MODEL_CHAIN:-}
+      CHAT_FREE_MODEL_CHAIN: ${CHAT_FREE_MODEL_CHAIN:-[]}
       CHAT_OPENAI_API_KEY: ${CHAT_OPENAI_API_KEY:-}
       CHAT_OPENAI_MODEL: ${CHAT_OPENAI_MODEL:-}
+      CHAT_STUB_MODEL: ${CHAT_STUB_MODEL:-false}
     volumes:
       - app_data:/data
     depends_on:
       db:
         condition: service_healthy
+      # Healthy means migrations have been applied.
       api:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       # The worker touches the heartbeat file on every loop; fail when stale.
       test:
@@ -85,7 +98,7 @@ services:
         # The dashboard proxy forwards same-origin /api requests to the FastAPI service.
         API_PROXY_TARGET: http://api:8000
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:${WEB_PORT:-3000}:3000"
     healthcheck:
       test:
         [
@@ -97,6 +110,26 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  # Optional fictional demo tenant: `docker compose --profile seed run --rm seed`.
+  # The script refuses any database not named *_dev / *_demo, and is safe to re-run.
+  seed:
+    profiles: ["seed"]
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    command: ["python", "-m", "scripts.seed_demo"]
+    restart: "no"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      STORAGE_ROOT: /data/storage
+      ENVIRONMENT: development
+      # Optional; *_dev databases fall back to the script's fake default.
+      DEMO_SEED_PASSWORD: ${DEMO_SEED_PASSWORD:-}
+    volumes:
+      - app_data:/data
+    depends_on:
+      api:
+        condition: service_healthy
 volumes:
   postgres_data:
   app_data:
