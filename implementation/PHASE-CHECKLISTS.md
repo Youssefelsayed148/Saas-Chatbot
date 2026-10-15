@@ -68,8 +68,17 @@ Legend: [ ] open · [x] done with evidence. Owner sign-off closes each phase.## 
 - [ ] P5-05: aggregate view only; job deferred to P7-02. Analytics: handoff rate, time to first human reply, per-channel counts, stored sentiment distribution, agent workload — all match measured data
 - [ ] Phase report; owner sign-off → website product is sellable
 
+## P7 Platform admin, quotas, onboarding, hardening (all items before P6)
+- [ ] P7-01: admin operations, job queue health, retry/cancel/pause with reason and audit, platform plan assignment, platform analytics (messages, tenants, bots, handoff rate, AI usage per client), audit review; no impersonation. Many-dependent connection health/secret rotation belongs to P6
+- [ ] P7-02: quotas enforced and race-tested (bots, seats, monthly messages, channel connections, contacts, sentiment runs)
+- [ ] P7-03: self-service signup uses the same ProvisioningService as staff onboarding; concurrent retries create exactly one tenant/bot
+- [ ] P7-04: tenant export/delete verified (includes contacts, conversations, identities); audit review screen
+- [ ] P7-05: backup + restore drill done; health/monitoring/alerts defined (including failed deliveries and stuck jobs); full green Playwright suite run and recorded (mandatory before P6 and before final P7 sign-off); staging deploy only after ADR-007 approval
+- [ ] Independent security review (upload hardening, CSRF, session, tenant isolation, prompt injection, HMAC channel endpoint, SSE) closed
+- [ ] Phase report; owner sign-off → ready for staging
+
 ## P6 ManyOsirisChat channel (WhatsApp, Messenger, Instagram)
-- [ ] Prerequisite: Many-side endpoints/delegated mode agreed and available (separate workstream); owner confirms the delegated-mode assumption (ADR-017)
+- [ ] Prerequisite: all P7-01..P7-05 complete, including P7-05 full green Playwright run; Many-side endpoints/delegated mode agreed and available (separate workstream); owner confirms the delegated-mode assumption (ADR-017)
 - [ ] P6-01: channel connections created explicitly (staff); per-connection secret shown once, stored encrypted, rotatable; HMAC verify with constant-time compare, 5-minute window; bad signature/old timestamp/paused connection → rejected; channel_events dedupe by (connection_id, event_id)
 - [ ] P6-02: message.received → contact identity (unique per tenant+connection+external_id) → conversation → same chat/handoff pipeline; unsupported media gets the text-only reply and a human flag; duplicate and out-of-order events harmless; a tenant-A connection can never write into tenant B
 - [ ] P6-03: outbound via POST to Many keyed by message_id with retry/backoff; message.status updates delivery_status monotonically (sent < delivered < read); window_closed/template_required shown in the inbox and not blindly retried; Many-down is visible and recovers
@@ -77,12 +86,3 @@ Legend: [ ] open · [x] done with evidence. Owner sign-off closes each phase.## 
 - [ ] P6-05: contract tests against a fake Many (signature, replay, duplicates, ordering, errors) in CI; Many-side requirements doc handed over; canary plan with one test number in staging; rollback = pause connection
 - [ ] Staging end-to-end: a message from a test WhatsApp number is answered by the bot, handed off, replied to by an agent from the inbox, with delivery status shown
 - [ ] Phase report; owner sign-off
-
-## P7 Platform admin, quotas, onboarding, hardening
-- [ ] P7-01: admin console advanced: job/delivery health, Many connection health and secret rotation, plan assignment, platform analytics (messages, tenants, bots, handoff rate, AI usage per client), pause bot/connection; actions audited with reason; no impersonation
-- [ ] P7-02: quotas enforced and race-tested (bots, seats, monthly messages, channel connections, contacts, sentiment runs)
-- [ ] P7-03: self-service signup uses the same ProvisioningService as staff onboarding; concurrent retries create exactly one tenant/bot
-- [ ] P7-04: tenant export/delete verified (includes contacts, conversations, identities); audit review screen
-- [ ] P7-05: backup + restore drill done; health/monitoring/alerts defined (including failed deliveries and stuck jobs); staging deploy only after ADR-007 approval
-- [ ] Independent security review (upload hardening, CSRF, session, tenant isolation, prompt injection, HMAC channel endpoint, SSE) closed
-- [ ] Phase report; owner sign-off → ready for staging

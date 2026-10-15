@@ -69,10 +69,16 @@ P5-05 Follow-ups and analytics: follow-up scheduling (user or simple rule), job-
 Phase verification + PHASE-REPORT.md. STOP — the website product is now sellable; owner decides whether to start P6 now.
 ```
 
-## 6. Phase P6 — ManyOsirisChat channel (P6-01 → P6-05)
+## 6. Phase P7 — platform admin, quotas, onboarding, hardening (all before P6)
 ```text
 [preamble]
-PHASE P6 (P5 signed off; owner has confirmed the Many-side endpoints/delegated mode exist or will exist). Build exactly docs/17 and docs/14 §18, ADR-002/017. Never call Meta APIs or store Meta tokens; Many is reached only through the signed contract. Do not modify the Many repo.
+PHASE P7 (P5 browser gate deferred by owner; P5-03/P5-05 and P5 sign-off remain open). Implement P7-01 through P7-05 in order, one ticket per turn; stop and report in five lines after each ticket. P7-01: platform job/delivery operations, reason-audited retry/cancel/pause actions, plan assignment, platform analytics and audit review; Many connection health and secret rotation are P6-only. P7-02: enforceable quotas including sentiment job and plan cost caps. P7-03: self-service signup via the shared ProvisioningService with concurrency/idempotency tests. P7-04: tenant export/delete and searchable audit review. P7-05: backups/restore, monitoring/alerts, security review, runbook and full green Playwright suite; this full green run is mandatory before P6. Never deploy. Write HOSTING-OPTIONS.md after P7-05 and stop for ADR-007; do not tick owner sign-offs.
+```
+
+## 7. Phase P6 — ManyOsirisChat channel (P6-01 → P6-05)
+```text
+[preamble]
+PHASE P6 (P7-01 through P7-05 complete and full green Playwright suite recorded; owner has confirmed the Many-side endpoints/delegated mode exist or will exist). Build exactly docs/17 and docs/14 §18, ADR-002/017. This phase includes all Many-dependent connection health, secret rotation and channel operations moved out of P7-01. Never call Meta APIs or store Meta tokens; Many is reached only through the signed contract. Do not modify the Many repo.
 P6-01 channel_connections + channel_events tables; staff-created connections (tenant+bot+channel+many_base_url); per-connection secret generated, shown once, stored encrypted, rotatable; HMAC-SHA256 sign/verify helpers (timestamp + "." + raw body, 5-minute window, constant-time compare); POST /api/channels/manyosiris/events returns 202 and enqueues a job; dedupe on (connection_id, event_id); paused/revoked connections rejected. Tests: bad signature, old timestamp, replay, wrong connection, paused connection.
 P6-02 Inbound processing job: message.received → contact_identity (unique per tenant+connection+external_id) → conversation (channel, external_conversation_id) → the SAME chat/handoff pipeline as the widget; unsupported types get the localized text-only reply and a human flag; duplicate and out-of-order events harmless. Tests: tenant A connection cannot write to tenant B; idempotency; ordering.
 P6-03 Outbound delivery job: POST {many_base_url}/api/saas/messages keyed by message_id for AI replies, agent replies and handoff messages, retry with exponential backoff; message.status events update delivery_status monotonically; window_closed / template_required / recipient_unreachable shown in the inbox and not blindly retried; Many-down visible and recovers. Inbox shows channel badge and per-message delivery state.
@@ -81,14 +87,3 @@ P6-05 Contract test suite against a fake Many server run in CI; write docs/17 "M
 Phase verification + PHASE-REPORT.md. STOP. The real staging test with a test WhatsApp number needs owner approval.
 ```
 
-## 7. Phase P7 — Platform admin, quotas, onboarding, hardening (P7-01 → P7-05)
-```text
-[preamble]
-PHASE P7 (P6 signed off, or P5 if the owner skips Meta for now).
-P7-01 Advanced admin console (extends P4-06): job and delivery health, Many connection health + secret rotation, plan assignment, platform analytics (messages, tenants, bots, handoff rate, AI usage per client), retry job, pause bot/connection; every support action requires a reason and writes an audit event; no impersonation.
-P7-02 Plans as internal labels + enforceable quotas (bots, seats, monthly messages, channel connections, contacts, sentiment runs, ingestion runs, pages) with transactional counters; concurrency test at the boundary; clear errors in API/UI/widget.
-P7-03 Self-service signup on the SAME ProvisioningService built in P4-06; add optional channel-connection request and concurrency hardening so concurrent retries create exactly one tenant/bot; staff path differs only by actor attribution.
-P7-04 Tenant data export and delete (contacts, conversations, identities, knowledge; verified, audited); audit review screen.
-P7-05 Release readiness: backup + restore drill script and evidence, structured logs with request/tenant correlation (no PII), alerts for failed deliveries and stuck jobs, health/readiness, rate limits review, runbook. Staging deployment ONLY after the owner approves hosting (ADR-007) — propose options and stop.
-Security review against docs/06 (upload hardening, CSRF, sessions, tenant isolation, prompt injection, HMAC channel endpoint, SSE) with findings fixed or documented. PHASE-REPORT.md. STOP.
-```

@@ -41,18 +41,17 @@ A business signs up, creates an organization and a bot, gives it its data (uploa
 - Follow-ups: schedule a message for a lead; on the website the visitor sees it the next time they open the widget.
 - Analytics add handoff rate, time to first human reply, sentiment distribution, resolved vs open, agent workload — measured numbers only.
 - Nothing about Meta exists yet: only the website channel.
+### After P7, before P6 — platform admin, quotas, onboarding, hardening
+- Platform staff review job health, assign plan labels, see platform analytics, pause bots with a reason, and search audit history; all privileged actions are attributed and audited. Non-staff get 403/404.
+- P7-02 enforces quotas and the sentiment job cost cap; P7-03 adds self-service signup through the same ProvisioningService; P7-04 exports/deletes tenant data and supports audit review; P7-05 verifies backups/restore, monitoring, security review, and a full green Playwright suite.
+- AI cost is reported only when provider usage and pricing inputs are available; the current schema does not store these values.
+
 ### After P6 — ManyOsirisChat channel (WhatsApp, Messenger, Instagram)
 - Staff link a bot to a Many channel (explicit connection, secret shown once). A customer writes on WhatsApp: the same bot answers or hands off, and the conversation shows a WhatsApp badge in the same Inbox.
 - Agent replies from the Inbox reach the customer through Many; each message shows sent / delivered / read or the failure reason (for example "WhatsApp window closed — template required"). Voice and image messages get a polite "text only" reply and are flagged for a human.
 - Duplicate or replayed events change nothing; a forged request is rejected; one tenant's connection can never touch another tenant's data. Pausing a connection stops AI replies and sends instantly.
 - Follow-ups and broadcasts to WhatsApp go out only to contacts who opted in, only with an approved template, and only after you approve the first real send.
 - Many handles all Meta-side concerns (tokens, webhooks, window, templates); this app never stores Meta credentials.
-### After P7 — Platform admin, quotas, staff onboarding, hardening
-- The admin console grows: job and delivery health, channel-connection health and secret rotation, plan assignment and quota warnings, platform analytics (usage and AI cost per client), audit review. Non-staff get 403/404.
-- Staff can onboard a customer: create tenant + owner invite + bot + upload their data (+ request a channel connection), through the same service self-service uses. Every staff action is audited with a reason.
-- Quotas (messages, pages, bots, seats, contacts, connections) are enforced; hitting a limit shows a clear message, not a crash.
-- A tenant owner can export or delete their data; a restore drill from backup succeeds; security review items are closed.
-- You can deploy to staging (only after you approve hosting).
 
 ## Always-true rules (every phase)
 1. Cross-tenant access is impossible by ID guessing. 2. Errors are specific and actionable. 3. No secrets or visitor PII in logs. 4. Loading, empty and error states exist on every screen. 5. Archived/paused things behave predictably. 6. No success state without a real backend result.

@@ -1,6 +1,6 @@
 # P3-05 evaluation report (deterministic stub-model run)
 
-Date: 2026-10-14 13:48 · corpus: tests/eval/fixtures (EN + AR pages + Q&A CSV)
+Date: 2026-10-15 00:17 · corpus: tests/eval/fixtures (EN + AR pages + Q&A CSV)
 cases: tests/eval/eval.jsonl
 
 Model: `ExtractiveStubModel` — deterministic, offline, answers extractively
