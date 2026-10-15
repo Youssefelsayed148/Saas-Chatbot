@@ -493,3 +493,7 @@ Added read-only `/app/[tenant]` Overview using existing endpoints only; separate
 ## 2026-10-15 — UI S3 bots and knowledge
 
 Bot tables/forms retained with archive confirmation dialogs, human status labels/raw attributes, clearer bot-tab purposes, knowledge source/job/revision cards and true indeterminate ingestion progress. No simulated percentage or ETA. Existing tests now assert raw status attributes and explicitly confirm archive; all assertions retained. `npm.cmd run typecheck`: exit 0; `npm.cmd run lint`: exit 0. No stage build/Playwright. Zero dependencies or contract changes. Screenshot/full browser verification deferred.
+
+## 2026-10-15 — UI S4 inbox and conversations
+
+Shared inbox list on existing list/detail routes, desktop split pane/mobile stacked navigation, explicit filter layout/removal chips, contact lookup through existing contacts endpoint, unread/snippet/status/channel/time rows, chat bubbles and expandable returned citations. Existing stream and mutation logic retained; raw mode/status remain available. New Arabic/unread/filter test written. Initial lint found an unused import; corrected. Final `npm.cmd run typecheck`: exit 0; `npm.cmd run lint`: exit 0. No stage build/Playwright. No dependencies/backend changes.
