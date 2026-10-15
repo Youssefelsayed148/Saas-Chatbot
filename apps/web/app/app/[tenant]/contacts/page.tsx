@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
+import { LabelBadge } from "@/lib/labels";
 import * as api from "@/lib/api";
 import type { Contact } from "@/lib/api";
 import { roleSatisfies, useSession } from "@/lib/session";
@@ -54,8 +55,11 @@ export default function ContactsPage() {
   }
 
   return (
-    <main className="page">
+    <main className="contacts-page">
       <h1>Contacts</h1>
+      <p className="page-purpose">
+        Keep visitor details, consent and conversation history together.
+      </p>
       <p>
         Contact records, consent, stages, and conversation history for this
         organization.
@@ -120,14 +124,16 @@ export default function ContactsPage() {
             <tbody>
               {contacts.map((contact) => (
                 <tr key={contact.id}>
-                  <td>
+                  <td dir="auto">
                     <Link href={`/app/${tenantId}/contacts/${contact.id}`}>
                       {contact.display_name || "Unnamed contact"}
                     </Link>
                   </td>
                   <td>{contact.email}</td>
                   <td>{contact.phone}</td>
-                  <td>{contact.stage}</td>
+                  <td>
+                    <LabelBadge value={contact.stage} />
+                  </td>
                   <td>{new Date(contact.updated_at).toLocaleDateString()}</td>
                 </tr>
               ))}

@@ -13,6 +13,7 @@ export default function PlatformClientPage() {
   const params = useParams<{ clientId: string }>();
   const clientId = params.clientId;
   const [detail, setDetail] = useState<api.PlatformTenantDetail | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [planLabel, setPlanLabel] = useState("");
   const [reason, setReason] = useState("");
@@ -48,6 +49,7 @@ export default function PlatformClientPage() {
         tenant: { ...detail.tenant, plan_label: updated.plan_label },
       });
       setError(null);
+      setNotice("Changes saved.");
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "Plan update failed.",
@@ -66,6 +68,7 @@ export default function PlatformClientPage() {
         ),
       });
       setError(null);
+      setNotice("Changes saved.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Bot pause failed.");
     }
@@ -78,6 +81,7 @@ export default function PlatformClientPage() {
       const limits = JSON.parse(quotaOverrides) as Record<string, number>;
       await api.platformQuotaOverride(detail.tenant.id, limits, reason);
       setError(null);
+      setNotice("Changes saved.");
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "Quota override failed.",
@@ -86,14 +90,18 @@ export default function PlatformClientPage() {
   }
 
   return (
-    <main>
+    <main className="platform-client-detail">
       <h1 data-testid="client-detail-name">
         {detail?.tenant.name ?? "Client"}
       </h1>
+      <p className="page-purpose">
+        Review client health and manage plans, quotas and bot availability.
+      </p>
       <p className="eyebrow">
         <a href="/platform">← Back to clients</a>
       </p>
       {error && <Notice message={error} tone="error" />}
+      {notice && <Notice message={notice} />}
       {!error && detail === null && <Loading label="Loading client…" />}
       {detail && (
         <>

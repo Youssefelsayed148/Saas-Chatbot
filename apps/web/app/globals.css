@@ -1328,3 +1328,147 @@ progress::-webkit-progress-value {
     inline-size: 100%;
   }
 }
+
+/* People, governance and the visibly separate staff console. */
+.contacts-page > form,
+.contact-profile > form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-inline-size: 52rem;
+}
+.contacts-page > form > h2,
+.contact-profile > form > h2 {
+  grid-column: 1/-1;
+}
+.contact-profile > form > label:has(textarea) {
+  grid-column: 1/-1;
+}
+.contacts-page > form > button,
+.contact-profile > form > button {
+  justify-self: start;
+}
+.contacts-page > p:first-of-type:not(.page-purpose) {
+  color: var(--muted);
+}
+.contact-profile > section > ul {
+  list-style: none;
+  padding: 0;
+}
+.contact-profile > section > ul > li {
+  padding: 0.8rem;
+  border-block-end: 1px solid var(--border);
+}
+.contact-profile > section > form {
+  max-inline-size: 42rem;
+}
+.check-control {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-block: 1.5rem;
+}
+.danger-zone {
+  border-color: var(--danger);
+}
+.danger-zone h2 {
+  color: var(--danger);
+}
+.danger-zone > form > button {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.audit-list {
+  list-style: none;
+  padding: 0;
+  font-size: 0.8rem;
+}
+.audit-list li {
+  padding: 0.75rem;
+  border-block-end: 1px solid var(--border);
+}
+.platform-clients > [data-testid="platform-search"] {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: end;
+  max-inline-size: none;
+}
+.platform-clients > [data-testid="platform-search"] > label {
+  flex: 1;
+  min-inline-size: 150px;
+}
+.platform-clients > [data-testid="platform-search"] > button {
+  align-self: end;
+}
+[data-testid="onboarding-form"] form {
+  max-inline-size: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+[data-testid="onboarding-form"] form > button {
+  justify-self: start;
+  align-self: end;
+}
+.platform-client-detail > [data-testid="client-detail-status"] {
+  background: var(--staff-soft);
+  border: 1px solid var(--border);
+  padding: 0.7rem 1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+}
+.platform-client-detail section ul {
+  list-style: none;
+  padding: 0;
+}
+.platform-client-detail section li {
+  padding: 0.7rem 0;
+  border-block-end: 1px solid var(--border);
+}
+.platform-client-detail section li button {
+  margin-inline-start: 1rem;
+  font-size: 0.75rem;
+}
+.platform-operations > [data-testid="platform-analytics"] {
+  border-block-start: 3px solid var(--staff);
+}
+.platform-operations [data-testid="platform-audit-review"] ul {
+  list-style: none;
+  padding: 0;
+  font-size: 0.8rem;
+}
+.platform-operations [data-testid="platform-audit-review"] li {
+  padding: 0.75rem;
+  border-block-end: 1px solid var(--border);
+}
+.handoff-analytics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.handoff-analytics > h1,
+.handoff-analytics > p,
+.handoff-analytics > .notice,
+.handoff-analytics > .loading-state {
+  grid-column: 1/-1;
+}
+.handoff-analytics > section {
+  margin: 0;
+}
+.handoff-analytics > section li {
+  padding-block: 0.5rem;
+}
+@media (max-width: 760px) {
+  .contacts-page > form,
+  .contact-profile > form,
+  [data-testid="onboarding-form"] form {
+    grid-template-columns: 1fr;
+  }
+  .handoff-analytics {
+    display: block;
+  }
+  .handoff-analytics > section {
+    margin-block: 1rem;
+  }
+}

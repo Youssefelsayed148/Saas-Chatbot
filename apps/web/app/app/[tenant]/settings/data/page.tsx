@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import * as api from "@/lib/api";
 import { roleSatisfies, useSession } from "@/lib/session";
@@ -16,6 +16,7 @@ export default function TenantDataPage() {
   const role = roleIn(tenantId);
   const canAdmin = roleSatisfies(role, "admin");
   const isOwner = role === "owner";
+  const deleteDialog = useRef<HTMLDialogElement>(null);
   const [tenant, setTenant] = useState<api.Tenant | null>(null);
   const [audit, setAudit] = useState<api.TenantAuditEvent[]>([]);
   const [query, setQuery] = useState("");
@@ -95,8 +96,12 @@ export default function TenantDataPage() {
 
   if (!canAdmin) {
     return (
-      <main>
+      <main className="tenant-data-page">
         <h1>Tenant data and audit</h1>
+        <p className="page-purpose">
+          Export workspace data, review activity and manage organization
+          deletion.
+        </p>
         <p>Administrator access is required.</p>
         <Link href={`/app/${tenantId}/bots`}>Back to bots</Link>
       </main>
@@ -104,8 +109,11 @@ export default function TenantDataPage() {
   }
 
   return (
-    <main>
+    <main className="tenant-data-page">
       <h1>Tenant data and audit</h1>
+      <p className="page-purpose">
+        Export workspace data, review activity and manage organization deletion.
+      </p>
       <p>
         <Link href={`/app/${tenantId}/bots`}>Back to bots</Link>
       </p>
@@ -146,7 +154,10 @@ export default function TenantDataPage() {
               </label>
               <button type="submit">Search</button>
             </form>
-            <ul>
+            {audit.length === 0 && (
+              <p className="muted">No audit actions match this search.</p>
+            )}
+            <ul className="audit-list">
               {audit.map((event) => (
                 <li key={event.id}>
                   {event.created_at.slice(0, 19)} · {event.action} ·{" "}
@@ -156,14 +167,25 @@ export default function TenantDataPage() {
             </ul>
           </section>
           {isOwner && (
-            <section aria-label="Delete tenant data">
+            <section aria-label="Delete tenant data" className="danger-zone">
               <h2>Delete organization and data</h2>
               <p>
                 This permanently removes the organization’s bots, knowledge,
                 contacts, identities, conversations, and messages. The deletion
                 request is audited.
               </p>
-              <form onSubmit={(event) => void deleteData(event)}>
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (
+                    tenant &&
+                    isOwner &&
+                    confirmName === tenant.name &&
+                    reason.trim().length >= 3
+                  )
+                    deleteDialog.current?.showModal();
+                }}
+              >
                 <label>
                   Type <strong>{tenant.name}</strong> to confirm
                   <input
@@ -193,6 +215,40 @@ export default function TenantDataPage() {
                   Permanently delete organization
                 </button>
               </form>
+              <dialog ref={deleteDialog} aria-labelledby="delete-tenant-title">
+                <h2 id="delete-tenant-title">
+                  Permanently delete this organization?
+                </h2>
+                <p>
+                  This removes {tenant.name} and its bots, knowledge, contacts
+                  and conversations. This action cannot be undone.
+                </p>
+                <div className="action-row">
+                  <button
+                    className="quiet-button"
+                    type="button"
+                    autoFocus
+                    onClick={() => deleteDialog.current?.close()}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="danger-button"
+                    type="button"
+                    disabled={
+                      busy ||
+                      confirmName !== tenant.name ||
+                      reason.trim().length < 3
+                    }
+                    onClick={(event) => {
+                      deleteDialog.current?.close();
+                      void deleteData(event);
+                    }}
+                  >
+                    Delete organization now
+                  </button>
+                </div>
+              </dialog>
             </section>
           )}
         </>
