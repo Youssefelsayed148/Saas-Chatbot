@@ -2,6 +2,12 @@ import { expect, test, type Page } from "@playwright/test";
 import { registerOwner } from "./e2e-helpers";
 import { promoteToStaff } from "./staff-helpers";
 
+test.afterEach(async ({ page }) => {
+  // Wait for every route handler to settle before the page fixture closes.
+  // Errors remain visible; none are ignored or retried.
+  await page.unrouteAll({ behavior: "wait" });
+});
+
 async function staff(page: Page) {
   const email = `ui-staff.${Date.now()}@example.com`;
   const result = await registerOwner(page, "UI characterization", { email });
@@ -51,10 +57,15 @@ test("tenant data: admin can review but only owner sees deletion; viewer is deni
   page,
 }) => {
   const { tenantId } = await registerOwner(page, "Data roles");
+  const session = await (await page.request.get("/api/v1/auth/me")).json();
+  expect(
+    session.memberships.some(
+      (m: { tenant_id: string }) => m.tenant_id === tenantId,
+    ),
+  ).toBe(true);
   for (const role of ["admin", "viewer"]) {
     await page.route("**/api/v1/auth/me", async (route) => {
-      const response = await route.fetch();
-      const me = await response.json();
+      const me = session;
       await route.fulfill({
         json: {
           ...me,
@@ -207,8 +218,14 @@ test("inbox viewer cannot mutate AI, human or resolved conversations", async ({
   page,
 }) => {
   const { tenantId } = await registerOwner(page, "Inbox viewer");
+  const session = await (await page.request.get("/api/v1/auth/me")).json();
+  expect(
+    session.memberships.some(
+      (m: { tenant_id: string }) => m.tenant_id === tenantId,
+    ),
+  ).toBe(true);
   await page.route("**/api/v1/auth/me", async (route) => {
-    const me = await (await route.fetch()).json();
+    const me = session;
     await route.fulfill({
       json: {
         ...me,
