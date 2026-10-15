@@ -158,6 +158,7 @@ export function InboxList({
             <label>
               Mode{" "}
               <select
+                data-testid="inbox-mode-filter"
                 value={filters.mode}
                 onChange={(e) => updateFilter("mode", e.target.value)}
               >
