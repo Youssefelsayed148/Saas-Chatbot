@@ -105,7 +105,7 @@ export default function ConversationsPage() {
           <button
             type="button"
             data-testid="retention-save"
-            style={{ marginLeft: "0.5rem" }}
+            style={{ marginInlineStart: "0.5rem" }}
             onClick={() => void saveRetention()}
           >
             Save retention

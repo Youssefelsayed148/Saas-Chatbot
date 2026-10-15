@@ -1,31 +1,70 @@
 import { expect, test } from "@playwright/test";
 import { registerOwner } from "./e2e-helpers";
 
-test("Arabic inbox rows preserve unread markers and removable filter requests", async ({page}) => {
-  const {tenantId} = await registerOwner(page, "Arabic inbox");
-  await page.route(`**/api/v1/tenants/${tenantId}/inbox?**`, route => route.fulfill({json: {
-    conversations: [{id:"arabic-row",contact_id:null,bot_id:"bot",channel:"website",mode:"ai",status:"waiting_human",last_message:"مرحبا، أحتاج مساعدة في حسابي",last_message_at:"2026-10-15T09:00:00Z",unread_count:3,tags:["عاجل"]}], total:1,limit:50,offset:0,
-  }}));
+test("Arabic inbox rows preserve unread markers and removable filter requests", async ({
+  page,
+}) => {
+  const { tenantId } = await registerOwner(page, "Arabic inbox");
+  await page.route(`**/api/v1/tenants/${tenantId}/inbox?**`, (route) =>
+    route.fulfill({
+      json: {
+        conversations: [
+          {
+            id: "arabic-row",
+            contact_id: null,
+            bot_id: "bot",
+            channel: "website",
+            mode: "ai",
+            status: "waiting_human",
+            last_message: "مرحبا، أحتاج مساعدة في حسابي",
+            last_message_at: "2026-10-15T09:00:00Z",
+            unread_count: 3,
+            tags: ["عاجل"],
+          },
+        ],
+        total: 1,
+        limit: 50,
+        offset: 0,
+      },
+    }),
+  );
   await page.goto(`/app/${tenantId}/inbox?status=waiting_human`);
   const row = page.getByTestId("inbox-list").getByRole("link").first();
   await expect(row.locator(".message-snippet")).toHaveAttribute("dir", "auto");
   await expect(row.getByLabel("3 unread")).toBeVisible();
   await expect(row.locator("[data-value=waiting_human]")).toBeVisible();
-  await expect(page.getByRole("button",{name:"Remove status filter"})).toBeVisible();
-  const cleared = page.waitForRequest(request => new URL(request.url()).pathname.endsWith("/inbox") && !new URL(request.url()).searchParams.has("status"));
-  await page.getByRole("button",{name:"Remove status filter"}).click();
+  await expect(
+    page.getByRole("button", { name: "Remove status filter" }),
+  ).toBeVisible();
+  const cleared = page.waitForRequest(
+    (request) =>
+      new URL(request.url()).pathname.endsWith("/inbox") &&
+      !new URL(request.url()).searchParams.has("status"),
+  );
+  await page.getByRole("button", { name: "Remove status filter" }).click();
   await cleared;
 });
 
-test("tenant Overview reads existing data and keeps Bots as the signup destination", async ({page}) => {
-  const {tenantId} = await registerOwner(page, "Overview route");
+test("tenant Overview reads existing data and keeps Bots as the signup destination", async ({
+  page,
+}) => {
+  const { tenantId } = await registerOwner(page, "Overview route");
   await expect(page).toHaveURL(`/app/${tenantId}/bots`);
   const writes: string[] = [];
-  page.on("request", request => {if (["POST", "PATCH", "DELETE"].includes(request.method())) writes.push(request.url());});
+  page.on("request", (request) => {
+    if (["POST", "PATCH", "DELETE"].includes(request.method()))
+      writes.push(request.url());
+  });
   await page.goto(`/app/${tenantId}`);
-  await expect(page.getByRole("heading", {name: "Overview", exact: true})).toBeVisible();
-  await expect(page.getByText("First bot created", {exact: true})).toBeVisible();
-  await expect(page.getByText(/final pricing and limits are TBD/)).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Overview", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("First bot created", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/final pricing and limits are TBD/),
+  ).toBeVisible();
   expect(writes).toEqual([]);
 });
 

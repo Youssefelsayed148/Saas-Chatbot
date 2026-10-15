@@ -243,6 +243,7 @@ export default function ContactPage() {
             <label>
               Custom fields (JSON, up to 20 keys){" "}
               <textarea
+                dir="auto"
                 disabled={!canEdit}
                 rows={6}
                 value={fields}
@@ -323,6 +324,7 @@ export default function ContactPage() {
                   <label>
                     Message{" "}
                     <textarea
+                      dir="auto"
                       required
                       minLength={1}
                       maxLength={4000}

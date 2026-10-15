@@ -262,6 +262,7 @@ export default function BotSettingsPage() {
         <label>
           Business description
           <textarea
+            dir="auto"
             name="business_description"
             disabled={!canEdit}
             rows={3}
@@ -294,6 +295,7 @@ export default function BotSettingsPage() {
         <label>
           Opening questions (one per line, max 10)
           <textarea
+            dir="auto"
             name="opening_questions"
             disabled={!canEdit}
             rows={4}
@@ -381,6 +383,7 @@ export default function BotSettingsPage() {
         <label>
           Allowed domains (one per line, max 50)
           <textarea
+            dir="auto"
             name="allowed_domains"
             disabled={!canEdit}
             rows={3}

@@ -342,6 +342,7 @@ export default function InboxConversationPage() {
                 <label>
                   Reply
                   <textarea
+                    dir="auto"
                     aria-label="Reply"
                     value={reply}
                     maxLength={4000}
@@ -361,6 +362,7 @@ export default function InboxConversationPage() {
               <label>
                 Internal note
                 <textarea
+                  dir="auto"
                   aria-label="Internal note"
                   value={note}
                   maxLength={4000}

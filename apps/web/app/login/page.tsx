@@ -70,8 +70,8 @@ function LoginForm() {
             onChange={(event) => setEmail(event.target.value)}
           />
         </label>
-        <label htmlFor="auth-password">
-          Password
+        <div className="password-control">
+          <label htmlFor="auth-password">Password</label>
           <PasswordField
             id="auth-password"
             type="password"
@@ -81,7 +81,7 @@ function LoginForm() {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
           />
-        </label>
+        </div>
         {error && <p role="alert">{error}</p>}
         <button type="submit" disabled={submitting}>
           {submitting ? "Signing in…" : "Sign in"}

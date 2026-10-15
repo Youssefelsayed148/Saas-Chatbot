@@ -114,10 +114,7 @@
     // Sandboxed per docs/09: scripts and forms run, the frame keeps its own
     // origin (so the public API stays same-origin and cookie-free), and the
     // customer page cannot script the frame beyond the message channel.
-    frame.setAttribute(
-      "sandbox",
-      "allow-scripts allow-same-origin allow-forms",
-    );
+    frame.setAttribute("sandbox", "allow-scripts allow-same-origin allow-forms");
     frame.setAttribute("data-testid", "widget-frame");
     document.body.appendChild(frame);
     var sourceUrl =
@@ -175,7 +172,7 @@
       if (event.source) {
         event.source.postMessage(
           { type: "chatbot:locator", locator: locator },
-          { targetOrigin: frameBase },
+          { targetOrigin: frameBase }
         );
       }
       applyFrameSize(600);

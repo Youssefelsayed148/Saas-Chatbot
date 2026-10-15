@@ -276,6 +276,12 @@ export function AppShell({
         </label>
         <input
           id="palette-query"
+          role="combobox"
+          aria-expanded="true"
+          aria-autocomplete="list"
+          aria-activedescendant={
+            filtered[selected] ? `palette-option-${selected}` : undefined
+          }
           autoComplete="off"
           placeholder="Where would you like to go?"
           value={query}
@@ -304,10 +310,13 @@ export function AppShell({
           aria-controls="palette-results"
           aria-describedby="palette-help"
         />
-        <ul id="palette-results">
+        <ul id="palette-results" role="listbox" aria-label="Pages">
           {filtered.map((link, index) => (
-            <li key={link.href}>
+            <li key={link.href} role="presentation">
               <Link
+                id={`palette-option-${index}`}
+                role="option"
+                aria-selected={selected === index}
                 data-selected={selected === index}
                 href={link.href}
                 onClick={() => palette.current?.close()}

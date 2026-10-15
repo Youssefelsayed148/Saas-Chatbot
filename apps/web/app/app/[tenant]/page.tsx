@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { humanLabel } from "@/lib/labels";
 import * as api from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { Empty, Loading, Notice } from "@/lib/ui";
@@ -104,7 +105,7 @@ export default function TenantOverview() {
                           {row.last_message || "New conversation"}
                         </span>
                         <small>
-                          {row.channel} ? {row.status.replaceAll("_", " ")} ?{" "}
+                          {row.channel} ? {humanLabel(row.status)} ?{" "}
                           {row.last_message_at
                             ? new Date(row.last_message_at).toLocaleDateString()
                             : "No activity"}

@@ -35,6 +35,15 @@ test("tenant data: owner deletion requires exact name and a meaningful reason", 
   await expect(submit).toBeDisabled();
   await page.getByLabel("Reason for deletion").fill("Review completed");
   await expect(submit).toBeEnabled();
+  await submit.click();
+  const confirmation = page.getByRole("dialog", {
+    name: "Permanently delete this organization?",
+  });
+  await expect(confirmation).toBeVisible();
+  await confirmation
+    .getByRole("button", { name: "Cancel", exact: true })
+    .click();
+  await expect(confirmation).not.toBeVisible();
   expect(deletes).toBe(0);
 });
 

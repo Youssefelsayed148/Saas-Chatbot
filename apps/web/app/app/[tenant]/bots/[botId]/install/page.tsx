@@ -82,10 +82,7 @@ export default function InstallPage() {
       <p className="page-purpose">
         Copy your widget snippet and verify it on the sample website.
       </p>
-      <p
-        data-status={bot.status}
-        data-testid="install-status"
-      >
+      <p data-status={bot.status} data-testid="install-status">
         Status: <LabelBadge value={bot.status} />
       </p>
       {bot.status !== "active" && (

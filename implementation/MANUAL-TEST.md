@@ -38,7 +38,8 @@ cd apps/api
 cd apps/api
 ..\..\.venv\Scripts\python.exe -m app.worker
 
-# terminal 3: web (proxies /api to http://127.0.0.1:8000 by default)
+# terminal 3: web (start in a fresh terminal at the repo root)
+cd apps/web
 npm.cmd run dev
 ```
 
@@ -95,14 +96,28 @@ Behavioural check: ask something paraphrased in the widget. A real model rewrite
 Use the seeded demo tenant for steps 7–8 if you want data already there; otherwise use the fresh tenant from step 1.
 
 1. **Sign up.** `/register`: organization name, first bot name, email, password. You land on `/app/<tenant>/bots` with one bot, and the plan is Free.
-2. **Create a second bot** (or open the first bot). Bot > Settings: set status to Active.
+2. **Create a second bot** (or open the first bot). Bot > Settings: choose Activate bot (status Active).
 3. **Upload knowledge.** Bot > Knowledge: the upload control is enabled right after signup (no reload). Upload a short `.md`/`.txt` with some facts (e.g. opening hours).
-4. **Wait for ingestion.** The job moves queued > running > succeeded (needs the worker). Preview documents and chunks, then **Publish**.
+4. **Wait for ingestion.** The job moves Queued > Processing > Completed (raw states pending > running > succeeded) (needs the worker). Preview documents and chunks, then **Publish**.
 5. **Chat in the widget.** Open the sample page URL with the bot's locator, click the bubble, ask about the uploaded facts. Expect a grounded answer with a citation; ask something off-topic and expect it to say it cannot confirm.
-6. **Handoff.** In the widget ask for a human. In Dashboard > Conversations the thread appears as needing an agent: take over, reply, return it to the bot. Reply shows in the widget after reload.
+6. **Handoff.** In the widget ask for a human. In Workspace > Inbox the thread shows Waiting for human: choose Take over, send a reply, then Return to AI. The reply appears in the widget through polling; it also remains after reopening.
 7. **Contacts.** Submit the widget lead form (name, email, consent). Dashboard > Contacts lists the lead; open it and change its stage.
 8. **Overview.** Bot > Overview: messages, conversations, widget opens and leads match what you just did; the unanswered list shows the off-topic question; leads CSV downloads.
-9. **Invite a teammate.** Members > Invite (role editor). Copy the `/accept-invite?token=...` link, open it in a separate browser profile after registering with the invited email, accept. The teammate sees the tenant with editor rights.
-10. **Hit a plan limit.** On the Free plan keep creating bots/invites until you get **429 QUOTA_EXCEEDED** with the plan message (Quota page shows usage). Accepting an invite you already hold must still work at the seat limit.
+9. **Invite a teammate.** Team > Create invite link (role editor). Copy the `/accept-invite?token=...` link, open it in a separate browser profile after registering with the invited email, accept. The teammate sees the tenant with editor rights.
+10. **Hit a plan limit.** On the Free plan keep creating bots/invites until you get **429 QUOTA_EXCEEDED** with the plan message (Overview and Bots show PLACEHOLDER plan usage). Accepting an invite you already hold must still work at the seat limit.
 11. **Tenant isolation.** With a second account (another tenant), open the first tenant's URL: expect 404, not 403.
-12. **Delete a tenant.** Owner > tenant data/settings > Delete: type the tenant name and a reason. Expect the tenant, its bots, knowledge and uploaded files to disappear and the owner to lose access.
+12. **Delete a tenant.** Owner > Tenant data and audit > Permanently delete organization: type the exact tenant name and a reason of at least three characters, then confirm in the final dialog. Cancel must send no deletion request. Expect the tenant, its bots, knowledge and uploaded files to disappear and the owner to lose access.
+
+
+## 6. Redesigned UI checks
+
+- Sidebar Overview opens `/app/<tenant>`; Bots, post-login and organization switching still use `/app/<tenant>/bots`. Tenant Overview is read-only. The first-bot checklist derives published knowledge from revisions; installation is not claimed.
+- The top bar shows Client workspace, tenant name and role. `/platform` has a distinct Platform admin shell. Staff access does not grant tenant permissions.
+- Appearance follows the system initially; a manual choice persists per viewer in this browser. Check both themes, a second signed-in viewer and storage-disabled behavior.
+- Ctrl/Cmd+K opens page navigation. Search, use arrow keys/Enter and Escape; focus returns to the trigger. It never executes mutations. At 360px, open the mobile navigation drawer and dismiss it with Escape.
+- Archive opens a cancelable confirmation. Tenant deletion still requires exact name/reason. Contact erasure has an explicit optional message-erasure checkbox. Cancel any dialog and verify no mutation occurs.
+- Inbox filters have separate labels/controls and removable chips. Check status, mode, channel, assignee, tag, unread and search; direct `?status=waiting_human` links still work. Desktop shows list/thread together; mobile keeps list-to-thread navigation.
+- In an Arabic row, check message direction, unread dot/count, status badge, tags and timestamp. Verify Arabic/English mixed messages in chat bubbles, keyboard focus and expandable sources. Viewers see no reply, takeover, resolve, assignment, note or tag mutation controls.
+- At 360x800 and 1440x900, verify no horizontal page scrolling, including tables, forms, snippets and dialogs. Check visible focus and reduced-motion preference. Widgets retain bot color/placement/language from existing config only.
+- Verify widget 429 server text is displayed verbatim; do not substitute or translate it. Test lead consent, failure/retry, handoff and reopening history.
+- Automated screenshots are saved under `implementation/ui-screens/` after the final two successful full browser runs. Large images are not committed.

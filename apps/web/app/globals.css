@@ -1485,3 +1485,78 @@ progress::-webkit-progress-value {
   background: var(--surface);
   border-radius: var(--radius-sm);
 }
+
+/* Final responsive and accessibility refinements. */
+.success-toast {
+  position: fixed;
+  inset-inline-end: 1.5rem;
+  inset-block-end: 1rem;
+  z-index: 45;
+  max-inline-size: min(420px, calc(100vw - 2rem));
+  box-shadow: var(--shadow);
+}
+[dir="rtl"] .inbox-row[data-selected="true"] {
+  box-shadow: inset -3px 0 0 var(--accent);
+}
+form:has(input[type="date"]) {
+  max-inline-size: none;
+}
+input[type="file"] {
+  inline-size: 100%;
+  white-space: normal;
+}
+input[type="file"]::file-selector-button {
+  border: 0;
+  background: var(--surface-hover);
+  color: var(--text);
+  padding: 0.5rem 0.7rem;
+  border-radius: var(--radius-sm);
+  margin-inline-end: 0.7rem;
+  cursor: pointer;
+}
+button,
+select,
+a {
+  touch-action: manipulation;
+}
+.message-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+dialog .action-row {
+  justify-content: flex-end;
+}
+.check-control input {
+  inline-size: 20px;
+}
+.bot-nav-tabs {
+  min-inline-size: 0;
+}
+@media (max-width: 760px) {
+  .usage-grid {
+    grid-template-columns: 1fr;
+  }
+  .bot-nav-tabs {
+    gap: 0.15rem;
+  }
+  .bot-nav-tabs a {
+    padding: 0.45rem 0.55rem;
+  }
+  .success-toast {
+    inset-inline-end: 1rem;
+  }
+  .chat-thread [data-role] {
+    max-inline-size: 96%;
+  }
+  .account-nav button {
+    min-block-size: 40px;
+  }
+  .theme-toggle {
+    min-block-size: 44px;
+  }
+}
+
+.password-control {
+  display: grid;
+  gap: 0.45rem;
+}
