@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
+import { PasswordField } from "@/lib/password-field";
+import { ThemeToggle } from "@/lib/theme";
 import * as api from "@/lib/api";
 import { useSession } from "@/lib/session";
 
@@ -43,9 +45,19 @@ function LoginForm() {
   }
 
   return (
-    <main>
-      <p className="eyebrow">Website Chatbot SaaS</p>
+    <main className="auth-page">
+      <div className="auth-brand">
+        <span className="brand-mark" aria-hidden="true">
+          ?
+        </span>
+        <span>Website Chatbot SaaS</span>
+        <ThemeToggle />
+      </div>
+      <p className="eyebrow">YOUR AI WORKSPACE</p>
       <h1>Sign in</h1>
+      <p className="page-purpose">
+        Welcome back. Continue helping your visitors.
+      </p>
       <form onSubmit={onSubmit}>
         <label>
           Email
@@ -58,9 +70,10 @@ function LoginForm() {
             onChange={(event) => setEmail(event.target.value)}
           />
         </label>
-        <label>
+        <label htmlFor="auth-password">
           Password
-          <input
+          <PasswordField
+            id="auth-password"
             type="password"
             name="password"
             autoComplete="current-password"

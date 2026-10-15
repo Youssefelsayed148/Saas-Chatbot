@@ -1,31 +1,101 @@
 "use client";
-
-/** Small presentational helpers shared by the dashboard pages (loading/empty/error states). */
-
-import type { ReactNode } from "react";
-
-export function Loading({ label = "Loading…" }: { label?: string }) {
+import { useRef, type ReactNode } from "react";
+export function Loading({ label = "Loading?" }: { label?: string }) {
   return (
-    <p role="status" className="eyebrow">
-      {label}
-    </p>
+    <div className="loading-state" role="status">
+      <span>{label}</span>
+      <div aria-hidden="true" className="skeleton" />
+      <div aria-hidden="true" className="skeleton short" />
+    </div>
   );
 }
-
 export function Notice({
   message,
   tone = "info",
+  onRetry,
 }: {
   message: string;
   tone?: "info" | "error";
+  onRetry?: () => void;
 }) {
   return (
-    <p role={tone === "error" ? "alert" : "status"} data-tone={tone}>
-      {message}
-    </p>
+    <div
+      className={`notice ${tone === "info" && /saved|copied|created|updated/i.test(message) ? "success-toast" : ""}`}
+      data-tone={tone}
+    >
+      <p role={tone === "error" ? "alert" : "status"}>{message}</p>
+      {tone === "error" && (
+        <button
+          type="button"
+          className="quiet-button"
+          onClick={onRetry ?? (() => window.location.reload())}
+        >
+          Retry page
+        </button>
+      )}
+    </div>
   );
 }
-
 export function Empty({ children }: { children: ReactNode }) {
-  return <p className="muted">{children}</p>;
+  return (
+    <div className="empty-state">
+      <span className="empty-symbol" aria-hidden="true">
+        ?
+      </span>
+      <p className="muted">{children}</p>
+    </div>
+  );
+}
+export function ConfirmAction({
+  children,
+  title,
+  description,
+  onConfirm,
+  disabled,
+  confirmLabel = "Confirm",
+}: {
+  children: ReactNode;
+  title: string;
+  description: string;
+  onConfirm: () => void;
+  disabled?: boolean;
+  confirmLabel?: string;
+}) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  return (
+    <>
+      <button
+        type="button"
+        disabled={disabled}
+        className="danger-button"
+        onClick={() => dialog.current?.showModal()}
+      >
+        {children}
+      </button>
+      <dialog ref={dialog} aria-label={title}>
+        <h2>{title}</h2>
+        <p>{description}</p>
+        <div className="action-row">
+          <button
+            type="button"
+            autoFocus
+            className="quiet-button"
+            onClick={() => dialog.current?.close()}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="danger-button"
+            onClick={() => {
+              dialog.current?.close();
+              onConfirm();
+            }}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </dialog>
+    </>
+  );
 }

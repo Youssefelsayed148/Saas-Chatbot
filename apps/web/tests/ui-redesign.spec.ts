@@ -1,6 +1,18 @@
 import { expect, test } from "@playwright/test";
 import { registerOwner } from "./e2e-helpers";
 
+test("tenant Overview reads existing data and keeps Bots as the signup destination", async ({page}) => {
+  const {tenantId} = await registerOwner(page, "Overview route");
+  await expect(page).toHaveURL(`/app/${tenantId}/bots`);
+  const writes: string[] = [];
+  page.on("request", request => {if (["POST", "PATCH", "DELETE"].includes(request.method())) writes.push(request.url());});
+  await page.goto(`/app/${tenantId}`);
+  await expect(page.getByRole("heading", {name: "Overview", exact: true})).toBeVisible();
+  await expect(page.getByText("First bot created", {exact: true})).toBeVisible();
+  await expect(page.getByText(/final pricing and limits are TBD/)).toBeVisible();
+  expect(writes).toEqual([]);
+});
+
 test("workspace theme persists and keyboard palette only navigates", async ({
   page,
 }) => {

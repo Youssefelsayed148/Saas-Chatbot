@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
+import { PasswordField } from "@/lib/password-field";
+import { ThemeToggle } from "@/lib/theme";
 import * as api from "@/lib/api";
 import { useSession } from "@/lib/session";
 
@@ -66,9 +68,19 @@ function RegisterForm() {
   }
 
   return (
-    <main>
-      <p className="eyebrow">Website Chatbot SaaS</p>
+    <main className="auth-page">
+      <div className="auth-brand">
+        <span className="brand-mark" aria-hidden="true">
+          ?
+        </span>
+        <span>Website Chatbot SaaS</span>
+        <ThemeToggle />
+      </div>
+      <p className="eyebrow">YOUR AI WORKSPACE</p>
       <h1>Register</h1>
+      <p className="page-purpose">
+        Create your workspace and first website assistant.
+      </p>
       <form onSubmit={onSubmit}>
         {!isInviteSignup && (
           <>
@@ -105,9 +117,10 @@ function RegisterForm() {
             onChange={(event) => setEmail(event.target.value)}
           />
         </label>
-        <label>
+        <label htmlFor="auth-password">
           Password
-          <input
+          <PasswordField
+            id="auth-password"
             type="password"
             name="new-password"
             autoComplete="new-password"
