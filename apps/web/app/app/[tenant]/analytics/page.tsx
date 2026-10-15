@@ -34,8 +34,11 @@ export default function HandoffAnalyticsPage() {
   }, [load]);
 
   return (
-    <main className="page">
+    <main className="handoff-analytics">
       <h1>Handoff analytics</h1>
+      <p className="page-purpose">
+        Understand handoffs and your team’s response using measured activity.
+      </p>
       <p>Measured from website conversations created in the last 30 days.</p>
       {error && <Notice tone="error" message={error} />}
       {!data ? (

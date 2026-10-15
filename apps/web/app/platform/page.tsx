@@ -82,8 +82,11 @@ export default function PlatformHomePage() {
   }
 
   return (
-    <main>
+    <main className="platform-clients">
       <h1>Platform — clients</h1>
+      <p className="page-purpose">
+        Find client workspaces and onboard a new organization.
+      </p>
       <p className="eyebrow" data-testid="platform-staff-badge">
         Platform staff console
       </p>

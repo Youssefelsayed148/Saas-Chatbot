@@ -71,12 +71,19 @@ test("upload, ingest through the worker, preview, publish", async ({
   await page.getByRole("button", { name: "Upload", exact: true }).click();
   const sources = page.locator("[data-testid='sources-list']");
   await expect(sources).toContainText("sample-brochure.md");
-  await expect(sources).toContainText("stored");
+  await expect(sources.locator("[data-source-status]")).toHaveAttribute(
+    "data-source-status",
+    "stored",
+  );
 
   // Run the ingest; the REAL worker processes the job.
   await page.getByRole("button", { name: "Ingest files" }).click();
   const jobs = page.locator("[data-testid='jobs-list']");
-  await expect(jobs).toContainText("succeeded", { timeout: 45_000 });
+  await expect(jobs.locator("[data-job-status]").first()).toHaveAttribute(
+    "data-job-status",
+    "succeeded",
+    { timeout: 45_000 },
+  );
 
   // Draft documents appear with the chunk preview and the source_url citation.
   await page.getByLabel("View").selectOption("draft");
@@ -94,9 +101,11 @@ test("upload, ingest through the worker, preview, publish", async ({
   await expect(
     page.getByText(/Published — visitors now use this knowledge/),
   ).toBeVisible();
-  await expect(page.locator("[data-testid='revisions-list']")).toContainText(
-    "published",
-  );
+  await expect(
+    page.locator(
+      "[data-testid='revisions-list'] [data-revision-status='published']",
+    ),
+  ).toBeVisible();
 
   // The published view (default) now shows the documents too.
   await page.getByLabel("View").selectOption("published");
@@ -148,7 +157,7 @@ test("viewer is read-only on knowledge", async ({ browser }) => {
   await viewer.goto(inviteCode);
   await viewer.getByRole("link", { name: "Register" }).first().click();
   await viewer.getByLabel("Email").fill(viewerEmail);
-  await viewer.getByLabel("Password").fill(PASSWORD);
+  await viewer.getByLabel("Password", { exact: true }).fill(PASSWORD);
   await viewer.getByRole("button", { name: "Create account" }).click();
   await viewer.getByRole("button", { name: "Accept invitation" }).click();
   await viewer.getByRole("link", { name: /Go to your dashboard/i }).click();

@@ -4,10 +4,11 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
+import { LabelBadge } from "@/lib/labels";
 import * as api from "@/lib/api";
 import type { Bot } from "@/lib/api";
 import { roleSatisfies, useSession } from "@/lib/session";
-import { Loading, Notice } from "@/lib/ui";
+import { Loading, Notice, ConfirmAction } from "@/lib/ui";
 import BotWorkspaceNav from "@/lib/bot-workspace-nav";
 
 export default function BotSettingsPage() {
@@ -184,8 +185,11 @@ export default function BotSettingsPage() {
     <main>
       <BotWorkspaceNav tenantId={tenantId} botId={botId} />
       <h1>{bot.name} — settings</h1>
+      <p className="page-purpose">
+        Configure your assistant, appearance and website access.
+      </p>
       <p data-status={bot.status}>
-        Status: {bot.status}
+        Status: <LabelBadge value={bot.status} />
         {canEdit && bot.status !== "archived" && (
           <span>
             {" "}
@@ -258,6 +262,7 @@ export default function BotSettingsPage() {
         <label>
           Business description
           <textarea
+            dir="auto"
             name="business_description"
             disabled={!canEdit}
             rows={3}
@@ -290,6 +295,7 @@ export default function BotSettingsPage() {
         <label>
           Opening questions (one per line, max 10)
           <textarea
+            dir="auto"
             name="opening_questions"
             disabled={!canEdit}
             rows={4}
@@ -377,6 +383,7 @@ export default function BotSettingsPage() {
         <label>
           Allowed domains (one per line, max 50)
           <textarea
+            dir="auto"
             name="allowed_domains"
             disabled={!canEdit}
             rows={3}
@@ -394,9 +401,15 @@ export default function BotSettingsPage() {
       </form>
       {canEdit && bot.status !== "archived" && (
         <section aria-label="Archive">
-          <button type="button" disabled={archiving} onClick={onArchive}>
-            {archiving ? "Archiving…" : "Archive bot"}
-          </button>
+          <ConfirmAction
+            title="Archive this bot?"
+            description="The bot will disappear from the default list. Its knowledge and history are retained."
+            disabled={archiving}
+            onConfirm={() => void onArchive()}
+            confirmLabel="Archive bot"
+          >
+            {archiving ? "Archiving..." : "Archive bot"}
+          </ConfirmAction>
           <p className="muted">
             Archived bots disappear from the default list but are not deleted.
           </p>

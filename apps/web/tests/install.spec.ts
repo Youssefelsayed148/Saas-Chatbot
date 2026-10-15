@@ -33,19 +33,26 @@ test("activate a draft bot on Settings, then Install shows snippet + sample help
 
   // Draft bot: Install flags the status and offers no sample page yet.
   await page.goto(`/app/${tenantId}/bots/${botId}/install`);
-  await expect(page.getByTestId("install-status")).toContainText("draft");
+  await expect(page.getByTestId("install-status")).toHaveAttribute(
+    "data-status",
+    "draft",
+  );
 
   // Activate from the Settings tab (P4-01 lifecycle through the UI).
   await page.goto(`/app/${tenantId}/bots/${botId}/settings`);
   await page.getByTestId("activate-bot").click();
-  await expect(page.getByText("Status:", { exact: false })).toContainText(
+  await expect(page.getByText("Status:", { exact: false })).toHaveAttribute(
+    "data-status",
     "active",
     { timeout: 10_000 },
   );
   await expect(page.getByTestId("settings-locator")).toHaveText(locator);
 
   await page.goto(`/app/${tenantId}/bots/${botId}/install`);
-  await expect(page.getByTestId("install-status")).toContainText("active");
+  await expect(page.getByTestId("install-status")).toHaveAttribute(
+    "data-status",
+    "active",
+  );
   const snippet = page.getByTestId("install-snippet");
   await expect(snippet).toContainText("/widget/v1/loader.js");
   await expect(snippet).toContainText(`data-locator="${locator}"`);

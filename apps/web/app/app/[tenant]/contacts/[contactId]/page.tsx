@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import * as api from "@/lib/api";
 import type { ContactProfile } from "@/lib/api";
@@ -19,6 +19,9 @@ export default function ContactPage() {
   const role = roleIn(tenantId);
   const canEdit = roleSatisfies(role, "editor");
   const canErase = roleSatisfies(role, "admin");
+  const eraseDialog = useRef<HTMLDialogElement>(null);
+  const [eraseMessages, setEraseMessages] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const [profile, setProfile] = useState<ContactProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fields, setFields] = useState("");
@@ -76,6 +79,7 @@ export default function ContactPage() {
         consent: profile.contact.consent,
       });
       await load();
+      setNotice("Changes saved.");
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "Could not save contact.",
@@ -94,9 +98,6 @@ export default function ContactPage() {
     }
   }
   async function erase() {
-    const eraseMessages = window.confirm(
-      "Also erase messages in this contact's conversations?",
-    );
     try {
       await api.eraseContact(tenantId, contactId, eraseMessages);
       router.push(`/app/${tenantId}/contacts`);
@@ -118,6 +119,7 @@ export default function ContactPage() {
       });
       setFollowUpText("");
       await load();
+      setNotice("Changes saved.");
     } catch (caught) {
       setError(
         caught instanceof Error
@@ -130,6 +132,7 @@ export default function ContactPage() {
     try {
       await api.cancelFollowUp(tenantId, followUpId);
       await load();
+      setNotice("Changes saved.");
     } catch (caught) {
       setError(
         caught instanceof Error
@@ -141,14 +144,20 @@ export default function ContactPage() {
 
   if (!profile && !error) return <Loading />;
   return (
-    <main className="page">
+    <main className="contact-profile">
       <p>
         <Link href={`/app/${tenantId}/contacts`}>← Contacts</Link>
       </p>
       {error && <Notice tone="error" message={error} />}
+      {notice && <Notice message={notice} />}
       {profile && (
         <>
-          <h1>{profile.contact.display_name || "Unnamed contact"}</h1>
+          <h1 dir="auto">
+            {profile.contact.display_name || "Unnamed contact"}
+          </h1>
+          <p className="page-purpose">
+            Review this contact, update their profile and coordinate follow-ups.
+          </p>
           <form onSubmit={save} className="card">
             <label>
               Name{" "}
@@ -234,6 +243,7 @@ export default function ContactPage() {
             <label>
               Custom fields (JSON, up to 20 keys){" "}
               <textarea
+                dir="auto"
                 disabled={!canEdit}
                 rows={6}
                 value={fields}
@@ -285,6 +295,7 @@ export default function ContactPage() {
                   <label>
                     Conversation{" "}
                     <select
+                      aria-label="Conversation"
                       required
                       value={selectedConversation}
                       onChange={(e) => setSelectedConversation(e.target.value)}
@@ -314,6 +325,7 @@ export default function ContactPage() {
                   <label>
                     Message{" "}
                     <textarea
+                      dir="auto"
                       required
                       minLength={1}
                       maxLength={4000}
@@ -389,9 +401,45 @@ export default function ContactPage() {
                 Deletes the contact and its channel identities. You can also
                 erase conversation messages.
               </p>
-              <button type="button" onClick={() => void erase()}>
+              <button
+                className="danger-button"
+                type="button"
+                onClick={() => eraseDialog.current?.showModal()}
+              >
                 Erase contact
               </button>
+              <dialog ref={eraseDialog} aria-labelledby="erase-contact-title">
+                <h2 id="erase-contact-title">Erase this contact?</h2>
+                <p>The contact and its channel identities will be removed.</p>
+                <label className="check-control">
+                  <input
+                    type="checkbox"
+                    checked={eraseMessages}
+                    onChange={(event) => setEraseMessages(event.target.checked)}
+                  />
+                  Also erase messages in this contact’s conversations
+                </label>
+                <div className="action-row">
+                  <button
+                    type="button"
+                    className="quiet-button"
+                    autoFocus
+                    onClick={() => eraseDialog.current?.close()}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="danger-button"
+                    onClick={() => {
+                      eraseDialog.current?.close();
+                      void erase();
+                    }}
+                  >
+                    Confirm erasure
+                  </button>
+                </div>
+              </dialog>
             </section>
           )}
         </>

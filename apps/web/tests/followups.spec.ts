@@ -47,7 +47,9 @@ test("editor schedules a website follow-up from a contact profile and views meas
   await expect(
     page.getByRole("heading", { name: "Follow-up visitor" }),
   ).toBeVisible();
-  await page.getByLabel("Conversation").selectOption({ index: 1 });
+  await page
+    .getByLabel("Conversation", { exact: true })
+    .selectOption({ index: 1 });
   const localSendAt = new Date(Date.now() + 60 * 60 * 1000);
   localSendAt.setMinutes(
     localSendAt.getMinutes() - localSendAt.getTimezoneOffset(),
@@ -55,7 +57,9 @@ test("editor schedules a website follow-up from a contact profile and views meas
   await page
     .getByLabel("Send after")
     .fill(localSendAt.toISOString().slice(0, 16));
-  await page.getByLabel("Message").fill("We have reviewed your request.");
+  await page
+    .getByLabel("Message", { exact: true })
+    .fill("We have reviewed your request.");
   await page.getByRole("button", { name: "Schedule follow-up" }).click();
   await expect(
     page.getByText(/scheduled.*We have reviewed your request/),

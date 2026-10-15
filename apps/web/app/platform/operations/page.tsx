@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { LabelBadge } from "@/lib/labels";
 import * as api from "@/lib/api";
 import { Loading, Notice } from "@/lib/ui";
 
@@ -18,6 +19,7 @@ export default function PlatformOperationsPage() {
   const [quotas, setQuotas] = useState<api.PlatformQuotaPlans | null>(null);
   const [query, setQuery] = useState("");
   const [reason, setReason] = useState("");
+  const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function load() {
@@ -53,18 +55,23 @@ export default function PlatformOperationsPage() {
       await api.platformJobAction(jobId, action, reason.trim());
       setReason("");
       await load();
+      setNotice("Changes saved.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Operation failed.");
     }
   }
 
   return (
-    <main>
+    <main className="platform-operations">
       <h1>Platform operations</h1>
+      <p className="page-purpose">
+        Review measured platform activity, job health and audited operations.
+      </p>
       <p>
         <a href="/platform">Back to clients</a>
       </p>
       {error && <Notice message={error} tone="error" />}
+      {notice && <Notice message={notice} />}
       {!health || !analytics || !audit || !quotas ? (
         <Loading label="Loading platform operations…" />
       ) : (
@@ -167,7 +174,9 @@ export default function PlatformOperationsPage() {
                 {health.jobs.map((job) => (
                   <tr key={job.id}>
                     <td>{job.type}</td>
-                    <td>{job.status}</td>
+                    <td data-status={job.status}>
+                      <LabelBadge value={job.status} />
+                    </td>
                     <td>{job.attempts}</td>
                     <td>{job.error ?? "—"}</td>
                     <td>

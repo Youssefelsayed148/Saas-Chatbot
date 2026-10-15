@@ -168,7 +168,7 @@ test("viewer is read-only in the playground", async ({ browser }) => {
   await viewer.goto(inviteCode);
   await viewer.getByRole("link", { name: "Register" }).first().click();
   await viewer.getByLabel("Email").fill(viewerEmail);
-  await viewer.getByLabel("Password").fill(PASSWORD);
+  await viewer.getByLabel("Password", { exact: true }).fill(PASSWORD);
   await viewer.getByRole("button", { name: "Create account" }).click();
   await viewer.getByRole("button", { name: "Accept invitation" }).click();
   await viewer.getByRole("link", { name: /Go to your dashboard/i }).click();

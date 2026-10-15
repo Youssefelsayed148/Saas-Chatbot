@@ -21,7 +21,8 @@ function SamplePage() {
   const site = params.get("site") ?? "store-a";
 
   return (
-    <main>
+    <main className="sample-page">
+      <p className="eyebrow">WIDGET PREVIEW · SAMPLE WEBSITE</p>
       <h1>
         {site === "store-b" ? "Store B (sample site)" : "Store A (sample site)"}
       </h1>
@@ -29,23 +30,14 @@ function SamplePage() {
         This page stands in for a customer website. It embeds the widget exactly
         the way the Install tab shows it — one script tag with the bot locator:
       </p>
-      <pre
-        style={{
-          background: "#f1f5f9",
-          padding: "0.8rem",
-          overflowX: "auto",
-          borderRadius: "0.5rem",
-          fontSize: "0.85rem",
-        }}
-        data-testid="sample-snippet"
-      >
+      <pre data-testid="sample-snippet">
         {`
 <script
   src="/widget/v1/loader.js"
   data-locator="${locator}"
 ></script>`}
       </pre>
-      <p className="muted" style={{ color: "#5a6b85" }}>
+      <p className="muted sample-tip">
         Use the chat bubble to verify the assistant answers from this bot&apos;s
         published knowledge.
       </p>

@@ -118,6 +118,9 @@ export default function PlaygroundPage() {
     <main>
       <BotWorkspaceNav tenantId={tenantId} botId={botId} />
       <h1>Playground</h1>
+      <p className="page-purpose">
+        Test answers against your published knowledge before visitors do.
+      </p>
       {!canChat && (
         <Notice
           message={`Read-only view: trying the assistant requires the editor role (you are ${role}).`}

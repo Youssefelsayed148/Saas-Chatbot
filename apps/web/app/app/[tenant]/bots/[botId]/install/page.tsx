@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { LabelBadge } from "@/lib/labels";
 import * as api from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { Loading, Notice } from "@/lib/ui";
@@ -78,8 +79,11 @@ export default function InstallPage() {
     <main>
       <BotWorkspaceNav tenantId={tenantId} botId={botId} />
       <h1>{bot.name} — install</h1>
+      <p className="page-purpose">
+        Copy your widget snippet and verify it on the sample website.
+      </p>
       <p data-status={bot.status} data-testid="install-status">
-        Status: {bot.status}
+        Status: <LabelBadge value={bot.status} />
       </p>
       {bot.status !== "active" && (
         <Notice

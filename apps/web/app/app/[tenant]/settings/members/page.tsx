@@ -115,8 +115,11 @@ export default function MembersPage() {
 
   if (me && !isAdmin) {
     return (
-      <main>
+      <main className="team-page">
         <h1>Team</h1>
+        <p className="page-purpose">
+          Invite teammates and manage their access to this workspace.
+        </p>
         <Notice
           message={
             role
@@ -129,8 +132,11 @@ export default function MembersPage() {
   }
 
   return (
-    <main>
+    <main className="team-page">
       <h1>Team</h1>
+      <p className="page-purpose">
+        Invite teammates and manage their access to this workspace.
+      </p>
       {loadError && <Notice message={loadError} tone="error" />}
       {actionError && <Notice message={actionError} tone="error" />}
 

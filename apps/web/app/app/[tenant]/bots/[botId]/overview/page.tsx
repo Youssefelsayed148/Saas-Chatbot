@@ -105,6 +105,10 @@ export default function OverviewPage() {
     <main>
       <BotWorkspaceNav tenantId={tenantId} botId={botId} />
       <h1 data-testid="overview-title">Overview</h1>
+      <p className="page-purpose">
+        Measure conversations, answers and leads for this bot using stored
+        activity.
+      </p>
       <form
         aria-label="Date range"
         data-testid="overview-range"

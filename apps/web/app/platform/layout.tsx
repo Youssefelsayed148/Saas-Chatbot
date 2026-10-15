@@ -1,6 +1,7 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
+import { AppShell } from "@/lib/app-header";
 
 /**
  * /platform layout (P4-06, docs/11): the guard runs SERVER-SIDE on every
@@ -47,5 +48,5 @@ export default async function PlatformLayout({
     // the /platform console stays unrendered either way.
     redirect(`/login?next=/platform&guard=${reason}`);
   }
-  return <div className="platform-shell">{children}</div>;
+  return <AppShell platform>{children}</AppShell>;
 }

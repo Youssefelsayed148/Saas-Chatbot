@@ -45,6 +45,9 @@ export default function OrgSelectorPage() {
   return (
     <main>
       <h1>Your organizations</h1>
+      <p className="page-purpose">
+        Choose a workspace to manage its bots and conversations.
+      </p>
       {loading && <Loading label="Loading organizations…" />}
       {!loading && error && <Notice message={error} tone="error" />}
       {!loading && !error && me && me.memberships.length === 0 && (

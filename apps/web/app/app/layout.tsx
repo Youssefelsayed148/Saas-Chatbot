@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 
-import { AppHeader } from "@/lib/app-header";
+import { AppShell } from "@/lib/app-header";
 
 export default function TenantAppLayout({
   children,
@@ -13,10 +13,5 @@ export default function TenantAppLayout({
   // /app/[tenant]/...
   const tenant =
     typeof pathname === "string" ? pathname.split("/")[2] : undefined;
-  return (
-    <>
-      <AppHeader tenantId={tenant || undefined} />
-      {children}
-    </>
-  );
+  return <AppShell tenantId={tenant || undefined}>{children}</AppShell>;
 }

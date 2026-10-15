@@ -23,6 +23,9 @@
   "use strict";
 
   var VERSION = "v1";
+  /* GENERATED_WIDGET_TOKENS */
+  var widgetTokens = "/* Canonical semantic tokens, shared by dashboard and scoped widget surfaces. */\r\n.chatbot-widget-button,.chatbot-widget-frame {\r\n  color-scheme: dark;\r\n  --bg: #0b1018;\r\n  --surface: #111925;\r\n  --surface-raised: #172231;\r\n  --surface-hover: #1e2c3d;\r\n  --text: #edf3fa;\r\n  --muted: #a3b2c6;\r\n  --border: #2b3a4e;\r\n  --accent: #8aafff;\r\n  --accent-soft: #20324f;\r\n  --button: #b1c9ff;\r\n  --button-text: #101e38;\r\n  --danger: #ffaaa5;\r\n  --danger-soft: #382022;\r\n  --success: #86ddbd;\r\n  --success-soft: #14372d;\r\n  --warning: #f2ce8e;\r\n  --warning-soft: #372e1d;\r\n  --focus: #b9d0ff;\r\n  --staff: #d1b3ff;\r\n  --staff-soft: #302440;\r\n  --overlay: #050912b8;\r\n  --shadow: 0 18px 48px #00000030;\r\n  --radius: 16px;\r\n  --radius-sm: 9px;\r\n  --space-1: 0.25rem;\r\n  --space-2: 0.5rem;\r\n  --space-3: 0.75rem;\r\n  --space-4: 1rem;\r\n  --space-5: 1.5rem;\r\n  --space-6: 2rem;\r\n  --space-7: 3rem;\r\n  --font: ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", sans-serif;\r\n  --text-sm: 0.825rem;\r\n  --text-base: 0.925rem;\r\n  --text-lg: 1.2rem;\r\n  --heading: clamp(1.65rem, 3vw, 2.3rem);\r\n  --ease: 160ms ease;\r\n  --widget-brand: #1f7a5c;\r\n  --ink-light: #ffffff;\r\n  --ink-dark: #000000;\r\n}\r\n.chatbot-widget-button[data-theme=light],.chatbot-widget-frame[data-theme=light] {\r\n  color-scheme: light;\r\n  --bg: #f3f6fb;\r\n  --surface: #ffffff;\r\n  --surface-raised: #edf2f9;\r\n  --surface-hover: #e5edf7;\r\n  --text: #19263a;\r\n  --muted: #52647c;\r\n  --border: #cbd6e5;\r\n  --accent: #2459b4;\r\n  --accent-soft: #e5edff;\r\n  --button: #234f9a;\r\n  --button-text: #ffffff;\r\n  --danger: #a62631;\r\n  --danger-soft: #fff0f0;\r\n  --success: #176449;\r\n  --success-soft: #e3f4ec;\r\n  --warning: #745015;\r\n  --warning-soft: #fff2d9;\r\n  --focus: #2459b4;\r\n  --staff: #7040a2;\r\n  --staff-soft: #f0e8fa;\r\n  --overlay: #17263a80;\r\n  --shadow: 0 18px 48px #1d3c5912;\r\n}\r\n@media (prefers-color-scheme: light) {\r\n  .chatbot-widget-button,.chatbot-widget-frame {\r\n    color-scheme: light;\r\n    --bg: #f3f6fb;\r\n    --surface: #ffffff;\r\n    --surface-raised: #edf2f9;\r\n    --surface-hover: #e5edf7;\r\n    --text: #19263a;\r\n    --muted: #52647c;\r\n    --border: #cbd6e5;\r\n    --accent: #2459b4;\r\n    --accent-soft: #e5edff;\r\n    --button: #234f9a;\r\n    --button-text: #ffffff;\r\n    --danger: #a62631;\r\n    --danger-soft: #fff0f0;\r\n    --success: #176449;\r\n    --success-soft: #e3f4ec;\r\n    --warning: #745015;\r\n    --warning-soft: #fff2d9;\r\n    --focus: #2459b4;\r\n    --staff: #7040a2;\r\n    --staff-soft: #f0e8fa;\r\n    --overlay: #17263a80;\r\n    --shadow: 0 18px 48px #1d3c5912;\r\n  }\r\n}\r\n";
+  /* END_WIDGET_TOKENS */
 
   var script =
     document.currentScript ||
@@ -49,7 +52,7 @@
 
   var state = {
     opened: false,
-    brand: { colour: "#1f7a5c", position: "right", dir: "ltr" },
+    brand: { colour: "", position: "right", dir: "ltr" },
   };
 
   // --- bubble button ---------------------------------------------------------
@@ -72,7 +75,7 @@
   });
 
   function styleButton() {
-    var colour = state.brand.colour;
+    var colour = state.brand.colour || "var(--widget-brand)";
     var right = state.brand.position !== "left";
     button.style.background = colour;
     button.style.position = "fixed";
@@ -83,10 +86,19 @@
     button.style.height = "3.5rem";
     button.style.borderRadius = "50%";
     button.style.border = "0";
-    button.style.boxShadow = "0 6px 20px rgba(15,35,60,0.35)";
+    button.style.boxShadow = "var(--shadow)";
     button.style.cursor = "pointer";
     button.style.zIndex = "2147483000";
-    button.style.color = "#ffffff";
+    var rgb = /^#[0-9a-f]{6}$/i.test(colour)
+      ? [1, 3, 5].map(function (i) {
+          var v = parseInt(colour.slice(i, i + 2), 16) / 255;
+          return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+        })
+      : [0, 0, 0];
+    button.style.color =
+      0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2] > 0.179
+        ? "var(--ink-dark)"
+        : "var(--ink-light)";
     button.style.fontSize = "1.35rem";
     button.style.lineHeight = "1";
   }
@@ -102,10 +114,7 @@
     // Sandboxed per docs/09: scripts and forms run, the frame keeps its own
     // origin (so the public API stays same-origin and cookie-free), and the
     // customer page cannot script the frame beyond the message channel.
-    frame.setAttribute(
-      "sandbox",
-      "allow-scripts allow-same-origin allow-forms",
-    );
+    frame.setAttribute("sandbox", "allow-scripts allow-same-origin allow-forms");
     frame.setAttribute("data-testid", "widget-frame");
     document.body.appendChild(frame);
     var sourceUrl =
@@ -121,7 +130,7 @@
   function positionFrame() {
     if (!frame) return;
     var right = state.brand.position !== "left";
-    frame.style[right ? "right" : "left"] = "1.25rem";
+    frame.style[right ? "right" : "left"] = window.innerWidth <= 480 ? "0.5rem" : "1.25rem";
     frame.style[right ? "left" : "right"] = "auto";
     frame.style.bottom = window.innerWidth <= 480 ? "0" : "5rem";
   }
@@ -163,7 +172,7 @@
       if (event.source) {
         event.source.postMessage(
           { type: "chatbot:locator", locator: locator },
-          { targetOrigin: frameBase },
+          { targetOrigin: frameBase }
         );
       }
       applyFrameSize(600);
@@ -184,14 +193,14 @@
 
   // --- styles ----------------------------------------------------------------
 
-  styleButton();
-
   var css = document.createElement("style");
   css.textContent =
+    widgetTokens +
     ".chatbot-widget-frame{position:fixed;bottom:5rem;border:0;border-radius:1rem;" +
-    "box-shadow:0 10px 40px rgba(10,25,50,0.35);z-index:2147483000;background:#ffffff;" +
+    "box-shadow:var(--shadow);z-index:2147483000;background:var(--surface);" +
     "overflow:hidden;width:min(23.5rem, calc(100vw - 2.5rem));}" +
     "@media (max-width: 480px)" +
     "{.chatbot-widget-frame{bottom:0;width:calc(100vw - 1rem);border-radius:1rem 1rem 0 0;min-height:70dvh}}";
   document.head.appendChild(css);
+  styleButton();
 })();

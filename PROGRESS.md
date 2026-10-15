@@ -473,3 +473,98 @@ Built: Added draft runbook, backup/restore procedure, monitoring/alert definitio
 Tested: Documentation cross-checked against open ADR-007, P7 checklist, current Storage interface, and P6 channel boundary; no deploy or database restore was performed.
 Unverified: Disposable backup/restore drill, independent security review, production alert delivery, and full Playwright run remain open. Full suite owner command after ADR-007/environment review: `npm.cmd test --workspace apps/web`; full API owner command (run from `apps/api`) requires a disposable plain URL: `$env:TEST_DATABASE_URL='postgresql://<user>:<password>@<host>/<base_db>'; python -m pytest -q --tb=short`. Existing browser failures were not chased, and no phase sign-off was ticked.
 
+
+## 2026-10-15 — UI redesign characterization baseline
+
+Command: `npm.cmd run test --workspace apps/web -- ui-characterization.spec.ts` with isolated loopback PostgreSQL on 55439, disposable `ui_redesign_test`, API on 8019 and offline model. Result: 5 passed, 1 failed (1.5m). Owner deletion validation, data-role presentation, platform operations, client mutation payloads and inbox viewer matrix passed. Widget 429 verbatim assertion failed: existing UI discards server text and substitutes a local fallback. The assertion remains exact; a frontend-only prerequisite fix follows in a separate commit. No redesign code changed before this baseline. An initial root npm argument-forwarding attempt failed with spawn EPERM; corrected workspace invocation used approved process permissions. No .env or credentials read.
+
+## 2026-10-15 — UI prerequisite: preserve widget server errors
+
+Frontend-only correction retains server message strings for session/message failures and lead errors; error codes still control existing behavior. Sandbox, CSP, postMessage and API contracts unchanged. Failed-spec-only command: `npm.cmd run test --workspace apps/web -- ui-characterization.spec.ts -g 'widget 429'` on disposable test instance: 1 passed (57.2s). Full gate sequence deferred to end per latest run policy. Characterization assertions were not weakened. The initial baseline could not be wholly green because the required verbatim behavior was already broken; recorded failing test separately before correction.
+
+## 2026-10-15 — UI S1 tokens, theme and navigation
+
+Shared semantic tokens, system-default viewer-local theme, responsive sidebar/drawer/top bar, workspace context, separate platform accent and navigation-only keyboard palette. No dependencies, API contract or platform guard changes. New presentation tests written, execution deferred. `npm.cmd run typecheck`: exit 0; `npm.cmd run lint`: exit 0. No stage build or Playwright run. All original routes/destinations retained; Overview navigation now targets the approved tenant root (implemented S2). Screenshots and full gates deferred to final sequence.
+
+## 2026-10-15 — UI S2 auth and tenant Overview
+
+Added read-only `/app/[tenant]` Overview using existing endpoints only; separate Bots destination remains unchanged. Counts, recent rows, quota meters and a first-current-bot checklist use returned data. Installation detection omitted. Auth/picker/landing/invitation presentation, show/hide password, skeleton/error/empty/shared confirmation surfaces added; auth/provisioning logic unchanged. `npm.cmd run typecheck`: exit 0; `npm.cmd run lint`: exit 0. Added read-only-route test; all new presentation tests await final browser gate. Zero dependencies. No stage build/Playwright.
+
+## 2026-10-15 — UI S3 bots and knowledge
+
+Bot tables/forms retained with archive confirmation dialogs, human status labels/raw attributes, clearer bot-tab purposes, knowledge source/job/revision cards and true indeterminate ingestion progress. No simulated percentage or ETA. Existing tests now assert raw status attributes and explicitly confirm archive; all assertions retained. `npm.cmd run typecheck`: exit 0; `npm.cmd run lint`: exit 0. No stage build/Playwright. Zero dependencies or contract changes. Screenshot/full browser verification deferred.
+
+## 2026-10-15 — UI S4 inbox and conversations
+
+Shared inbox list on existing list/detail routes, desktop split pane/mobile stacked navigation, explicit filter layout/removal chips, contact lookup through existing contacts endpoint, unread/snippet/status/channel/time rows, chat bubbles and expandable returned citations. Existing stream and mutation logic retained; raw mode/status remain available. New Arabic/unread/filter test written. Initial lint found an unused import; corrected. Final `npm.cmd run typecheck`: exit 0; `npm.cmd run lint`: exit 0. No stage build/Playwright. No dependencies/backend changes.
+
+## 2026-10-15 — UI S5 people, tenant governance and platform
+
+Restyled contacts/profile/follow-ups, team, handoff analytics, tenant data/audit and platform clients/detail/operations. Tenant deletion keeps exact-name/reason guards and adds a cancelable final dialog; contact erasure explicitly preserves the existing optional message-erasure payload. Server guards/permissions unchanged. Characterization specs cover sensitive current behavior. `npm.cmd run typecheck`: exit 0; `npm.cmd run lint`: exit 0. No stage build/Playwright. Zero dependencies. Stored-sentiment empty state and PLACEHOLDER disclosures retained.
+
+## 2026-10-15 — UI S6 widget and sample
+
+Widget/frame/launcher/lead/error/handoff/typing surfaces restyled with canonical tokens; sample polished. Standalone loader token definitions are generated by `node packages/widget/scripts/sync-loader.mjs` from tokens.css; both copies byte-identical. Config-driven brand gets contrast-aware ink. Server messages remain verbatim (including configuration/message/session/lead errors when supplied). Initial sandbox/origin line-comparison failed on Prettier-only line wrapping/trailing commas; original security-sensitive formatting restored in S7 and exact comparison passed; CSP/proxy files unchanged. `npm.cmd run typecheck`: exit 0; `npm.cmd run lint`: exit 0. No stage build/Playwright. No dependencies or API config fields added.
+
+## 2026-10-15 — UI S7 responsive, RTL and verification preparation
+
+Added logical spacing, self-directed user text, palette combobox/listbox semantics, mobile/contrast refinements, tenant-deletion cancellation assertion and screenshot harness (26 routes × 2 themes × 2 viewports). Manual test updated only for requested commands/labels/flows and redesigned UI checks. Seed range already contained valid UTF-8 and no `runon` occurrence existed in the current file; those replacements were unnecessary. Initial S6 boundary comparison was a formatting-only false mismatch, now corrected and verified against baseline. `npm.cmd run typecheck`: exit 0; `npm.cmd run lint`: exit 0; `git diff --check`: exit 0. Source count: 35 browser tests (all original 25 retained). No stage browser/build run. Final sequential gates and screenshot execution follow.
+
+## 2026-10-15 — UI final-gate corrections (before final successful sequence)
+
+- First final sequence: `npm.cmd run typecheck`, `npm.cmd run lint`, `npm.cmd run build` all exit 0. `npm.cmd run test`: 29 failed, 6 passed (5.5m). All 29 failures shared broad Password selectors matching the new show-password button. Field selectors now use exact accessible names; assertions unchanged. `npm.cmd run test --workspace apps/web -- contacts.spec.ts`: 1 passed (46.3s).
+- Corrected PowerShell-to-Python character conversion in newly introduced icons/copy using explicit Unicode escapes; existing server-returned messages were not rewritten. Removed a false success notice on read-only platform loading. Restarted lint caught six unescaped JSX apostrophes; corrected typography and reran lint successfully.
+- Restarted typecheck, lint and build: all exit 0. `npm.cmd run test`: 2 failed, 33 passed (3.5m). Follow-up selector matched hidden contact-erasure copy; platform operation selector still expected raw pending as display text after readable badge mapping. Added explicit Conversation label, exact follow-up selectors and a raw data-status hook for operation rows.
+- Failed-spec-only reruns: `npm.cmd run test --workspace apps/web -- followups.spec.ts`: 1 passed (49.0s); `npm.cmd run test --workspace apps/web -- ui-characterization.spec.ts -g 'platform operations:'`: 1 passed (48.6s). No skipped/deleted tests, changed retries, weaker assertions or timeout inflation.
+- Tightened configured widget brand ink to pure black/white for AA contrast, with a new both-theme mid-tone/light/dark color test (suite now 36 cases). Loader copies regenerated from canonical tokens.
+- Safe test environment: isolated local PostgreSQL cluster in the OS temporary directory, listening only on 127.0.0.1:55439; disposable database ui_redesign_test, API 8019, web 3100, offline stub model. No existing database credentials or .env were read. Native process permissions required approved escalation. No API pytest, backend source, migrations or infrastructure edits.
+- Command output logs are local and uncommitted under `.test-storage/ui-redesign/`. Initial/restarted failed full runs remain in `test-run-1.log` and `test-final-1.log`; focused reruns have separate logs. The final sequence uses `typecheck-final.log`, `lint-final.log`, `build-final.log`, and `test-36-run-1.log` / `test-36-run-2.log`.
+
+## 2026-10-15 — UI final revision and boundary review
+
+An intermediate complete suite passed 36/36 (2.9m). A final mobile spacing correction keeps left/right embedded frames inside a 360px viewport; a reachable header close control reuses the existing close message, returns launcher focus, and preserves origin strictness. Added explicit widget language/close-form labels. Screenshot harness now includes open embeds as well as launchers (108 planned images). Final suite source count: 37; every original test retained.
+
+AST comparison against baseline 1bea650 passed for all iframe sandbox values, event-origin comparisons and postMessage arguments in loader/frame. The first Node-based comparison could not spawn git (EPERM); using a read-only Python baseline export and Node AST parsing succeeded. API contracts, CSP/proxy configuration, backend/migrations/infra, dependency manifests/lockfile and protected docs were separately checked unchanged. Both loader copies are identical.
+
+Final revision: `npm.cmd run typecheck` exit 0; `npm.cmd run lint` exit 0; `npm.cmd run build` exit 0. `npm.cmd run test` final 37-case run 1: 37 passed (2.9m), exit 0, no retries/skips. Run 2 and screenshot results follow in the completion entry. Final logs: `.test-storage/ui-redesign/test-37-run-1.log` and `test-37-run-2.log`.
+
+## 2026-10-15 — UI characterization teardown race
+
+The first final 37-case run passed 37/37 (2.9m). The consecutive second run finished 36 passed / 1 failed (3.0m): the 429 assertion itself succeeded, but an in-flight auth/me proxy handler from the preceding viewer characterization errored during page teardown. This was a test-harness race, not a swallowed product failure. Replaced proxy callbacks with an authenticated session snapshot (explicitly assert the tenant membership first) and added `page.unrouteAll({behavior:'wait'})` cleanup. No ignored errors, retries, skipped tests or weaker assertions. Failed-spec-only command `npm.cmd run test --workspace apps/web -- ui-characterization.spec.ts`: 6 passed (1.0m), exit 0. Restarted final typecheck and lint both exit 0. The fresh full-run logs will be `test-37-final-1.log` and `test-37-final-2.log`; earlier run logs remain unchanged.
+
+## 2026-10-15 — UI visual review refinement
+
+The frozen revision after the teardown fix passed two consecutive complete `npm.cmd run test` runs: 37 passed (2.9m), then 37 passed (2.9m), exit 0 both, no skips/retries. `npm.cmd run test --workspace apps/web -- --config playwright.screenshots.config.ts` then passed 1 capture workflow (40.6s), producing 108 PNGs / 11,779,148 bytes in implementation/ui-screens. Horizontal page overflow assertions passed across captured app routes/viewports. Inspected dark desktop Overview, light mobile conversation/auth, staff detail, inbox and embedded widget.
+
+Visual inspection found the expanded inbox filter stack pushed its list below the desktop fold. Refined presentation only: Search and Status remain visible; all five other existing filters are in native More filters disclosure with Escape support; active chips remain visible. Compact counts keep rows visible. Extended the existing Arabic/filter test with mode-request and disclosure keyboard assertions; no test was removed. Quota warning keys now use the shared readable-label mapper, not server-error rewriting. `npm.cmd run typecheck`: exit 0; `npm.cmd run lint`: exit 0. Repeating full final sequence and regenerating screenshots for this visual refinement. Prior consecutive green logs retained as test-37-final-1.log / test-37-final-2.log; reviewed revision logs use test-37-reviewed-1.log / test-37-reviewed-2.log.
+
+## 2026-10-15 — UI advanced-filter selector correction
+
+Reviewed compact-filter full run: 36 passed / 1 failed (3.0m). The extended filter test matched both the Mode select and the active Remove mode filter chip after a successful mode request. Added explicit inbox-mode-filter test ID and targeted that control; assertions unchanged. Failed-case-only command `npm.cmd run test --workspace apps/web -- ui-redesign.spec.ts -g 'Arabic inbox'`: 1 passed (47.6s). Restarted `npm.cmd run typecheck` and `npm.cmd run lint`: exit 0 both. Final compact revision logs use test-37-delivery-1.log / test-37-delivery-2.log and screenshots-delivery.log; earlier logs remain available.
+
+## 2026-10-15 — UI raw handoff inspection hook
+
+The compact inbox delivery revision passed two complete runs (37 passed, 2.9m each), then refreshed all 108 screenshots successfully (1 capture workflow passed, 41.1s; 13,285,101 bytes). Visual inspection confirmed rows visible within the desktop viewport. Final inspection added the missing raw handoff reason to title/data-handoff-reason while preserving its readable label; extended the existing Arabic row assertion to cover this requirement. No action or request changed. `npm.cmd run typecheck` and `npm.cmd run lint`: exit 0. Repeating the final sequence for this metadata-only correction; final handoff logs use test-37-handoff-1.log / test-37-handoff-2.log and screenshots-handoff.log. The same disposable local database was restarted for this verification only.
+
+## 2026-10-15 — UI redesign completion
+
+Final revision verified in the requested strict sequence, one heavy command at a time:
+
+1. `npm.cmd run typecheck` — exit 0.
+2. `npm.cmd run lint` — exit 0.
+3. `npm.cmd run build` — exit 0; all original routes plus approved read-only /app/[tenant] generated.
+4. `npm.cmd run test` — 37 passed (2.9m), exit 0.
+5. `npm.cmd run test` — 37 passed (2.9m), exit 0, consecutively on unchanged source.
+6. `npm.cmd run test --workspace apps/web -- --config playwright.screenshots.config.ts` — 1 capture workflow passed (40.5s), exit 0; production build reused.
+
+Evidence: `.test-storage/ui-redesign/typecheck-final.log`, `lint-final.log`, `build-final.log`, `test-37-handoff-1.log`, `test-37-handoff-2.log`, `screenshots-handoff.log`. Original 25 browser tests retained; total now 37; retries 0, no skipped/deleted/weakened assertions. Earlier failures, the one observed harness teardown race and all focused reruns are recorded above, not hidden. No command was killed for memory. API pytest was not run per frontend-only scope.
+
+Artifacts: `implementation/ui-screens/` contains 108 full-page PNGs (13,733,221 bytes): 26 routes plus open embedded-widget state, each in dark/light at 1440x900 and 360x800 viewports. PNG widths/group completeness verified. Capture workflow's horizontal-overflow assertions passed. Visually inspected representative dark/light desktop/mobile Overview, inbox/thread, auth, platform and widget images; final compact inbox rows are visible within the desktop viewport. Screenshots remain uncommitted; original Stage 0 plan remains uncommitted/untouched.
+
+Decisions: zero dependencies and system fonts; native dialogs/disclosure and navigation-only palette; system-default viewer-local theme; separate read-only tenant Overview while preserving existing entry/org-switch destinations; first-current-bot knowledge checklist; existing contacts endpoint for row names; shared inbox list across existing list/thread routes; More filters keeps Search/Status and active chips visible; explicit optional contact-message erasure; canonical loader tokens with contrast-aware ink; mobile close reuses existing protocol; safe isolated disposable PostgreSQL/offline model; exact selectors/raw attributes and awaited test route cleanup.
+
+Skipped because existing API supplies no reliable data: installation detection/status, numeric ingestion percentage/ETA, actual token-stream rendering. No fabricated values. PLACEHOLDER plan disclosures and final-pricing/limits-TBD note retained. No staging/pricing ADR decision made.
+
+Final scope review: no backend source, migrations, infra, API contract, dependency manifest/lockfile, CSP/proxy, README or protected docs edits. Only requested MANUAL-TEST changes under existing implementation docs. Sandbox/origin/postMessage arguments match baseline AST; loader copies identical. No .env/key read, push, merge, deploy, paid API calls or cloud resources. Test API/worker/web processes stopped by harness; dedicated local PostgreSQL stopped via pg_ctl, data retained only in its temporary test cluster. Generated next-env.d.ts is restored to the pre-task tracked version.
+
+Limits: Chromium/local fixtures and automated keyboard/contrast/RTL/layout verification; manual screen-reader, other browsers and real customer-host embedding were not exercised. No production deployment approval implied. All authorized implementation and required verification are complete; no known blocking failure remains.

@@ -10,7 +10,13 @@
  * carries its own scoped CSP (next.config `source: "/widget/:path*"`).
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 
 type CitedSource = {
   chunk_id: string;
@@ -205,9 +211,12 @@ async function ensureSessionFor(
   });
   if (!response.ok) {
     const payload = (await response.json().catch(() => null)) as {
-      error?: { code?: string };
+      error?: { code?: string; message?: string };
     } | null;
-    throw new ApiCodeError(payload?.error?.code ?? "NETWORK");
+    throw new ApiCodeError(
+      payload?.error?.code ?? "NETWORK",
+      payload?.error?.message,
+    );
   }
   const payload = (await response.json()) as {
     session_id: string;
@@ -230,16 +239,26 @@ const CONSENT_TEXT_AR =
 
 class ApiCodeError extends Error {
   code: string;
-  constructor(code: string) {
-    super(code);
+  constructor(code: string, message?: string) {
+    super(message ?? code);
     this.code = code;
   }
 }
 
+function brandInk(colour?: string) {
+  if (!colour || !/^#[0-9a-f]{6}$/i.test(colour)) return "var(--ink-light)";
+  const rgb = [1, 3, 5]
+    .map((i) => parseInt(colour.slice(i, i + 2), 16) / 255)
+    .map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2] > 0.179
+    ? "var(--ink-dark)"
+    : "var(--ink-light)";
+}
 export default function WidgetFramePage() {
   const [status, setStatus] = useState<"loading" | "ready" | "error">(
     "loading",
   );
+  const [serverMessage, setServerMessage] = useState<string | null>(null);
   const [reason, setReason] = useState<string | null>(null);
   const [config, setConfig] = useState<WidgetConfig | null>(null);
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -390,7 +409,8 @@ export default function WidgetFramePage() {
     // Session refs change without a render; the interval reads the latest ref.
   }, [status, config]);
 
-  function setTypedError(code: string) {
+  function setTypedError(code: string, message?: string) {
+    setServerMessage(message ?? null);
     if (code === "BOT_PAUSED") setReason("paused");
     else if (code === "BOT_NOT_READY") setReason("notReady");
     else if (code === "QUOTA_EXCEEDED") setReason("quota");
@@ -404,9 +424,14 @@ export default function WidgetFramePage() {
   async function bootstrap(locator: string) {
     setStatus("loading");
     setError(null);
+    setServerMessage(null);
     try {
       const response = await fetch(`/api/public/v1/widgets/${locator}/config`);
       if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          error?: { message?: string };
+        } | null;
+        setServerMessage(payload?.error?.message ?? null);
         setStatus("error");
         setReason(response.status === 404 ? "notfound" : "network");
         return;
@@ -520,9 +545,12 @@ export default function WidgetFramePage() {
       );
       if (!response.ok) {
         const payload = (await response.json().catch(() => null)) as {
-          error?: { code?: string };
+          error?: { code?: string; message?: string };
         } | null;
-        setTypedError(payload?.error?.code ?? "NETWORK");
+        setTypedError(
+          payload?.error?.code ?? "NETWORK",
+          payload?.error?.message,
+        );
         setTyping(false);
         return;
       }
@@ -562,9 +590,13 @@ export default function WidgetFramePage() {
         ];
       });
       setReason(null);
+      setServerMessage(null);
     } catch (caught) {
       if (caught instanceof ApiCodeError) {
-        setTypedError(caught.code);
+        setTypedError(
+          caught.code,
+          caught.message === caught.code ? undefined : caught.message,
+        );
       } else {
         setReason("network");
       }
@@ -658,15 +690,16 @@ export default function WidgetFramePage() {
         }));
       } else {
         const payloadResponse = (await response.json().catch(() => null)) as {
-          error?: { code?: string };
+          error?: { code?: string; message?: string };
         } | null;
         setLead((state) => ({
           ...state,
           status: "error",
           error:
-            payloadResponse?.error?.code === "CONSENT_REQUIRED"
+            payloadResponse?.error?.message ??
+            (payloadResponse?.error?.code === "CONSENT_REQUIRED"
               ? localized("leadConsentRequired", lang)
-              : localized("network", lang),
+              : localized("network", lang)),
         }));
       }
     } catch {
@@ -681,10 +714,7 @@ export default function WidgetFramePage() {
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        window.parent.postMessage(
-          { type: "chatbot:close" },
-          window.location.origin,
-        );
+        closeWidget();
       }
     }
     document.addEventListener("keydown", onKey);
@@ -695,15 +725,38 @@ export default function WidgetFramePage() {
     reason === "paused" || reason === "notReady" || reason === "unavailable";
 
   return (
-    <div dir={dir} className="widget-frame" data-testid="widget-frame-body">
+    <div
+      dir={dir}
+      lang={lang}
+      className="widget-frame"
+      data-testid="widget-frame-body"
+      style={
+        {
+          "--widget-brand": config?.colour,
+          "--widget-ink": brandInk(config?.colour),
+        } as CSSProperties
+      }
+    >
       <style>{widgetStyles}</style>
-      <header
-        className="widget-header"
-        style={{ background: config?.colour ?? "#1f7a5c" }}
-      >
+      <header className="widget-header">
+        <span aria-hidden="true" className="widget-brand-mark">
+          ✧
+        </span>
         <span className="widget-title" data-testid="widget-title">
           {status === "loading" ? "" : (config?.bot_name ?? "")}
         </span>
+        <span className="widget-header-caption">
+          {lang === "ar" ? "مساعد الموقع" : "Website assistant"}
+        </span>
+        <button
+          type="button"
+          className="widget-close"
+          data-testid="widget-close"
+          aria-label={lang === "ar" ? "إغلاق المحادثة" : "Close chat"}
+          onClick={closeWidget}
+        >
+          ×
+        </button>
       </header>
 
       <main className="widget-thread" aria-live="polite">
@@ -715,16 +768,17 @@ export default function WidgetFramePage() {
 
         {status === "error" && (
           <p role="alert" className="widget-note error">
-            {localized("network", lang)}
+            {serverMessage ?? localized("network", lang)}
           </p>
         )}
         {status === "ready" && blocked && (
           <p role="status" className="widget-note">
-            {reason === "paused"
-              ? localized("paused", lang)
-              : reason === "notReady"
-                ? localized("notReady", lang)
-                : localized("unavailable", lang)}
+            {serverMessage ??
+              (reason === "paused"
+                ? localized("paused", lang)
+                : reason === "notReady"
+                  ? localized("notReady", lang)
+                  : localized("unavailable", lang))}
           </p>
         )}
 
@@ -736,13 +790,14 @@ export default function WidgetFramePage() {
                 className="widget-note error"
                 data-testid="widget-error"
               >
-                {reason === "quota"
-                  ? localized("quota", lang)
-                  : reason === "rateLimited"
-                    ? localized("rateLimited", lang)
-                    : reason === "sessionExpired"
-                      ? localized("sessionExpired", lang)
-                      : localized("network", lang)}
+                {serverMessage ??
+                  (reason === "quota"
+                    ? localized("quota", lang)
+                    : reason === "rateLimited"
+                      ? localized("rateLimited", lang)
+                      : reason === "sessionExpired"
+                        ? localized("sessionExpired", lang)
+                        : localized("network", lang))}
                 {reason === "network" && (
                   <button
                     type="button"
@@ -802,7 +857,7 @@ export default function WidgetFramePage() {
                     !turn.feedback && (
                       <span
                         className="widget-feedback"
-                        aria-label={localized("helpful", lang)}
+                        aria-label={localized("leadHelpful", lang)}
                       >
                         <button
                           type="button"
@@ -822,9 +877,16 @@ export default function WidgetFramePage() {
                         </button>
                       </span>
                     )}
+                  {turn.needsHuman && (
+                    <p className="widget-handoff" role="note">
+                      {lang === "ar"
+                        ? "تم طلب مساعدة الفريق"
+                        : "Team assistance requested"}
+                    </p>
+                  )}
                   {turn.feedback && (
                     <span className="widget-feedback-done muted">
-                      {localized("helpful", lang)} ✓
+                      {localized("leadHelpful", lang)} ✓
                     </span>
                   )}
                 </li>
@@ -836,7 +898,12 @@ export default function WidgetFramePage() {
                 className="widget-note typing"
                 data-testid="widget-typing"
               >
-                {localized("typing", lang)}
+                <span className="typing-dots" aria-hidden="true">
+                  <i />
+                  <i />
+                  <i />
+                </span>
+                <span className="sr-only">{localized("typing", lang)}</span>
               </p>
             )}
             {turns.length === 1 &&
@@ -976,6 +1043,9 @@ export default function WidgetFramePage() {
                 </button>
                 <button
                   type="button"
+                  aria-label={
+                    lang === "ar" ? "إغلاق النموذج" : "Close details form"
+                  }
                   onClick={() =>
                     setLead((state) => ({ ...state, open: false, error: null }))
                   }
@@ -1019,37 +1089,29 @@ export default function WidgetFramePage() {
   );
 }
 
+function closeWidget() {
+  window.parent.postMessage({ type: "chatbot:close" }, window.location.origin);
+}
+
 const widgetStyles = `
 html,body{height:100%}
-.widget-frame{position:absolute;inset:0;display:flex;flex-direction:column;height:100%;background:#ffffff;color:#182332;font-family:system-ui,-apple-system,Segoe UI,sans-serif;font-size:15px}
-.widget-header{padding:0.85rem 1rem;color:#fff;font-weight:600}
-.widget-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.widget-thread{flex:1;overflow-y:auto;padding:0.75rem 0.9rem;display:flex;flex-direction:column;gap:0.55rem;min-height:0}
-.widget-turns{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:0.55rem}
-.widget-bubble{background:#f1f5f9;border-radius:0.8rem;padding:0.55rem 0.8rem;max-width:85%;align-self:flex-start;overflow-wrap:anywhere}
-.widget-bubble.visitor{background:#1f7a5c;color:#fff;align-self:flex-end}
-.widget-citations{list-style:none;margin:0.4rem 0 0;padding:0;display:flex;flex-wrap:wrap;gap:0.3rem}
-.widget-source-chip{background:#ffffff;border:1px solid #cdd8e4;border-radius:999px;padding:0.1rem 0.6rem;font-size:0.75rem}
-.widget-source-chip a{color:#1d4ed8;text-decoration:none}
-.widget-feedback{display:inline-flex;gap:0.4rem;margin-top:0.3rem}
-.widget-feedback button{background:transparent;border:0;cursor:pointer;font-size:0.95rem;padding:0.1rem}
-.widget-feedback-done{font-size:0.75rem;margin-top:0.25rem}
-.widget-note{padding:0.5rem 0.2rem;color:#5a6b85;font-size:0.9rem}
-.widget-note.error{color:#b42318}
-.widget-note.typing{font-style:italic}
-.widget-chips{display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.5rem}
-.widget-chip{background:#fff;border:1px solid #cdd8e4;border-radius:999px;padding:0.35rem 0.8rem;font-size:0.85rem;cursor:pointer}
-.widget-composer{display:flex;gap:0.5rem;padding:0.6rem 0.75rem;border-top:1px solid #e4e9f2;position:sticky;bottom:0;background:#fff}
-.widget-composer .widget-composer-label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-.widget-composer input{flex:1;border:1px solid #b8c4d8;border-radius:0.5rem;padding:0.55rem 0.7rem;font:inherit;min-width:0}
-.widget-composer button{background:#1f7a5c;color:#fff;border:0;border-radius:0.5rem;padding:0.55rem 0.9rem;cursor:pointer}
-.widget-composer button:disabled{opacity:0.6;cursor:progress}
-.widget-lead{padding:0.5rem 0.8rem;border-top:1px solid #e4e9f2;display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center}
-.widget-lead-form{display:flex;flex-direction:column;gap:0.45rem;width:100%}
-.widget-lead-form label{display:flex;flex-direction:column;gap:0.2rem;font-size:0.85rem;color:#344b75}
-.widget-lead-title{font-size:0.95rem;margin:0.1rem 0}
-.widget-lead-consent{flex-direction:row!important;align-items:flex-start;gap:0.4rem}
-.widget-lead-actions{display:flex;gap:0.5rem}
-.widget-lead-actions button:last-child{background:transparent;border:1px solid #b8c4d8;color:#182332}
-.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.widget-frame{position:absolute;inset:0;display:flex;flex-direction:column;height:100%;background:var(--surface);color:var(--text);font-family:var(--font);font-size:14px;overflow:hidden}
+.widget-header{display:grid;grid-template-columns:32px 1fr 44px;column-gap:.6rem;align-items:center;padding:1rem 1.1rem;background:var(--widget-brand);color:var(--widget-ink,var(--ink-light));flex-shrink:0}
+.widget-header-caption{grid-column:2;grid-row:2}.widget-close{grid-column:3;grid-row:1/3;background:transparent;color:inherit;border:1px solid currentColor;min-inline-size:44px;min-block-size:44px;padding:0;font-size:1.3rem}.widget-close:focus-visible{outline-color:currentColor}
+.widget-brand-mark{grid-row:1/3;font-size:1.8rem;line-height:1}.widget-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:650;font-size:.95rem}.widget-header-caption{font-size:.7rem;opacity:.9}
+.widget-frame .widget-thread{flex:1;overflow-y:auto;padding:1.1rem;display:flex;flex-direction:column;gap:.8rem;min-height:0;inline-size:100%;max-inline-size:none;margin:0}
+.widget-turns{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.85rem}
+.widget-bubble{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius) var(--radius) var(--radius) 4px;padding:.75rem .9rem;max-inline-size:88%;align-self:flex-start;overflow-wrap:anywhere;line-height:1.65}
+.widget-bubble.visitor{background:var(--widget-brand);color:var(--widget-ink,var(--ink-light));align-self:flex-end;border-color:transparent;border-radius:var(--radius) var(--radius) 4px var(--radius)}
+[dir=rtl] .widget-bubble{border-radius:var(--radius) var(--radius) 4px var(--radius)}[dir=rtl] .widget-bubble.visitor{border-radius:var(--radius) var(--radius) var(--radius) 4px}
+.widget-citations{list-style:none;margin:.6rem 0 0;padding:0;display:flex;flex-wrap:wrap;gap:.3rem}.widget-source-chip{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.2rem .5rem;font-size:.7rem}.widget-source-chip a{color:var(--accent);text-decoration:none}
+.widget-feedback{display:flex;gap:.4rem;margin-block-start:.5rem}.widget-feedback button{background:transparent;color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:.85rem;padding:.25rem .45rem;min-block-size:32px}.widget-feedback-done{display:block;font-size:.7rem;margin-block-start:.4rem}.widget-handoff{font-size:.75rem;color:var(--warning);border-block-start:1px solid var(--border);padding-block-start:.4rem;margin-block:.5rem 0}
+.widget-note{padding:.5rem .2rem;color:var(--muted);font-size:.85rem;margin:0}.widget-note.error{color:var(--danger);background:var(--danger-soft);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.7rem}.widget-note.error button{display:block;margin-block-start:.5rem;font-size:.75rem}
+.widget-chips{display:flex;flex-wrap:wrap;gap:.5rem;margin-block-start:.5rem}.widget-chip{background:var(--surface);color:var(--accent);border:1px solid var(--border);border-radius:999px;padding:.5rem .8rem;font-size:.8rem;cursor:pointer;min-block-size:40px}
+.widget-frame .widget-composer{display:flex;flex-direction:row;gap:.5rem;padding:.85rem 1rem;border-block-start:1px solid var(--border);background:var(--surface);margin:0;max-inline-size:none;flex-shrink:0;inline-size:100%}
+.widget-composer-label{position:absolute;inline-size:1px;block-size:1px;overflow:hidden;clip-path:inset(50%)}.widget-composer input{flex:1;border:1px solid var(--border);border-radius:var(--radius-sm);padding:.65rem .8rem;font:inherit;min-inline-size:0;background:var(--bg);color:var(--text)}.widget-composer button{background:var(--widget-brand);color:var(--widget-ink,var(--ink-light));border:0;border-radius:var(--radius-sm);padding:.65rem .9rem;cursor:pointer;align-self:stretch}.widget-composer button:disabled{opacity:.6;cursor:progress}
+.widget-lead{padding:.75rem 1rem;border-block-start:1px solid var(--border);display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;max-block-size:55%;overflow-y:auto;flex-shrink:0;background:var(--surface)}.widget-lead>button{font-size:.8rem;background:var(--surface-raised);color:var(--accent);border:1px solid var(--border);inline-size:100%}
+.widget-lead-form{display:flex;flex-direction:column;gap:.6rem;inline-size:100%;max-inline-size:none}.widget-lead-form label{display:flex;flex-direction:column;gap:.25rem;font-size:.8rem;color:var(--muted)}.widget-lead-form input{inline-size:100%;padding:.5rem .7rem}.widget-lead-title{font-size:.9rem;margin:.1rem 0}.widget-lead-form .widget-lead-consent{flex-direction:row;align-items:flex-start;gap:.5rem}.widget-lead-consent input{inline-size:20px;flex-shrink:0}.widget-lead-actions{display:flex;gap:.5rem}.widget-lead-actions button:last-child{background:transparent;border:1px solid var(--border);color:var(--text)}
+.typing-dots{display:inline-flex;gap:4px;padding:.65rem .8rem;border:1px solid var(--border);border-radius:999px;background:var(--surface-raised)}.typing-dots i{inline-size:5px;block-size:5px;background:var(--muted);border-radius:50%;animation:widget-pulse .8s ease-in-out infinite alternate}.typing-dots i:nth-child(2){animation-delay:.15s}.typing-dots i:nth-child(3){animation-delay:.3s}@keyframes widget-pulse{to{opacity:.3;transform:translateY(-3px)}}
+@media(prefers-reduced-motion:reduce){.typing-dots i{animation:none}}
 `;

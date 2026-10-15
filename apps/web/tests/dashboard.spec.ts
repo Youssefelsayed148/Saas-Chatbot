@@ -24,15 +24,24 @@ test("owner signup provisions organization and first bot, then archive bot", asy
   await page.goto(`/app/${tenantId}/bots`);
   const row = page.getByRole("row", { name: new RegExp(botName) });
   await expect(row).toBeVisible();
-  await expect(row).toContainText("draft");
+  await expect(row.locator("[data-status]")).toHaveAttribute(
+    "data-status",
+    "draft",
+  );
 
   // Archive: the bot leaves the default list; it reappears with the archived toggle.
   await row.getByRole("button", { name: "Archive" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Archive bot", exact: true })
+    .click();
   await expect(page.getByText(/No bots yet/i)).toBeVisible();
   await page.getByRole("checkbox", { name: /Show archived bots/i }).check();
   await expect(
-    page.getByRole("row", { name: new RegExp(botName) }),
-  ).toContainText("archived");
+    page
+      .getByRole("row", { name: new RegExp(botName) })
+      .locator("[data-status]"),
+  ).toHaveAttribute("data-status", "archived");
 
   // Sign out returns to the protected flow requiring re-login.
   await page.getByRole("button", { name: "Sign out" }).click();
@@ -123,7 +132,7 @@ test("team management: owner invites, invitee accepts, viewer sees read-only bot
   await editor.goto(inviteCode);
   await editor.getByRole("link", { name: "Register" }).first().click();
   await editor.getByLabel("Email").fill(editorEmail);
-  await editor.getByLabel("Password").fill(PASSWORD);
+  await editor.getByLabel("Password", { exact: true }).fill(PASSWORD);
   await editor.getByRole("button", { name: "Create account" }).click();
   await editor.getByRole("button", { name: "Accept invitation" }).click();
   await expect(editor.getByRole("status")).toContainText(/Welcome aboard/i);

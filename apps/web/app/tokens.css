@@ -1,0 +1,96 @@
+/* Canonical semantic tokens, shared by dashboard and scoped widget surfaces. */
+:root {
+  color-scheme: dark;
+  --bg: #0b1018;
+  --surface: #111925;
+  --surface-raised: #172231;
+  --surface-hover: #1e2c3d;
+  --text: #edf3fa;
+  --muted: #a3b2c6;
+  --border: #2b3a4e;
+  --accent: #8aafff;
+  --accent-soft: #20324f;
+  --button: #b1c9ff;
+  --button-text: #101e38;
+  --danger: #ffaaa5;
+  --danger-soft: #382022;
+  --success: #86ddbd;
+  --success-soft: #14372d;
+  --warning: #f2ce8e;
+  --warning-soft: #372e1d;
+  --focus: #b9d0ff;
+  --staff: #d1b3ff;
+  --staff-soft: #302440;
+  --overlay: #050912b8;
+  --shadow: 0 18px 48px #00000030;
+  --radius: 16px;
+  --radius-sm: 9px;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --text-sm: 0.825rem;
+  --text-base: 0.925rem;
+  --text-lg: 1.2rem;
+  --heading: clamp(1.65rem, 3vw, 2.3rem);
+  --ease: 160ms ease;
+  --widget-brand: #1f7a5c;
+  --ink-light: #ffffff;
+  --ink-dark: #000000;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f3f6fb;
+  --surface: #ffffff;
+  --surface-raised: #edf2f9;
+  --surface-hover: #e5edf7;
+  --text: #19263a;
+  --muted: #52647c;
+  --border: #cbd6e5;
+  --accent: #2459b4;
+  --accent-soft: #e5edff;
+  --button: #234f9a;
+  --button-text: #ffffff;
+  --danger: #a62631;
+  --danger-soft: #fff0f0;
+  --success: #176449;
+  --success-soft: #e3f4ec;
+  --warning: #745015;
+  --warning-soft: #fff2d9;
+  --focus: #2459b4;
+  --staff: #7040a2;
+  --staff-soft: #f0e8fa;
+  --overlay: #17263a80;
+  --shadow: 0 18px 48px #1d3c5912;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    color-scheme: light;
+    --bg: #f3f6fb;
+    --surface: #ffffff;
+    --surface-raised: #edf2f9;
+    --surface-hover: #e5edf7;
+    --text: #19263a;
+    --muted: #52647c;
+    --border: #cbd6e5;
+    --accent: #2459b4;
+    --accent-soft: #e5edff;
+    --button: #234f9a;
+    --button-text: #ffffff;
+    --danger: #a62631;
+    --danger-soft: #fff0f0;
+    --success: #176449;
+    --success-soft: #e3f4ec;
+    --warning: #745015;
+    --warning-soft: #fff2d9;
+    --focus: #2459b4;
+    --staff: #7040a2;
+    --staff-soft: #f0e8fa;
+    --overlay: #17263a80;
+    --shadow: 0 18px 48px #1d3c5912;
+  }
+}
