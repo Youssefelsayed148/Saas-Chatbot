@@ -36,6 +36,20 @@ test("Arabic inbox rows preserve unread markers and removable filter requests", 
   await expect(
     page.getByRole("button", { name: "Remove status filter" }),
   ).toBeVisible();
+  await page.getByText("More filters", { exact: true }).click();
+  const modeRequest = page.waitForRequest(
+    (request) =>
+      new URL(request.url()).pathname.endsWith("/inbox") &&
+      new URL(request.url()).searchParams.get("mode") === "human",
+  );
+  await page.getByLabel("Mode").selectOption("human");
+  await modeRequest;
+  await expect(
+    page.getByRole("button", { name: "Remove mode filter" }),
+  ).toBeVisible();
+  await page.getByLabel("Mode").press("Escape");
+  await expect(page.getByLabel("Mode")).not.toBeVisible();
+  await page.getByRole("button", { name: "Remove mode filter" }).click();
   const cleared = page.waitForRequest(
     (request) =>
       new URL(request.url()).pathname.endsWith("/inbox") &&

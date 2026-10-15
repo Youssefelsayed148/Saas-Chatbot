@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import * as api from "@/lib/api";
 import { roleSatisfies, useSession } from "@/lib/session";
-import { LabelBadge } from "@/lib/labels";
+import { LabelBadge, humanLabel } from "@/lib/labels";
 import { Empty, Loading, Notice, ConfirmAction } from "@/lib/ui";
 import type { Bot } from "@/lib/api";
 
@@ -122,7 +122,8 @@ export default function BotsListPage() {
           </p>
           {quota.warnings.length > 0 && (
             <p role="status">
-              Approaching the PLACEHOLDER limit for {quota.warnings.join(", ")}.
+              Approaching the PLACEHOLDER limit for{" "}
+              {quota.warnings.map(humanLabel).join(", ")}.
             </p>
           )}
           <p className="muted">

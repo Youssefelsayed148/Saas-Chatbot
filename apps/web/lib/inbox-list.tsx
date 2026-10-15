@@ -144,68 +144,81 @@ export function InboxList({
             <option value="resolved">Resolved</option>
           </select>
         </label>
-        <label>
-          Mode{" "}
-          <select
-            value={filters.mode}
-            onChange={(e) => updateFilter("mode", e.target.value)}
-          >
-            <option value="">All</option>
-            <option value="ai">AI</option>
-            <option value="human">Human</option>
-          </select>
-        </label>
-        <label>
-          Channel{" "}
-          <select
-            value={filters.channel}
-            onChange={(e) => updateFilter("channel", e.target.value)}
-          >
-            <option value="">All</option>
-            <option value="website">Website</option>
-            <option value="whatsapp">WhatsApp</option>
-            <option value="messenger">Messenger</option>
-            <option value="instagram">Instagram</option>
-          </select>
-        </label>
-        <label>
-          Assignee{" "}
-          <select
-            aria-label={compact ? "Filter assignee" : "Assignee"}
-            value={filters.assignee}
-            onChange={(e) => updateFilter("assignee", e.target.value)}
-          >
-            <option value="">Anyone</option>
-            <option value="me">Assigned to me</option>
-            <option value="unassigned">Unassigned</option>
-            {members
-              .filter((member) => member.status === "active")
-              .map((member) => (
-                <option key={member.user_id} value={member.user_id}>
-                  {member.email}
-                </option>
-              ))}
-          </select>
-        </label>
-        <label>
-          Tag{" "}
-          <input
-            aria-label="Filter by tag"
-            value={filters.tag}
-            onChange={(e) => updateFilter("tag", e.target.value)}
-          />
-        </label>
-        <label>
-          Unread{" "}
-          <select
-            value={filters.unread}
-            onChange={(e) => updateFilter("unread", e.target.value)}
-          >
-            <option value="">Any</option>
-            <option value="true">Unread</option>
-            <option value="false">Read</option>
-          </select>
-        </label>
+        <details
+          className="advanced-filters"
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              event.currentTarget.open = false;
+              event.currentTarget.querySelector("summary")?.focus();
+            }
+          }}
+        >
+          <summary>More filters</summary>
+          <div className="advanced-filter-fields">
+            <label>
+              Mode{" "}
+              <select
+                value={filters.mode}
+                onChange={(e) => updateFilter("mode", e.target.value)}
+              >
+                <option value="">All</option>
+                <option value="ai">AI</option>
+                <option value="human">Human</option>
+              </select>
+            </label>
+            <label>
+              Channel{" "}
+              <select
+                value={filters.channel}
+                onChange={(e) => updateFilter("channel", e.target.value)}
+              >
+                <option value="">All</option>
+                <option value="website">Website</option>
+                <option value="whatsapp">WhatsApp</option>
+                <option value="messenger">Messenger</option>
+                <option value="instagram">Instagram</option>
+              </select>
+            </label>
+            <label>
+              Assignee{" "}
+              <select
+                aria-label={compact ? "Filter assignee" : "Assignee"}
+                value={filters.assignee}
+                onChange={(e) => updateFilter("assignee", e.target.value)}
+              >
+                <option value="">Anyone</option>
+                <option value="me">Assigned to me</option>
+                <option value="unassigned">Unassigned</option>
+                {members
+                  .filter((member) => member.status === "active")
+                  .map((member) => (
+                    <option key={member.user_id} value={member.user_id}>
+                      {member.email}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <label>
+              Tag{" "}
+              <input
+                aria-label="Filter by tag"
+                value={filters.tag}
+                onChange={(e) => updateFilter("tag", e.target.value)}
+              />
+            </label>
+            <label>
+              Unread{" "}
+              <select
+                value={filters.unread}
+                onChange={(e) => updateFilter("unread", e.target.value)}
+              >
+                <option value="">Any</option>
+                <option value="true">Unread</option>
+                <option value="false">Read</option>
+              </select>
+            </label>
+          </div>
+        </details>
       </section>
       <div className="filter-chips" aria-label="Active filters">
         {Object.entries(filters)

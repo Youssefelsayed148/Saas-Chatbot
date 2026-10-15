@@ -1560,3 +1560,60 @@ dialog .action-row {
   display: grid;
   gap: 0.45rem;
 }
+
+/* Keep the conversation list visible before opening advanced inbox filters. */
+.filter-toolbar {
+  position: relative;
+}
+.advanced-filters {
+  align-self: end;
+}
+.advanced-filters > summary {
+  min-block-size: 44px;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--accent);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.advanced-filter-fields {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: calc(100% + 0.5rem);
+  z-index: 15;
+  padding: 1rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.advanced-filter-fields > label:first-child {
+  grid-column: auto;
+}
+.inbox-counts {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.65rem;
+  padding: 1rem;
+  font-size: 0.7rem;
+}
+.inbox-counts strong {
+  font-size: 1.2rem;
+}
+@media (max-width: 1150px) {
+  .filter-toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .filter-toolbar > label:first-child {
+    grid-column: 1/-1;
+  }
+}
+@media (max-width: 760px) {
+  .inbox-counts {
+    grid-template-columns: 1fr 1fr;
+  }
+}

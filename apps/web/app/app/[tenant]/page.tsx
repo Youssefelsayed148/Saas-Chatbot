@@ -169,7 +169,7 @@ export default function TenantOverview() {
             {data.quota.warnings.length > 0 && (
               <p role="status">
                 Approaching the PLACEHOLDER limit for{" "}
-                {data.quota.warnings.join(", ")}.
+                {data.quota.warnings.map(humanLabel).join(", ")}.
               </p>
             )}
             <p className="muted">
