@@ -19,6 +19,7 @@ test("Arabic inbox rows preserve unread markers and removable filter requests", 
             last_message: "مرحبا، أحتاج مساعدة في حسابي",
             last_message_at: "2026-10-15T09:00:00Z",
             unread_count: 3,
+            handoff_reason: "visitor_requested",
             tags: ["عاجل"],
           },
         ],
@@ -33,6 +34,9 @@ test("Arabic inbox rows preserve unread markers and removable filter requests", 
   await expect(row.locator(".message-snippet")).toHaveAttribute("dir", "auto");
   await expect(row.getByLabel("3 unread")).toBeVisible();
   await expect(row.locator("[data-value=waiting_human]")).toBeVisible();
+  await expect(
+    row.locator('[data-handoff-reason="visitor_requested"]'),
+  ).toContainText("Visitor requested a person");
   await expect(
     page.getByRole("button", { name: "Remove status filter" }),
   ).toBeVisible();

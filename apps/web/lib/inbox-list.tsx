@@ -286,7 +286,12 @@ export function InboxList({
                       </span>
                     )}
                   </div>
-                  <small className="muted" data-value={row.mode}>
+                  <small
+                    className="muted"
+                    data-value={row.mode}
+                    data-handoff-reason={row.handoff_reason ?? undefined}
+                    title={row.handoff_reason ?? row.mode}
+                  >
                     {humanLabel(row.mode)}
                     {row.handoff_reason
                       ? ` · ${humanLabel(row.handoff_reason)}`
