@@ -545,3 +545,26 @@ Reviewed compact-filter full run: 36 passed / 1 failed (3.0m). The extended filt
 ## 2026-10-15 — UI raw handoff inspection hook
 
 The compact inbox delivery revision passed two complete runs (37 passed, 2.9m each), then refreshed all 108 screenshots successfully (1 capture workflow passed, 41.1s; 13,285,101 bytes). Visual inspection confirmed rows visible within the desktop viewport. Final inspection added the missing raw handoff reason to title/data-handoff-reason while preserving its readable label; extended the existing Arabic row assertion to cover this requirement. No action or request changed. `npm.cmd run typecheck` and `npm.cmd run lint`: exit 0. Repeating the final sequence for this metadata-only correction; final handoff logs use test-37-handoff-1.log / test-37-handoff-2.log and screenshots-handoff.log. The same disposable local database was restarted for this verification only.
+
+## 2026-10-15 — UI redesign completion
+
+Final revision verified in the requested strict sequence, one heavy command at a time:
+
+1. `npm.cmd run typecheck` — exit 0.
+2. `npm.cmd run lint` — exit 0.
+3. `npm.cmd run build` — exit 0; all original routes plus approved read-only /app/[tenant] generated.
+4. `npm.cmd run test` — 37 passed (2.9m), exit 0.
+5. `npm.cmd run test` — 37 passed (2.9m), exit 0, consecutively on unchanged source.
+6. `npm.cmd run test --workspace apps/web -- --config playwright.screenshots.config.ts` — 1 capture workflow passed (40.5s), exit 0; production build reused.
+
+Evidence: `.test-storage/ui-redesign/typecheck-final.log`, `lint-final.log`, `build-final.log`, `test-37-handoff-1.log`, `test-37-handoff-2.log`, `screenshots-handoff.log`. Original 25 browser tests retained; total now 37; retries 0, no skipped/deleted/weakened assertions. Earlier failures, the one observed harness teardown race and all focused reruns are recorded above, not hidden. No command was killed for memory. API pytest was not run per frontend-only scope.
+
+Artifacts: `implementation/ui-screens/` contains 108 full-page PNGs (13,733,221 bytes): 26 routes plus open embedded-widget state, each in dark/light at 1440x900 and 360x800 viewports. PNG widths/group completeness verified. Capture workflow's horizontal-overflow assertions passed. Visually inspected representative dark/light desktop/mobile Overview, inbox/thread, auth, platform and widget images; final compact inbox rows are visible within the desktop viewport. Screenshots remain uncommitted; original Stage 0 plan remains uncommitted/untouched.
+
+Decisions: zero dependencies and system fonts; native dialogs/disclosure and navigation-only palette; system-default viewer-local theme; separate read-only tenant Overview while preserving existing entry/org-switch destinations; first-current-bot knowledge checklist; existing contacts endpoint for row names; shared inbox list across existing list/thread routes; More filters keeps Search/Status and active chips visible; explicit optional contact-message erasure; canonical loader tokens with contrast-aware ink; mobile close reuses existing protocol; safe isolated disposable PostgreSQL/offline model; exact selectors/raw attributes and awaited test route cleanup.
+
+Skipped because existing API supplies no reliable data: installation detection/status, numeric ingestion percentage/ETA, actual token-stream rendering. No fabricated values. PLACEHOLDER plan disclosures and final-pricing/limits-TBD note retained. No staging/pricing ADR decision made.
+
+Final scope review: no backend source, migrations, infra, API contract, dependency manifest/lockfile, CSP/proxy, README or protected docs edits. Only requested MANUAL-TEST changes under existing implementation docs. Sandbox/origin/postMessage arguments match baseline AST; loader copies identical. No .env/key read, push, merge, deploy, paid API calls or cloud resources. Test API/worker/web processes stopped by harness; dedicated local PostgreSQL stopped via pg_ctl, data retained only in its temporary test cluster. Generated next-env.d.ts is restored to the pre-task tracked version.
+
+Limits: Chromium/local fixtures and automated keyboard/contrast/RTL/layout verification; manual screen-reader, other browsers and real customer-host embedding were not exercised. No production deployment approval implied. All authorized implementation and required verification are complete; no known blocking failure remains.
