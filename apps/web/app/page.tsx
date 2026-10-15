@@ -4,7 +4,7 @@ export default function Home() {
   return (
     <main className="auth-page landing-page">
       <span className="brand-mark" aria-hidden="true">
-        ?
+        ✧
       </span>
       <p className="eyebrow">Website Chatbot SaaS</p>
       <h1>Application foundation</h1>

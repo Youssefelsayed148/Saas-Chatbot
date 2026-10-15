@@ -36,7 +36,6 @@ export default function PlatformOperationsPage() {
       setAudit(nextAudit);
       setQuotas(nextQuotas);
       setError(null);
-      setNotice("Changes saved.");
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "Could not load operations.",
@@ -56,6 +55,7 @@ export default function PlatformOperationsPage() {
       await api.platformJobAction(jobId, action, reason.trim());
       setReason("");
       await load();
+      setNotice("Changes saved.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Operation failed.");
     }
@@ -174,7 +174,7 @@ export default function PlatformOperationsPage() {
                 {health.jobs.map((job) => (
                   <tr key={job.id}>
                     <td>{job.type}</td>
-                    <td>
+                    <td data-status={job.status}>
                       <LabelBadge value={job.status} />
                     </td>
                     <td>{job.attempts}</td>

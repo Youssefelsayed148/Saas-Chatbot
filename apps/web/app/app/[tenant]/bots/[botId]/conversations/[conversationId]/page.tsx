@@ -51,7 +51,7 @@ export default function ConversationDetailPage() {
       </p>
       <h1 data-testid="conversation-detail-title">Conversation</h1>
       <p className="page-purpose">
-        Read this visitor?s conversation and the sources behind its answers.
+        Read this visitor’s conversation and the sources behind its answers.
       </p>
       {error && <Notice message={error} tone="error" />}
       {detail ? (

@@ -83,6 +83,19 @@ test("capture all redesigned pages in both themes and viewports", async ({
       if (name === "widget-frame")
         await expect(page.getByTestId("widget-title")).not.toBeEmpty();
       else await expect(page.locator("main").first()).toBeVisible();
+      if (url.startsWith(base)) {
+        await expect(page.getByTestId("workspace-context")).toContainText(
+          "owner",
+        );
+      }
+      if (name === "widget-sample") {
+        await expect(page.getByTestId("widget-bubble")).toBeVisible();
+      }
+      if (name === "tenant-data") {
+        await expect(
+          page.getByRole("button", { name: "Download export" }),
+        ).toBeVisible();
+      }
       await expect(page.locator(".loading-state")).toHaveCount(0, {
         timeout: 30000,
       });
@@ -100,6 +113,20 @@ test("capture all redesigned pages in both themes and viewports", async ({
           fullPage: true,
           animations: "disabled",
         });
+        if (name === "widget-sample") {
+          await page.getByTestId("widget-bubble").click();
+          const frame = page.frameLocator("[data-testid=widget-frame]");
+          await expect(frame.getByTestId("widget-title")).not.toBeEmpty();
+          await frame.locator("html").evaluate((element, theme) => {
+            element.dataset.theme = theme;
+          }, theme);
+          await page.screenshot({
+            path: path.join(output, `widget-embedded-${theme}-${viewport}.png`),
+            fullPage: true,
+            animations: "disabled",
+          });
+          await frame.getByTestId("widget-close").click();
+        }
       }
       expect(
         await page.evaluate(

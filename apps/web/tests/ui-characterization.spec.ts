@@ -129,7 +129,7 @@ test("platform operations: reason gates retry and cancel, audit search keeps its
   await page.getByLabel("Reason for job action").fill("Cancel after review");
   await page
     .getByRole("row")
-    .filter({ has: page.getByRole("cell", { name: "pending", exact: true }) })
+    .filter({ has: page.locator('td[data-status="pending"]') })
     .getByRole("button", { name: "Cancel" })
     .click();
   await expect.poll(() => actions.length).toBe(2);

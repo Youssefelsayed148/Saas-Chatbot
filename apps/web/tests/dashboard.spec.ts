@@ -132,7 +132,7 @@ test("team management: owner invites, invitee accepts, viewer sees read-only bot
   await editor.goto(inviteCode);
   await editor.getByRole("link", { name: "Register" }).first().click();
   await editor.getByLabel("Email").fill(editorEmail);
-  await editor.getByLabel("Password").fill(PASSWORD);
+  await editor.getByLabel("Password", { exact: true }).fill(PASSWORD);
   await editor.getByRole("button", { name: "Create account" }).click();
   await editor.getByRole("button", { name: "Accept invitation" }).click();
   await expect(editor.getByRole("status")).toContainText(/Welcome aboard/i);

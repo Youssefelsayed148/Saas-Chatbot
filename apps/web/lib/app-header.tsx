@@ -30,41 +30,41 @@ export function AppShell({
   const base = `/app/${tenantId}`;
   const links: Destination[] = platform
     ? [
-        { label: "Clients", href: "/platform", symbol: "?" },
-        { label: "Operations", href: "/platform/operations", symbol: "?" },
-        { label: "Client workspaces", href: "/app", symbol: "?" },
+        { label: "Clients", href: "/platform", symbol: "◈" },
+        { label: "Operations", href: "/platform/operations", symbol: "▥" },
+        { label: "Client workspaces", href: "/app", symbol: "↗" },
       ]
     : tenantId
       ? [
-          { label: "Overview", href: base, symbol: "?" },
-          { label: "Bots", href: `${base}/bots`, symbol: "?" },
-          { label: "Inbox", href: `${base}/inbox`, symbol: "?" },
-          { label: "Contacts", href: `${base}/contacts`, symbol: "?" },
+          { label: "Overview", href: base, symbol: "◈" },
+          { label: "Bots", href: `${base}/bots`, symbol: "✧" },
+          { label: "Inbox", href: `${base}/inbox`, symbol: "▤" },
+          { label: "Contacts", href: `${base}/contacts`, symbol: "◎" },
           ...(roleSatisfies(role, "admin")
             ? [
                 {
                   label: "Team",
                   href: `${base}/settings/members`,
-                  symbol: "?",
+                  symbol: "♧",
                 },
                 {
                   label: "Tenant data and audit",
                   href: `${base}/settings/data`,
-                  symbol: "?",
+                  symbol: "▦",
                 },
               ]
             : []),
           {
             label: "Handoff analytics",
             href: `${base}/analytics`,
-            symbol: "?",
+            symbol: "▥",
           },
         ]
-      : [{ label: "Organizations", href: "/app", symbol: "?" }];
+      : [{ label: "Organizations", href: "/app", symbol: "↗" }];
   const destinations = [
     ...links,
     ...(!platform && me?.is_platform_staff
-      ? [{ label: "Platform admin", href: "/platform", symbol: "?" }]
+      ? [{ label: "Platform admin", href: "/platform", symbol: "↗" }]
       : []),
   ];
   const filtered = destinations.filter((link) =>
@@ -105,7 +105,7 @@ export function AppShell({
     <>
       <Link className="brand" href={platform ? "/platform" : "/app"}>
         <span className="brand-mark" aria-hidden="true">
-          ?
+          ✧
         </span>
         <span>
           Website Chatbot
@@ -134,7 +134,7 @@ export function AppShell({
       <div className="sidebar-bottom">
         <p className="muted">
           {platform
-            ? "Staff tools ? audited actions"
+            ? "Staff tools · audited actions"
             : "Grounded in your knowledge."}
         </p>
         <ThemeToggle />
@@ -157,7 +157,7 @@ export function AppShell({
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           onClick={() => setCollapsed(!collapsed)}
         >
-          {collapsed ? "?" : "?"}
+          {collapsed ? "»" : "«"}
         </button>
       </aside>
       <div className="workspace-body">
@@ -168,13 +168,13 @@ export function AppShell({
             aria-label="Open navigation"
             onClick={() => drawer.current?.showModal()}
           >
-            ?
+            ☰
           </button>
           <span className="context-badge" data-testid="workspace-context">
             {platform
               ? "Platform admin"
               : tenantId
-                ? `Client workspace ? ${membership?.tenant_name ?? "Workspace"} ? ${role ?? "Checking access"}`
+                ? `Client workspace · ${membership?.tenant_name ?? "Workspace"} · ${role ?? "Checking access"}`
                 : "Your organizations"}
           </span>
           <button
@@ -183,7 +183,7 @@ export function AppShell({
             onClick={openPalette}
             aria-label="Open command palette"
           >
-            Search pages <kbd>? / Ctrl K</kbd>
+            Search pages <kbd>⌘ / Ctrl K</kbd>
           </button>
           {me && (
             <nav aria-label="Organization" className="account-nav">
@@ -322,14 +322,14 @@ export function AppShell({
                 onClick={() => palette.current?.close()}
               >
                 {link.symbol} {link.label}
-                <span aria-hidden="true">?</span>
+                <span aria-hidden="true">✧</span>
               </Link>
             </li>
           ))}
         </ul>
         {!filtered.length && <p className="muted">No matching pages.</p>}
         <p id="palette-help" className="muted">
-          Arrow keys to select ? Enter to open ? Escape to close
+          Arrow keys to select · Enter to open · Escape to close
         </p>
       </dialog>
     </div>

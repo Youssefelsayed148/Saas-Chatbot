@@ -1,6 +1,6 @@
 "use client";
 import { useRef, type ReactNode } from "react";
-export function Loading({ label = "Loading?" }: { label?: string }) {
+export function Loading({ label = "Loading..." }: { label?: string }) {
   return (
     <div className="loading-state" role="status">
       <span>{label}</span>
@@ -40,7 +40,7 @@ export function Empty({ children }: { children: ReactNode }) {
   return (
     <div className="empty-state">
       <span className="empty-symbol" aria-hidden="true">
-        ?
+        ✧
       </span>
       <p className="muted">{children}</p>
     </div>

@@ -566,7 +566,7 @@ dialog::backdrop {
     padding: 0.3rem 0.6rem;
   }
   .search-trigger::after {
-    content: "?";
+    content: "\2315";
     font-size: 1.3rem;
   }
   .account-nav {

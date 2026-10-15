@@ -62,13 +62,13 @@ export default function TenantOverview() {
           </p>
         </div>
         <Link className="primary-link" href={`${base}/inbox`}>
-          Open inbox ?
+          Open inbox ↗
         </Link>
       </div>
       {error && (
         <Notice message={error} tone="error" onRetry={() => void load()} />
       )}
-      {!data && !error && <Loading label="Loading workspace overview?" />}
+      {!data && !error && <Loading label="Loading workspace overview..." />}
       {data && (
         <>
           <div className="stat-grid" aria-label="Inbox counts">
@@ -89,11 +89,11 @@ export default function TenantOverview() {
             <section className="panel">
               <div className="section-heading">
                 <h2>Recent conversations</h2>
-                <Link href={`${base}/inbox`}>View inbox ?</Link>
+                <Link href={`${base}/inbox`}>View inbox →</Link>
               </div>
               {!data.recent.conversations.length ? (
                 <Empty>
-                  No conversations yet. Open a bot?s Install tab to test your
+                  No conversations yet. Open a bot’s Install tab to test your
                   widget.
                 </Empty>
               ) : (
@@ -105,7 +105,7 @@ export default function TenantOverview() {
                           {row.last_message || "New conversation"}
                         </span>
                         <small>
-                          {row.channel} ? {humanLabel(row.status)} ?{" "}
+                          {humanLabel(row.channel)} · {humanLabel(row.status)} ·{" "}
                           {row.last_message_at
                             ? new Date(row.last_message_at).toLocaleDateString()
                             : "No activity"}
@@ -121,7 +121,7 @@ export default function TenantOverview() {
               <h2>Your first assistant</h2>
               <ol className="checklist">
                 <li>
-                  <span aria-hidden="true">{data.bots.length ? "?" : "?"}</span>
+                  <span aria-hidden="true">{data.bots.length ? "✓" : "○"}</span>
                   <Link href={`${base}/bots`}>
                     {data.bots.length
                       ? "First bot created"
@@ -130,7 +130,7 @@ export default function TenantOverview() {
                 </li>
                 {data.bots[0] && (
                   <li>
-                    <span aria-hidden="true">{data.published ? "?" : "?"}</span>
+                    <span aria-hidden="true">{data.published ? "✓" : "○"}</span>
                     <Link href={`${base}/bots/${data.bots[0].id}/knowledge`}>
                       {data.published
                         ? "Knowledge published"

@@ -22,7 +22,7 @@ export async function registerOwner(
     .fill(opts.organizationName ?? `${prefix} Org ${Date.now()}`);
   await page.getByLabel("First bot name").fill(botName);
   await page.getByLabel("Email").fill(opts.email ?? uniqueEmail(prefix));
-  await page.getByLabel("Password").fill(PASSWORD);
+  await page.getByLabel("Password", { exact: true }).fill(PASSWORD);
   const registration = page.waitForResponse(
     (response) =>
       response.url().endsWith("/api/v1/auth/register") &&

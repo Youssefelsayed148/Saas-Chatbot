@@ -1,6 +1,106 @@
 import { expect, type Page, test } from "@playwright/test";
 import { registerOwner } from "./e2e-helpers";
 
+test("mobile embedded widget stays within the viewport for both configured placements", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  for (const position of ["left", "right"]) {
+    await page.route("**/api/public/v1/widgets/placement/config", (route) =>
+      route.fulfill({
+        json: {
+          available: true,
+          config: {
+            bot_name: "Placement check",
+            assistant_name: "Assistant",
+            welcome_message: { en: "Hello", ar: "Hello" },
+            opening_questions: [],
+            colour: "#123456",
+            position,
+            default_language: "en",
+            dir: "ltr",
+          },
+        },
+      }),
+    );
+    await page.goto("/widget/sample?locator=placement");
+    await page.getByTestId("widget-bubble").click();
+    await expect(
+      page
+        .frameLocator("[data-testid=widget-frame]")
+        .getByTestId("widget-title"),
+    ).toHaveText("Placement check");
+    await expect(page.getByTestId("widget-frame")).toHaveAttribute(
+      "sandbox",
+      "allow-scripts allow-same-origin allow-forms",
+    );
+    const box = await page.getByTestId("widget-frame").boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(360);
+    await page
+      .frameLocator("[data-testid=widget-frame]")
+      .getByTestId("widget-close")
+      .click();
+    await expect(page.getByTestId("widget-frame")).not.toBeVisible();
+    await expect(page.getByTestId("widget-bubble")).toBeFocused();
+    await page.unroute("**/api/public/v1/widgets/placement/config");
+  }
+});
+
+test("configured widget brand keeps header text contrast AA in both themes", async ({
+  page,
+}) => {
+  for (const colour of ["#777777", "#f4d0f0", "#123456"]) {
+    await page.route("**/api/public/v1/widgets/contrast/config", (route) =>
+      route.fulfill({
+        json: {
+          available: true,
+          config: {
+            bot_name: "Contrast check",
+            assistant_name: "Assistant",
+            welcome_message: { en: "Hello", ar: "Hello" },
+            opening_questions: [],
+            colour,
+            position: "right",
+            default_language: "en",
+            dir: "ltr",
+          },
+        },
+      }),
+    );
+    for (const theme of ["dark", "light"] as const) {
+      await page.emulateMedia({ colorScheme: theme });
+      await page.goto("/widget/frame?locator=contrast");
+      await expect(page.getByTestId("widget-title")).toHaveText(
+        "Contrast check",
+      );
+      await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+      const ratio = await page.locator(".widget-header").evaluate((element) => {
+        const style = getComputedStyle(element);
+        function luminance(value: string) {
+          const rgb = (value.match(/[\d.]+/g) ?? [])
+            .slice(0, 3)
+            .map(Number)
+            .map((c) => c / 255)
+            .map((c) =>
+              c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4,
+            );
+          return 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
+        }
+        const a = luminance(style.color),
+          b = luminance(style.backgroundColor);
+        return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+      });
+      expect(
+        ratio,
+        `${colour}/${theme} header contrast`,
+      ).toBeGreaterThanOrEqual(4.5);
+    }
+    await page.unroute("**/api/public/v1/widgets/contrast/config");
+  }
+});
+
 /**
  * P4-02/P4-03 E2E (docs/09): two TEST SITES embedding a DIFFERENT tenant's
  * bot each via the real script snippet; each widget answers strictly from its

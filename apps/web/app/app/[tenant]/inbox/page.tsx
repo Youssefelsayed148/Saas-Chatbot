@@ -5,7 +5,7 @@ export default function InboxPage() {
       <InboxList />
       <section className="thread-placeholder panel">
         <span className="empty-symbol" aria-hidden="true">
-          ?
+          ✧
         </span>
         <h2>Every conversation, in context</h2>
         <p className="muted">

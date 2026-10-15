@@ -295,6 +295,7 @@ export default function ContactPage() {
                   <label>
                     Conversation{" "}
                     <select
+                      aria-label="Conversation"
                       required
                       value={selectedConversation}
                       onChange={(e) => setSelectedConversation(e.target.value)}
@@ -416,7 +417,7 @@ export default function ContactPage() {
                     checked={eraseMessages}
                     onChange={(event) => setEraseMessages(event.target.checked)}
                   />
-                  Also erase messages in this contact?s conversations
+                  Also erase messages in this contact’s conversations
                 </label>
                 <div className="action-row">
                   <button

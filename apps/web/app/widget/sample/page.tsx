@@ -22,7 +22,7 @@ function SamplePage() {
 
   return (
     <main className="sample-page">
-      <p className="eyebrow">WIDGET PREVIEW ? SAMPLE WEBSITE</p>
+      <p className="eyebrow">WIDGET PREVIEW · SAMPLE WEBSITE</p>
       <h1>
         {site === "store-b" ? "Store B (sample site)" : "Store A (sample site)"}
       </h1>

@@ -172,7 +172,8 @@ export default function PlatformClientPage() {
             <form onSubmit={(event) => void saveQuotaOverrides(event)}>
               <label>
                 PLACEHOLDER quota overrides (JSON)
-                <textarea dir="auto"
+                <textarea
+                  dir="auto"
                   value={quotaOverrides}
                   onChange={(event) => setQuotaOverrides(event.target.value)}
                   rows={3}

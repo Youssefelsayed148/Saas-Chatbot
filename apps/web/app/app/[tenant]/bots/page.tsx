@@ -208,7 +208,7 @@ export default function BotsListPage() {
                       onConfirm={() => void onArchive(bot)}
                       confirmLabel="Archive bot"
                     >
-                      {archiving === bot.id ? "Archiving?" : "Archive"}
+                      {archiving === bot.id ? "Archiving..." : "Archive"}
                     </ConfirmAction>
                   )}
                 </td>

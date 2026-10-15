@@ -42,7 +42,7 @@ function AcceptForm() {
       <main className="auth-page">
         <h1>Accept invitation</h1>
         <p className="page-purpose">
-          Join your team?s workspace with your invited email.
+          Join your team’s workspace with your invited email.
         </p>
         <Notice
           message="This link is missing its invitation token."
@@ -57,7 +57,7 @@ function AcceptForm() {
     <main className="auth-page">
       <h1>Accept invitation</h1>
       <p className="page-purpose">
-        Join your team?s workspace with your invited email.
+        Join your team’s workspace with your invited email.
       </p>
       {sessionLoading && <Loading label="Checking your session…" />}
       {!sessionLoading && me && !joined && (

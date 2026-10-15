@@ -66,7 +66,7 @@ export function ThemeToggle() {
       onClick={toggle}
       data-testid="theme-toggle"
     >
-      {theme === "dark" ? "?" : "?"}
+      {theme === "dark" ? "☀" : "☾"}
       <span>Appearance</span>
     </button>
   );

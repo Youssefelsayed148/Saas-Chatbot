@@ -40,7 +40,7 @@
   --ease: 160ms ease;
   --widget-brand: #1f7a5c;
   --ink-light: #ffffff;
-  --ink-dark: #101820;
+  --ink-dark: #000000;
 }
 :root[data-theme="light"] {
   color-scheme: light;

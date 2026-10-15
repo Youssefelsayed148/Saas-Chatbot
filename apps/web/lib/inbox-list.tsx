@@ -219,7 +219,7 @@ export function InboxList({
               onClick={() => updateFilter(key as keyof typeof filters, "")}
             >
               {humanLabel(key)}: {humanLabel(value)}{" "}
-              <span aria-hidden="true">?</span>
+              <span aria-hidden="true">×</span>
             </button>
           ))}
       </div>
@@ -259,7 +259,7 @@ export function InboxList({
                   </p>
                   <div className="inbox-row-meta">
                     <span className="channel-label" title={row.channel}>
-                      <span aria-hidden="true">?</span>{" "}
+                      <span aria-hidden="true">◎</span>{" "}
                       {humanLabel(row.channel)}
                     </span>
                     <LabelBadge value={row.status} />
@@ -268,14 +268,14 @@ export function InboxList({
                         className="unread-count"
                         aria-label={`${row.unread_count} unread`}
                       >
-                        <span aria-hidden="true">?</span> {row.unread_count}
+                        <span aria-hidden="true">●</span> {row.unread_count}
                       </span>
                     )}
                   </div>
                   <small className="muted" data-value={row.mode}>
                     {humanLabel(row.mode)}
                     {row.handoff_reason
-                      ? ` ? ${humanLabel(row.handoff_reason)}`
+                      ? ` · ${humanLabel(row.handoff_reason)}`
                       : ""}
                   </small>
                   {(row.tags?.length ?? 0) > 0 && (

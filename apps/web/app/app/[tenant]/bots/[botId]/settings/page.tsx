@@ -408,7 +408,7 @@ export default function BotSettingsPage() {
             onConfirm={() => void onArchive()}
             confirmLabel="Archive bot"
           >
-            {archiving ? "Archiving?" : "Archive bot"}
+            {archiving ? "Archiving..." : "Archive bot"}
           </ConfirmAction>
           <p className="muted">
             Archived bots disappear from the default list but are not deleted.

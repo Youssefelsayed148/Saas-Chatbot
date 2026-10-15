@@ -714,10 +714,7 @@ export default function WidgetFramePage() {
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        window.parent.postMessage(
-          { type: "chatbot:close" },
-          window.location.origin,
-        );
+        closeWidget();
       }
     }
     document.addEventListener("keydown", onKey);
@@ -730,6 +727,7 @@ export default function WidgetFramePage() {
   return (
     <div
       dir={dir}
+      lang={lang}
       className="widget-frame"
       data-testid="widget-frame-body"
       style={
@@ -742,14 +740,23 @@ export default function WidgetFramePage() {
       <style>{widgetStyles}</style>
       <header className="widget-header">
         <span aria-hidden="true" className="widget-brand-mark">
-          ?
+          ✧
         </span>
         <span className="widget-title" data-testid="widget-title">
           {status === "loading" ? "" : (config?.bot_name ?? "")}
         </span>
         <span className="widget-header-caption">
-          {lang === "ar" ? "????? ??????" : "Website assistant"}
+          {lang === "ar" ? "مساعد الموقع" : "Website assistant"}
         </span>
+        <button
+          type="button"
+          className="widget-close"
+          data-testid="widget-close"
+          aria-label={lang === "ar" ? "إغلاق المحادثة" : "Close chat"}
+          onClick={closeWidget}
+        >
+          ×
+        </button>
       </header>
 
       <main className="widget-thread" aria-live="polite">
@@ -850,7 +857,7 @@ export default function WidgetFramePage() {
                     !turn.feedback && (
                       <span
                         className="widget-feedback"
-                        aria-label={localized("helpful", lang)}
+                        aria-label={localized("leadHelpful", lang)}
                       >
                         <button
                           type="button"
@@ -873,13 +880,13 @@ export default function WidgetFramePage() {
                   {turn.needsHuman && (
                     <p className="widget-handoff" role="note">
                       {lang === "ar"
-                        ? "?? ??? ?????? ??????"
+                        ? "تم طلب مساعدة الفريق"
                         : "Team assistance requested"}
                     </p>
                   )}
                   {turn.feedback && (
                     <span className="widget-feedback-done muted">
-                      {localized("helpful", lang)} ✓
+                      {localized("leadHelpful", lang)} ✓
                     </span>
                   )}
                 </li>
@@ -1036,6 +1043,9 @@ export default function WidgetFramePage() {
                 </button>
                 <button
                   type="button"
+                  aria-label={
+                    lang === "ar" ? "إغلاق النموذج" : "Close details form"
+                  }
                   onClick={() =>
                     setLead((state) => ({ ...state, open: false, error: null }))
                   }
@@ -1079,10 +1089,15 @@ export default function WidgetFramePage() {
   );
 }
 
+function closeWidget() {
+  window.parent.postMessage({ type: "chatbot:close" }, window.location.origin);
+}
+
 const widgetStyles = `
 html,body{height:100%}
 .widget-frame{position:absolute;inset:0;display:flex;flex-direction:column;height:100%;background:var(--surface);color:var(--text);font-family:var(--font);font-size:14px;overflow:hidden}
-.widget-header{display:grid;grid-template-columns:32px 1fr;column-gap:.6rem;align-items:center;padding:1rem 1.1rem;background:var(--widget-brand);color:var(--widget-ink,var(--ink-light));flex-shrink:0}
+.widget-header{display:grid;grid-template-columns:32px 1fr 44px;column-gap:.6rem;align-items:center;padding:1rem 1.1rem;background:var(--widget-brand);color:var(--widget-ink,var(--ink-light));flex-shrink:0}
+.widget-header-caption{grid-column:2;grid-row:2}.widget-close{grid-column:3;grid-row:1/3;background:transparent;color:inherit;border:1px solid currentColor;min-inline-size:44px;min-block-size:44px;padding:0;font-size:1.3rem}.widget-close:focus-visible{outline-color:currentColor}
 .widget-brand-mark{grid-row:1/3;font-size:1.8rem;line-height:1}.widget-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:650;font-size:.95rem}.widget-header-caption{font-size:.7rem;opacity:.9}
 .widget-frame .widget-thread{flex:1;overflow-y:auto;padding:1.1rem;display:flex;flex-direction:column;gap:.8rem;min-height:0;inline-size:100%;max-inline-size:none;margin:0}
 .widget-turns{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.85rem}

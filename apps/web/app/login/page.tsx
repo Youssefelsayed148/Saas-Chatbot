@@ -48,7 +48,7 @@ function LoginForm() {
     <main className="auth-page">
       <div className="auth-brand">
         <span className="brand-mark" aria-hidden="true">
-          ?
+          ✧
         </span>
         <span>Website Chatbot SaaS</span>
         <ThemeToggle />
