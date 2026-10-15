@@ -1,0 +1,315 @@
+import { expect, test, type Page } from "@playwright/test";
+import { registerOwner } from "./e2e-helpers";
+import { promoteToStaff } from "./staff-helpers";
+
+async function staff(page: Page) {
+  const email = `ui-staff.${Date.now()}@example.com`;
+  const result = await registerOwner(page, "UI characterization", { email });
+  promoteToStaff(email);
+  return result;
+}
+
+test("tenant data: owner deletion requires exact name and a meaningful reason", async ({
+  page,
+}) => {
+  const { tenantId } = await registerOwner(page, "Delete validation", {
+    organizationName: "Deletion validation",
+  });
+  let deletes = 0;
+  page.on("request", (request) => {
+    if (request.method() === "DELETE") deletes++;
+  });
+  await page.goto(`/app/${tenantId}/settings/data`);
+  await expect(
+    page.getByRole("button", { name: "Download export" }),
+  ).toBeVisible();
+  const submit = page.getByRole("button", {
+    name: "Permanently delete organization",
+  });
+  await expect(submit).toBeDisabled();
+  await page.getByLabel(/Type.*to confirm/).fill("wrong name");
+  await page.getByLabel("Reason for deletion").fill("Review completed");
+  await expect(submit).toBeDisabled();
+  await page.getByLabel(/Type.*to confirm/).fill("Deletion validation");
+  await page.getByLabel("Reason for deletion").fill("ab");
+  await expect(submit).toBeDisabled();
+  await page.getByLabel("Reason for deletion").fill("Review completed");
+  await expect(submit).toBeEnabled();
+  expect(deletes).toBe(0);
+});
+
+test("tenant data: admin can review but only owner sees deletion; viewer is denied", async ({
+  page,
+}) => {
+  const { tenantId } = await registerOwner(page, "Data roles");
+  for (const role of ["admin", "viewer"]) {
+    await page.route("**/api/v1/auth/me", async (route) => {
+      const response = await route.fetch();
+      const me = await response.json();
+      await route.fulfill({
+        json: {
+          ...me,
+          memberships: me.memberships.map((m: { tenant_id: string }) => ({
+            ...m,
+            role,
+          })),
+        },
+      });
+    });
+    await page.goto(`/app/${tenantId}/settings/data`);
+    if (role === "admin")
+      await expect(
+        page.getByRole("button", { name: "Download export" }),
+      ).toBeVisible();
+    else
+      await expect(
+        page.getByText("Administrator access is required."),
+      ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Permanently delete organization" }),
+    ).toHaveCount(0);
+    await page.unroute("**/api/v1/auth/me");
+  }
+});
+
+test("platform operations: reason gates retry and cancel, audit search keeps its query", async ({
+  page,
+}) => {
+  await staff(page);
+  const actions: unknown[] = [];
+  await page.route("**/api/v1/platform/operations/jobs**", async (route) => {
+    if (route.request().method() === "POST") {
+      actions.push({
+        url: new URL(route.request().url()).pathname,
+        body: route.request().postDataJSON(),
+      });
+      await route.fulfill({ json: { id: "fixture-job", status: "pending" } });
+    } else
+      await route.fulfill({
+        json: {
+          counts: { failed: 1, pending: 1 },
+          jobs: [
+            {
+              id: "failed-job",
+              type: "ingestion",
+              status: "failed",
+              attempts: 1,
+              error: "Fixture failure",
+            },
+            {
+              id: "pending-job",
+              type: "ingestion",
+              status: "pending",
+              attempts: 0,
+              error: null,
+            },
+          ],
+        },
+      });
+  });
+  await page.goto("/platform/operations");
+  const failed = page.getByRole("row").filter({ hasText: "Fixture failure" });
+  await expect(failed.getByRole("button", { name: "Retry" })).toBeDisabled();
+  await page.getByLabel("Reason for job action").fill("Retry after review");
+  await failed.getByRole("button", { name: "Retry" }).click();
+  await expect.poll(() => actions.length).toBe(1);
+  expect(actions[0]).toEqual({
+    url: "/api/v1/platform/operations/jobs/failed-job/retry",
+    body: { reason: "Retry after review" },
+  });
+  await page.getByLabel("Reason for job action").fill("Cancel after review");
+  await page
+    .getByRole("row")
+    .filter({ has: page.getByRole("cell", { name: "pending", exact: true }) })
+    .getByRole("button", { name: "Cancel" })
+    .click();
+  await expect.poll(() => actions.length).toBe(2);
+  expect(actions[1]).toEqual({
+    url: "/api/v1/platform/operations/jobs/pending-job/cancel",
+    body: { reason: "Cancel after review" },
+  });
+  await page.getByLabel("Search audit actions").fill("platform");
+  const search = page.waitForRequest((request) =>
+    request.url().includes("/platform/audit?q=platform"),
+  );
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await search;
+});
+
+test("platform client mutations preserve plan, quota and pause reason payloads", async ({
+  page,
+}) => {
+  const { tenantId } = await staff(page);
+  const bots = await (
+    await page.request.get(`/api/v1/tenants/${tenantId}/bots`)
+  ).json();
+  const botId = bots[0].id as string;
+  const actions: { url: string; body: unknown }[] = [];
+  await page.route("**/api/v1/platform/**", async (route) => {
+    if (["PATCH", "POST"].includes(route.request().method())) {
+      actions.push({
+        url: new URL(route.request().url()).pathname,
+        body: route.request().postDataJSON(),
+      });
+      await route.fulfill({
+        json: {
+          tenant_id: tenantId,
+          plan_label: "starter",
+          bot_id: botId,
+          status: "paused",
+        },
+      });
+    } else await route.continue();
+  });
+  await page.goto(`/platform/clients/${tenantId}`);
+  await expect(page.getByRole("button", { name: "Pause bot" })).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Save override with reason" }),
+  ).toBeDisabled();
+  await page.getByLabel("Reason", { exact: true }).fill("Reviewed by staff");
+  await page.getByLabel("Plan label").fill("starter");
+  await page.getByRole("button", { name: "Save plan" }).click();
+  await expect.poll(() => actions.length).toBe(1);
+  await page
+    .getByLabel("PLACEHOLDER quota overrides (JSON)")
+    .fill('{"bots":5}');
+  await page.getByRole("button", { name: "Save override with reason" }).click();
+  await expect.poll(() => actions.length).toBe(2);
+  await page.getByRole("button", { name: "Pause bot" }).click();
+  await expect.poll(() => actions.length).toBe(3);
+  expect(actions).toEqual([
+    {
+      url: `/api/v1/platform/tenants/${tenantId}/plan`,
+      body: { plan_label: "starter", reason: "Reviewed by staff" },
+    },
+    {
+      url: `/api/v1/platform/tenants/${tenantId}/quota-overrides`,
+      body: { limits: { bots: 5 }, reason: "Reviewed by staff" },
+    },
+    {
+      url: `/api/v1/platform/bots/${botId}/pause`,
+      body: { reason: "Reviewed by staff" },
+    },
+  ]);
+  await expect(page.getByTestId("client-detail-bots")).toContainText("paused");
+});
+
+test("inbox viewer cannot mutate AI, human or resolved conversations", async ({
+  page,
+}) => {
+  const { tenantId } = await registerOwner(page, "Inbox viewer");
+  await page.route("**/api/v1/auth/me", async (route) => {
+    const me = await (await route.fetch()).json();
+    await route.fulfill({
+      json: {
+        ...me,
+        memberships: me.memberships.map((m: object) => ({
+          ...m,
+          role: "viewer",
+        })),
+      },
+    });
+  });
+  for (const [mode, status] of [
+    ["ai", "open"],
+    ["human", "open"],
+    ["ai", "resolved"],
+  ]) {
+    await page.route(
+      `**/api/v1/tenants/${tenantId}/conversations/fixture`,
+      (route) =>
+        route.fulfill({
+          json: {
+            conversation: {
+              id: "fixture",
+              bot_id: "fixture",
+              contact_id: null,
+              channel: "website",
+              mode,
+              status,
+              assigned_user_id: null,
+              tags: ["vip"],
+            },
+            messages: [
+              {
+                id: "message",
+                sender_type: "visitor",
+                text: "مرحبا",
+                citations: [],
+                created_at: "2026-10-15T09:00:00Z",
+                needs_human: false,
+                can_answer: null,
+              },
+            ],
+          },
+        }),
+    );
+    await page.goto(`/app/${tenantId}/inbox/fixture`);
+    await expect(page.getByTestId("inbox-thread")).toContainText("مرحبا");
+    for (const name of [
+      "Take over",
+      "Return to AI",
+      "Resolve",
+      "Send reply",
+      "Add note",
+      "Remove vip tag",
+    ]) {
+      await expect(page.getByRole("button", { name, exact: true })).toHaveCount(
+        0,
+      );
+    }
+    for (const label of ["Assignee", "Reply", "Internal note", "Add tag"])
+      await expect(page.getByLabel(label, { exact: true })).toHaveCount(0);
+    await expect(
+      page.getByText(
+        "Viewer access: replies and conversation changes are disabled.",
+      ),
+    ).toBeVisible();
+    await page.unroute(`**/api/v1/tenants/${tenantId}/conversations/fixture`);
+  }
+});
+
+test("widget 429 displays the server message verbatim", async ({ page }) => {
+  const message =
+    "Your PLACEHOLDER monthly plan limit is reached. لا يمكن إرسال رسالة الآن.";
+  await page.route("**/api/public/v1/widgets/verbatim/config", (route) =>
+    route.fulfill({
+      json: {
+        available: true,
+        config: {
+          bot_name: "Limit test",
+          assistant_name: "Assistant",
+          welcome_message: { en: "Welcome", ar: "مرحبا" },
+          opening_questions: [],
+          colour: "#1f7a5c",
+          position: "right",
+          default_language: "en",
+          dir: "ltr",
+        },
+      },
+    }),
+  );
+  await page.route("**/api/public/v1/widgets/verbatim/sessions", (route) =>
+    route.fulfill({
+      json: {
+        session_id: "limit-session",
+        token: "fixture",
+        expires_at: "2099-01-01T00:00:00Z",
+      },
+    }),
+  );
+  await page.route(
+    "**/api/public/v1/sessions/limit-session/messages**",
+    (route) =>
+      route.request().method() === "POST"
+        ? route.fulfill({
+            status: 429,
+            json: { error: { code: "QUOTA_EXCEEDED", message } },
+          })
+        : route.fulfill({ json: [] }),
+  );
+  await page.goto("/widget/frame?locator=verbatim");
+  await page.getByTestId("widget-input").fill("Hello");
+  await page.getByTestId("widget-send").click();
+  await expect(page.getByTestId("widget-error")).toHaveText(message);
+});
