@@ -23,6 +23,9 @@
   "use strict";
 
   var VERSION = "v1";
+  /* GENERATED_WIDGET_TOKENS */
+  var widgetTokens = "/* Canonical semantic tokens, shared by dashboard and scoped widget surfaces. */\n.chatbot-widget-button,.chatbot-widget-frame {\n  color-scheme: dark;\n  --bg: #0b1018;\n  --surface: #111925;\n  --surface-raised: #172231;\n  --surface-hover: #1e2c3d;\n  --text: #edf3fa;\n  --muted: #a3b2c6;\n  --border: #2b3a4e;\n  --accent: #8aafff;\n  --accent-soft: #20324f;\n  --button: #b1c9ff;\n  --button-text: #101e38;\n  --danger: #ffaaa5;\n  --danger-soft: #382022;\n  --success: #86ddbd;\n  --success-soft: #14372d;\n  --warning: #f2ce8e;\n  --warning-soft: #372e1d;\n  --focus: #b9d0ff;\n  --staff: #d1b3ff;\n  --staff-soft: #302440;\n  --overlay: #050912b8;\n  --shadow: 0 18px 48px #00000030;\n  --radius: 16px;\n  --radius-sm: 9px;\n  --space-1: 0.25rem;\n  --space-2: 0.5rem;\n  --space-3: 0.75rem;\n  --space-4: 1rem;\n  --space-5: 1.5rem;\n  --space-6: 2rem;\n  --space-7: 3rem;\n  --font: ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", sans-serif;\n  --text-sm: 0.825rem;\n  --text-base: 0.925rem;\n  --text-lg: 1.2rem;\n  --heading: clamp(1.65rem, 3vw, 2.3rem);\n  --ease: 160ms ease;\n  --widget-brand: #1f7a5c;\n  --ink-light: #ffffff;\n  --ink-dark: #101820;\n}\n.chatbot-widget-button[data-theme=light],.chatbot-widget-frame[data-theme=light] {\n  color-scheme: light;\n  --bg: #f3f6fb;\n  --surface: #ffffff;\n  --surface-raised: #edf2f9;\n  --surface-hover: #e5edf7;\n  --text: #19263a;\n  --muted: #52647c;\n  --border: #cbd6e5;\n  --accent: #2459b4;\n  --accent-soft: #e5edff;\n  --button: #234f9a;\n  --button-text: #ffffff;\n  --danger: #a62631;\n  --danger-soft: #fff0f0;\n  --success: #176449;\n  --success-soft: #e3f4ec;\n  --warning: #745015;\n  --warning-soft: #fff2d9;\n  --focus: #2459b4;\n  --staff: #7040a2;\n  --staff-soft: #f0e8fa;\n  --overlay: #17263a80;\n  --shadow: 0 18px 48px #1d3c5912;\n}\n@media (prefers-color-scheme: light) {\n  .chatbot-widget-button,.chatbot-widget-frame {\n    color-scheme: light;\n    --bg: #f3f6fb;\n    --surface: #ffffff;\n    --surface-raised: #edf2f9;\n    --surface-hover: #e5edf7;\n    --text: #19263a;\n    --muted: #52647c;\n    --border: #cbd6e5;\n    --accent: #2459b4;\n    --accent-soft: #e5edff;\n    --button: #234f9a;\n    --button-text: #ffffff;\n    --danger: #a62631;\n    --danger-soft: #fff0f0;\n    --success: #176449;\n    --success-soft: #e3f4ec;\n    --warning: #745015;\n    --warning-soft: #fff2d9;\n    --focus: #2459b4;\n    --staff: #7040a2;\n    --staff-soft: #f0e8fa;\n    --overlay: #17263a80;\n    --shadow: 0 18px 48px #1d3c5912;\n  }\n}\n";
+  /* END_WIDGET_TOKENS */
 
   var script =
     document.currentScript ||
@@ -49,7 +52,7 @@
 
   var state = {
     opened: false,
-    brand: { colour: "#1f7a5c", position: "right", dir: "ltr" },
+    brand: { colour: "", position: "right", dir: "ltr" },
   };
 
   // --- bubble button ---------------------------------------------------------
@@ -72,7 +75,7 @@
   });
 
   function styleButton() {
-    var colour = state.brand.colour;
+    var colour = state.brand.colour || "var(--widget-brand)";
     var right = state.brand.position !== "left";
     button.style.background = colour;
     button.style.position = "fixed";
@@ -83,10 +86,19 @@
     button.style.height = "3.5rem";
     button.style.borderRadius = "50%";
     button.style.border = "0";
-    button.style.boxShadow = "0 6px 20px rgba(15,35,60,0.35)";
+    button.style.boxShadow = "var(--shadow)";
     button.style.cursor = "pointer";
     button.style.zIndex = "2147483000";
-    button.style.color = "#ffffff";
+    var rgb = /^#[0-9a-f]{6}$/i.test(colour)
+      ? [1, 3, 5].map(function (i) {
+          var v = parseInt(colour.slice(i, i + 2), 16) / 255;
+          return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+        })
+      : [0, 0, 0];
+    button.style.color =
+      0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2] > 0.179
+        ? "var(--ink-dark)"
+        : "var(--ink-light)";
     button.style.fontSize = "1.35rem";
     button.style.lineHeight = "1";
   }
@@ -184,14 +196,14 @@
 
   // --- styles ----------------------------------------------------------------
 
-  styleButton();
-
   var css = document.createElement("style");
   css.textContent =
+    widgetTokens +
     ".chatbot-widget-frame{position:fixed;bottom:5rem;border:0;border-radius:1rem;" +
-    "box-shadow:0 10px 40px rgba(10,25,50,0.35);z-index:2147483000;background:#ffffff;" +
+    "box-shadow:var(--shadow);z-index:2147483000;background:var(--surface);" +
     "overflow:hidden;width:min(23.5rem, calc(100vw - 2.5rem));}" +
     "@media (max-width: 480px)" +
     "{.chatbot-widget-frame{bottom:0;width:calc(100vw - 1rem);border-radius:1rem 1rem 0 0;min-height:70dvh}}";
   document.head.appendChild(css);
+  styleButton();
 })();

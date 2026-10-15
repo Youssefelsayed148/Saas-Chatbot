@@ -1472,3 +1472,16 @@ progress::-webkit-progress-value {
     margin-block: 1rem;
   }
 }
+
+.sample-page {
+  max-inline-size: 900px;
+}
+.sample-page h1 {
+  font-size: clamp(2rem, 5vw, 3rem);
+}
+.sample-tip {
+  padding: 1.2rem;
+  border-inline-start: 3px solid var(--accent);
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+}
