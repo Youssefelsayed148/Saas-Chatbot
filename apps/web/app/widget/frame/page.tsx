@@ -205,9 +205,12 @@ async function ensureSessionFor(
   });
   if (!response.ok) {
     const payload = (await response.json().catch(() => null)) as {
-      error?: { code?: string };
+      error?: { code?: string; message?: string };
     } | null;
-    throw new ApiCodeError(payload?.error?.code ?? "NETWORK");
+    throw new ApiCodeError(
+      payload?.error?.code ?? "NETWORK",
+      payload?.error?.message,
+    );
   }
   const payload = (await response.json()) as {
     session_id: string;
@@ -230,8 +233,8 @@ const CONSENT_TEXT_AR =
 
 class ApiCodeError extends Error {
   code: string;
-  constructor(code: string) {
-    super(code);
+  constructor(code: string, message?: string) {
+    super(message ?? code);
     this.code = code;
   }
 }
@@ -240,6 +243,7 @@ export default function WidgetFramePage() {
   const [status, setStatus] = useState<"loading" | "ready" | "error">(
     "loading",
   );
+  const [serverMessage, setServerMessage] = useState<string | null>(null);
   const [reason, setReason] = useState<string | null>(null);
   const [config, setConfig] = useState<WidgetConfig | null>(null);
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -390,7 +394,8 @@ export default function WidgetFramePage() {
     // Session refs change without a render; the interval reads the latest ref.
   }, [status, config]);
 
-  function setTypedError(code: string) {
+  function setTypedError(code: string, message?: string) {
+    setServerMessage(message ?? null);
     if (code === "BOT_PAUSED") setReason("paused");
     else if (code === "BOT_NOT_READY") setReason("notReady");
     else if (code === "QUOTA_EXCEEDED") setReason("quota");
@@ -520,9 +525,12 @@ export default function WidgetFramePage() {
       );
       if (!response.ok) {
         const payload = (await response.json().catch(() => null)) as {
-          error?: { code?: string };
+          error?: { code?: string; message?: string };
         } | null;
-        setTypedError(payload?.error?.code ?? "NETWORK");
+        setTypedError(
+          payload?.error?.code ?? "NETWORK",
+          payload?.error?.message,
+        );
         setTyping(false);
         return;
       }
@@ -562,9 +570,13 @@ export default function WidgetFramePage() {
         ];
       });
       setReason(null);
+      setServerMessage(null);
     } catch (caught) {
       if (caught instanceof ApiCodeError) {
-        setTypedError(caught.code);
+        setTypedError(
+          caught.code,
+          caught.message === caught.code ? undefined : caught.message,
+        );
       } else {
         setReason("network");
       }
@@ -658,15 +670,16 @@ export default function WidgetFramePage() {
         }));
       } else {
         const payloadResponse = (await response.json().catch(() => null)) as {
-          error?: { code?: string };
+          error?: { code?: string; message?: string };
         } | null;
         setLead((state) => ({
           ...state,
           status: "error",
           error:
-            payloadResponse?.error?.code === "CONSENT_REQUIRED"
+            payloadResponse?.error?.message ??
+            (payloadResponse?.error?.code === "CONSENT_REQUIRED"
               ? localized("leadConsentRequired", lang)
-              : localized("network", lang),
+              : localized("network", lang)),
         }));
       }
     } catch {
@@ -736,13 +749,14 @@ export default function WidgetFramePage() {
                 className="widget-note error"
                 data-testid="widget-error"
               >
-                {reason === "quota"
-                  ? localized("quota", lang)
-                  : reason === "rateLimited"
-                    ? localized("rateLimited", lang)
-                    : reason === "sessionExpired"
-                      ? localized("sessionExpired", lang)
-                      : localized("network", lang)}
+                {serverMessage ??
+                  (reason === "quota"
+                    ? localized("quota", lang)
+                    : reason === "rateLimited"
+                      ? localized("rateLimited", lang)
+                      : reason === "sessionExpired"
+                        ? localized("sessionExpired", lang)
+                        : localized("network", lang))}
                 {reason === "network" && (
                   <button
                     type="button"
