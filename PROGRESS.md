@@ -1487,3 +1487,22 @@ git diff --check
 
 All exit 0: Ruff clean, **17 files already formatted**, no diff whitespace errors.
 Git printed only existing LF/CRLF conversion notices for .env.example and query.py.
+
+## 2026-10-16 - Final review fixes (branch fix/rag-phase-2-final)
+
+Fixed F-01, F-02, F-03, F-04, F-06, F-08, F-09, F-14, F-15 and added Arabic FTS
+(migration 0016); others deferred (docs/rag-phase/DEFERRED-REVIEW.md). Commands
+(disposable pgvector DB rag_final_fix_test on 127.0.0.1:55462, PYTHONUTF8=1, ENVIRONMENT=test):
+
+```text
+python -m pytest -q <each tests/test_*.py file, one invocation per file> -p no:cacheprovider --tb=short
+```
+Result: 377 passed across 44 files, 1 skipped (POSIX-only). First pass had 2 failing
+files (test_conversations, test_rag_stage0_baseline); fixed (question matched only
+1 of 2 terms; harness forwarded `channel`) and re-run: 13 and 14 passed.
+
+```text
+cd apps/web; npx playwright test    (DATABASE_URL=.../rag_final_pw)
+```
+Result: 40 passed (3.6m), exit 0, ECONNRESET 0.
+No real provider call, push, tag or compose. Recall (Arabic and semantic) UNVERIFIED.

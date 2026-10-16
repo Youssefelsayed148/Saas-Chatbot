@@ -4,6 +4,42 @@
 language/groundedness validation remain **PENDING**. No real provider calls,
 merge, tag, push or deployment were performed for these fixes.
 
+## Code-review findings (CODE-REVIEW.md) - status on `fix/rag-phase-2-final`
+
+Commits: F-01 `3f7e06b`, F-02 `ef408f8`, F-03/F-04 `5811b03`, F-06/08/09/14 `41e7db5`,
+Arabic `052e6cf`; F-05/F-20 were already fixed by `a3edbb0`. Deferred items and
+reasons: DEFERRED-REVIEW.md.
+
+| ID | Status |
+|---|---|
+| F-01 | fixed `3f7e06b`: definite failures (connect error, non-2xx, `EmbeddingError`) and aborted turns release the reservation (`released`, 0 tokens); ambiguous outcomes (timeout after send, 200 with unusable body) keep the conservative hold. Failure-path tests in test_rag_limits.py |
+| F-02 | fixed `a3edbb0` (default `openai:text-embedding-3-large`@1024) + `ef408f8` (production startup fails unless EMBEDDING_PROVIDER is set explicitly) |
+| F-03 | fixed `5811b03`: shared `assemble_evidence` (always-include, best-document-whole, small-document-whole) used by FTS and hybrid; FTS-vs-hybrid test |
+| F-04 | fixed `5811b03` (+`a3edbb0`): keyword leg needs min matched terms (default 2, capped by the query's own term count) AND ts_rank_cd floor; overridable per model via RETRIEVAL_KEYWORD_GATES. Values **UNTUNED, pending owner calibration**. Trade-off: paraphrased 2-term questions with one matching word are refused in FTS-only mode (vector leg is the rescue) |
+| F-05 | already fixed `a3edbb0` (per-chunk scoring) |
+| F-06 | fixed `41e7db5`: embedding cap -> FTS-only (`embedding_budget_exhausted`); rewrite/translation cap -> step skipped |
+| F-08 | fixed `41e7db5` (Arabic refusal offers inbox handoff) |
+| F-09 | fixed `41e7db5` (real channel on `embed_query`) |
+| F-14 | fixed `41e7db5` (no cap name on `/api/public/*`) |
+| F-15 | fixed `3f7e06b` (ledger update failures no longer mask the provider result) |
+| F-20 | already fixed `a3edbb0` (.env.example) |
+| F-07, F-10, F-11, F-12, F-13, F-16, F-17, F-18, F-19, F-21, F-22, F-23, R-01..R-03 | deferred, see DEFERRED-REVIEW.md (R-01 Arabic below) |
+
+**Arabic search config.** This Postgres (17.11) offers a real `arabic` (Snowball)
+text-search configuration. Migration `0016_arabic_fts` adds generated `fts_ar`
+(`to_tsvector('arabic', text_norm)`) + GIN index; adding the stored column
+re-indexes existing rows; `fts_simple` is kept for rollback. Normalisation
+(diacritics, tatweel, alef and ya variants) already runs before indexing.
+Arabic recall remains **UNVERIFIED** (no real-corpus evaluation).
+
+**Final verification of these fixes.** API suite, file by file against a
+disposable pgvector database (no real provider): **377 passed across 44 files**,
+1 skipped (POSIX-only process-tree test). Two files initially failed
+(test_conversations: question matched only one of two terms under the new gate;
+test_rag_stage0_baseline: harness forwarded the new `channel` argument to the
+keyword retrieve); both fixed and re-run green (13 and 14 passed). Playwright:
+one full unscoped run (`npx playwright test`, disposable DB `rag_final_pw_e2e_test`): **40 passed (3.6m), exit 0**, ECONNRESET / "Failed to proxy": 0.
+
 ## Defaults and safe gating
 
 Default embedding identity is **`openai:text-embedding-3-large`**, dimensions
@@ -12,7 +48,8 @@ The OpenAI threshold row is cosine **0.50 OR FTS 0.01**, labelled
 **UNTUNED, pending owner calibration**. Each identity requires its own row.
 A missing/invalid vector floor disables cosine acceptance; the gate then uses
 FTS only. FTS must have a positive finite score meeting the floor and at least
-`RETRIEVAL_MIN_MATCHED_TERMS` distinct content terms (default 1). RRF never
+`RETRIEVAL_MIN_MATCHED_TERMS` distinct content terms (default 2, never more
+than the query has; per-model override RETRIEVAL_KEYWORD_GATES). RRF never
 passes the relevance gate. See THRESHOLDS.md and `.env.example`.
 
 Scores and term counts now come from each selected chunk's own stored index,
