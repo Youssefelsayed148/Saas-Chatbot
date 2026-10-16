@@ -85,7 +85,7 @@ class Settings(BaseSettings):
     # Deterministic offline stub model for tests/E2E. NEVER in production config.
     chat_stub_model: bool = False
     # RAG deployment contract: all providers use one 1024-dimensional column.
-    embedding_provider: Literal["ollama", "openai", "openrouter"] = "ollama"
+    embedding_provider: Literal["ollama", "openai", "openrouter"] = "openai"
     embedding_model: str = ""
     embedding_dimensions: Literal[1024] = 1024
     embedding_ollama_base_url: str = "http://host.docker.internal:11434"
@@ -94,12 +94,12 @@ class Settings(BaseSettings):
     retrieval_rrf_k: int = Field(default=60, ge=1)
     retrieval_hnsw_max_scan_tuples: int = Field(default=20_000, ge=1)
     rag_plan_limits: dict[str, RagLimits] = Field(default_factory=dict)
-    # Owner-approved, untuned bge-m3 development values; no implicit transfer
-    # to other embedding models. Add calibrated identities explicitly via env.
+    # UNTUNED, pending owner calibration. No implicit transfer to other models.
     retrieval_vector_floors: dict[str, float] = Field(
-        default_factory=lambda: {"ollama:bge-m3": 0.50}
+        default_factory=lambda: {"openai:text-embedding-3-large": 0.50, "ollama:bge-m3": 0.50}
     )
     retrieval_min_fts_match: float = Field(default=0.01, gt=0)
+    retrieval_min_matched_terms: int = Field(default=1, ge=1)
     chat_rewrite_enabled: bool = True
     chat_rewrite_plans: list[str] = Field(
         default_factory=lambda: ["free", "starter", "pro", "business"]

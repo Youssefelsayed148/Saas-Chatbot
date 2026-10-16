@@ -31,7 +31,7 @@ def chunk(**kwargs: Any) -> RetrievedChunk:
 
 def test_gate_accepts_either_signal_and_ignores_rrf() -> None:
     vector = chunk(vector_similarity=0.50)
-    keyword = chunk(fts_match=0.01)
+    keyword = chunk(fts_match=0.01, matched_terms=1)
     rejected = chunk(vector_similarity=0.49, fts_match=0.009, rrf_score=999)
     result = RetrievalResult(
         "ar", "en", True, evidence=[vector, keyword, rejected], embedding_model="ollama:bge-m3"
@@ -46,8 +46,12 @@ def test_uncalibrated_models_and_nonfinite_scores_fail_closed() -> None:
         "en",
         "en",
         False,
-        evidence=[chunk(vector_similarity=1), chunk(fts_match=0.1), chunk(fts_match=float("nan"))],
-        embedding_model="openai:text-embedding-3-large",
+        evidence=[
+            chunk(vector_similarity=1),
+            chunk(fts_match=0.1, matched_terms=1),
+            chunk(fts_match=float("nan")),
+        ],
+        embedding_model="unknown:uncalibrated",
     )
     decision = relevance_gate(result, build_test_settings())
     assert decision.vector_floor is None
@@ -205,3 +209,28 @@ def test_rewrite_history_is_recent_prior_messages_only(db: Session, tmp_path: Pa
         "5",
         "6",
     ]
+
+
+@pytest.mark.parametrize("identity", ["unknown:model", "", None])
+def test_missing_model_row_never_passes_vector_or_empty_fts(identity: str | None) -> None:
+    evidence = [
+        chunk(vector_similarity=1),
+        chunk(fts_match=0),
+        chunk(fts_match=0.01, matched_terms=1),
+    ]
+    result = RetrievalResult("en", "en", False, evidence=evidence, embedding_model=identity)
+    decision = relevance_gate(result, build_test_settings())
+    assert decision.vector_floor is None and decision.passed == evidence[2:]
+
+
+def test_openai_untuned_floor_and_min_matched_terms_keep_or_semantics() -> None:
+    evidence = [
+        chunk(vector_similarity=0.5),
+        chunk(fts_match=0.1, matched_terms=1),
+        chunk(fts_match=0.01, matched_terms=2),
+    ]
+    result = RetrievalResult(
+        "en", "en", False, evidence=evidence, embedding_model="openai:text-embedding-3-large"
+    )
+    decision = relevance_gate(result, build_test_settings(retrieval_min_matched_terms=2))
+    assert decision.passed == [evidence[0], evidence[2]]

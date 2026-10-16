@@ -19,7 +19,13 @@ from app.core.config import Settings, get_settings
 from app.db.models import Bot, Job
 from app.embeddings.providers import EmbeddingBatch, EmbeddingError, from_settings, validate_vector
 from app.quotas.ai import metered_embed
-from app.retrieval.service import RetrievalResult, RetrievedChunk, TranslateQuery, retrieve
+from app.retrieval.service import (
+    RetrievalResult,
+    RetrievedChunk,
+    TranslateQuery,
+    retrieve,
+    score_lexical,
+)
 
 logger = logging.getLogger(__name__)
 VECTOR_COLUMNS = """
@@ -248,6 +254,15 @@ def retrieve_hybrid(
         )
         return result
     ranked = fuse(result.candidates, vectors, settings.retrieval_top_k, settings.retrieval_rrf_k)
+    score_lexical(
+        db,
+        ranked,
+        tenant_id=tenant_id,
+        bot_id=bot_id,
+        revision_id=revision_id,
+        question=result.fallback_query or question,
+        language=result.applied_language,
+    )
     result.mode = "hybrid"
     result.candidates = ranked
     result.evidence = ranked[: settings.retrieval_final_k]

@@ -27,7 +27,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session as OrmSession
 
 from app.core.config import Settings, get_settings
-from app.retrieval.query import build_tsquery
+from app.retrieval.query import build_tsquery, term_queries
 
 SUPPORTED_LANGUAGES = ("en", "ar")
 
@@ -59,6 +59,7 @@ class RetrievedChunk:
     vector_similarity: float | None = None
     fts_match: float = 0.0
     rrf_score: float = 0.0
+    matched_terms: int = 0
 
 
 @dataclass
@@ -88,6 +89,55 @@ def _fts_column(language: str) -> str:
 
 def _tsquery_config(language: str) -> str:
     return "simple" if language == "ar" else "english"
+
+
+def score_lexical(
+    db: OrmSession,
+    chunks: list[RetrievedChunk],
+    *,
+    tenant_id: UUID,
+    bot_id: UUID,
+    revision_id: UUID,
+    question: str,
+    language: str,
+) -> None:
+    """Score each selected chunk's stored index, with the same scoped SQL.
+
+    Collapse English stems and Arabic article/prefix variants into distinct
+    content-term groups before counting matches. Never copy a document's score
+    to another chunk that may contain no matching terms.
+    """
+    query = build_tsquery(question, language)
+    if not chunks or not query:
+        return
+    column = _fts_column(language)
+    rows = db.execute(
+        text(f"""
+            WITH terms AS (
+                SELECT DISTINCT to_tsquery(:config, term) AS query
+                FROM unnest(CAST(:terms AS text[])) AS term
+                WHERE numnode(to_tsquery(:config, term)) > 0
+            )
+            SELECT c.id, ts_rank_cd(c.{column}, to_tsquery(:config, :query)) AS score,
+                (SELECT count(*) FROM terms WHERE terms.query @@ c.{column}) AS matched
+            FROM chunks c
+            WHERE c.tenant_id=CAST(:tenant AS uuid) AND c.bot_id=CAST(:bot AS uuid)
+              AND c.revision_id=CAST(:revision AS uuid)
+              AND c.id=ANY(CAST(:ids AS uuid[]))
+        """),
+        {
+            "config": _tsquery_config(language),
+            "terms": term_queries(question, language),
+            "query": query,
+            "tenant": str(tenant_id),
+            "bot": str(bot_id),
+            "revision": str(revision_id),
+            "ids": [str(c.chunk_id) for c in chunks],
+        },
+    ).mappings()
+    scores = {row["id"]: (float(row["score"]), int(row["matched"])) for row in rows}
+    for chunk in chunks:
+        chunk.fts_match, chunk.matched_terms = scores.get(chunk.chunk_id, (0.0, 0))
 
 
 def _best_chunk_per_document(
@@ -325,9 +375,15 @@ def _retrieve_one_pass(
             remaining -= 1
             add([candidate])
     del evidence[settings.retrieval_max_evidence_chunks :]
-    scores = {chunk.document_id: chunk.rank for chunk in ranked}
-    for chunk in (*ranked, *evidence):
-        chunk.fts_match = scores.get(chunk.document_id, 0.0)
+    score_lexical(
+        db,
+        [*ranked, *evidence],
+        tenant_id=tenant_id,
+        bot_id=bot_id,
+        revision_id=revision_id,
+        question=question,
+        language=language,
+    )
     return ranked, evidence
 
 

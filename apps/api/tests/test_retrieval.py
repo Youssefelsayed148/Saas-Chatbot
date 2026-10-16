@@ -289,3 +289,41 @@ def test_always_include_reserved_slots(
         {"d": str(contact_chunks[0].document_id)},
     ).scalar_one()
     assert len(contact_chunks) == whole
+
+
+def test_lexical_signal_count_uses_postgres_terms_and_tenant_scope(
+    db: OrmSession,
+    corpus: dict[str, Any],
+) -> None:
+    from dataclasses import replace
+
+    from app.retrieval.service import score_lexical
+
+    users = corpus["users_a"]
+    bot_id = corpus["bot_main"]
+    result = run_retrieval(db, users, bot_id, "opening hours")
+    assert result.evidence and all(c.matched_terms == 2 for c in result.evidence)
+    # Inflections collapse to one English tsquery; repetition cannot inflate the count.
+    score_lexical(
+        db,
+        result.evidence,
+        tenant_id=users.tenant_id,
+        bot_id=UUID(bot_id),
+        revision_id=UUID(published_revision_id(db, users.tenant_id, bot_id)),
+        question="hour hours hours",
+        language="en",
+    )
+    assert all(c.matched_terms == 1 for c in result.evidence)
+    foreign = [replace(c) for c in result.evidence]
+    score_lexical(
+        db,
+        foreign,
+        tenant_id=corpus["users_b"].tenant_id,
+        bot_id=UUID(bot_id),
+        revision_id=UUID(published_revision_id(db, users.tenant_id, bot_id)),
+        question="opening hours",
+        language="en",
+    )
+    assert all(c.fts_match == 0 and c.matched_terms == 0 for c in foreign)
+    arabic = run_retrieval(db, users, bot_id, "العمل", question_language="ar")
+    assert arabic.evidence and all(c.matched_terms == 1 for c in arabic.evidence)

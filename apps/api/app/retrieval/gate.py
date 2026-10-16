@@ -29,8 +29,10 @@ def relevance_gate(result: RetrievalResult, settings: Settings) -> GateDecision:
             and math.isfinite(chunk.vector_similarity)
             and chunk.vector_similarity >= floor
         )
-        keyword_ok = math.isfinite(chunk.fts_match) and (
-            chunk.fts_match >= settings.retrieval_min_fts_match
+        keyword_ok = chunk.matched_terms >= settings.retrieval_min_matched_terms and (
+            math.isfinite(chunk.fts_match)
+            and chunk.fts_match > 0
+            and chunk.fts_match >= settings.retrieval_min_fts_match
         )
         if vector_ok or keyword_ok:
             passed.append(chunk)

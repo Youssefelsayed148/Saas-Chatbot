@@ -220,3 +220,13 @@ def build_tsquery(question: str, language: str) -> str | None:
         return " | ".join(variants)
     # English: to_tsquery('english') lexemizes; plain tokens are safe (\w+ only).
     return " | ".join(dict.fromkeys(tokens))
+
+
+def term_queries(question: str, language: str) -> list[str]:
+    """One OR query per distinct content term; Arabic variants count only once."""
+    if language == "ar":
+        question = normalise_text(question)
+    return [
+        " | ".join(_arabic_variants(token)) if language == "ar" else token
+        for token in dict.fromkeys(_tokens(question))
+    ]
