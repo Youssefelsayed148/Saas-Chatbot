@@ -1,7 +1,7 @@
 import os
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -82,6 +82,13 @@ class Settings(BaseSettings):
     widget_daily_message_cap: int = Field(default=500, ge=1, le=100000)
     # Deterministic offline stub model for tests/E2E. NEVER in production config.
     chat_stub_model: bool = False
+    # RAG deployment contract: all providers use one 1024-dimensional column.
+    embedding_provider: Literal["ollama", "openai", "openrouter"] = "ollama"
+    embedding_model: str = ""
+    embedding_dimensions: Literal[1024] = 1024
+    embedding_ollama_base_url: str = "http://host.docker.internal:11434"
+    embedding_timeout_seconds: float = Field(default=25.0, gt=0, le=120)
+    embedding_test_stub: bool = False
     # Worker loop.
     worker_poll_seconds: float = Field(default=1.0, ge=0.1, le=60)
     worker_heartbeat_file: str = "/tmp/chatbot-worker-heartbeat"
@@ -101,6 +108,8 @@ def validate_startup_settings(settings: Settings) -> None:
 
     The deterministic stub model is a dev/test/eval affordance only
     (P3 carries this guard forward in P4-00)."""
+    if settings.embedding_test_stub and settings.environment != "test":
+        raise RuntimeError("Embedding test vectors are allowed only in the test environment.")
     if settings.chat_stub_model and settings.environment == "production":
         raise RuntimeError(
             "CHAT_STUB_MODEL cannot be enabled with environment=production; "

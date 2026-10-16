@@ -8,8 +8,8 @@ Every tenant-owned table carries ``tenant_id`` plus a bot scoping column, and
 children use composite FKs ``(tenant_id, bot_id[, parent_id])`` against unique
 keys on their parents (ADR-010) — a row can never reference a parent of
 another tenant, and the ingest worker re-validates tenant + bot per job.
-There is no embedding/vector column (ADR-005): search uses the generated
-GIN-indexed ``fts_en`` / ``fts_simple`` tsvector columns only.
+RAG Phase 2 adds model-tagged vector(1024) embeddings alongside the original
+GIN-indexed ``fts_en`` / ``fts_simple`` columns.
 """
 
 from datetime import datetime
@@ -34,12 +34,15 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, utcnow
-from app.db.models.types import TSVECTOR
+from app.db.models.types import TSVECTOR, VECTOR1024
 
 # --- allowed/checked values -------------------------------------------------
 SOURCE_KIND_VALUES = ("pdf", "docx", "txt", "md", "qa_csv")
 SOURCE_STATUS_VALUES = ("stored", "queued", "ingested", "failed")
-JOB_TYPE_VALUES = ("ingest_batch", "retention_purge", "follow_up_delivery", "sentiment_classify")
+JOB_TYPE_VALUES = (
+    "ingest_batch", "retention_purge", "follow_up_delivery", "sentiment_classify",
+    "reembed_backfill",
+)
 JOB_STATUS_VALUES = ("pending", "running", "succeeded", "failed", "cancelled")
 REVISION_STATUS_VALUES = ("draft", "published", "archived")
 LANGUAGE_VALUES = ("en", "ar")
@@ -81,7 +84,8 @@ class Job(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "type IN ('ingest_batch', 'retention_purge', 'follow_up_delivery', 'sentiment_classify')",
+            "type IN ('ingest_batch', 'retention_purge', 'follow_up_delivery', 'sentiment_classify')"
+            " OR type = 'reembed_backfill'",
             name="ck_jobs_type",
         ),
         CheckConstraint(
@@ -326,6 +330,9 @@ class Chunk(Base):
     priority: Mapped[int] = mapped_column(default=0, server_default=sa_text("0"))
     # SHA-256 of text_norm; dedupe key per (revision, source) (docs/14 §3).
     content_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    embedding: Mapped[list[float] | None] = mapped_column(VECTOR1024())
+    embedding_model: Mapped[str | None] = mapped_column(Text)
+    embedding_dim: Mapped[int | None] = mapped_column()
     ordinal: Mapped[int] = mapped_column(default=0, server_default=sa_text("0"))
     fts_en: Mapped[Any] = mapped_column(
         TSVECTOR,
@@ -349,6 +356,11 @@ class Chunk(Base):
         CheckConstraint("language IN ('en', 'ar')", name="ck_chunks_language"),
         CheckConstraint("priority >= 0 AND priority <= 10", name="ck_chunks_priority"),
         CheckConstraint("ordinal >= 0", name="ck_chunks_ordinal"),
+        CheckConstraint(
+            "(embedding IS NULL AND embedding_model IS NULL AND embedding_dim IS NULL) OR "
+            "(embedding IS NOT NULL AND embedding_model IS NOT NULL AND embedding_dim = 1024)",
+            name="ck_chunks_embedding",
+        ),
         ForeignKeyConstraint(
             ["tenant_id", "bot_id"],
             ["bots.tenant_id", "bots.id"],
@@ -394,6 +406,9 @@ class Chunk(Base):
         Index("ix_chunks_tenant_bot_revision", "tenant_id", "bot_id", "revision_id"),
         Index("ix_chunks_fts_en", "fts_en", postgresql_using="gin"),
         Index("ix_chunks_fts_simple", "fts_simple", postgresql_using="gin"),
+        Index("ix_chunks_embedding_hnsw", "embedding", postgresql_using="hnsw",
+              postgresql_ops={"embedding": "vector_cosine_ops"},
+              postgresql_where=sa_text("embedding IS NOT NULL")),
     )
 
 

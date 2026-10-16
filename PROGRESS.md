@@ -1023,3 +1023,53 @@ checks: both required variables not set, chain length 0. No new provider calls.
 - `docker exec rag-stage0-checks python -m mypy --no-incremental --cache-dir /tmp/rag-stage0-commit-mypy app tests alembic scripts/rag_stage0_baseline.py`: exit 0, **156 source files**.
 - From apps/api, with ENVIRONMENT=test, DATABASE_URL=postgresql://postgres@127.0.0.1:55461/rag_stage0_baseline_test, CHAT_STUB_MODEL unset: `../../.venv/Scripts/python.exe -m scripts.rag_stage0_baseline --database-url postgresql://postgres@127.0.0.1:55461/rag_stage0_baseline_test --cases ../../implementation/RAG-PHASE-02/stage-0-eval.jsonl --output ../../.test-storage/rag-stage-0/baseline --retrieval-only`: exit 0, all **32** cases, **0 chat/embedding requests**. Existing live artifacts unchanged. Expected-source hits: Arabic 0/6, mixed 4/4, paraphrase 3/8, follow-up 2/4; answerable total 9/22. Unanswerable empty evidence 6/10; generation/refusal correctness for remaining cases PENDING.
 - Reused the already completed three affected Playwright runs, without rerunning for reporting. Full suites remain reserved for the final exit gate.
+
+## 2026-10-16 RAG Stage 1 — embedding foundation
+
+Stage 0 implementation committed locally as `ba7ffa0`. Stage 1 adds the fixed
+1024-dim schema, three provider adapters, staff-only settings/backfill routes,
+ingestion scheduling, and resumable/fenced job processing. See
+`docs/rag-phase/STAGE-1-REPORT.md`. Chat requests used: **0**. Real OpenAI calls:
+**0**. Ollama probe unavailable; deterministic test-only vectors, no model pull.
+
+Infrastructure: `docker run --detach --name rag-phase2-postgres --publish 127.0.0.1:55462:5432 --env POSTGRES_HOST_AUTH_METHOD=trust --env POSTGRES_DB=rag_phase2_base_test pgvector/pgvector:pg17` — exit 0. Preserved Stage 0 database on port 55461 untouched by the vector migration. First native-quoted Ollama probe had a SyntaxError; corrected stdin-based HTTPX probe to `http://host.docker.internal:11434/api/tags` reported unavailable. No retry/model pull/provider credential used.
+
+Exact affected API commands (all run with mocked provider HTTP/test vectors and
+ENVIRONMENT=test in the checks container; each database is disposable):
+
+```text
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage1 -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_embedding_foundation.py --tb=short -p no:cacheprovider --basetemp=/tmp/rag-stage1-foundation
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage1 -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_embedding_foundation.py --tb=short -p no:cacheprovider --basetemp=/tmp/rag-stage1-foundation-fixed
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage1 -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_embedding_foundation.py --tb=short -p no:cacheprovider --basetemp=/tmp/rag-stage1-foundation-final
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage1_pipeline -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_knowledge_pipeline.py --tb=short -p no:cacheprovider --basetemp=/tmp/rag-stage1-pipeline
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage1_pipeline -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_knowledge_pipeline.py --tb=short -p no:cacheprovider --basetemp=/tmp/rag-stage1-pipeline-fixed
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage1_matrix -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_tenant_route_matrix.py --tb=short -p no:cacheprovider --basetemp=/tmp/rag-stage1-matrix
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage1_migrations -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_migrations.py --tb=short -p no:cacheprovider --basetemp=/tmp/rag-stage1-migrations
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage1_jobs -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_jobs.py --tb=short -p no:cacheprovider --basetemp=/tmp/rag-stage1-jobs
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage1_startup -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_startup_guard.py --tb=short -p no:cacheprovider --basetemp=/tmp/rag-stage1-startup
+```
+
+Outcomes in command order: foundation initial 9 passed/1 failed (unflushed test
+setup pointer), fixed 10 passed, final with new lease-fence test **11 passed**
+(9.68s); pipeline initial 6 passed/3 failed (old single-job assumptions), fixed
+**9 passed** (32.15s); matrix **6 passed** (23.58s); migrations **1 passed**
+(4.83s); jobs **8 passed** (3.60s); startup **5 passed** (1.82s). Each has the
+existing Starlette warning. Logs: `.test-storage/rag-stage-0/stage1-*.log`.
+
+Static commands:
+
+- `docker exec rag-stage0-checks python -m mypy --no-incremental --cache-dir /tmp/rag-stage1-first-mypy`: initial exit 1, three object/counter typing errors; fixed with explicit integer narrowing. Intermediate and final checks passed.
+- Final `docker exec rag-stage0-checks python -m mypy --no-incremental --cache-dir /tmp/rag-stage1-commit-mypy`: exit 0, **161 source files**.
+- `docker exec rag-stage0-checks python -m ruff check --no-cache app/embeddings app/db/models/types.py app/db/models/core.py app/core/config.py app/jobs/runner.py app/main.py app/core/permissions.py alembic/versions/0014_rag_embeddings.py tests/test_tenant_route_matrix.py tests/test_embedding_foundation.py tests/test_knowledge_pipeline.py`: exit 0 after initial new-file line/import formatting fixes.
+- Same file scope with `python -m ruff format --no-cache --check`: exit 0, **14 files** formatted.
+- `docker exec rag-stage0-checks python -m ruff check --no-cache --output-format concise app tests`: exactly **9 pre-existing findings**, exit 1; no new findings. Subsequent combined command's overall exit 0 came from the successful format check, not a repo-wide Ruff pass.
+- `npm.cmd run lint`; `npm.cmd run typecheck`: exit 0. Changed E2E launcher Prettier check exit 0.
+
+Affected browser command from apps/web:
+
+```powershell
+$env:ENVIRONMENT='test'; $env:DATABASE_URL='postgresql://postgres@127.0.0.1:55462/rag_stage1_browser_test'; $env:E2E_API_PORT='18162'; $env:API_PROXY_TARGET='http://127.0.0.1:18162'; $env:STORAGE_ROOT='D:/Projects/Work Projects/The Osiris Labs/SAAS-chats-ai/.test-storage/rag-stage-0/stage1-browser-storage'; npm.cmd test -- tests/widget.spec.ts tests/knowledge.spec.ts tests/overview.spec.ts --reporter=line 2>&1 | Tee-Object -FilePath '../../.test-storage/rag-stage-0/stage1-browser.log'; exit $LASTEXITCODE
+```
+
+Exit 0: **10 passed (1.7m)**. No ECONNRESET reported. No full API/Playwright run,
+real embedding generation, dotenv reads, push, merge, deploy or destructive cleanup.

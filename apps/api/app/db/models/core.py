@@ -145,6 +145,16 @@ class Bot(Base):
     published_revision_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("knowledge_revisions.id", ondelete="SET NULL")
     )
+    retrieval_mode: Mapped[str] = mapped_column(Text, default="hybrid", server_default="hybrid")
+    active_embedding_model: Mapped[str | None] = mapped_column(Text)
+    embedding_ready: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false")
+    )
+    generation_provider: Mapped[str] = mapped_column(
+        Text, default="openrouter", server_default="openrouter"
+    )
+    generation_model: Mapped[str | None] = mapped_column(Text)
+    tier: Mapped[str] = mapped_column(Text, default="standard", server_default="standard")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utcnow
     )
@@ -153,6 +163,11 @@ class Bot(Base):
     )
 
     __table_args__ = (
+        CheckConstraint("retrieval_mode IN ('hybrid','fts_only')", name="ck_bots_retrieval_mode"),
+        CheckConstraint(
+            "generation_provider IN ('openrouter','openai')", name="ck_bots_generation_provider"
+        ),
+        CheckConstraint("tier IN ('standard','premium')", name="ck_bots_tier"),
         CheckConstraint(
             "status IN ('draft', 'active', 'paused', 'archived')", name="ck_bots_status"
         ),

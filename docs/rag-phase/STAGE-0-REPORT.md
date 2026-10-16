@@ -1,7 +1,7 @@
 # Stage 0 checkpoint
 
-2026-10-16. Base/plan commit `0c70c5b`; implementation hash is recorded in the final
-report. Earlier live results and browser evidence are preserved in
+2026-10-16. Base/plan commit `0c70c5b`; implementation commit `ba7ffa0`.
+Earlier live results and browser evidence are preserved in
 `implementation/RAG-PHASE-02/STAGE-0-REPORT.md` and `PROGRESS.md`.
 
 ## Measurements

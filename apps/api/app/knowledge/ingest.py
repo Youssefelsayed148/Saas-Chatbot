@@ -456,6 +456,9 @@ def _copy_revision_snapshot(
                 priority=chunk.priority,
                 content_hash=chunk.content_hash,
                 ordinal=chunk.ordinal,
+                embedding=chunk.embedding,
+                embedding_model=chunk.embedding_model,
+                embedding_dim=chunk.embedding_dim,
             )
         )
     db.flush()
@@ -729,4 +732,9 @@ def run_ingest_batch(
             failures.append(error)
     if ingested == 0 and failures:
         return "; ".join(failures[:3]) if failures else "All sources failed."
+    if ingested:
+        from app.embeddings.backfill import queue_backfill
+
+        queue_backfill(db, job.tenant_id, job.bot_id, settings, created_by=job.created_by)
+        db.commit()
     return None

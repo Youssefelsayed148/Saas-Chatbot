@@ -102,6 +102,7 @@ export async function startServer(): Promise<ServerHandle> {
         // The playground E2E runs the deterministic offline stub model
         // (dev-only; production never sets this).
         CHAT_STUB_MODEL: "1",
+        EMBEDDING_TEST_STUB: "1",
       },
       stdio: "inherit",
     },
@@ -122,6 +123,8 @@ export function startWorker(databaseUrl: string): ChildProcess {
       ...process.env,
       DATABASE_URL: databaseUrl,
       WORKER_ALLOW_ONLY_TEST_DB: "1",
+      CHAT_STUB_MODEL: "1",
+      EMBEDDING_TEST_STUB: "1",
       WORKER_HEARTBEAT_FILE: "/tmp/chatbot-e2e-worker-heartbeat",
     },
     stdio: "inherit",

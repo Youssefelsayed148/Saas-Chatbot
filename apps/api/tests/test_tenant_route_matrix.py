@@ -227,6 +227,8 @@ def test_every_openapi_route_role_and_cross_tenant(
                 if template.endswith("/bots/{bot_id}") and method == "PATCH":
                     body = {"name": "Matrix bot"}
                 kwargs["json"] = body
+                if template.endswith(("/rag", "/rag/backfill")):
+                    kwargs["json"] = {}
                 if template.endswith("/sources/files"):
                     kwargs = {
                         "files": [
@@ -312,7 +314,7 @@ def test_every_platform_route_denies_each_client_role(app: Any, db: Any) -> None
         users.cleanup()
 
 
-def test_exact_77_route_contract_and_operator_knowledge(app: Any) -> None:
+def test_exact_route_contract_and_operator_knowledge(app: Any) -> None:
     from app.core.permissions import TENANT_ROUTE_ROLES
 
     actual = {
@@ -322,7 +324,7 @@ def test_exact_77_route_contract_and_operator_knowledge(app: Any) -> None:
         for method, operation in methods.items()
         if method.upper() in {"GET", "POST", "PATCH", "DELETE"}
     }
-    assert len(actual) == len(TENANT_ROUTE_ROLES) == 77
+    assert len(actual) == len(TENANT_ROUTE_ROLES) == 80
     assert actual == TENANT_ROUTE_ROLES
     base = "/api/v1/tenants/{tenant_id}/bots/{bot_id}"
     for suffix in (
@@ -334,5 +336,6 @@ def test_exact_77_route_contract_and_operator_knowledge(app: Any) -> None:
         "/documents",
         "/documents/{document_id}/chunks",
         "/revisions",
+        "/rag",
     ):
         assert actual[("GET", base + suffix)] == "platform_staff_only"

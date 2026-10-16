@@ -103,8 +103,12 @@ def test_upload_parse_chunk_into_draft_revision(
     listing = users.call(
         "staff", "GET", f"/api/v1/tenants/{users.tenant_id}/bots/{bot_id}/jobs"
     ).json()
-    assert listing[0]["status"] == "succeeded"
-    assert listing[0]["error"] is None
+    ingested_job = next(row for row in listing if row["id"] == job["id"])
+    assert ingested_job["status"] == "succeeded"
+    assert ingested_job["error"] is None
+    backfill_jobs = drain_jobs(_engine_of(), tmp_path)
+    assert len(backfill_jobs) == 1 and backfill_jobs[0].type == "reembed_backfill"
+    assert backfill_jobs[0].status == "succeeded"
 
     rows = chunk_rows(db, str(users.tenant_id))
     assert rows, "expected chunks after ingest"
@@ -275,8 +279,9 @@ def test_reingest_unchanged_source_is_noop(
     )
     assert retry.status_code == 200, retry.text
     finished = drain_jobs(_engine_of(), tmp_path)
-    assert len(finished) == 1
-    assert finished[0].status == "succeeded"
+    assert len([job for job in finished if job.type == "ingest_batch"]) == 1
+    assert len([job for job in finished if job.type == "reembed_backfill"]) == 1
+    assert all(job.status == "succeeded" for job in finished)
 
     after_docs = db_counts(
         db,
@@ -386,7 +391,8 @@ def test_two_tenants_identical_content_share_no_rows(
     assert start_ingestion(users_b, bot_b).status_code == 202
 
     jobs = drain_jobs(_engine_of(), tmp_path)
-    assert len(jobs) == 2
+    assert len([job for job in jobs if job.type == "ingest_batch"]) == 2
+    assert len([job for job in jobs if job.type == "reembed_backfill"]) == 2
     assert all(job.status == "succeeded" for job in jobs)
     db.expire_all()
 
