@@ -82,9 +82,11 @@ def export_tenant_data(
     invitations = _rows(db, Invitation, tenant_id)
     sources = _rows(db, Source, tenant_id)
     audit_rows = _rows(db, AuditEvent, tenant_id)
-    storage: Storage | None = get_storage(settings) if sources else None
+    storage: Storage | None = (
+        get_storage(settings) if sources and context.user.is_platform_staff else None
+    )
     source_files: list[dict[str, Any]] = []
-    for source in sources:
+    for source in sources if context.user.is_platform_staff else []:
         try:
             assert storage is not None
             raw_file = storage.open(source.storage_key)
@@ -332,6 +334,21 @@ def export_tenant_data(
             ),
         ),
     }
+    if not context.user.is_platform_staff:
+        for key in (
+            "sources",
+            "source_files",
+            "source_pages",
+            "documents",
+            "chunks",
+            "knowledge_revisions",
+            "jobs",
+        ):
+            export_data.pop(key, None)
+        for bot in export_data["bots"]:
+            bot.pop("config", None)
+        for message in export_data["messages"]:
+            message["citations"] = []
     record_audit(
         db,
         action="tenant.data.exported",

@@ -25,3 +25,7 @@ apps/api/.data/
 .test-storage/
 
 implementation/ui-screens/
+
+# Generated pytest temp directories retained locally
+.pytest-tmp-*/
+apps/api/.pytest_local_run/

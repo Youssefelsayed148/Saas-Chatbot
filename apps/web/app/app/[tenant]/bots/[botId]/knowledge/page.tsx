@@ -29,8 +29,8 @@ export default function KnowledgePage() {
   const params = useParams<{ tenant: string; botId: string }>();
   const tenantId = params.tenant;
   const botId = params.botId;
-  const { me, roleIn } = useSession();
-  const canRead = me?.is_platform_staff || roleIn(tenantId) === "admin";
+  const { me } = useSession();
+  const canRead = !!me?.is_platform_staff;
   const canEdit = !!me?.is_platform_staff;
   const canPublish = !!me?.is_platform_staff;
 
@@ -228,7 +228,7 @@ export default function KnowledgePage() {
     return (
       <main>
         <h1>Knowledge</h1>
-        <Notice message="Administrator access required." />
+        <Notice message="Platform staff access required." />
       </main>
     );
 

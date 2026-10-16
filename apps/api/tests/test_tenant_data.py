@@ -74,6 +74,7 @@ def test_export_contains_contacts_conversations_and_identities_scoped_to_tenant(
                 conversation_id=conversation_a.id,
                 sender_type="visitor",
                 text="A private conversation",
+                citations=[{"chunk_id": "private-chunk", "title": "Private source"}],
             ),
         ]
     )
@@ -100,6 +101,24 @@ def test_export_contains_contacts_conversations_and_identities_scoped_to_tenant(
     audit = tenant_a.call("admin", "GET", audit_path)
     assert audit.status_code == 200
     assert audit.json()["events"][0]["action"] == "tenant.data.exported"
+    assert all("config" not in row for row in exported["bots"])
+    assert all(row["citations"] == [] for row in exported["messages"])
+    for key in (
+        "sources",
+        "source_files",
+        "source_pages",
+        "documents",
+        "chunks",
+        "knowledge_revisions",
+        "jobs",
+    ):
+        assert key not in exported
+    staff_export = tenant_a.call(
+        "staff", "GET", f"/api/v1/tenants/{tenant_a.tenant_id}/data/export"
+    ).json()
+    assert "sources" in staff_export and "knowledge_revisions" in staff_export
+    assert "config" in staff_export["bots"][0]
+    assert staff_export["messages"][0]["citations"][0]["title"] == "Private source"
     tenant_a.cleanup()
     tenant_b.cleanup()
 

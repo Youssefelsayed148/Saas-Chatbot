@@ -12,3 +12,6 @@ Phase verification + PHASE-REPORT.md. STOP.
 ```
 
 Standing preamble and rules from implementation/AGENT-PROMPTS.md §0 apply in full.
+
+## Phase 1 follow-up authorization override (2026-10-16)
+All knowledge access, including document/source parse status, jobs, chunks, revisions and Q&A template, is operator-only. Client admins submit change requests; client roles cannot inspect knowledge or install/config. Citations/sources are hidden from clients and visitors. This supersedes historical read-only client status access.

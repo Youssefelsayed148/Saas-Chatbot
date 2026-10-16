@@ -50,7 +50,7 @@ test("upload, ingest through the worker, preview, publish", async ({
   test.setTimeout(120_000);
   await openKnowledgeAsOperator(page);
 
-  // The Q&A template link is offered to editors.
+  // The Q&A template link is offered to operators.
   await expect(
     page.getByRole("link", { name: /download the template/ }),
   ).toBeVisible();
@@ -132,7 +132,7 @@ test("oversize uploads are rejected through the same-origin proxy with 413", asy
   await expect(page.locator("[data-testid='sources-list'] li")).toHaveCount(0);
 });
 
-test("viewer is read-only on knowledge", async ({ browser }) => {
+test("viewer cannot access knowledge", async ({ browser }) => {
   test.setTimeout(90_000);
   const first = await browser.newContext();
   const admin = await first.newPage();
@@ -179,7 +179,7 @@ test("viewer is read-only on knowledge", async ({ browser }) => {
   const tenantId = new URL(viewer.url()).pathname.split("/")[2];
   await viewer.goto(`/app/${tenantId}/bots/${botId}/knowledge`);
   await expect(
-    viewer.getByText("Administrator access required."),
+    viewer.getByText("Platform staff access required."),
   ).toBeVisible();
   await expect(viewer.locator("#knowledge-file-input")).toHaveCount(0);
   expect(

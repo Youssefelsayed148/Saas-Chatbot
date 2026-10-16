@@ -10,7 +10,7 @@ test("client admin requests a change and a separate operator triages it", async 
     await (await page.request.get(`/api/v1/tenants/${tenantId}/bots`)).json()
   )[0] as { id: string };
   await page.goto(`/app/${tenantId}/bots/${bot.id}/knowledge`);
-  await expect(page.getByRole("heading", { name: /knowledge/i })).toBeVisible();
+  await expect(page.getByText("Platform staff access required.")).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Upload", exact: true }),
   ).toHaveCount(0);
@@ -36,7 +36,9 @@ test("client admin requests a change and a separate operator triages it", async 
   const request = operator
     .locator("main > ul > li")
     .filter({ has: operator.getByText(text, { exact: true }) });
-  await request.getByRole("combobox", { name: /^Status for / }).selectOption("triaged");
+  await request
+    .getByRole("combobox", { name: /^Status for / })
+    .selectOption("triaged");
   await expect(request.getByText(/Status: triaged/)).toBeVisible();
   await page.reload();
   await expect(page.getByText(/Status: triaged/)).toBeVisible();
@@ -44,7 +46,7 @@ test("client admin requests a change and a separate operator triages it", async 
   expect(botName).toBeTruthy();
 });
 
-test("editor and viewer cannot obtain snippets or enter bot-control surfaces", async ({
+test("all client roles cannot obtain snippets or enter bot-control surfaces", async ({
   page,
   browser,
 }) => {
@@ -58,12 +60,18 @@ test("editor and viewer cannot obtain snippets or enter bot-control surfaces", a
   const adminBot = await (
     await page.request.get(`/api/v1/tenants/${tenantId}/bots/${botId}`)
   ).json();
-  expect(adminBot.widget_locator).toEqual(expect.any(String));
-  expect(adminBot.widget_locator.length).toBeGreaterThan(0);
-  await page.goto(`/app/${tenantId}/bots/${botId}/install`);
-  await expect(page.getByTestId("install-snippet")).toContainText(
-    `data-locator="${adminBot.widget_locator}"`,
-  );
+  expect(adminBot.widget_locator).toBeNull();
+  expect(adminBot.config).toEqual({});
+  await page.goto(`/app/${tenantId}/bots/${botId}/overview`);
+  await expect(page.getByTestId("nav-knowledge")).toHaveCount(0);
+  await expect(page.getByTestId("nav-install")).toHaveCount(0);
+  for (const surface of ["install", "knowledge"]) {
+    await page.goto(`/app/${tenantId}/bots/${botId}/${surface}`);
+    await expect(
+      page.getByText("Platform staff access required."),
+    ).toBeVisible();
+    await expect(page.getByTestId("install-snippet")).toHaveCount(0);
+  }
   const csrf = (await page.context().cookies()).find(
     (cookie) => cookie.name === "chatbot_csrf",
   )!.value;
@@ -113,9 +121,14 @@ test("editor and viewer cannot obtain snippets or enter bot-control surfaces", a
     expect(bot.config).toEqual({});
     await member.goto(`/app/${tenantId}/bots/${botId}/install`);
     await expect(
-      member.getByText("Administrator access required."),
+      member.getByText("Platform staff access required."),
     ).toBeVisible();
     await expect(member.getByTestId("install-snippet")).toHaveCount(0);
+    await member.goto(`/app/${tenantId}/bots/${botId}/knowledge`);
+    await expect(
+      member.getByText("Platform staff access required."),
+    ).toBeVisible();
+    await expect(member.getByTestId("sources-list")).toHaveCount(0);
     await context.close();
     const members = (await (
       await page.request.get(`/api/v1/tenants/${tenantId}/members`)

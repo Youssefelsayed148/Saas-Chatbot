@@ -38,6 +38,7 @@ export default function InstallPage() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
+    if (!me?.is_platform_staff) return;
     const timer = setTimeout(() => {
       void (async () => {
         try {
@@ -53,13 +54,13 @@ export default function InstallPage() {
       })();
     }, 0);
     return () => clearTimeout(timer);
-  }, [tenantId, botId]);
+  }, [tenantId, botId, me?.is_platform_staff]);
 
-  if (!me?.is_platform_staff && roleIn(tenantId) !== "admin")
+  if (!me?.is_platform_staff)
     return (
       <main>
         <h1>Install</h1>
-        <Notice message="Administrator access required." />
+        <Notice message="Platform staff access required." />
       </main>
     );
 

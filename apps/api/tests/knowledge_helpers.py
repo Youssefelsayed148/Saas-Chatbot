@@ -121,7 +121,7 @@ def drain_jobs(engine: Any, tmp_root: Path) -> list[Job]:
 def publish_draft(users: Any, bot_id: UUID | str) -> str:
     """Publish the bot's current draft via the API and return its id."""
     base = f"/api/v1/tenants/{users.tenant_id}/bots/{bot_id}/revisions"
-    revisions = users.call("admin", "GET", base).json()
+    revisions = users.call("staff", "GET", base).json()
     draft = next(row for row in revisions["revisions"] if row["status"] == "draft")
     published = users.call("staff", "POST", f"{base}/{draft['id']}/publish")
     assert published.status_code == 200, published.text

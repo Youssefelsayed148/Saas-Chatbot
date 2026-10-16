@@ -48,7 +48,7 @@ def bot_of_users_response(users: Any) -> str:
 
 
 def sources_of(users: Any, bot_id: str) -> list[dict[str, Any]]:
-    listing = users.call("admin", "GET", f"/api/v1/tenants/{users.tenant_id}/bots/{bot_id}/sources")
+    listing = users.call("staff", "GET", f"/api/v1/tenants/{users.tenant_id}/bots/{bot_id}/sources")
     assert listing.status_code == 200
     return list(listing.json())
 
@@ -303,7 +303,7 @@ def test_qa_template_download(
     try:
         users = seeded_tenant(storage_rooted_app, raw_db, prefix="up-tpl")
         bot_id = bot_of_users_response(users)
-        response = users.as_user("admin").get(
+        response = users.as_user("staff").get(
             f"/api/v1/tenants/{users.tenant_id}/bots/{bot_id}/sources/qa-template"
         )
         assert response.status_code == 200
@@ -359,7 +359,7 @@ def test_tenant_b_cannot_reach_tenant_a_bot_sources_or_upload(
             (f"{base_b}/{a_bot['id']}/documents", "GET"),
             (f"{base_b}/{a_bot['id']}/revisions", "GET"),
         ]:
-            assert b_admin.call("admin", method, path).status_code == 404, path
+            assert b_admin.call("staff", method, path).status_code == 404, path
 
         # Upload to A's bot via B's admin → 404 (bot hidden), nothing stored.
         upload = upload_sources(b_admin, a_bot["id"], [("x.md", MD_EN.read_bytes())], tmp_path)

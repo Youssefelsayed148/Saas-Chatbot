@@ -51,6 +51,21 @@ def test_bot_create_list_get_update_archive(app: Any, db: OrmSession) -> None:
         assert patch.json()["name"] == "First Renamed"
         assert patch.json()["config"]["default_language"] == "ar"
 
+        for role in ("admin", "editor", "viewer"):
+            for path in (
+                f"/api/v1/tenants/{tenant_id}/bots",
+                f"/api/v1/tenants/{tenant_id}/bots/{bot['id']}",
+            ):
+                response = users.call(role, "GET", path)
+                assert response.status_code == 200
+                rows = response.json() if isinstance(response.json(), list) else [response.json()]
+                assert all(row["config"] == {} and row["widget_locator"] is None for row in rows)
+        staff_bot = users.call(
+            "staff", "GET", f"/api/v1/tenants/{tenant_id}/bots/{bot['id']}"
+        ).json()
+        assert staff_bot["config"]["default_language"] == "ar"
+        assert staff_bot["widget_locator"]
+
         archive = users.call(
             "staff", "DELETE", f"/api/v1/platform/tenants/{tenant_id}/bots/{bot['id']}"
         )

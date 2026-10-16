@@ -130,8 +130,9 @@ export default function TenantDataPage() {
           <section aria-label="Tenant export">
             <h2>Export tenant data</h2>
             <p>
-              Downloads contacts, identities, conversations, messages,
-              knowledge, jobs, usage, and audit history as JSON.
+              Downloads contacts, identities, conversations, messages, usage,
+              and audit history as JSON. Platform staff exports also include
+              knowledge, jobs and bot configuration.
             </p>
             <button
               type="button"

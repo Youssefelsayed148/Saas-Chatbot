@@ -282,7 +282,7 @@ export default function InboxConversationPage() {
                   <div dir="auto" className="message-text">
                     {noteText}
                   </div>
-                  {message.citations.length > 0 && (
+                  {me?.is_platform_staff && message.citations.length > 0 && (
                     <details className="source-details" open>
                       <summary>Sources ({message.citations.length})</summary>
                       <ul aria-label="Sources" data-testid="thread-citations">

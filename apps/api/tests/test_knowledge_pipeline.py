@@ -101,7 +101,7 @@ def test_upload_parse_chunk_into_draft_revision(
     db.expire_all()
 
     listing = users.call(
-        "admin", "GET", f"/api/v1/tenants/{users.tenant_id}/bots/{bot_id}/jobs"
+        "staff", "GET", f"/api/v1/tenants/{users.tenant_id}/bots/{bot_id}/jobs"
     ).json()
     assert listing[0]["status"] == "succeeded"
     assert listing[0]["error"] is None
@@ -154,7 +154,7 @@ def test_pdf_pages_become_documents(
     db.expire_all()
 
     documents = users.call(
-        "admin",
+        "staff",
         "GET",
         f"/api/v1/tenants/{users.tenant_id}/bots/{bot_id}/documents",
         params={"revision": "draft"},
@@ -177,7 +177,7 @@ def test_docx_sections_tables_and_headings(
     run_one_ingest_job(_engine_of(), tmp_path)
     db.expire_all()
     documents = users.call(
-        "admin",
+        "staff",
         "GET",
         f"/api/v1/tenants/{users.tenant_id}/bots/{bot_id}/documents",
         params={"revision": "draft"},
@@ -204,7 +204,7 @@ def test_qa_csv_one_chunk_per_row(
     assert all(row[1].startswith("Q: ") for row in rows)
     assert all(row[1].count("A: ") == 1 for row in rows)  # one chunk, never split
     documents = users.call(
-        "admin",
+        "staff",
         "GET",
         f"/api/v1/tenants/{users.tenant_id}/bots/{bot_id}/documents",
         params={"revision": "draft"},
@@ -325,7 +325,7 @@ def test_publish_rollback_and_failed_job_isolation(
     run_jobs_to_completion(_engine_of(), tmp_path, db)
     db.expire_all()
 
-    jobs = users.call("admin", "GET", f"{base}/jobs").json()
+    jobs = users.call("staff", "GET", f"{base}/jobs").json()
     failed_job = jobs[0]
     assert failed_job["status"] == "failed", failed_job
     assert "corrupt" in failed_job["error"]
@@ -352,7 +352,7 @@ def test_publish_rollback_and_failed_job_isolation(
     assert rollback.status_code == 200
     db.expire_all()
     assert revision_of(db, str(users.tenant_id), "published") == draft_one
-    revisions = users.call("admin", "GET", f"{base}/revisions").json()
+    revisions = users.call("staff", "GET", f"{base}/revisions").json()
     assert "published_revision_id" in revisions
 
 

@@ -8,7 +8,7 @@ Approved change note, 2026-10-16: client roles are **admin, editor, viewer**. `o
 | Inbox actions, replies, takeover/resolve/assign, tags/notes; follow-ups; contact create/edit | Yes | Yes | No | Requires tenant membership for inbox actions |
 | Members/roles, invitations, audit, exports and CSVs | Yes | No | No | Yes |
 | Contact stage config, merge/delete; conversation delete | Yes | No | No | Yes (membership needed for ordinary inbox actions) |
-| Snippet; document/source list and parse status | Read only | No | No | Yes |
+| Install snippet and bot widget config; sources/documents/chunks, parse status, jobs, revisions, Q&A template | No | No | No | Yes, no membership required |
 | Request a change and view requests | Yes | No | No | Triage queue |
 | Bot create/archive/PATCH, settings/persona/widget domains | No | No | No | Yes, no membership required |
 | Knowledge uploads, ingestion, job cancel/retry, publish | No | No | No | Yes, no membership required |
@@ -31,3 +31,5 @@ Malicious or oversized uploaded files (zip bombs, huge PDFs, macros), prompt inj
 Many endpoints use HMAC signatures, not cookies/CSRF: constant-time compare, 5-minute timestamp window, event_id dedupe, per-connection secrets stored encrypted and rotatable, connection must be active and map to exactly one tenant+bot; events never carry a trusted tenant_id. Agent replies are authorized by tenant role and conversation tenant. Internal notes never leave the dashboard API. SSE streams are tenant-scoped and re-check membership on reconnect. Contact PII (phone, email) is never logged. Outbound follow-ups/broadcasts require recorded opt-in per contact and channel.
 ## Tests
 Tenant A cannot read/write B's bots by changing IDs; viewer cannot mutate; staff privilege is separate from client membership; expired visitor capability rejected; job cannot act on foreign tenant; forged/replayed/duplicate Many events; connection of tenant A cannot create data in tenant B; viewer cannot reply; two-agent takeover race; session fixation and CSRF checks; no test suite may target a non-disposable DB.
+
+Knowledge and install pages and navigation are hidden for every client role. Bot list/detail remain available for status, with config and widget locator redacted for all clients. No separate snippet endpoint exists (the tenant route contract remains exactly 77 routes). Conversation and inbox responses redact citations for clients; visitor message and history responses never expose citations. Client exports exclude bot config, knowledge sources/documents/chunks/revisions/jobs and message citations; staff exports retain them. Retrieval still validates and stores citations internally.

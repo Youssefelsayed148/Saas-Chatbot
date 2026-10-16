@@ -5,11 +5,13 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import * as api from "@/lib/api";
+import { useSession } from "@/lib/session";
 import { Loading, Notice } from "@/lib/ui";
 
 /** P4-04: one thread view with citations (title + source link). */
 
 export default function ConversationDetailPage() {
+  const { me } = useSession();
   const params = useParams<{
     tenant: string;
     botId: string;
@@ -69,7 +71,7 @@ export default function ConversationDetailPage() {
             {detail.messages.map((message) => (
               <li key={message.id} data-role={message.sender_type}>
                 <div dir="auto">{message.text}</div>
-                {message.citations.length > 0 && (
+                {me?.is_platform_staff && message.citations.length > 0 && (
                   <ul data-testid="thread-citations" aria-label="Sources">
                     {message.citations.map((citation) => (
                       <li key={citation.chunk_id}>

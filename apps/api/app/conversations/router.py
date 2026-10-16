@@ -151,7 +151,7 @@ def conversation_detail(
                 "id": str(message.id),
                 "sender_type": message.sender_type,
                 "text": message.text,
-                "citations": message.citations or [],
+                "citations": (message.citations or []) if context.user.is_platform_staff else [],
                 "can_answer": message.can_answer,
                 "needs_human": message.needs_human,
                 "created_at": message.created_at.isoformat(),

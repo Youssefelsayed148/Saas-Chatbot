@@ -1,8 +1,8 @@
 """Knowledge endpoints (P2-02/03): sources, uploads, ingestion, jobs,
 documents, revisions, publish/rollback.
 
-Roles (docs/06): uploads/ingest/retry/cancel = editor+; publish/rollback =
-admin+; reads = member. Every write requires CSRF. Hidden resources are 404
+Roles (docs/06): all knowledge reads and writes require platform staff.
+Every write requires CSRF. Hidden resources are 404
 (unknown ids and other tenants' ids are indistinguishable by design).
 """
 
@@ -59,7 +59,7 @@ def list_sources(
 
 @router.get("/sources/qa-template")
 def download_qa_template(tenant_id: UUID, bot_id: UUID, context: TenantContextDep) -> Response:
-    context.require_role("admin")
+    context.require_operator()
     return Response(
         content=service.qa_template(),
         media_type="text/csv; charset=utf-8",
@@ -76,7 +76,7 @@ def upload_sources(
     settings: Annotated[Settings, Depends(get_settings)],
     files: Annotated[list[UploadFile], File(description="PDF/DOCX/TXT/MD files, or one Q&A CSV")],
 ) -> list[schemas.SourceOut]:
-    """Store uploaded files as sources (editor+). Parsing happens in a worker job."""
+    """Store uploaded files as sources (platform staff). Parsing happens in a worker job."""
     context.require_operator()
     uploads: list[tuple[str | None, Any]] = [(file.filename, file.file) for file in files]
     rows = service.upload_files(context, bot_id, uploads, settings, storage=get_storage(settings))
@@ -102,7 +102,7 @@ def start_ingestion(
     _: CsrfOk,
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> schemas.JobOut:
-    """Start one ingest job for the bot's stored sources (editor+)."""
+    """Start one ingest job for the bot's stored sources (platform staff)."""
     context.require_operator()
     return _job_out(service.start_ingestion(context, bot_id, body.source_ids, settings))
 
@@ -204,6 +204,6 @@ def publish_revision(
     context: TenantContextDep,
     _: CsrfOk,
 ) -> dict[str, object]:
-    """Publish the revision (editor+); publishing an archived one rolls back."""
+    """Publish the revision (platform staff); publishing an archived one rolls back."""
     context.require_operator()
     return service.publish_revision(context, bot_id, revision_id)

@@ -283,7 +283,7 @@ test("two static sites, two tenants: each widget answers only from its own knowl
   expect(answerB ?? "").not.toContain("7:00");
 });
 
-test("javascript source URLs are never rendered as clickable citation links", async ({
+test("visitor never renders sources even when a response contains citations", async ({
   page,
 }) => {
   const locator = "unsafe-source-url-test";
@@ -353,9 +353,7 @@ test("javascript source URLs are never rendered as clickable citation links", as
   await frame.getByTestId("widget-input").fill("Tell me something");
   await frame.getByTestId("widget-send").click();
   await expect(frame.getByText("Here is the answer.")).toBeVisible();
-  await expect(frame.getByText("Unsafe source")).toBeVisible();
+  await expect(frame.getByText("Unsafe source")).toHaveCount(0);
+  await expect(frame.locator(".widget-citations")).toHaveCount(0);
   await expect(frame.locator('a[href^="javascript:"]')).toHaveCount(0);
-  await expect(
-    frame.getByText("Unsafe source").evaluate((node) => node.tagName),
-  ).resolves.toBe("SPAN");
 });

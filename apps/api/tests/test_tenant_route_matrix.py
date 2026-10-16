@@ -235,9 +235,13 @@ def test_every_openapi_route_role_and_cross_tenant(
                     }
                 if template.endswith("/change-requests"):
                     kwargs = {"data": {"type": "other", "text": "Matrix request"}}
-            membership_required = minimum == "editor" and method != "GET" and (
-                "/inbox/" in template
-                or template.startswith("/api/v1/tenants/{tenant_id}/conversations/")
+            membership_required = (
+                minimum == "editor"
+                and method != "GET"
+                and (
+                    "/inbox/" in template
+                    or template.startswith("/api/v1/tenants/{tenant_id}/conversations/")
+                )
             )
             allowed = (
                 (role == "staff" and not membership_required)
@@ -306,3 +310,29 @@ def test_every_platform_route_denies_each_client_role(app: Any, db: Any) -> None
                     assert response.status_code == 403, (role, method, path, response.text)
     finally:
         users.cleanup()
+
+
+def test_exact_77_route_contract_and_operator_knowledge(app: Any) -> None:
+    from app.core.permissions import TENANT_ROUTE_ROLES
+
+    actual = {
+        (method.upper(), path): operation["x-minimum-role"]
+        for path, methods in app.openapi()["paths"].items()
+        if path.startswith("/api/v1/tenants")
+        for method, operation in methods.items()
+        if method.upper() in {"GET", "POST", "PATCH", "DELETE"}
+    }
+    assert len(actual) == len(TENANT_ROUTE_ROLES) == 77
+    assert actual == TENANT_ROUTE_ROLES
+    base = "/api/v1/tenants/{tenant_id}/bots/{bot_id}"
+    for suffix in (
+        "/sources",
+        "/sources/{source_id}",
+        "/sources/qa-template",
+        "/jobs",
+        "/jobs/{job_id}",
+        "/documents",
+        "/documents/{document_id}/chunks",
+        "/revisions",
+    ):
+        assert actual[("GET", base + suffix)] == "platform_staff_only"

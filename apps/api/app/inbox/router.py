@@ -95,7 +95,7 @@ def conversation_detail(
                 "sender_type": message.sender_type,
                 "sender_user_id": (str(message.sender_user_id) if message.sender_user_id else None),
                 "text": message.text,
-                "citations": message.citations or [],
+                "citations": (message.citations or []) if context.user.is_platform_staff else [],
                 "can_answer": message.can_answer,
                 "needs_human": message.needs_human,
                 "feedback": feedback_by_message.get(message.id, []),

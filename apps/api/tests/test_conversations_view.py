@@ -88,10 +88,15 @@ def test_list_and_detail_show_threads_with_citations(
     assert detail.status_code == 200, detail.text
     messages = detail.json()["messages"]
     assert [m["sender_type"] for m in messages] == ["visitor", "ai"]
-    assert len(messages[1]["citations"]) >= 1
-    citation = messages[1]["citations"][0]
-    assert citation["title"]
-    assert citation["source_url"] is not None
+    assert messages[1]["citations"] == []
+    for role in ("editor", "viewer", "staff"):
+        base = f"/api/v1/tenants/{users.tenant_id}/bots/{setup['bot']['id']}"
+        path = f"{base}/conversations/{thread['id']}"
+        rows = users.call(role, "GET", path).json()["messages"]
+        assert bool(rows[1]["citations"]) == (role == "staff")
+        inbox_path = f"/api/v1/tenants/{users.tenant_id}/conversations/{thread['id']}"
+        rows = users.call(role, "GET", inbox_path).json()["messages"]
+        assert bool(rows[1]["citations"]) == (role == "staff")
 
 
 def test_playground_threads_are_excluded_from_the_list(

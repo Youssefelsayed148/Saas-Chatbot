@@ -17,7 +17,7 @@ CsrfOk = Annotated[None, Depends(cookies.require_csrf)]
 
 def _client_bot_out(context: TenantContext, bot: object) -> BotOut:
     out = BotOut.model_validate(bot)
-    if not context.user.is_platform_staff and context.role != "admin":
+    if not context.user.is_platform_staff:
         out.widget_locator = None
         out.config = {}
     return out

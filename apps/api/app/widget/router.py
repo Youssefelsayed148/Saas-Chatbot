@@ -183,7 +183,9 @@ def send_message(
     return MessageTurnResponse(
         conversation_id=payload["conversation_id"],
         visitor_message=payload["visitor_message"],
-        ai_message=payload["ai_message"],
+        ai_message=(
+            {**payload["ai_message"], "citations": []} if payload["ai_message"] else None
+        ),
         kind=payload["kind"],
         language=payload["language"],
     )
@@ -207,7 +209,7 @@ def session_messages(
             id=row.id,
             sender_type=row.sender_type,
             text=row.text,
-            citations=row.citations,
+            citations=[],
             can_answer=row.can_answer,
             needs_human=row.needs_human,
             created_at=row.created_at,

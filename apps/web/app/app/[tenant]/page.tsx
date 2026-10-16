@@ -8,8 +8,8 @@ import { useSession } from "@/lib/session";
 import { Empty, Loading, Notice } from "@/lib/ui";
 export default function TenantOverview() {
   const { tenant } = useParams<{ tenant: string }>();
-  const { me, loading, roleIn } = useSession();
-  const canReadKnowledge = roleIn(tenant) === "admin";
+  const { me, loading } = useSession();
+  const canReadKnowledge = !!me?.is_platform_staff;
   const router = useRouter();
   const [data, setData] = useState<{
     counts: api.InboxCounts;
@@ -95,7 +95,7 @@ export default function TenantOverview() {
               </div>
               {!data.recent.conversations.length ? (
                 <Empty>
-                  No conversations yet. Open a bot’s Install tab to test your
+                  No conversations yet. Ask your operator to verify your website
                   widget.
                 </Empty>
               ) : (

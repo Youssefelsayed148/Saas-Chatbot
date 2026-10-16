@@ -89,4 +89,60 @@ test("staff list, onboard a client end to end, and open the client detail", asyn
   await page.getByTestId("client-detail-bots");
   const csrf = await csrfOf(page);
   expect(csrf).toBeTruthy();
+
+  // The onboarded client has no membership for this operator.
+  const clientId = page.url().split("/").at(-1)!;
+  const preview = await (
+    await page.request.get(`/api/v1/tenants/${clientId}/data/deletion-preview`)
+  ).json();
+  const me = await (await page.request.get("/api/v1/auth/me")).json();
+  expect(
+    me.memberships.some(
+      (membership: { tenant_id: string }) => membership.tenant_id === clientId,
+    ),
+  ).toBe(false);
+  await page
+    .getByRole("link", { name: "Organization data and deletion" })
+    .click();
+  await page.getByLabel(`Type ${clientName} to confirm`).fill(clientName);
+  await page
+    .getByLabel("Reason for deletion")
+    .fill("Disposable browser test cleanup");
+  const schedule = page.getByRole("button", {
+    name: "Schedule organization deletion",
+  });
+  await schedule.click();
+  const dialog = page.getByRole("dialog", {
+    name: "Delete this organization?",
+  });
+  await expect(dialog).toBeVisible();
+  for (const [kind, count] of Object.entries(preview.counts)) {
+    await expect(
+      dialog.getByText(`${kind}: ${count}`, { exact: true }),
+    ).toBeVisible();
+  }
+  const confirm = dialog.getByRole("button", {
+    name: "Delete organization now",
+  });
+  await expect(confirm).toBeDisabled();
+  await dialog.getByLabel("Confirm organization name").fill(`${clientName} `);
+  await expect(confirm).toBeDisabled();
+  await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+  expect((await page.request.get(`/api/v1/tenants/${clientId}`)).status()).toBe(
+    200,
+  );
+  await page.getByLabel(`Type ${clientName} to confirm`).fill(clientName);
+  await schedule.click();
+  await dialog.getByLabel("Confirm organization name").fill(clientName);
+  await expect(confirm).toBeEnabled();
+  const deleted = page.waitForResponse(
+    (response) =>
+      response.request().method() === "DELETE" &&
+      response.url().endsWith(`/tenants/${clientId}/data`),
+  );
+  await confirm.click();
+  expect((await deleted).status()).toBe(204);
+  expect((await page.request.get(`/api/v1/tenants/${clientId}`)).status()).toBe(
+    404,
+  );
 });

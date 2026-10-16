@@ -147,18 +147,6 @@ function widgetDebugEnabled(): boolean {
   }
 }
 
-function safeSourceUrl(sourceUrl: string | null): string | null {
-  if (!sourceUrl) return null;
-  try {
-    const parsed = new URL(sourceUrl);
-    return parsed.protocol === "http:" || parsed.protocol === "https:"
-      ? parsed.href
-      : null;
-  } catch {
-    return null;
-  }
-}
-
 function restoreSession(locator: string): { id: string; token: string } | null {
   try {
     const raw = window.localStorage.getItem(`chatbot-session-${locator}`);
@@ -824,34 +812,6 @@ export default function WidgetFramePage() {
                   }
                 >
                   <div dir="auto">{turn.text}</div>
-                  {turn.citations && turn.citations.length > 0 && (
-                    <ul
-                      className="widget-citations"
-                      aria-label={localized("cite", lang)}
-                    >
-                      {turn.citations.map((citation) => {
-                        const sourceUrl = safeSourceUrl(citation.source_url);
-                        return (
-                          <li
-                            key={citation.chunk_id}
-                            className="widget-source-chip"
-                          >
-                            {sourceUrl ? (
-                              <a
-                                href={sourceUrl}
-                                rel="noreferrer noopener"
-                                target="_blank"
-                              >
-                                {citation.title ?? localized("cite", lang)}
-                              </a>
-                            ) : (
-                              <span>{citation.title ?? ""}</span>
-                            )}
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
                   {turn.role === "assistant" &&
                     turn.id !== "welcome" &&
                     !turn.feedback && (

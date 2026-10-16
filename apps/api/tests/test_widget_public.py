@@ -441,7 +441,7 @@ def test_message_endpoint_runs_the_pipeline_with_citations(
     payload = response.json()
     ai = payload["ai_message"]
     assert ai["text"]
-    assert len(ai["citations"]) >= 1
+    assert ai["citations"] == []
     assert ai["can_answer"] is True
     assert ai["needs_human"] is False
     assert payload["kind"] == "answer"
@@ -454,6 +454,7 @@ def test_message_endpoint_runs_the_pipeline_with_citations(
     assert len(rows) == 2  # visitor + ai, oldest first
     assert rows[0]["sender_type"] == "visitor"
     assert rows[1]["sender_type"] == "ai"
+    assert all(row["citations"] == [] for row in rows)
 
 
 def test_widget_feedback_recorded_idempotently(

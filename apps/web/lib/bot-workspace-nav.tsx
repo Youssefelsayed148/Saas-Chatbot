@@ -27,8 +27,7 @@ export default function BotWorkspaceNav({
   botName?: string;
 }) {
   const pathname = usePathname();
-  const { me, roleIn } = useSession();
-  const canAdmin = roleIn(tenantId) === "admin";
+  const { me } = useSession();
   const base = `/app/${tenantId}/bots/${botId}`;
   return (
     <nav
@@ -44,8 +43,9 @@ export default function BotWorkspaceNav({
         {TABS.filter(
           (tab) =>
             me?.is_platform_staff ||
-            (!["settings", "playground"].includes(tab.key) &&
-              (!["knowledge", "install"].includes(tab.key) || canAdmin)),
+            !["settings", "playground", "knowledge", "install"].includes(
+              tab.key,
+            ),
         ).map((tab) => {
           const href =
             tab.key === "overview"
