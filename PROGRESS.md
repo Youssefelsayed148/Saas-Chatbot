@@ -1110,3 +1110,54 @@ Owner clarification requested before Stage 3: whether either independent
 relevance signal suffices versus requiring both, and approval for explicitly
 untuned provisional cosine 0.50 / FTS rank 0.01 defaults without real embedding
 scores. The plan does not resolve this threshold tradeoff; no Stage 3 code started.
+
+
+## 2026-10-16 RAG Stage 3 ? relevance gate, rewrite, refusal
+
+Owner approved cosine OR FTS, and explicitly untuned configurable bge-m3
+cosine 0.50 / FTS ts_rank_cd 0.01 defaults. OpenAI calibration remains pending;
+unknown model identities cannot pass on vectors without their own floor.
+Stage 2 implementation hash: `8f163e9`. No real provider requests.
+
+Affected API commands:
+
+```text
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage3_gate -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_rag_gate.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage3-gate
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage3_chat -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_chat.py tests/test_cross_script.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage3-chat
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage3_conversations -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_conversations.py tests/test_handoff.py tests/test_analytics.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage3-conversations
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage3_baseline -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_rag_stage0_baseline.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage3-baseline
+```
+
+Gate/budget/all-case checks: **13 passed**, 1.83s; baseline compatibility:
+**14 passed**, 1.96s. Existing Starlette warning only. Other file outcomes
+recorded below when complete. Raw-FTS, translation/rewrite-off gate measurement:
+32 cases, expected-source accepted hits 9/22; unanswerable rejected 6/10.
+Four unanswerable questions still pass keyword relevance; this is not a claim
+of generation/refusal correctness. Arabic 0/6, mixed 4/4, paraphrase 3/8,
+follow-up 2/4 expected hits. Saved `docs/rag-phase/STAGE-3-GATE-RESULTS.json`.
+Fixture copied verbatim to API tests/fixtures for portable container tests.
+First artifact copy used a wrong truncated pytest directory; locate + corrected
+copy succeeded without rerunning tests or spending requests.
+
+- `docker exec rag-stage0-checks python -m mypy --no-incremental --cache-dir /tmp/rag-stage3-mypy`: exit 0, **165 source files**.
+- `.venv/Scripts/python.exe -m ruff check apps/api/app/retrieval/gate.py apps/api/app/chat/service.py apps/api/app/chat/providers.py apps/api/app/chat/models.py apps/api/app/chat/prompts.py apps/api/app/core/config.py apps/api/tests/test_rag_gate.py apps/api/tests/test_chat.py`: exit 0.
+- Same eight-file scope with `ruff format --check`: exit 0, **8 files**.
+
+Affected browser command from apps/web (offline stubs/disposable DB):
+
+```powershell
+$env:ENVIRONMENT='test'; $env:DATABASE_URL='postgresql://postgres@127.0.0.1:55462/rag_stage3_browser_test'; $env:E2E_API_PORT='18162'; $env:API_PROXY_TARGET='http://127.0.0.1:18162'; $env:STORAGE_ROOT='D:/Projects/Work Projects/The Osiris Labs/SAAS-chats-ai/.test-storage/rag-stage-0/stage3-browser-storage'; npm.cmd test -- tests/widget.spec.ts tests/playground.spec.ts --reporter=line 2>&1 | Tee-Object -FilePath '../../.test-storage/rag-stage-0/stage3-browser.log'; exit $LASTEXITCODE
+```
+
+Exit 0: **7 passed (1.3m)**, ECONNRESET **0**. No full suites, live semantic
+calibration, dotenv reads, paid calls, merge, push, deployment or Compose.
+
+- Chat/cross-script: exit 0, **19 passed** (16 + 3), 249.76s.
+- Conversations/handoff/analytics: exit 0, **24 passed** (13 + 5 + 6), 397.86s.
+- Review found history included the current message and oldest turns. Corrected
+  to recent prior visitor turns, scoped by tenant+bot, using configured window.
+  `docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage3_history -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_rag_gate.py -k rewrite_history --tb=short -p no:cacheprovider --basetemp=/tmp/rag-stage3-history`: exit 0, **1 passed**, 13 deselected, 1.59s.
+- Final `docker exec rag-stage0-checks python -m mypy --no-incremental --cache-dir /tmp/rag-stage3-final-mypy`: exit 0, **165 files**.
+- Final `ruff check` affected retrieval gate/chat/config/tests scope: exit 0;
+  `ruff format --check` same scope including conversations.py: **9 files**, exit 0.
+- Stage 3 total: **71 unique affected API tests**; **7 affected browser tests**.

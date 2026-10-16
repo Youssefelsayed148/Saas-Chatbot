@@ -91,6 +91,16 @@ class Settings(BaseSettings):
     embedding_test_stub: bool = False
     retrieval_rrf_k: int = Field(default=60, ge=1)
     retrieval_hnsw_max_scan_tuples: int = Field(default=20_000, ge=1)
+    # Owner-approved, untuned bge-m3 development values; no implicit transfer
+    # to other embedding models. Add calibrated identities explicitly via env.
+    retrieval_vector_floors: dict[str, float] = Field(
+        default_factory=lambda: {"ollama:bge-m3": 0.50}
+    )
+    retrieval_min_fts_match: float = Field(default=0.01, gt=0)
+    chat_rewrite_enabled: bool = True
+    chat_rewrite_plans: list[str] = Field(
+        default_factory=lambda: ["free", "starter", "pro", "business"]
+    )
     # Worker loop.
     worker_poll_seconds: float = Field(default=1.0, ge=0.1, le=60)
     worker_heartbeat_file: str = "/tmp/chatbot-worker-heartbeat"

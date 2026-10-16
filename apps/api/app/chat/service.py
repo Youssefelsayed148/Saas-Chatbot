@@ -13,20 +13,38 @@ chain failed — the handoff machine (P5) consumes that flag.
 """
 
 import json
+import logging
+import re
 from dataclasses import dataclass, field
 from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
 from app.chat import prompts
 from app.chat.providers import ChatModel, ProviderError
 from app.chat.routing import route
 from app.core.config import Settings, get_settings
-from app.db.models import Bot
+from app.db.models import Bot, Tenant
 from app.knowledge.language import detect_language
-from app.retrieval.service import RetrievalResult, RetrievedChunk, retrieve
+from app.retrieval.gate import relevance_gate
+from app.retrieval.hybrid import retrieve_hybrid as retrieve
+from app.retrieval.service import RetrievalResult, RetrievedChunk
 
 MAX_TOKENS = 700
+logger = logging.getLogger(__name__)
+
+# Conservative heuristic: history alone is not a reason to spend a rewrite.
+FOLLOW_UP = re.compile(
+    r"^(?:and\b|what about\b|how about\b|also\b|then\b|that\b|those\b|it\b|they\b|"
+    r"وماذا|ومتى|وهل|وبالنسبة|وكام|وكم|و يوم|طيب)|\b(?:it|them|those|that one)\b",
+    re.IGNORECASE,
+)
+
+
+def needs_rewrite(question: str, history: list[str]) -> bool:
+    return bool(history and FOLLOW_UP.search(question.strip()))
+
 
 CONDENSE_SYSTEM = (
     "You condense a visitor follow-up into a standalone search query in the "
@@ -214,8 +232,16 @@ def chat_answer(
             kind=routed.kind,
         )
 
-    # 2) Follow-up condensation (only with history; failure keeps the raw text).
-    condensed = condense(model, history=history, question=question, language=language)
+    # 2) Rewrite only context-dependent follow-ups, if enabled for this plan.
+    condensed = None
+    if settings.chat_rewrite_enabled and needs_rewrite(question, history):
+        plan = db.scalar(
+            select(Tenant.plan_label)
+            .join(Bot, Bot.tenant_id == Tenant.id)
+            .where(Tenant.id == tenant_id, Bot.id == bot.id)
+        )
+        if plan in settings.chat_rewrite_plans:
+            condensed = condense(model, history=history, question=question, language=language)
 
     # 3) Retrieval on the condensed (or raw) question.
     revision_id = bot.published_revision_id
@@ -241,7 +267,17 @@ def chat_answer(
                 model, question=raw, target_language=target
             ),
         )
-        evidence = retrieval.evidence
+        decision = relevance_gate(retrieval, settings)
+        evidence = decision.passed[: settings.retrieval_final_k]
+        logger.info(
+            "rag.gate tenant=%s bot=%s mode=%s accepted=%s rejected=%s rewrite=%s",
+            tenant_id,
+            bot.id,
+            retrieval.mode,
+            len(evidence),
+            len(decision.rejected_ids),
+            condensed is not None,
+        )
 
     if not evidence:
         contact = _support_contact(bot)
@@ -294,6 +330,7 @@ def chat_answer(
         user_text = f"{question}\n\n" + "\n".join(extra)
     messages = [
         {"role": "system", "content": system},
+        *({"role": "user", "content": previous} for previous in history),
         {"role": "user", "content": user_text},
     ]
 

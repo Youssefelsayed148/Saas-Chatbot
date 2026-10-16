@@ -1,7 +1,7 @@
 # Stage 2 — hybrid retrieval and isolation
 
-2026-10-16. Parent `39e3888`; implementation hash recorded after this report's
-commit. Chat requests: **0**; real embedding/OpenAI requests: **0**.
+2026-10-16. Implementation `8f163e9`, parent `39e3888`.
+Chat requests: **0**; real embedding/OpenAI requests: **0**.
 
 - Added parallel FTS/vector retrieval with separate SQLAlchemy sessions, RRF
   (rank constant 60), chunk provenance and independent cosine/FTS scores.
@@ -51,3 +51,5 @@ changes, full suites, dotenv reads, real calls, merge, push or deployment.
 
 Stage 3's gate combination and uncalibrated provisional thresholds need the
 owner's decision under the explicit ambiguity-stop rule. No Stage 3 code started.
+
+Subsequent owner reply approved OR and provisional 0.50 / 0.01; Stage 3 resumed.

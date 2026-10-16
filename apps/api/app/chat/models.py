@@ -22,7 +22,7 @@ def model_from_settings(settings: Settings) -> ChatModel | None:
             fallback_models=chain[1:],
             free_only=True,
             timeout_seconds=25.0,
-            retries=2,
+            retries=0,
         )
     if settings.chat_openai_api_key is not None and settings.chat_openai_model:
         return OpenAICompatibleModel(
@@ -31,7 +31,7 @@ def model_from_settings(settings: Settings) -> ChatModel | None:
             model=settings.chat_openai_model,
             free_only=False,
             timeout_seconds=25.0,
-            retries=2,
+            retries=0,
         )
     return None
 

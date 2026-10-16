@@ -28,8 +28,6 @@ from app.inbox.events import add_inbox_event
 from app.inbox.handoff import decide_handoff, start_handoff, visitor_handoff_reply
 from app.knowledge.language import detect_language
 
-MAX_HISTORY = 6
-
 
 def get_or_create_playground_conversation(
     db: OrmSession, *, tenant_id: UUID, bot_id: UUID, user_id: UUID
@@ -176,6 +174,7 @@ def history_messages(
     conversation: Conversation,
     *,
     settings: Settings,
+    exclude_message_id: UUID | None = None,
 ) -> list[str]:
     """Visitor texts within the retention window, oldest first (§7)."""
     since = datetime.now(UTC) - timedelta(seconds=settings.retention_days * 86400)
@@ -185,16 +184,18 @@ def history_messages(
             .where(
                 Message.conversation_id == conversation.id,
                 Message.tenant_id == conversation.tenant_id,
+                Message.bot_id == conversation.bot_id,
+                Message.id != exclude_message_id,
                 Message.sender_type == "visitor",
                 Message.created_at > since,
             )
-            .order_by(Message.created_at.asc())
-            .limit(MAX_HISTORY)
+            .order_by(Message.created_at.desc(), Message.id.desc())
+            .limit(settings.chat_num_history_messages)
         )
         .scalars()
         .all()
     )
-    return list(rows)
+    return list(reversed(rows))
 
 
 def record_usage_event(
@@ -299,7 +300,9 @@ def visitor_chat_turn(
             "No chat model is configured. Add the provider key for this deployment.",
         )
 
-    history = history_messages(db, conversation, settings=settings)
+    history = history_messages(
+        db, conversation, settings=settings, exclude_message_id=visitor_message.id
+    )
     started = datetime.now(UTC)
     reply = chat_answer(
         db,
@@ -330,11 +333,7 @@ def visitor_chat_turn(
         external_key=f"message:{ai_message.id}",
         message_id=ai_message.id,
         conversation_id=conversation.id,
-        payload=(
-            {"provider_usage": model.usage_totals}
-            if model.usage_totals is not None
-            else {}
-        ),
+        payload=({"provider_usage": model.usage_totals} if model.usage_totals is not None else {}),
     )
     decision = decide_handoff(
         db,

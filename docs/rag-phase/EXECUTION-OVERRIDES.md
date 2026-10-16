@@ -26,6 +26,10 @@
 - Thresholds are model-specific. Ollama bge-m3 development values are provisional;
   OpenAI calibration is pending owner execution. Build, but do not run, the capped
   calibration and generation-check scripts requested by the owner.
+- Owner clarified the relevance gate: cosine OR FTS may pass independently.
+  Approved configurable cosine 0.50 / ts_rank_cd 0.01 as explicitly untuned
+  `bge-m3 (Ollama), provisional` defaults. Other models require their own
+  configured/calibrated vector floor; OpenAI remains pending owner calibration.
 - One implementation commit and `STAGE-N-REPORT.md` per stage. Existing plan-files
   commit is `0c70c5b`. Record implementation hashes in the final report; a report
   cannot contain the hash of the commit that first introduces that same report.
