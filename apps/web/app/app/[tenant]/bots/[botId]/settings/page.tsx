@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import { LabelBadge } from "@/lib/labels";
 import * as api from "@/lib/api";
 import type { Bot } from "@/lib/api";
-import { roleSatisfies, useSession } from "@/lib/session";
+import { useSession } from "@/lib/session";
 import { Loading, Notice } from "@/lib/ui";
 import BotWorkspaceNav from "@/lib/bot-workspace-nav";
 
@@ -15,9 +15,8 @@ export default function BotSettingsPage() {
   const params = useParams<{ tenant: string; botId: string }>();
   const tenantId = params.tenant;
   const botId = params.botId;
-  const { roleIn } = useSession();
-  const role = roleIn(tenantId);
-  const canEdit = roleSatisfies(role, "admin");
+  const { me } = useSession();
+  const canEdit = !!me?.is_platform_staff;
 
   const [bot, setBot] = useState<Bot | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -147,6 +146,16 @@ export default function BotSettingsPage() {
     }
   }
 
+  if (me && !me.is_platform_staff)
+    return (
+      <main>
+        <BotWorkspaceNav tenantId={tenantId} botId={botId} />
+        <h1>Bot status</h1>
+        <p>{bot?.status ?? "Loading status?"}</p>
+        <p>Contact your operator to request settings changes.</p>
+      </main>
+    );
+
   if (loadError) {
     return (
       <main>
@@ -205,9 +214,7 @@ export default function BotSettingsPage() {
         </p>
       )}
       {!canEdit && (
-        <Notice
-          message={`Read-only view: editing requires the editor role (you are ${role}).`}
-        />
+        <Notice message="Only platform operators can edit bot settings." />
       )}
       <form onSubmit={onSave}>
         <label>

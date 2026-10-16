@@ -185,7 +185,7 @@ export default function PlatformHomePage() {
             />
           </label>
           <label>
-            Owner email (one-time invite link, no email)
+            Admin email (one-time invite link, no email)
             <input
               data-testid="ob-owner-email"
               type="email"
@@ -195,10 +195,10 @@ export default function PlatformHomePage() {
             />
           </label>
           <label>
-              Bot name
+            Bot name
             <input
               data-testid="ob-bot-name"
-                required
+              required
               maxLength={100}
               value={botName}
               onChange={(event) => setBotName(event.target.value)}
@@ -222,7 +222,7 @@ export default function PlatformHomePage() {
         {inviteLink && (
           <div data-testid="ob-invite-link">
             <p>
-              Owner one-time invite link (copy and send it yourself; shown
+              Admin one-time invite link (copy and send it yourself; shown
               once):
             </p>
             <code>{inviteLink}</code>

@@ -59,7 +59,7 @@ def list_sources(
 
 @router.get("/sources/qa-template")
 def download_qa_template(tenant_id: UUID, bot_id: UUID, context: TenantContextDep) -> Response:
-    context.require_role("editor")
+    context.require_role("admin")
     return Response(
         content=service.qa_template(),
         media_type="text/csv; charset=utf-8",
@@ -77,7 +77,7 @@ def upload_sources(
     files: Annotated[list[UploadFile], File(description="PDF/DOCX/TXT/MD files, or one Q&A CSV")],
 ) -> list[schemas.SourceOut]:
     """Store uploaded files as sources (editor+). Parsing happens in a worker job."""
-    context.require_role("editor")
+    context.require_operator()
     uploads: list[tuple[str | None, Any]] = [(file.filename, file.file) for file in files]
     rows = service.upload_files(context, bot_id, uploads, settings, storage=get_storage(settings))
     return _sources_out(rows)
@@ -103,7 +103,7 @@ def start_ingestion(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> schemas.JobOut:
     """Start one ingest job for the bot's stored sources (editor+)."""
-    context.require_role("editor")
+    context.require_operator()
     return _job_out(service.start_ingestion(context, bot_id, body.source_ids, settings))
 
 
@@ -123,7 +123,7 @@ def get_job(
 def cancel_job(
     tenant_id: UUID, bot_id: UUID, job_id: UUID, context: TenantContextDep, _: CsrfOk
 ) -> schemas.JobOut:
-    context.require_role("editor")
+    context.require_operator()
     return _job_out(service.cancel_job(context, bot_id, job_id))
 
 
@@ -136,7 +136,7 @@ def retry_job(
     _: CsrfOk,
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> schemas.JobOut:
-    context.require_role("editor")
+    context.require_operator()
     return _job_out(service.retry_job(context, bot_id, job_id, settings))
 
 
@@ -205,5 +205,5 @@ def publish_revision(
     _: CsrfOk,
 ) -> dict[str, object]:
     """Publish the revision (editor+); publishing an archived one rolls back."""
-    context.require_role("editor")
+    context.require_operator()
     return service.publish_revision(context, bot_id, revision_id)

@@ -14,7 +14,7 @@ def test_platform_ops_require_staff_reason_and_record_audit(app: Any, db: Any) -
     tenant = seeded_tenant(app, db, prefix="p7ops")
     bot = make_bot(tenant, "Ops bot")
     staff = staff_login(app, db)
-    owner = tenant.as_user("owner")
+    owner = tenant.as_user("admin")
     job = Job(
         id=uuid4(),
         tenant_id=tenant.tenant_id,

@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { registerOwner } from "./e2e-helpers";
+import { registerOperator } from "./e2e-helpers";
 
 test("mobile embedded widget stays within the viewport for both configured placements", async ({
   page,
@@ -131,7 +131,7 @@ async function createOrgAndBot(
   page: Page,
   botName: string,
 ): Promise<{ tenantId: string; botId: string; locator: string }> {
-  const { tenantId } = await registerOwner(page, "Widget", { botName });
+  const { tenantId } = await registerOperator(page, "Widget", { botName });
   await page
     .getByRole("row", { name: new RegExp(botName) })
     .getByRole("link")

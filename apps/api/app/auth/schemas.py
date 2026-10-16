@@ -1,5 +1,6 @@
 """Pydantic request/response schemas for auth (typed contracts, docs/05)."""
 
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
@@ -9,6 +10,7 @@ PASSWORD_MIN_LENGTH = 8
 
 class RegisterRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    invite_token: str | None = Field(default=None, min_length=16, max_length=200)
     email: EmailStr
     password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=200)
 
@@ -24,7 +26,7 @@ class MembershipOut(BaseModel):
     tenant_id: UUID
     tenant_name: str
     tenant_slug: str
-    role: str
+    role: Literal["admin", "editor", "viewer"]
 
 
 class MeResponse(BaseModel):

@@ -596,3 +596,155 @@ Web verification:
 - After removing remaining visible PLACEHOLDER copy and updating the accessible quota label assertion, focused `npm test -- --grep 'platform client mutations preserve plan' --reporter=line`: 1 passed (59.1s). Final `npm run typecheck`: exit 0.
 
 One ordinary in-sandbox pytest attempt hit restricted Windows temp-directory access; the same affected API specs were rerun successfully outside the sandbox against the disposable database. A test run interrupted while exercising the endless SSE stream; the route matrix was updated to verify its foreign-tenant rejection before streaming, then passed.
+
+
+## 2026-10-16 ? Phase 1 roles and operator control verification
+
+Scope: explicit owner change note; three client roles, operator-only bot control, migration 0013, last-admin locking, invite-only registration guard, soft-delete ledger/worker purge and admin change requests with attachments/operator triage. Local work only; no push/deploy, environment-file or credential reads, paid calls or channel implementation. APIs use the guarded disposable local PostgreSQL cluster on loopback.
+
+Intermediate verification (before the file-by-file logs below):
+- First test_members.py attempt inadvertently ran the previous test file after a path-writing error: 6 failed / 2 passed (obsolete owner/transfer assertions). Corrected file: `../../.venv/Scripts/python.exe -m pytest -q tests/test_members.py --tb=short -p no:cacheprovider` from apps/api: 5 passed, 1 warning, 2.30s.
+- test_tenant_route_matrix.py: initial ordinary run failed at temp setup (4 errors, Windows sandbox permissions); explicit workspace basetemp also failed with WinError 5. Subsequent disposable-DB runs outside sandbox: 1 passed / 3 failed (fixture payload/state); then 3 passed / 1 failed for an already-ingested source; then 3 passed / 1 failed for a staff assignment fixture FK; then 3 passed / 1 failed when probing unrequested membership-free inbox actions. The matrix now asserts all client routes and checks membership-free staff success for every operator-only route. It does not skip a tenant/client-role combination or accept 422/404 as an allowed role's success. SSE transport alone is bounded with a finite test generator, retaining the real endpoint/dependencies.
+- First test_tenant_data.py: 1 passed / 1 failed because requested_at and grace deadline used separate clocks; schedule now uses one timestamp. Corrected run is below.
+- Initial web typecheck found duplicate install imports and stale role labels; fixed. Initial lint found hook dependencies; fixed. Final pre-suite `npm.cmd run typecheck` and `npm.cmd run lint`: exit 0.
+- Changed-file Ruff initially reported formatting/import issues; fixed. Full-source Ruff also reports pre-existing untouched violations (for example quotas/sentiment.py and platform/router.py). Final changed-file check is recorded separately.
+- Focused mypy command `../../.venv/Scripts/python.exe -m mypy app/tenants/changes.py app/tenants/deletion.py app/db/models/operations.py app/core/permissions.py app/core/tenancy.py --follow-imports=silent`: mypy 2.4.0 INTERNAL ERROR, exit 1. Retrying with --no-incremental and an isolated --cache-dir produced the same internal error; no typecheck success claimed.
+
+Related tests and final full-suite file-by-file commands/results:
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_self_service_signup.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792112650788005700\'` — exit 0; 4 passed, 1 warning in 2.13s. Log: `.test-storage/roles-control/test_self_service_signup-1792112650788005700.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_change_requests.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792112655436147200\'` — exit 0; 1 passed, 1 warning in 1.30s. Log: `.test-storage/roles-control/test_change_requests-1792112655436147200.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_tenant_data.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792112657772958900\'` — exit 0; 2 passed, 1 warning in 2.41s. Log: `.test-storage/roles-control/test_tenant_data-1792112657772958900.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_tenant_route_matrix.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792112662370247400\'` — exit 0; 4 passed, 1 warning in 42.28s. Log: `.test-storage/roles-control/test_tenant_route_matrix-1792112662370247400.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_migrations.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792112706879674400\'` — exit 0; 1 passed, 1 warning in 4.69s. Log: `.test-storage/roles-control/test_migrations-1792112706879674400.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/eval/test_eval.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113028383492400\'` — exit 0; 2 passed, 1 warning in 12.93s. Log: `.test-storage/roles-control/test_eval-1792113028383492400.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_analytics.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113044356797800\'` — exit 0; 6 passed, 1 warning in 84.35s (0:01:24). Log: `.test-storage/roles-control/test_analytics-1792113044356797800.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_auth.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113131100782500\'` — exit 0; 15 passed, 1 warning in 7.39s. Log: `.test-storage/roles-control/test_auth-1792113131100782500.log`.
+
+Mypy diagnosis: repeating the focused command with `--no-incremental --show-traceback --cache-dir ../../.test-storage/roles-control/mypy-final` failed because importing ast_serialize raised `ImportError: DLL load failed ... An Application Control policy has blocked this file.` OS security control was not bypassed. Python static typing remains UNVERIFIED.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_bot_status.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113140928986200\'` — exit 0; 5 passed, 1 warning in 54.37s. Log: `.test-storage/roles-control/test_bot_status-1792113140928986200.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_bots.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113197520681600\'` — exit 1; 1 failed, 3 passed, 1 warning in 2.21s. Log: `.test-storage/roles-control/test_bots-1792113197520681600.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_change_requests.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113201339635400\'` — exit 0; 1 passed, 1 warning in 1.39s. Log: `.test-storage/roles-control/test_change_requests-1792113201339635400.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_chat.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113203738112300\'` — exit 0; 15 passed, 1 warning in 145.42s (0:02:25). Log: `.test-storage/roles-control/test_chat-1792113203738112300.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_contacts.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113351568409000\'` — exit 0; 1 passed, 1 warning in 11.86s. Log: `.test-storage/roles-control/test_contacts-1792113351568409000.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_conversations.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113365648329200\'` — exit 1; 1 failed, 12 passed, 1 warning in 142.33s (0:02:22). Log: `.test-storage/roles-control/test_conversations-1792113365648329200.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_conversations_view.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113509276410000\'` — exit 0; 5 passed, 1 warning in 59.99s. Log: `.test-storage/roles-control/test_conversations_view-1792113509276410000.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_cross_script.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113571579058100\'` — exit 0; 3 passed, 1 warning in 30.20s. Log: `.test-storage/roles-control/test_cross_script-1792113571579058100.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_database_guard.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113603706451200\'` — exit 0; 5 passed, 1 warning in 0.81s. Log: `.test-storage/roles-control/test_database_guard-1792113603706451200.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_followups_analytics.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113605429904100\'` — exit 0; 2 passed, 1 warning in 22.03s. Log: `.test-storage/roles-control/test_followups_analytics-1792113605429904100.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_handoff.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113628779954500\'` — exit 0; 5 passed, 1 warning in 48.48s. Log: `.test-storage/roles-control/test_handoff-1792113628779954500.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_health.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113679284126600\'` — exit 0; 6 passed, 1 warning in 1.16s. Log: `.test-storage/roles-control/test_health-1792113679284126600.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_inbox_list.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113681472639400\'` — exit 0; 5 passed, 1 warning in 16.76s. Log: `.test-storage/roles-control/test_inbox_list-1792113681472639400.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_invitations.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113699168942100\'` — exit 0; 6 passed, 1 warning in 2.83s. Log: `.test-storage/roles-control/test_invitations-1792113699168942100.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_jobs.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113702857747300\'` — exit 0; 8 passed, 1 warning in 1.34s. Log: `.test-storage/roles-control/test_jobs-1792113702857747300.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_knowledge_parsers.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113705342054900\'` — exit 0; 27 passed, 1 warning in 13.64s. Log: `.test-storage/roles-control/test_knowledge_parsers-1792113705342054900.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_knowledge_pipeline.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113720916312700\'` — exit 1; 2 failed, 7 passed, 1 warning in 31.63s. Log: `.test-storage/roles-control/test_knowledge_pipeline-1792113720916312700.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_knowledge_uploads.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113754675675700\'` — exit 1; 1 failed, 18 passed, 1 warning in 35.96s. Log: `.test-storage/roles-control/test_knowledge_uploads-1792113754675675700.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_members.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113792904465600\'` — exit 0; 5 passed, 1 warning in 2.86s. Log: `.test-storage/roles-control/test_members-1792113792904465600.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_migrations.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113797904304600\'` — exit 1; 1 failed, 1 warning in 19.41s. Log: `.test-storage/roles-control/test_migrations-1792113797904304600.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_models_constraints.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113818955511600\'` — exit 0; 13 passed, 1 warning in 1.48s. Log: `.test-storage/roles-control/test_models_constraints-1792113818955511600.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_platform.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113821326688200\'` — exit 1; 1 failed, 8 passed, 1 warning in 103.13s (0:01:43). Log: `.test-storage/roles-control/test_platform-1792113821326688200.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_platform_ops.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113926676420800\'` — exit 0; 4 passed, 1 warning in 2.43s. Log: `.test-storage/roles-control/test_platform_ops-1792113926676420800.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_quotas.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113931255073500\'` — exit 1; 1 failed, 9 passed, 1 warning in 16.30s. Log: `.test-storage/roles-control/test_quotas-1792113931255073500.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_retrieval.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113949920426300\'` — exit 0; 9 passed, 1 warning in 89.37s (0:01:29). Log: `.test-storage/roles-control/test_retrieval-1792113949920426300.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_seed_demo.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114041608127100\'` — exit 1; 2 failed, 19 passed, 1 warning in 8.77s. Log: `.test-storage/roles-control/test_seed_demo-1792114041608127100.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_self_service_signup.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114052276019000\'` — exit 0; 4 passed, 1 warning in 1.87s. Log: `.test-storage/roles-control/test_self_service_signup-1792114052276019000.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_startup_guard.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114055075277100\'` — exit 0; 5 passed, 1 warning in 0.97s. Log: `.test-storage/roles-control/test_startup_guard-1792114055075277100.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_tenant_data.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114056971979100\'` — exit 0; 2 passed, 1 warning in 2.28s. Log: `.test-storage/roles-control/test_tenant_data-1792114056971979100.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_tenant_route_matrix.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114060598413500\'` — exit 0; 5 passed, 1 warning in 38.76s. Log: `.test-storage/roles-control/test_tenant_route_matrix-1792114060598413500.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_tenants.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114101551945100\'` — exit 0; 6 passed, 1 warning in 2.07s. Log: `.test-storage/roles-control/test_tenants-1792114101551945100.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_widget_appearance.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114104631754500\'` — exit 0; 3 passed, 1 warning in 31.03s. Log: `.test-storage/roles-control/test_widget_appearance-1792114104631754500.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_widget_leads.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114137796461700\'` — exit 0; 5 passed, 1 warning in 60.06s (0:01:00). Log: `.test-storage/roles-control/test_widget_leads-1792114137796461700.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_widget_public.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114200043130400\'` — exit 1; 1 failed, 13 passed, 1 warning in 155.09s (0:02:35). Log: `.test-storage/roles-control/test_widget_public-1792114200043130400.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_bots.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114435276233000\'` — exit 0; 4 passed, 1 warning in 1.79s. Log: `.test-storage/roles-control/test_bots-1792114435276233000.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_members.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114438039204000\'` — exit 0; 5 passed, 1 warning in 3.11s. Log: `.test-storage/roles-control/test_members-1792114438039204000.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_migrations.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114443108854100\'` — exit 0; 1 passed, 1 warning in 3.34s. Log: `.test-storage/roles-control/test_migrations-1792114443108854100.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_seed_demo.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114448141929100\'` — exit 0; 21 passed, 1 warning in 6.11s. Log: `.test-storage/roles-control/test_seed_demo-1792114448141929100.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_quotas.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114456150207300\'` — exit 0; 10 passed, 1 warning in 15.87s. Log: `.test-storage/roles-control/test_quotas-1792114456150207300.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_knowledge_pipeline.py --tb=short -p no:cacheprovider --basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114474275536100` — exit 1; 1 failed, 8 passed, 1 warning in 31.09s. Log: `.test-storage/roles-control/test_knowledge_pipeline-1792114474275536100.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_knowledge_uploads.py --tb=short -p no:cacheprovider --basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114507348328000` — exit 0; 19 passed, 1 warning in 35.52s. Log: `.test-storage/roles-control/test_knowledge_uploads-1792114507348328000.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_tenant_route_matrix.py --tb=short -p no:cacheprovider --basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114544775828400` — exit 0; 5 passed, 1 warning in 41.88s. Log: `.test-storage/roles-control/test_tenant_route_matrix-1792114544775828400.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_conversations.py --tb=short -p no:cacheprovider --basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114589182428100` — exit 0; 13 passed, 1 warning in 147.42s (0:02:27). Log: `.test-storage/roles-control/test_conversations-1792114589182428100.log`.
+
+Final web static checks after role/UI wiring: `npm.cmd run lint` ? exit 0; `npm.cmd run typecheck` ? exit 0. Changed-file `ruff check` ? all checks passed (see `.test-storage/roles-control/ruff-final.log`). Migration rollback limit: downgrade does not restore owner roles or the retired demo-owner login; no non-test migration was applied.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_platform.py --tb=short -p no:cacheprovider --basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114739034219600` — exit 0; 9 passed, 1 warning in 97.74s (0:01:37). Log: `.test-storage/roles-control/test_platform-1792114739034219600.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_widget_public.py --tb=short -p no:cacheprovider --basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114838887423000` — exit 0; 14 passed, 1 warning in 142.42s (0:02:22). Log: `.test-storage/roles-control/test_widget_public-1792114838887423000.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_knowledge_pipeline.py --tb=short -p no:cacheprovider --basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792115057389502400` — exit 0; 9 passed, 1 warning in 32.91s. Log: `.test-storage/roles-control/test_knowledge_pipeline-1792115057389502400.log`.
+
+- Owner clarification: viewers retain read-only contact lists and profiles. Contact writes remain editor+, and merge/delete/stage configuration remains admin.
+- Full API file-by-file sweep and affected-file rechecks complete: latest results total 278 passed across 37 files. The initial sweep was not wholly green; failures and rechecks are recorded above.
+- Full Playwright command from `apps/web`: `$env:ENVIRONMENT='test'; $env:DATABASE_URL='postgresql://postgres@127.0.0.1:55439/postgres'; $env:E2E_API_PORT='18135'; $env:API_PROXY_TARGET='http://127.0.0.1:18135'; npm.cmd test -- --reporter=line` (log `.test-storage/roles-control/playwright-full.log`); result pending.
+
+- Final changed-file Python Ruff check: exit 0, all checks passed. Final `git diff --check`: exit 0. The final API retry test recheck passed (9 tests); forced test retries use a past timestamp, with production scheduling unchanged.
+
+- Full Playwright run: exit 1; **37 passed, 3 failed (7.2m)**. Failed specs/tests: `overview.spec.ts` workspace/scoping (caller fixture was staff, so foreign tenant read correctly returned 200), `playground.spec.ts` expired session (new client-side role guard prevented the old protected fetch, so no redirect), `roles-control.spec.ts` change triage (test selected visible label while control had explicit accessible name). Corrected isolation fixture to assert as a client admin; centralized protected-page 401 redirect in session refresh; corrected test selector.
+- Deferred ECONNRESET observed during `overview.spec.ts`, test `unanswered list shows the question the bot could not confirm`: Next proxy `/api/v1/auth/me` read reset. That test passed; no flake behavior changed.
+- Scoped browser recheck from `apps/web`, same disposable environment as full run: `npm.cmd test -- tests/overview.spec.ts tests/playground.spec.ts tests/roles-control.spec.ts tests/dashboard.spec.ts --reporter=line` (log `.test-storage/roles-control/playwright-related.log`); result pending. These are affected specs and related session coverage only.
+- Scoped ESLint after these fixes: `node_modules/.bin/eslint.cmd lib/session.tsx tests/staff-helpers.ts tests/overview.spec.ts tests/roles-control.spec.ts --max-warnings 0` ? exit 0.
+
+- Session redirect recheck exposed an over-broad initial condition: the public `/accept-invite` landing page must remain available before authentication. Narrowed automatic initial-session redirect to `/app` and `/platform` only; existing expired-session event behavior is retained. Invitation UI journeys will receive a focused recheck on the final build.
+- TypeScript after session/test-helper fixes: `npm.cmd run typecheck` ? exit 0.
+
+- Scoped browser recheck: exit 1; **10 passed, 2 failed (3.2m)**. All three original failures now pass; the two invitation journeys failed due to the initial session redirect including the public invite landing page. That condition was already narrowed during the run; built output required a focused final recheck.
+- Final invitation recheck from `apps/web`, same environment: `npm.cmd test -- tests/dashboard.spec.ts tests/playground.spec.ts --grep 'team management|viewer is read-only' --reporter=line`; log `.test-storage/roles-control/playwright-invitations.log`, result pending.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_tenant_data.py --tb=short -p no:cacheprovider --basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792115859147402500` — exit 0; 2 passed, 1 warning in 2.02s. Log: `.test-storage/roles-control/test_tenant_data-1792115859147402500.log`.
+
+- Final invitation browser recheck: exit 0; **2 passed (1.1m)**. All 40 browser scenarios have a passing latest result across the full sweep and scoped rechecks; no second full browser sweep was run.
+- Final purge review preserved prior cleanup of tenant visitor message-rate counters, moved to delayed purge. `tests/test_tenant_data.py` recheck passed 2 tests in 2.02s, including removal of that counter and preservation of an unrelated counter. Ruff for the two touched Python files passed.
+- Restored generated `next-env.d.ts` and timestamp-only `PHASE-03/EVAL-REPORT.md` output; neither is part of this change. Full changed-file list, 77-route matrix, per-file API/browser results, and unverified checks are in `implementation/PHASE-01/ROLES-OPERATOR-REPORT.md`.
+
+- Final session ESLint check from `apps/web`: `node_modules/.bin/eslint.cmd lib/session.tsx --max-warnings 0` ? exit 0. Final `git diff --check` ? exit 0. Verification complete; committing locally only. No push/deployment performed.

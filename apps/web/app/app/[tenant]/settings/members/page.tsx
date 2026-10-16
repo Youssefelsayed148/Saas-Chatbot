@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import * as api from "@/lib/api";
@@ -8,11 +8,12 @@ import type { Invitation, Member, Role } from "@/lib/api";
 import { roleSatisfies, useSession } from "@/lib/session";
 import { Empty, Loading, Notice } from "@/lib/ui";
 
-const CHANGEABLE_ROLES: Role[] = ["viewer", "editor", "admin", "owner"];
+const CHANGEABLE_ROLES: Role[] = ["viewer", "editor", "admin"];
 
 export default function MembersPage() {
   const params = useParams<{ tenant: string }>();
   const tenantId = params.tenant;
+  const router = useRouter();
   const { me, roleIn, refresh } = useSession();
   const role = roleIn(tenantId);
   const isAdmin = roleSatisfies(role, "admin");
@@ -160,7 +161,6 @@ export default function MembersPage() {
               value={inviteRole}
               onChange={(event) => setInviteRole(event.target.value as Role)}
             >
-              {role === "owner" && <option value="owner">Owner</option>}
               <option value="admin">Admin</option>
               <option value="editor">Editor</option>
               <option value="viewer">Viewer</option>
@@ -237,35 +237,15 @@ export default function MembersPage() {
             <tbody>
               {members.map((member) => {
                 const isSelf = me?.id === member.user_id;
-                const isOwner = member.role === "owner";
+                const isLastAdmin =
+                  member.role === "admin" &&
+                  members.filter((row) => row.role === "admin").length === 1;
                 return (
                   <tr key={member.user_id}>
                     <td>{member.email}</td>
                     <td>
-                      {role === "owner" && !isSelf && (
-                        <button
-                          type="button"
-                          disabled={busy === `transfer-${member.user_id}`}
-                          onClick={async () => {
-                            if (!window.confirm(`Transfer ownership to ${member.email}? Your role will become admin.`)) return;
-                            setBusy(`transfer-${member.user_id}`);
-                            setActionError(null);
-                            try {
-                              await api.transferOwnership(tenantId, member.user_id);
-                              await Promise.all([load(), refresh()]);
-                            } catch (caught) {
-                              setActionError(caught instanceof Error ? caught.message : "Could not transfer ownership.");
-                              await load();
-                            } finally {
-                              setBusy(null);
-                            }
-                          }}
-                        >
-                          Transfer ownership to {member.email}
-                        </button>
-                      )}
-                      {isOwner ? (
-                        <span title="Owners can only be changed by other owners">
+                      {isLastAdmin ? (
+                        <span title="The last admin is protected">
                           {member.role}
                         </span>
                       ) : (
@@ -274,15 +254,19 @@ export default function MembersPage() {
                           value={member.role}
                           disabled={busy === `role-${member.user_id}`}
                           onChange={async (event) => {
+                            const newRole = event.target.value as Role;
                             setBusy(`role-${member.user_id}`);
                             setActionError(null);
                             try {
                               await api.updateMemberRole(
                                 tenantId,
                                 member.user_id,
-                                event.target.value as Role,
+                                newRole,
                               );
-                              await load();
+                              if (isSelf && newRole !== "admin") {
+                                await refresh();
+                                router.replace(`/app/${tenantId}/bots`);
+                              } else await load();
                             } catch (caught) {
                               setActionError(
                                 caught instanceof Error
@@ -295,9 +279,7 @@ export default function MembersPage() {
                             }
                           }}
                         >
-                          {CHANGEABLE_ROLES.filter(
-                            (option) => option !== "owner" || role === "owner",
-                          ).map((option) => (
+                          {CHANGEABLE_ROLES.map((option) => (
                             <option key={option} value={option}>
                               {option}
                             </option>
@@ -306,8 +288,11 @@ export default function MembersPage() {
                       )}
                     </td>
                     <td>
-                      {isOwner ? (
-                        <span className="muted" title="Owners are protected">
+                      {isLastAdmin ? (
+                        <span
+                          className="muted"
+                          title="The last admin is protected"
+                        >
                           protected
                         </span>
                       ) : (
@@ -319,7 +304,10 @@ export default function MembersPage() {
                             setActionError(null);
                             try {
                               await api.removeMember(tenantId, member.user_id);
-                              await load();
+                              if (isSelf) {
+                                await refresh();
+                                router.replace("/app");
+                              } else await load();
                             } catch (caught) {
                               setActionError(
                                 caught instanceof Error
@@ -345,10 +333,7 @@ export default function MembersPage() {
             </tbody>
           </table>
         )}
-        <p className="muted">
-          The last owner cannot be demoted or removed, and non-owners cannot
-          change owner roles.
-        </p>
+        <p className="muted">The last admin cannot be demoted or removed.</p>
       </section>
     </main>
   );

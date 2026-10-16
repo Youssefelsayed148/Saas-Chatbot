@@ -22,7 +22,7 @@ def test_contacts_crud_merge_export_and_erasure_are_tenant_scoped(
     base = f"/api/v1/tenants/{users.tenant_id}/contacts"
     foreign_base = f"/api/v1/tenants/{other.tenant_id}/contacts"
 
-    stages = users.call("owner", "GET", f"{base}/stages")
+    stages = users.call("admin", "GET", f"{base}/stages")
     assert stages.status_code == 200
     assert {item["name"] for item in stages.json()["stages"]} == {
         "new",
@@ -43,13 +43,13 @@ def test_contacts_crud_merge_export_and_erasure_are_tenant_scoped(
     )
     assert (
         users.call(
-            "owner", "PATCH", f"{base}/stages", json={"old_name": "qualified", "name": "warm"}
+            "admin", "PATCH", f"{base}/stages", json={"old_name": "qualified", "name": "warm"}
         ).status_code
         == 200
     )
 
     created = users.call(
-        "owner",
+        "admin",
         "POST",
         base,
         json={
@@ -114,44 +114,44 @@ def test_contacts_crud_merge_export_and_erasure_are_tenant_scoped(
     )
     assert (
         users.call(
-            "owner", "POST", base, json={"display_name": "Duplicate", "email": "ada@example.com"}
+            "admin", "POST", base, json={"display_name": "Duplicate", "email": "ada@example.com"}
         ).status_code
         == 409
     )
     assert (
         users.call(
-            "owner", "PATCH", f"{base}/{contact_id}", json={"email": None, "phone": None}
+            "admin", "PATCH", f"{base}/{contact_id}", json={"email": None, "phone": None}
         ).status_code
         == 422
     )
-    assert other.call("owner", "GET", f"{foreign_base}/{contact_id}").status_code == 404
+    assert other.call("admin", "GET", f"{foreign_base}/{contact_id}").status_code == 404
     assert (
         other.call(
-            "owner", "PATCH", f"{foreign_base}/{contact_id}", json={"display_name": "No"}
+            "admin", "PATCH", f"{foreign_base}/{contact_id}", json={"display_name": "No"}
         ).status_code
         == 404
     )
-    assert other.call("owner", "DELETE", f"{foreign_base}/{contact_id}").status_code == 404
+    assert other.call("admin", "DELETE", f"{foreign_base}/{contact_id}").status_code == 404
     assert (
         other.call(
-            "owner", "POST", f"{foreign_base}/{contact_id}/merge", params={"target_id": contact_id}
+            "admin", "POST", f"{foreign_base}/{contact_id}/merge", params={"target_id": contact_id}
         ).status_code
         == 404
     )
-    assert other.call("owner", "GET", f"{foreign_base}/export.csv").status_code == 200
+    assert other.call("admin", "GET", f"{foreign_base}/export.csv").status_code == 200
     assert other.call("admin", "GET", f"{foreign_base}/export.csv").status_code == 200
     assert other.call("viewer", "GET", f"{foreign_base}/export.csv").status_code == 403
-    assert other.call("owner", "GET", f"{foreign_base}/stages").status_code == 200
+    assert other.call("admin", "GET", f"{foreign_base}/stages").status_code == 200
     assert (
         other.call(
-            "owner", "PATCH", f"{foreign_base}/stages", json={"old_name": "new", "name": "fresh"}
+            "admin", "PATCH", f"{foreign_base}/stages", json={"old_name": "new", "name": "fresh"}
         ).status_code
         == 200
     )
 
     assert (
         users.call(
-            "owner",
+            "admin",
             "PATCH",
             f"{base}/{contact_id}",
             json={"custom_fields": {str(i): i for i in range(21)}},
@@ -169,7 +169,7 @@ def test_contacts_crud_merge_export_and_erasure_are_tenant_scoped(
     assert "Ada Lovelace" in users.call("admin", "GET", f"{base}/export.csv").text
 
     target = users.call(
-        "owner", "POST", base, json={"display_name": "Merged", "phone": "+15550000001"}
+        "admin", "POST", base, json={"display_name": "Merged", "phone": "+15550000001"}
     )
     assert (
         users.call(
@@ -181,7 +181,7 @@ def test_contacts_crud_merge_export_and_erasure_are_tenant_scoped(
         == 403
     )
     merged = users.call(
-        "owner", "POST", f"{base}/{contact_id}/merge", params={"target_id": target.json()["id"]}
+        "admin", "POST", f"{base}/{contact_id}/merge", params={"target_id": target.json()["id"]}
     )
     assert merged.status_code == 200, merged.text
     assert merged.json()["display_name"] == "Merged"
@@ -198,7 +198,7 @@ def test_contacts_crud_merge_export_and_erasure_are_tenant_scoped(
         "admin", "DELETE", f"{base}/{target.json()['id']}", params={"erase_messages": "true"}
     )
     assert erased.status_code == 204
-    assert users.call("owner", "GET", f"{base}/{target.json()['id']}").status_code == 404
+    assert users.call("admin", "GET", f"{base}/{target.json()['id']}").status_code == 404
     assert (
         db.query(Message)
         .filter(Message.tenant_id == users.tenant_id, Message.conversation_id == conversation_id)

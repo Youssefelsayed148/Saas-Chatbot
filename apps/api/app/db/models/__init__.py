@@ -32,10 +32,13 @@ from .knowledge import (
     Source,
     SourcePage,
 )
+from .operations import ChangeRequest, OrganizationDeletion
 from .widget import RateLimitCounter, VisitorSession
 
 __all__ = [
     "AuditEvent",
+    "ChangeRequest",
+    "OrganizationDeletion",
     "Bot",
     "Chunk",
     "CITEXT",

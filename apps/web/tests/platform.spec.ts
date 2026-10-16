@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { registerOwner } from "./e2e-helpers";
+import { registerAdmin } from "./e2e-helpers";
 import { promoteToStaff } from "./staff-helpers";
 
 /**
@@ -41,7 +41,7 @@ test("staff list, onboard a client end to end, and open the client detail", asyn
   const staffEmail = `platform.${Date.now()}@example.com`;
 
   // Register through the UI, then promote directly in the E2E database.
-  await registerOwner(page, "Platform", { email: staffEmail });
+  await registerAdmin(page, "Platform", { email: staffEmail });
   promoteToStaff(staffEmail);
 
   await page.goto("/platform");

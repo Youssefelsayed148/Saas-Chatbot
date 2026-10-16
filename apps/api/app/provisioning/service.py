@@ -298,7 +298,7 @@ class ProvisioningService:
         raw_token: str | None = None
         invitation: Invitation | None = None
         if self_service:
-            membership = Membership(tenant_id=tenant.id, user_id=actor.id, role="owner")
+            membership = Membership(tenant_id=tenant.id, user_id=actor.id, role="admin")
             self.db.add(membership)
             record_audit(
                 self.db,
@@ -315,7 +315,7 @@ class ProvisioningService:
                 id=uuid4(),
                 tenant_id=tenant.id,
                 email=payload.owner_email,
-                role="owner",
+                role="admin",
                 token_hash=self._token_hash(raw_token),
                 expires_at=datetime.now(UTC) + timedelta(days=OWNER_INVITATION_EXPIRY_DAYS),
                 created_by=actor.id,

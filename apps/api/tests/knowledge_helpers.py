@@ -42,7 +42,7 @@ def upload_sources(
     bot_id: UUID | str,
     files: list[tuple[str, bytes]],
     tmp_root: Path,
-    as_role: str = "owner",
+    as_role: str = "staff",
 ) -> Any:
     """POST the files to /sources/files; returns the raw response."""
     client = users.as_user(as_role)
@@ -64,7 +64,7 @@ def start_ingestion(
     users: Any,
     bot_id: UUID | str,
     source_ids: list[UUID | str] | None = None,
-    as_role: str = "owner",
+    as_role: str = "staff",
 ) -> Any:
     client = users.as_user(as_role)
     body: dict[str, Any] = {}
@@ -121,9 +121,9 @@ def drain_jobs(engine: Any, tmp_root: Path) -> list[Job]:
 def publish_draft(users: Any, bot_id: UUID | str) -> str:
     """Publish the bot's current draft via the API and return its id."""
     base = f"/api/v1/tenants/{users.tenant_id}/bots/{bot_id}/revisions"
-    revisions = users.call("owner", "GET", base).json()
+    revisions = users.call("admin", "GET", base).json()
     draft = next(row for row in revisions["revisions"] if row["status"] == "draft")
-    published = users.call("owner", "POST", f"{base}/{draft['id']}/publish")
+    published = users.call("staff", "POST", f"{base}/{draft['id']}/publish")
     assert published.status_code == 200, published.text
     return str(draft["id"])
 
@@ -131,12 +131,14 @@ def publish_draft(users: Any, bot_id: UUID | str) -> str:
 def run_jobs_to_completion(
     engine: Any, tmp_root: Path, db: OrmSession, max_rounds: int = 5
 ) -> list[Job]:
-    """Drain the queue, collapsing retry backoffs (sets run_at to now) until all
+    """Drain the queue, collapsing retry backoffs (sets run_at safely in the past) until all
     jobs are in a terminal state (succeeded/failed/cancelled)."""
 
     terminal: list[Job] = []
     for _ in range(max_rounds):
-        db.execute(text("UPDATE jobs SET run_at = NOW() WHERE status = 'pending'"))
+        db.execute(
+            text("UPDATE jobs SET run_at = NOW() - INTERVAL '1 day' WHERE status = 'pending'")
+        )
         db.commit()
         round_jobs = drain_jobs(engine, tmp_root)
         if not round_jobs:

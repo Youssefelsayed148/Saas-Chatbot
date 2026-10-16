@@ -1,3 +1,4 @@
+import { promoteToStaff } from "./staff-helpers";
 import { expect, type Page } from "@playwright/test";
 
 const PASSWORD = "Str0ngPass!";
@@ -10,7 +11,7 @@ export function uniqueEmail(prefix: string): string {
   return `${local}.${Date.now()}.${Math.floor(Math.random() * 10_000)}@example.com`;
 }
 
-export async function registerOwner(
+export async function registerAdmin(
   page: Page,
   prefix: string,
   opts: { email?: string; organizationName?: string; botName?: string } = {},
@@ -34,6 +35,18 @@ export async function registerOwner(
   return { tenantId: new URL(page.url()).pathname.split("/")[2], botName };
 }
 
+export async function registerOperator(
+  page: Page,
+  prefix: string,
+  opts: { email?: string; organizationName?: string; botName?: string } = {},
+) {
+  const email = opts.email ?? uniqueEmail(prefix);
+  const result = await registerAdmin(page, prefix, { ...opts, email });
+  promoteToStaff(email);
+  await page.reload();
+  return result;
+}
+
 async function csrfToken(page: Page): Promise<string> {
   return page
     .evaluate(() => document.cookie)
@@ -49,7 +62,12 @@ export async function registerAndPrepareBot(
   page: Page,
   prefix = "E2E",
 ): Promise<{ tenantId: string; botId: string; locator: string }> {
-  const { tenantId, botName } = await registerOwner(page, prefix);
+  const operatorEmail = uniqueEmail(prefix);
+  const { tenantId, botName } = await registerAdmin(page, prefix, {
+    email: operatorEmail,
+  });
+  promoteToStaff(operatorEmail);
+  await page.reload();
   await page
     .getByRole("row", { name: new RegExp(botName) })
     .getByRole("link")

@@ -29,7 +29,7 @@ def test_quota_snapshot_is_tenant_scoped_and_readable_by_viewers(app: Any, db: A
     assert hidden.status_code == 404
 
     # The owner can see usage and the viewer sees the same tenant-scoped data.
-    assert tenant_a.call("owner", "GET", path_a).json() == own.json()
+    assert tenant_a.call("admin", "GET", path_a).json() == own.json()
     bot_path = f"/api/v1/tenants/{tenant_a.tenant_id}/bots/{bot_a['id']}/quota"
     assert tenant_a.call("viewer", "GET", bot_path).status_code == 200
     assert tenant_b.call("viewer", "GET", bot_path).status_code == 404
@@ -43,20 +43,23 @@ def test_bot_quota_blocks_creation_and_viewers_cannot_mutate(app: Any, db: Any) 
     row = db.execute(select(Tenant).where(Tenant.id == tenant.tenant_id)).scalar_one()
     row.plan_label = "free"
     db.execute(
-        update(User).where(User.id == tenant.users["owner"]["id"]).values(is_platform_staff=True)
+        update(User).where(User.id == tenant.users["staff"]["id"]).values(is_platform_staff=True)
     )
     db.commit()
     path = f"/api/v1/tenants/{tenant.tenant_id}/bots"
-    for role in ("owner", "admin", "editor", "viewer"):
+    for role in ("admin", "editor", "viewer"):
         assert tenant.call(role, "POST", path, json={"name": "Denied"}).status_code == 403
-    assert other_tenant.call("owner", "POST", path, json={"name": "Hidden"}).status_code == 404
+    assert other_tenant.call("admin", "POST", path, json={"name": "Hidden"}).status_code == 404
     platform_path = f"/api/v1/platform/tenants/{tenant.tenant_id}/bots"
-    created = tenant.call("owner", "POST", platform_path, json={"name": "First"})
+    created = tenant.call("staff", "POST", platform_path, json={"name": "First"})
     assert created.status_code == 201, created.text
-    blocked = tenant.call("owner", "POST", platform_path, json={"name": "Second"})
+    blocked = tenant.call("staff", "POST", platform_path, json={"name": "Second"})
     assert blocked.status_code == 429
     assert blocked.json()["error"]["code"] == "QUOTA_EXCEEDED"
-    assert blocked.json()["error"]["message"] == "Your plan allows 1 bot(s). Contact us to add another bot."
+    assert (
+        blocked.json()["error"]["message"]
+        == "Your plan allows 1 bot(s). Contact us to add another bot."
+    )
     tenant.cleanup()
     other_tenant.cleanup()
 
@@ -67,7 +70,7 @@ def test_bot_quota_is_serialized_under_concurrent_creation(app: Any, db: Any) ->
     row.plan_label = "free"
     db.execute(
         update(User)
-        .where(User.id.in_([tenant.users["owner"]["id"], tenant.users["admin"]["id"]]))
+        .where(User.id.in_([tenant.users["staff"]["id"], tenant.users["staff"]["id"]]))
         .values(is_platform_staff=True)
     )
     db.commit()
@@ -78,8 +81,8 @@ def test_bot_quota_is_serialized_under_concurrent_creation(app: Any, db: Any) ->
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         futures = [
-            pool.submit(create, "owner", "Race A"),
-            pool.submit(create, "admin", "Race B"),
+            pool.submit(create, "staff", "Race A"),
+            pool.submit(create, "staff", "Race B"),
         ]
         responses = [future.result() for future in futures]
     statuses = sorted(response.status_code for response in responses)
@@ -109,7 +112,7 @@ def test_new_org_and_unknown_plan_default_to_one_bot(app: Any, db: Any) -> None:
 
 def test_platform_quota_override_requires_staff_reason_and_audits(app: Any, db: Any) -> None:
     tenant = seeded_tenant(app, db, prefix="quota-override")
-    owner = tenant.as_user("owner")
+    owner = tenant.as_user("admin")
     assert platform_call(owner, "GET", "/quotas").status_code == 403
     path = f"/api/v1/platform/tenants/{tenant.tenant_id}/quota-overrides"
     denied = platform_call(
@@ -157,19 +160,19 @@ def test_contact_and_seat_quotas_are_scoped_and_viewer_writes_are_denied(app: An
     tenant_a = seeded_tenant(app, db, prefix="quota-create-a")
     tenant_b = seeded_tenant(app, db, prefix="quota-create-b")
     row = db.execute(select(Tenant).where(Tenant.id == tenant_a.tenant_id)).scalar_one()
-    row.quota_overrides = {"contacts": 0, "seats": 4}
+    row.quota_overrides = {"contacts": 0, "seats": 3}
     db.commit()
     contact_url = f"/api/v1/tenants/{tenant_a.tenant_id}/contacts"
     payload = {"display_name": "Quota contact", "email": "quota@example.com"}
     assert tenant_a.call("viewer", "POST", contact_url, json=payload).status_code == 403
-    assert tenant_b.call("owner", "POST", contact_url, json=payload).status_code == 404
-    assert tenant_a.call("owner", "POST", contact_url, json=payload).status_code == 429
+    assert tenant_b.call("admin", "POST", contact_url, json=payload).status_code == 404
+    assert tenant_a.call("admin", "POST", contact_url, json=payload).status_code == 429
 
     invite_url = f"/api/v1/tenants/{tenant_a.tenant_id}/invitations"
     invite_payload = {"email": "new-seat@example.com", "role": "viewer"}
     assert tenant_a.call("viewer", "POST", invite_url, json=invite_payload).status_code == 403
-    assert tenant_b.call("owner", "POST", invite_url, json=invite_payload).status_code == 404
-    assert tenant_a.call("owner", "POST", invite_url, json=invite_payload).status_code == 429
+    assert tenant_b.call("admin", "POST", invite_url, json=invite_payload).status_code == 404
+    assert tenant_a.call("admin", "POST", invite_url, json=invite_payload).status_code == 429
     tenant_a.cleanup()
     tenant_b.cleanup()
 
@@ -282,15 +285,15 @@ def test_accepting_invitation_at_seat_limit_succeeds_but_new_invite_is_refused(
     from tests.helpers import accept_invitation, logged_in, make_invitation
 
     users = seeded_tenant(app, db, prefix="quota-accept")
-    # seeded: owner/admin/editor/viewer = 4 active seats; the invite below is the 5th.
+    # Three client seats; the invite below reserves the fourth.
     token, _ = make_invitation(users, "seat-holder@example.com", "viewer")
     row = db.execute(select(Tenant).where(Tenant.id == users.tenant_id)).scalar_one()
-    row.quota_overrides = {"seats": 5}
+    row.quota_overrides = {"seats": 4}
     db.commit()
 
     # At the limit, a further invitation is still refused.
     refused = users.call(
-        "owner",
+        "admin",
         "POST",
         f"/api/v1/tenants/{users.tenant_id}/invitations",
         json={"email": "one-too-many@example.com", "role": "viewer"},

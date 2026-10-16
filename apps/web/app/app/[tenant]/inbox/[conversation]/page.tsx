@@ -16,8 +16,10 @@ export default function InboxConversationPage() {
   const search = useSearchParams();
   const tenantId = params.tenant;
   const conversationId = params.conversation;
-  const { roleIn } = useSession();
-  const canEdit = roleSatisfies(roleIn(tenantId), "editor");
+  const { me, roleIn } = useSession();
+  const canEdit =
+    roleSatisfies(roleIn(tenantId), "editor") &&
+    !!me?.memberships.some((member) => member.tenant_id === tenantId);
   const [thread, setThread] = useState<InboxThread | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [reply, setReply] = useState("");
@@ -33,7 +35,7 @@ export default function InboxConversationPage() {
       setThread(data);
       setAssignee(data.conversation.assigned_user_id ?? "");
       setError(null);
-      await api.markInboxRead(tenantId, conversationId);
+      if (canEdit) await api.markInboxRead(tenantId, conversationId);
     } catch (caught) {
       setError(
         caught instanceof Error
@@ -41,7 +43,7 @@ export default function InboxConversationPage() {
           : "Could not load conversation.",
       );
     }
-  }, [conversationId, tenantId]);
+  }, [conversationId, tenantId, canEdit]);
 
   useEffect(() => {
     const timer = setTimeout(() => void load(), 0);
@@ -55,14 +57,15 @@ export default function InboxConversationPage() {
   }, [load, tenantId]);
 
   useEffect(() => {
+    if (!canEdit) return;
     const timer = setTimeout(() => {
       void api
-        .listMembers(tenantId)
+        .listAssignees(tenantId)
         .then(setMembers)
         .catch(() => setMembers([]));
     }, 0);
     return () => clearTimeout(timer);
-  }, [tenantId]);
+  }, [tenantId, canEdit]);
 
   async function run(action: () => Promise<unknown>) {
     if (busy) return;

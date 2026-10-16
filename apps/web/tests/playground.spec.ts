@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { registerOwner, uniqueEmail } from "./e2e-helpers";
+import { registerOperator, uniqueEmail } from "./e2e-helpers";
 
 /**
  * P3-04 E2E: the dashboard playground chats over REAL published knowledge
@@ -17,7 +17,7 @@ const KNOWLEDGE_MD =
 async function createOrgAndBot(
   page: Page,
 ): Promise<{ tenantId: string; botId: string }> {
-  const { tenantId, botName } = await registerOwner(page, "Chat", {});
+  const { tenantId, botName } = await registerOperator(page, "Chat", {});
   await page
     .getByRole("row", { name: new RegExp(botName) })
     .getByRole("link")
@@ -180,14 +180,23 @@ test("viewer is read-only in the playground", async ({ browser }) => {
     .getByRole("link")
     .first()
     .click();
-  await viewer.getByRole("link", { name: "Playground" }).click();
   await expect(
-    viewer.getByText(
-      /Read-only view: trying the assistant requires the editor role/,
-    ),
+    viewer.getByRole("link", { name: "Playground", exact: true }),
+  ).toHaveCount(0);
+  const botId = new URL(viewer.url()).pathname.split("/")[4];
+  const tenantId = new URL(viewer.url()).pathname.split("/")[2];
+  await viewer.goto(`/app/${tenantId}/bots/${botId}/playground`);
+  await expect(
+    viewer.getByText("Platform staff access required."),
   ).toBeVisible();
-  await expect(viewer.getByTestId("playground-send")).toHaveCount(0);
-  await expect(viewer.getByTestId("playground-input")).toBeDisabled();
+  await expect(viewer.getByTestId("playground-input")).toHaveCount(0);
+  expect(
+    (
+      await viewer.request.get(
+        `/api/v1/tenants/${tenantId}/bots/${botId}/playground/conversation`,
+      )
+    ).status(),
+  ).toBe(403);
 
   await ownerContext.close();
   await viewerContext.close();

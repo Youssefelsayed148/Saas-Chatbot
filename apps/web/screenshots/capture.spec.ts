@@ -85,7 +85,7 @@ test("capture all redesigned pages in both themes and viewports", async ({
       else await expect(page.locator("main").first()).toBeVisible();
       if (url.startsWith(base)) {
         await expect(page.getByTestId("workspace-context")).toContainText(
-          "owner",
+          "admin",
         );
       }
       if (name === "widget-sample") {

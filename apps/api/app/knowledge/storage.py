@@ -7,6 +7,7 @@ local-disk implementation.
 """
 
 import os
+import shutil
 import uuid
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -31,6 +32,14 @@ class Storage(ABC):
     @abstractmethod
     def delete(self, storage_key: str) -> None:
         """Best-effort delete."""
+
+    def delete_strict(self, storage_key: str) -> None:
+        """Adapters must support verified deletion before organization purge."""
+        raise NotImplementedError("Strict deletion is not supported by this adapter.")
+
+    def purge_tenant_strict(self, tenant_id: UUID) -> None:
+        """Remove the full tenant namespace, including orphaned uploads."""
+        raise NotImplementedError("Tenant purge is not supported by this adapter.")
 
 
 def storage_key_name(tenant_id: UUID, bot_id: UUID, kind: str) -> str:
@@ -68,6 +77,17 @@ class LocalStorage(Storage):
 
     def open(self, storage_key: str) -> bytes:
         return self._path_for(storage_key).read_bytes()
+
+    def purge_tenant_strict(self, tenant_id: UUID) -> None:
+        root = self.root.resolve()
+        target = (root / str(tenant_id)).resolve()
+        if target.parent != root or target != root / str(tenant_id):
+            raise ValueError("Tenant storage path escapes its root.")
+        if target.exists():
+            shutil.rmtree(target)
+
+    def delete_strict(self, storage_key: str) -> None:
+        self._path_for(storage_key).unlink(missing_ok=True)
 
     def delete(self, storage_key: str) -> None:
         path = self._path_for(storage_key)

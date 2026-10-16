@@ -8,40 +8,47 @@ from fastapi import APIRouter, Depends
 from app.auth import cookies
 from app.bots.schemas import BotCreateRequest, BotOut, BotUpdateRequest
 from app.bots.service import BotService
-from app.core.tenancy import TenantContextDep
-from app.core.errors import ApiError
+from app.core.tenancy import TenantContext, TenantContextDep
 
 router = APIRouter(tags=["bots"])
 
 CsrfOk = Annotated[None, Depends(cookies.require_csrf)]
 
 
+def _client_bot_out(context: TenantContext, bot: object) -> BotOut:
+    out = BotOut.model_validate(bot)
+    if not context.user.is_platform_staff and context.role != "admin":
+        out.widget_locator = None
+        out.config = {}
+    return out
+
+
 @router.post("/api/v1/tenants/{tenant_id}/bots", response_model=BotOut, status_code=201)
 def create_bot(bot: BotCreateRequest, context: TenantContextDep, _: CsrfOk) -> BotOut:
     """Tenant members cannot create bots; use platform onboarding."""
-    del bot, context, _
-    raise ApiError(403, "FORBIDDEN", "Only platform staff can create bots.")
+    context.require_operator()
+    return BotOut.model_validate(BotService(context.db).create_bot(context, bot))
 
 
 @router.get("/api/v1/tenants/{tenant_id}/bots", response_model=list[BotOut])
 def list_bots(context: TenantContextDep, include_archived: bool = False) -> list[BotOut]:
     rows = BotService(context.db).list_bots(context, include_archived=include_archived)
-    return [BotOut.model_validate(row) for row in rows]
+    return [_client_bot_out(context, row) for row in rows]
 
 
 @router.get("/api/v1/tenants/{tenant_id}/bots/{bot_id}", response_model=BotOut)
 def get_bot(bot_id: UUID, context: TenantContextDep) -> BotOut:
     bot = BotService(context.db).get_bot(context, bot_id)
-    return BotOut.model_validate(bot)
+    return _client_bot_out(context, bot)
 
 
 @router.patch("/api/v1/tenants/{tenant_id}/bots/{bot_id}", response_model=BotOut)
 def update_bot(
     bot_id: UUID, body: BotUpdateRequest, context: TenantContextDep, _: CsrfOk
 ) -> BotOut:
-    context.require_role("admin")
+    context.require_operator()
     bot = BotService(context.db).update_bot(context, bot_id, body)
-    return BotOut.model_validate(bot)
+    return _client_bot_out(context, bot)
 
 
 @router.delete(
@@ -51,5 +58,5 @@ def update_bot(
 )
 def archive_bot(bot_id: UUID, context: TenantContextDep, _: CsrfOk) -> BotOut:
     """Soft archive: the bot stays, its config stays; the default list hides it."""
-    del bot_id, context, _
-    raise ApiError(403, "FORBIDDEN", "Only platform staff can archive bots.")
+    context.require_operator()
+    return BotOut.model_validate(BotService(context.db).archive_bot(context, bot_id))

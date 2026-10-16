@@ -79,7 +79,7 @@ def test_playground_turn_stores_turns_and_usage(
     stub_enabled_app: FastAPI, chat_ready_corpus: dict[str, Any]
 ) -> None:
     users = chat_ready_corpus["users_a"]
-    owner = users.as_user("owner")
+    owner = users.as_user("staff")
     tenant_id = str(users.tenant_id)
     bot_id = str(chat_ready_corpus["bot_main"])
 
@@ -121,7 +121,7 @@ def test_second_turn_reuses_the_conversation(
     stub_enabled_app: FastAPI, chat_ready_corpus: dict[str, Any]
 ) -> None:
     users = chat_ready_corpus["users_a"]
-    owner = users.as_user("owner")
+    owner = users.as_user("staff")
     tenant_id = str(users.tenant_id)
     bot_id = str(chat_ready_corpus["bot_main"])
     first = playground_post(owner, tenant_id, bot_id, "What warranty do you offer?")
@@ -138,7 +138,7 @@ def test_playground_conversation_of_another_bot_is_not_shared(
     from tests.helpers import make_bot
 
     users = chat_ready_corpus["users_a"]
-    owner = users.as_user("owner")
+    owner = users.as_user("staff")
     tenant_id = str(users.tenant_id)
     main_id = str(chat_ready_corpus["bot_main"])
     playground_post(owner, tenant_id, main_id, "What warranty do you offer?")
@@ -154,7 +154,7 @@ def test_chat_turn_requires_ai_mode(
     stub_enabled_app: FastAPI, chat_ready_corpus: dict[str, Any]
 ) -> None:
     users = chat_ready_corpus["users_a"]
-    owner = users.as_user("owner")
+    owner = users.as_user("staff")
     tenant_id = str(users.tenant_id)
     bot_id = str(chat_ready_corpus["bot_main"])
     from app.chat.conversations import get_or_create_playground_conversation
@@ -185,7 +185,7 @@ def test_thread_excludes_messages_older_than_retention(
 ) -> None:
 
     users = chat_ready_corpus["users_a"]
-    owner = users.as_user("owner")
+    owner = users.as_user("staff")
     tenant_id = str(users.tenant_id)
     bot_id = str(chat_ready_corpus["bot_main"])
     playground_post(owner, tenant_id, bot_id, "current turn")
@@ -210,7 +210,7 @@ def test_feedback_idempotent_per_rater_and_rating(
     stub_enabled_app: FastAPI, chat_ready_corpus: dict[str, Any]
 ) -> None:
     users = chat_ready_corpus["users_a"]
-    owner = users.as_user("owner")
+    owner = users.as_user("staff")
     tenant_id = str(users.tenant_id)
     bot_id = str(chat_ready_corpus["bot_main"])
     client_owner = owner
@@ -252,7 +252,7 @@ def test_feedback_hits_are_tenant_scoped(
     stub_enabled_app: FastAPI, chat_ready_corpus: dict[str, Any]
 ) -> None:
     users = chat_ready_corpus["users_a"]
-    owner = users.as_user("owner")
+    owner = users.as_user("staff")
     tenant_id = str(users.tenant_id)
     bot_id = str(chat_ready_corpus["bot_main"])
     turn = playground_post(owner, tenant_id, bot_id, "What warranty do you offer?")
@@ -356,7 +356,7 @@ def test_retention_purge_via_the_queue(
 
 def test_playground_roles(stub_enabled_app: FastAPI, chat_ready_corpus: dict[str, Any]) -> None:
     users = chat_ready_corpus["users_a"]
-    owner = users.as_user("owner")
+    owner = users.as_user("staff")
     tenant_id = str(users.tenant_id)
     bot_id = str(chat_ready_corpus["bot_main"])
 
@@ -366,7 +366,7 @@ def test_playground_roles(stub_enabled_app: FastAPI, chat_ready_corpus: dict[str
     listing = users.as_user("viewer").get(
         f"/api/v1/tenants/{tenant_id}/bots/{bot_id}/playground/conversation"
     )
-    assert listing.status_code == 200  # member read is fine
+    assert listing.status_code == 403  # playground reads are operator-only
 
     reply = playground_post(owner, tenant_id, bot_id, "hello")
     assert reply.status_code == 201
@@ -387,15 +387,15 @@ def test_tenant_b_cannot_reach_or_write_tenant_a_playground(
         ghost_bot = str(uuid4())
         base_b = f"/api/v1/tenants/{other.tenant_id}/bots"
         assert (
-            other.as_user("owner").get(f"{base_b}/{ghost_bot}/playground/conversation").status_code
+            other.as_user("staff").get(f"{base_b}/{ghost_bot}/playground/conversation").status_code
             == 404
         )
         assert (
-            other.as_user("owner")
+            other.as_user("staff")
             .post(
                 f"{base_b}/{ghost_bot}/playground/messages",
                 json={"text": "x"},
-                headers=csrf_headers(other.as_user("owner")),
+                headers=csrf_headers(other.as_user("staff")),
             )
             .status_code
             == 404
@@ -406,7 +406,7 @@ def test_tenant_b_cannot_reach_or_write_tenant_a_playground(
 
 def test_model_missing_returns_503(app: FastAPI, chat_ready_corpus: dict[str, Any]) -> None:
     users = chat_ready_corpus["users_a"]
-    owner = users.as_user("owner")
+    owner = users.as_user("staff")
     tenant_id = str(users.tenant_id)
     bot_id = str(chat_ready_corpus["bot_main"])
     response = playground_post(owner, tenant_id, bot_id, "hello?")

@@ -60,7 +60,7 @@ def register(
     settings: CurrentSettings,
 ) -> MeResponse:
     service = AuthService(db, settings)
-    user, token = service.register(body.email, body.password)
+    user, token = service.register(body.email, body.password, invite_token=body.invite_token)
     cookies.set_session_cookie(
         response, settings, token=token, max_age_seconds=settings.session_lifetime_seconds
     )

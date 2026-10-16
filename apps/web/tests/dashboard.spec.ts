@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { registerOwner, uniqueEmail } from "./e2e-helpers";
+import { registerAdmin, uniqueEmail } from "./e2e-helpers";
 import { promoteToStaff } from "./staff-helpers";
 
 /**
@@ -13,27 +13,43 @@ test("self-service disabled hides public registration and organization creation"
   page,
 }) => {
   await page.route("**/api/v1/auth/config", (route) =>
-    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ self_serve_signup: false }) }),
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ self_serve_signup: false }),
+    }),
   );
   await page.goto("/register");
-  await expect(page.getByText("Registration is available by invitation only.")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Create account" })).toHaveCount(0);
+  await expect(
+    page.getByText("Registration is available by invitation only."),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Create account" }),
+  ).toHaveCount(0);
 
   await page.unroute("**/api/v1/auth/config");
-  await registerOwner(page, "self-serve-toggle");
+  await registerAdmin(page, "self-serve-toggle");
   await page.route("**/api/v1/auth/config", (route) =>
-    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ self_serve_signup: false }) }),
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ self_serve_signup: false }),
+    }),
   );
   await page.goto("/app");
-  await expect(page.getByRole("heading", { name: "Your organizations" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Create organization" })).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Your organizations" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Create organization" }),
+  ).toHaveCount(0);
 });
 
 test("owner signup provisions first bot and bot lifecycle stays with platform staff", async ({
   page,
 }) => {
   const orgName = `E2E Org ${Date.now()}`;
-  const { tenantId, botName } = await registerOwner(page, "E2E", {
+  const { tenantId, botName } = await registerAdmin(page, "E2E", {
     organizationName: orgName,
   });
   await page.goto("/app");
@@ -51,7 +67,9 @@ test("owner signup provisions first bot and bot lifecycle stays with platform st
 
   await expect(page.getByRole("button", { name: "Create bot" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Archive" })).toHaveCount(0);
-  await expect(page.getByText("Contact us to add or change bots.")).toBeVisible();
+  await expect(
+    page.getByText("Contact us to add or change bots."),
+  ).toBeVisible();
 
   // Sign out returns to the protected flow requiring re-login.
   await page.getByRole("button", { name: "Sign out" }).click();
@@ -66,7 +84,7 @@ test("a second user cannot reach the first user's organization", async ({
 
   const first = await browser.newContext();
   const firstPage = await first.newPage();
-  await registerOwner(firstPage, "first", {
+  await registerAdmin(firstPage, "first", {
     email: firstEmail,
     organizationName: orgName,
   });
@@ -76,7 +94,7 @@ test("a second user cannot reach the first user's organization", async ({
   const secondEmail = uniqueEmail("second");
   const second = await browser.newContext();
   const secondPage = await second.newPage();
-  await registerOwner(secondPage, "second", { email: secondEmail });
+  await registerAdmin(secondPage, "second", { email: secondEmail });
   await secondPage.goto(orgPath);
 
   // The dashboard never renders the foreign org; the API answers 404 and the UI surfaces it.
@@ -93,10 +111,10 @@ test("a second user cannot reach the first user's organization", async ({
 test("team management: owner invites, invitee accepts, viewer sees read-only bots", async ({
   browser,
 }) => {
-  const ownerEmail = uniqueEmail("owner");
+  const ownerEmail = uniqueEmail("admin");
   const first = await browser.newContext();
   const owner = await first.newPage();
-  const { tenantId } = await registerOwner(owner, "Team", {
+  const { tenantId } = await registerAdmin(owner, "Team", {
     email: ownerEmail,
   });
   // Staff plan assignment remains available to prepare owner/editor permission checks.
@@ -154,15 +172,26 @@ test("team management: owner invites, invitee accepts, viewer sees read-only bot
   await editor.waitForURL(/\/app\/[0-9a-f-]{36}\/bots$/);
 
   // Tenant members cannot create bots; the client UI directs them to support.
-  await expect(editor.getByRole("button", { name: "Create bot" })).toHaveCount(0);
-  await expect(editor.getByText("Contact us to add or change bots.")).toBeVisible();
-  const editorCsrf = await editor.evaluate(
-    () => document.cookie.split("; ").find((part) => part.startsWith("chatbot_csrf="))?.split("=")[1] ?? "",
+  await expect(editor.getByRole("button", { name: "Create bot" })).toHaveCount(
+    0,
   );
-  const deniedBot = await editor.request.post(`/api/v1/tenants/${tenantId}/bots`, {
-    headers: { "X-CSRF-Token": editorCsrf },
-    data: { name: `Editor Bot ${Date.now()}` },
-  });
+  await expect(
+    editor.getByText("Contact us to add or change bots."),
+  ).toBeVisible();
+  const editorCsrf = await editor.evaluate(
+    () =>
+      document.cookie
+        .split("; ")
+        .find((part) => part.startsWith("chatbot_csrf="))
+        ?.split("=")[1] ?? "",
+  );
+  const deniedBot = await editor.request.post(
+    `/api/v1/tenants/${tenantId}/bots`,
+    {
+      headers: { "X-CSRF-Token": editorCsrf },
+      data: { name: `Editor Bot ${Date.now()}` },
+    },
+  );
   expect(deniedBot.status()).toBe(403);
 
   await first.close();
@@ -171,7 +200,7 @@ test("team management: owner invites, invitee accepts, viewer sees read-only bot
 
 test("expired session sends the user back to login", async ({ page }) => {
   const email = uniqueEmail("expiry");
-  await registerOwner(page, "expiry", { email });
+  await registerAdmin(page, "expiry", { email });
   // Simulate expiry by poisoning the HttpOnly cookie through the app itself is not
   // possible, so the sign-out mutation is exercised: after logout the protected
   // page redirects to /login (server-side revocation path).

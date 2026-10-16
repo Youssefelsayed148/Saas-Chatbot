@@ -58,3 +58,7 @@ A business signs up, creates an organization and a bot, gives it its data (uploa
 
 ## Not in the product (yet)
 Paid checkout, voice/image messages, email notifications and password-reset emails, deals/pipelines with amounts, automation builder, any Meta API code in this repo (Many owns it).
+
+
+## 2026-10-16 role/operator change note
+The current authorization and deletion contract is docs/06-AUTHORIZATION-AND-SECURITY.md. It supersedes earlier owner-role, client bot-control and immediate-deletion wording: three client roles, staff-only bot/knowledge/playground/delete, last-admin protection, private change requests and delayed storage-cleaning purge. Channel connections and per-channel analytics filters are deferred to the owner?s Phase 3 scope.

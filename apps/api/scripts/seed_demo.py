@@ -24,7 +24,7 @@ from app.knowledge.storage import Storage, get_storage
 
 SLUG = "demo-dental-clinic"
 FAKE_PASSWORD = "FakeDemoOnly!123"
-ROLES = ("owner", "admin", "editor", "viewer")
+ROLES = ("admin", "editor", "viewer")
 FAQS = (
     ("hours", "Opening hours", "We are open Monday to Friday from 09:00 to 17:00."),
     (
@@ -96,7 +96,7 @@ def seed_demo(db: Session, storage: Storage, settings: Settings, password: str) 
         db.execute(text("SELECT pg_advisory_xact_lock(74180314)"))
         tenant = db.scalar(select(Tenant).where(Tenant.slug == SLUG))
         if tenant is not None:
-            owner = db.scalar(select(User).where(User.id == demo_id("user/owner")))
+            owner = db.scalar(select(User).where(User.id == demo_id("user/admin")))
             bot = db.scalar(select(Bot).where(Bot.tenant_id == tenant.id, Bot.id == bot_id))
             if (
                 tenant.id != tenant_id
@@ -140,7 +140,7 @@ def seed_demo(db: Session, storage: Storage, settings: Settings, password: str) 
             bot_id=bot_id,
             status="published",
             published_at=datetime.now(UTC),
-            created_by=demo_id("user/owner"),
+            created_by=demo_id("user/admin"),
         )
         db.add(revision)
         db.flush()
@@ -163,7 +163,7 @@ def seed_demo(db: Session, storage: Storage, settings: Settings, password: str) 
                 size_bytes=len(data),
                 sha256=sha256(data).hexdigest(),
                 status="ingested",
-                created_by=demo_id("user/owner"),
+                created_by=demo_id("user/admin"),
             )
             db.add(source)
             db.flush()

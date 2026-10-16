@@ -11,7 +11,7 @@ import type {
   KnowledgeRevision,
   KnowledgeSource,
 } from "@/lib/api";
-import { roleSatisfies, useSession } from "@/lib/session";
+import { useSession } from "@/lib/session";
 import { Empty, Loading, Notice } from "@/lib/ui";
 import BotWorkspaceNav from "@/lib/bot-workspace-nav";
 
@@ -29,10 +29,10 @@ export default function KnowledgePage() {
   const params = useParams<{ tenant: string; botId: string }>();
   const tenantId = params.tenant;
   const botId = params.botId;
-  const { roleIn } = useSession();
-  const role = roleIn(tenantId);
-  const canEdit = roleSatisfies(role, "editor");
-  const canPublish = roleSatisfies(role, "admin");
+  const { me, roleIn } = useSession();
+  const canRead = me?.is_platform_staff || roleIn(tenantId) === "admin";
+  const canEdit = !!me?.is_platform_staff;
+  const canPublish = !!me?.is_platform_staff;
 
   const [sources, setSources] = useState<KnowledgeSource[] | null>(null);
   const [jobs, setJobs] = useState<KnowledgeJob[] | null>(null);
@@ -84,11 +84,12 @@ export default function KnowledgePage() {
   );
 
   useEffect(() => {
+    if (!canRead) return;
     const timer = setTimeout(() => {
       void loadAll(revisionView);
     }, 0);
     return () => clearTimeout(timer);
-  }, [loadAll, revisionView]);
+  }, [loadAll, revisionView, canRead]);
 
   // Poll while a job is queued or running so statuses move to done without a reload.
   const busy = useMemo(
@@ -223,6 +224,14 @@ export default function KnowledgePage() {
     (source) => source.status === "stored",
   );
 
+  if (!canRead)
+    return (
+      <main>
+        <h1>Knowledge</h1>
+        <Notice message="Administrator access required." />
+      </main>
+    );
+
   return (
     <main>
       <BotWorkspaceNav tenantId={tenantId} botId={botId} />
@@ -231,65 +240,65 @@ export default function KnowledgePage() {
         Upload files, review what was learned and publish trusted answers.
       </p>
       {!canEdit && (
-        <Notice
-          message={`Read-only view: uploads and ingest require the editor role (you are ${role}).`}
-        />
+        <Notice message="Read-only knowledge. Request a change to ask your operator for updates." />
       )}
       {error && <Notice message={error} tone="error" />}
       {!error && actionDone && <Notice message={actionDone} />}
 
-      <section aria-labelledby="upload-heading">
-        <h2 id="upload-heading">Upload files</h2>
-        <p className="muted">
-          PDF (text-based), Word, TXT, Markdown or a Q&A CSV{" "}
-          {canEdit ? (
-            <a
-              href={`/api/v1/tenants/${tenantId}/bots/${botId}/sources/qa-template`}
-            >
-              (download the template)
-            </a>
-          ) : null}
-          . Website page files prepared by staff fit here too. Parsing happens
-          after you start the ingest job.
-        </p>
-        <form onSubmit={onUpload}>
-          <label>
-            Files (max 20, up to 25 MB each under current plan limits)
-            <input
-              id="knowledge-file-input"
-              type="file"
-              multiple
-              accept={ACCEPTED_FILES}
-              disabled={!canEdit || uploading}
-              onChange={(event) =>
-                setSelectedFiles(Array.from(event.target.files ?? []))
-              }
-            />
-          </label>
-          {canEdit && (
-            <button
-              type="submit"
-              disabled={uploading || selectedFiles.length === 0}
-            >
-              {uploading ? "Uploading…" : "Upload"}
-            </button>
-          )}{" "}
-          {canEdit && (
-            <button
-              type="button"
-              onClick={() => void onIngest()}
-              disabled={ingesting || storedSources.length === 0}
-              title={
-                storedSources.length === 0
-                  ? "Upload files first"
-                  : "Run parse → chunk → index for the stored files"
-              }
-            >
-              {ingesting ? "Starting…" : "Ingest files"}
-            </button>
-          )}
-        </form>
-      </section>
+      {canEdit && (
+        <section aria-labelledby="upload-heading">
+          <h2 id="upload-heading">Upload files</h2>
+          <p className="muted">
+            PDF (text-based), Word, TXT, Markdown or a Q&A CSV{" "}
+            {canEdit ? (
+              <a
+                href={`/api/v1/tenants/${tenantId}/bots/${botId}/sources/qa-template`}
+              >
+                (download the template)
+              </a>
+            ) : null}
+            . Website page files prepared by staff fit here too. Parsing happens
+            after you start the ingest job.
+          </p>
+          <form onSubmit={onUpload}>
+            <label>
+              Files (max 20, up to 25 MB each under current plan limits)
+              <input
+                id="knowledge-file-input"
+                type="file"
+                multiple
+                accept={ACCEPTED_FILES}
+                disabled={!canEdit || uploading}
+                onChange={(event) =>
+                  setSelectedFiles(Array.from(event.target.files ?? []))
+                }
+              />
+            </label>
+            {canEdit && (
+              <button
+                type="submit"
+                disabled={uploading || selectedFiles.length === 0}
+              >
+                {uploading ? "Uploading…" : "Upload"}
+              </button>
+            )}{" "}
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => void onIngest()}
+                disabled={ingesting || storedSources.length === 0}
+                title={
+                  storedSources.length === 0
+                    ? "Upload files first"
+                    : "Run parse → chunk → index for the stored files"
+                }
+              >
+                {ingesting ? "Starting…" : "Ingest files"}
+              </button>
+            )}
+          </form>
+        </section>
+      )}
 
       <section aria-labelledby="sources-heading">
         <h2 id="sources-heading">Files</h2>
@@ -446,7 +455,9 @@ export default function KnowledgePage() {
       <section aria-labelledby="revisions-heading">
         <h2 id="revisions-heading">Revisions</h2>
         {!canPublish && (
-          <p className="muted">Publishing requires the admin role or higher.</p>
+          <p className="muted">
+            Publishing is managed by your platform operator.
+          </p>
         )}
         {revisions === null ? (
           <Loading label="Loading revisions…" />

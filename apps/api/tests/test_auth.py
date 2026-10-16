@@ -183,7 +183,7 @@ def test_me_includes_memberships_once_tenants_exist(client: TestClient, db: OrmS
         text(
             "INSERT INTO memberships (tenant_id, user_id, role, status, created_at) "
             "VALUES ("
-            "(SELECT id FROM tenants WHERE slug='acme'), CAST(:uid AS uuid), 'owner', 'active',"
+            "(SELECT id FROM tenants WHERE slug='acme'), CAST(:uid AS uuid), 'admin', 'active',"
             "NOW()"
             ")"
         ),
@@ -195,7 +195,7 @@ def test_me_includes_memberships_once_tenants_exist(client: TestClient, db: OrmS
     memberships = me.json()["memberships"]
     assert len(memberships) == 1
     assert memberships[0]["tenant_name"] == "Acme"
-    assert memberships[0]["role"] == "owner"
+    assert memberships[0]["role"] == "admin"
 
 
 def test_login_rotates_session(client: TestClient) -> None:

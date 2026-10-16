@@ -119,7 +119,7 @@ def test_staff_onboarding_creates_tenant_bot_and_owner_invite(
         text("SELECT email, role FROM invitations WHERE tenant_id = :t"),
         {"t": tenant_id},
     ).fetchall()
-    assert len(invitations) == 1 and invitations[0][1] == "owner"
+    assert len(invitations) == 1 and invitations[0][1] == "admin"
     # actor attribution: the staff action is in the tenant's audit trail
     audit = db.execute(
         text(
@@ -222,18 +222,18 @@ def test_client_list_and_detail_are_reachable_by_staff_only(
     assert listing.status_code == 200
     tenants = listing.json()["tenants"]
     target = next(row for row in tenants if row["slug"] == "org-plat")
-    assert target["bots"] == 1 and target["seats"] == 4
+    assert target["bots"] == 1 and target["seats"] == 3
     detail = platform_call(staff_client, "GET", f"/tenants/{target['id']}")
     assert detail.status_code == 200
     body = detail.json()
     assert any(bot["name"] == "Client Bot" for bot in body["bots"])
-    assert len(body["members"]) == 4
+    assert len(body["members"]) == 3
     assert isinstance(body["recent_audit"], list)
     # a different tenant's unknown id → 404, tenant isolation unaffected
     unknown = platform_call(staff_client, "GET", "/tenants/00000000-0000-0000-0000-00000000aaa1")
     assert unknown.status_code == 404
     # Tenant A vs B: nothing leaks between them through staff-only paths
-    owner_a = users.as_user("owner")
+    owner_a = users.as_user("admin")
     bot_a = make_bot(users, "Another")
     outsider = (
         platform_call(users.as_user("viewer"), "GET", f"/platform-derived/{bot_a['id']}")

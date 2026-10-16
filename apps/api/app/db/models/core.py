@@ -7,6 +7,7 @@ by app-layer tenant scoping plus these composite keys.
 """
 
 from datetime import datetime
+from typing import Literal
 from uuid import UUID, uuid4
 
 from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Text, text
@@ -16,7 +17,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base, utcnow
 from app.db.models.types import CITEXT
 
-ROLE_VALUES = ("owner", "admin", "editor", "viewer")
+ClientRole = Literal["admin", "editor", "viewer"]
+ROLE_VALUES = ("admin", "editor", "viewer")
 BOT_STATUS_VALUES = ("draft", "active", "paused", "archived")
 TENANT_STATUS_VALUES = ("active", "archived")
 PROVISIONING_MODE_VALUES = ("platform", "self_service")
@@ -100,8 +102,8 @@ class Membership(Base):
     user_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), nullable=False, primary_key=True
     )
-    # ADR-009: owner / admin / editor / viewer.
-    role: Mapped[str] = mapped_column(Text, nullable=False, default="viewer")
+    # ADR-009: admin / editor / viewer.
+    role: Mapped[ClientRole] = mapped_column(Text, nullable=False, default="viewer")
     status: Mapped[str] = mapped_column(
         Text, nullable=False, default="active", server_default=text("'active'")
     )
@@ -110,9 +112,7 @@ class Membership(Base):
     )
 
     __table_args__ = (
-        CheckConstraint(
-            "role IN ('owner', 'admin', 'editor', 'viewer')", name="ck_memberships_role"
-        ),
+        CheckConstraint("role IN ('admin', 'editor', 'viewer')", name="ck_memberships_role"),
         CheckConstraint("status IN ('active', 'revoked')", name="ck_memberships_status"),
         Index("ix_memberships_tenant_id", "tenant_id"),
         Index("ix_memberships_user_id", "user_id"),
@@ -170,7 +170,7 @@ class Invitation(Base):
         ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
     )
     email: Mapped[str] = mapped_column(CITEXT, nullable=False)
-    role: Mapped[str] = mapped_column(Text, nullable=False, default="viewer")
+    role: Mapped[ClientRole] = mapped_column(Text, nullable=False, default="viewer")
     # Only the SHA-256 hash of the one-time link token is stored (docs/14 s19).
     token_hash: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -184,9 +184,7 @@ class Invitation(Base):
     )
 
     __table_args__ = (
-        CheckConstraint(
-            "role IN ('owner', 'admin', 'editor', 'viewer')", name="ck_invitations_role"
-        ),
+        CheckConstraint("role IN ('admin', 'editor', 'viewer')", name="ck_invitations_role"),
         Index("ix_invitations_tenant_id", "tenant_id"),
         Index("ix_invitations_email", "email"),
     )

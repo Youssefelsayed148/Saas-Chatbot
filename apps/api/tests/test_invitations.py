@@ -42,7 +42,7 @@ def test_invitation_create_accept_single_use(app: Any, db: OrmSession) -> None:
             cleanup_clients(invitee)
 
         # It no longer appears as a pending invitation.
-        pending = users.call("owner", "GET", f"/api/v1/tenants/{users.tenant_id}/invitations")
+        pending = users.call("admin", "GET", f"/api/v1/tenants/{users.tenant_id}/invitations")
         assert pending.status_code == 200
         assert all(row["id"] != invitation["id"] for row in pending.json())
 
@@ -54,7 +54,7 @@ def test_invitation_create_accept_single_use(app: Any, db: OrmSession) -> None:
         assert token not in str(stored)
         assert len(str(stored)) == 64
 
-        members = users.call("owner", "GET", f"/api/v1/tenants/{users.tenant_id}/members").json()
+        members = users.call("admin", "GET", f"/api/v1/tenants/{users.tenant_id}/members").json()
         roles_by_email = {row["email"]: row["role"] for row in members}
         assert roles_by_email["newteammate@example.com"] == "editor"
 
@@ -93,7 +93,7 @@ def test_invitation_expired_and_unknown_and_revoked(app: Any, db: OrmSession) ->
         # Revoked before acceptance.
         token, invitation = make_invitation(users, "revoked@example.com", "viewer")
         users.call(
-            "owner",
+            "admin",
             "DELETE",
             f"/api/v1/tenants/{users.tenant_id}/invitations/{invitation['id']}",
         )
@@ -113,7 +113,7 @@ def test_resend_replaces_token(app: Any, db: OrmSession) -> None:
     try:
         token, invitation = make_invitation(users, "resend@example.com", "viewer")
         resent = users.call(
-            "owner",
+            "admin",
             "POST",
             f"/api/v1/tenants/{users.tenant_id}/invitations/{invitation['id']}/resend",
         )
@@ -130,7 +130,7 @@ def test_resend_replaces_token(app: Any, db: OrmSession) -> None:
 
             # Resending an accepted invitation is a conflict.
             again = users.call(
-                "owner",
+                "admin",
                 "POST",
                 f"/api/v1/tenants/{users.tenant_id}/invitations/{invitation['id']}/resend",
             )
@@ -151,7 +151,7 @@ def test_accept_requires_matching_email(app: Any, db: OrmSession) -> None:
             assert mismatched.status_code == 403
             assert mismatched.json()["error"]["code"] == "INVITEE_EMAIL_MISMATCH"
             pending = users.call(
-                "owner", "GET", f"/api/v1/tenants/{users.tenant_id}/invitations"
+                "admin", "GET", f"/api/v1/tenants/{users.tenant_id}/invitations"
             ).json()
             assert len(pending) == 1
         finally:
@@ -167,9 +167,9 @@ def test_admin_cannot_mint_owner_invitation_and_viewer_blocked(app: Any, db: Orm
             "admin",
             "POST",
             f"/api/v1/tenants/{users.tenant_id}/invitations",
-            json={"email": " escalated@example.com", "role": "owner"},
+            json={"email": "escalated@example.com", "role": "owner"},
         )
-        assert admin_attempt.status_code == 403
+        assert admin_attempt.status_code == 422
 
         editor_blocked = users.call(
             "editor",

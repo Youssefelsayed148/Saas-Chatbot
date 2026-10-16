@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { registerOwner } from "./e2e-helpers";
+import { registerAdmin, registerOperator } from "./e2e-helpers";
 import { promoteToStaff } from "./staff-helpers";
 
 test.afterEach(async ({ page }) => {
@@ -10,15 +10,15 @@ test.afterEach(async ({ page }) => {
 
 async function staff(page: Page) {
   const email = `ui-staff.${Date.now()}@example.com`;
-  const result = await registerOwner(page, "UI characterization", { email });
+  const result = await registerAdmin(page, "UI characterization", { email });
   promoteToStaff(email);
   return result;
 }
 
-test("tenant data: owner deletion requires exact name and a meaningful reason", async ({
+test("tenant data: operator deletion requires exact name and a meaningful reason", async ({
   page,
 }) => {
-  const { tenantId } = await registerOwner(page, "Delete validation", {
+  const { tenantId } = await registerOperator(page, "Delete validation", {
     organizationName: "Deletion validation",
   });
   let deletes = 0;
@@ -30,7 +30,7 @@ test("tenant data: owner deletion requires exact name and a meaningful reason", 
     page.getByRole("button", { name: "Download export" }),
   ).toBeVisible();
   const submit = page.getByRole("button", {
-    name: "Permanently delete organization",
+    name: "Schedule organization deletion",
   });
   await expect(submit).toBeDisabled();
   await page.getByLabel(/Type.*to confirm/).fill("wrong name");
@@ -43,9 +43,21 @@ test("tenant data: owner deletion requires exact name and a meaningful reason", 
   await expect(submit).toBeEnabled();
   await submit.click();
   const confirmation = page.getByRole("dialog", {
-    name: "Permanently delete this organization?",
+    name: "Delete this organization?",
   });
   await expect(confirmation).toBeVisible();
+  await expect(
+    confirmation.getByText("bots: 1", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    confirmation.getByRole("button", { name: "Delete organization now" }),
+  ).toBeDisabled();
+  await confirmation
+    .getByLabel("Confirm organization name")
+    .fill("Deletion validation");
+  await expect(
+    confirmation.getByRole("button", { name: "Delete organization now" }),
+  ).toBeEnabled();
   await confirmation
     .getByRole("button", { name: "Cancel", exact: true })
     .click();
@@ -53,10 +65,10 @@ test("tenant data: owner deletion requires exact name and a meaningful reason", 
   expect(deletes).toBe(0);
 });
 
-test("tenant data: admin can review but only owner sees deletion; viewer is denied", async ({
+test("tenant data: admin can review but only staff sees deletion; viewer is denied", async ({
   page,
 }) => {
-  const { tenantId } = await registerOwner(page, "Data roles");
+  const { tenantId } = await registerAdmin(page, "Data roles");
   const session = await (await page.request.get("/api/v1/auth/me")).json();
   expect(
     session.memberships.some(
@@ -86,7 +98,7 @@ test("tenant data: admin can review but only owner sees deletion; viewer is deni
         page.getByText("Administrator access is required."),
       ).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "Permanently delete organization" }),
+      page.getByRole("button", { name: "Schedule organization deletion" }),
     ).toHaveCount(0);
     await page.unroute("**/api/v1/auth/me");
   }
@@ -190,9 +202,7 @@ test("platform client mutations preserve plan, quota and pause reason payloads",
   await page.getByLabel("Plan label").fill("starter");
   await page.getByRole("button", { name: "Save plan" }).click();
   await expect.poll(() => actions.length).toBe(1);
-  await page
-    .getByLabel("Quota overrides (JSON)")
-    .fill('{"bots":5}');
+  await page.getByLabel("Quota overrides (JSON)").fill('{"bots":5}');
   await page.getByRole("button", { name: "Save override with reason" }).click();
   await expect.poll(() => actions.length).toBe(2);
   await page.getByRole("button", { name: "Pause bot" }).click();
@@ -217,7 +227,7 @@ test("platform client mutations preserve plan, quota and pause reason payloads",
 test("inbox viewer cannot mutate AI, human or resolved conversations", async ({
   page,
 }) => {
-  const { tenantId } = await registerOwner(page, "Inbox viewer");
+  const { tenantId } = await registerAdmin(page, "Inbox viewer");
   const session = await (await page.request.get("/api/v1/auth/me")).json();
   expect(
     session.memberships.some(

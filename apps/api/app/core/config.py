@@ -1,5 +1,5 @@
-from functools import lru_cache
 import os
+from functools import lru_cache
 from pathlib import Path
 
 from pydantic import Field, SecretStr
@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     # affordances must never run there.
     environment: str = Field(default="development", pattern="^(development|production|test)$")
     self_serve_signup: bool = False
+    org_deletion_grace_days: int = Field(default=30, ge=1, le=365)
 
     # Sessions (ADR-004): opaque server-side tokens; only a SHA-256 hash is stored.
     session_cookie_name: str = "chatbot_session"

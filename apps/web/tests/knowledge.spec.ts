@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { registerOwner, uniqueEmail } from "./e2e-helpers";
+import { registerOperator, uniqueEmail } from "./e2e-helpers";
 import { assignStarterPlan } from "./staff-helpers";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -13,12 +13,12 @@ import path from "node:path";
 const PASSWORD = "Str0ngPass!";
 const FIXTURE = path.join(__dirname, "fixtures", "knowledge-sample.md");
 
-async function openKnowledgeAsOwner(
+async function openKnowledgeAsOperator(
   page: Page,
   starter = false,
 ): Promise<void> {
   const email = uniqueEmail("knower");
-  const { tenantId, botName } = await registerOwner(page, "K", {
+  const { tenantId, botName } = await registerOperator(page, "K", {
     email,
     botName: `Knowledge Bot ${Date.now()}`,
   });
@@ -39,7 +39,7 @@ test("fresh signup shows the knowledge upload controls without a reload", async 
 }) => {
   // Regression: the session was not refreshed after self-service provisioning,
   // so the new owner looked like a viewer until a manual reload.
-  await openKnowledgeAsOwner(page);
+  await openKnowledgeAsOperator(page);
   await expect(page.locator("#knowledge-file-input")).toBeVisible();
   await expect(page.locator("#knowledge-file-input")).toBeEnabled();
 });
@@ -48,7 +48,7 @@ test("upload, ingest through the worker, preview, publish", async ({
   page,
 }) => {
   test.setTimeout(120_000);
-  await openKnowledgeAsOwner(page);
+  await openKnowledgeAsOperator(page);
 
   // The Q&A template link is offered to editors.
   await expect(
@@ -116,7 +116,7 @@ test("oversize uploads are rejected through the same-origin proxy with 413", asy
   page,
 }) => {
   test.setTimeout(90_000);
-  await openKnowledgeAsOwner(page, true);
+  await openKnowledgeAsOperator(page, true);
 
   // 10 MB + 1 byte: the API's streaming cap rejects it (the proxy forwards it).
   await page.locator("#knowledge-file-input").setInputFiles({
@@ -136,7 +136,7 @@ test("viewer is read-only on knowledge", async ({ browser }) => {
   test.setTimeout(90_000);
   const first = await browser.newContext();
   const owner = await first.newPage();
-  await openKnowledgeAsOwner(owner);
+  await openKnowledgeAsOperator(owner);
 
   // Invite a viewer through the members page.
   await owner.goto(
@@ -172,27 +172,23 @@ test("viewer is read-only on knowledge", async ({ browser }) => {
     .first()
     .click();
   await viewer.waitForURL(/\/settings$/);
-  await viewer.getByRole("link", { name: "Knowledge" }).click();
-  await viewer.waitForURL(/\/knowledge$/);
   await expect(
-    viewer.getByRole("heading", { name: "Knowledge" }),
-  ).toBeVisible();
-  await expect(
-    viewer.getByText(
-      /Read-only view: uploads and ingest require the editor role/,
-    ),
-  ).toBeVisible();
-  await expect(
-    viewer.getByRole("link", { name: /download the template/ }),
+    viewer.getByRole("link", { name: "Knowledge", exact: true }),
   ).toHaveCount(0);
-  const input = viewer.locator("#knowledge-file-input");
-  await expect(input).toBeDisabled();
-  const main = viewer.locator("main");
+  const botId = new URL(viewer.url()).pathname.split("/")[4];
+  const tenantId = new URL(viewer.url()).pathname.split("/")[2];
+  await viewer.goto(`/app/${tenantId}/bots/${botId}/knowledge`);
   await expect(
-    main.getByRole("button", {
-      name: /Ingest files|Upload|Publish|Retry|Cancel/,
-    }),
-  ).toHaveCount(0);
+    viewer.getByText("Administrator access required."),
+  ).toBeVisible();
+  await expect(viewer.locator("#knowledge-file-input")).toHaveCount(0);
+  expect(
+    (
+      await viewer.request.get(
+        `/api/v1/tenants/${tenantId}/bots/${botId}/sources`,
+      )
+    ).status(),
+  ).toBe(403);
 
   await first.close();
   await second.close();

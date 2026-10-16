@@ -1,15 +1,28 @@
 # Security policy and permission matrix
-| Action | Owner | Admin | Editor | Viewer | Platform staff | Visitor |
-|---|---|---|---|---|---|---|
-| View own tenant/bots | Yes | Yes | Yes | Yes | Audited support scope | No |
-| Create/update bot | Yes | Yes | Yes | No | Only explicit staff operation | No |
-| Publish knowledge | Yes | Yes | No | No | Explicit support action only | No |
-| Manage membership | Yes | Yes (except owner transfer) | No | No | Controlled workflow | No |
-| Manage tenant billing | Yes | No by default | No | No | Billing-scoped role later | No |
-| Read inbox, contacts | Yes | Yes | Yes | Yes | Audited support scope | No |
-| Reply, take over, assign, edit contacts, schedule follow-ups | Yes | Yes | Yes | No | No | No |
-| Link a Many channel connection | Yes | Yes (staff approval) | No | No | Yes | No |
-| Chat via public widget | N/A | N/A | N/A | N/A | N/A | Limited capability |
+
+Approved change note, 2026-10-16: client roles are **admin, editor, viewer**. `owner` is retired. Platform operators are users with `is_platform_staff`, independently of tenant membership. Every tenant route declares `x-minimum-role` in OpenAPI, enforced by the tenant dependency. Hidden tenant resources return 404 before role checks; insufficient roles in an accessible tenant receive 403.
+
+| Action | Admin | Editor | Viewer | Platform operator |
+|---|---|---|---|---|
+| Read inbox, contacts and insights; bot status | Yes | Yes | Yes | Read access |
+| Inbox actions, replies, takeover/resolve/assign, tags/notes; follow-ups; contact create/edit | Yes | Yes | No | Requires tenant membership for inbox actions |
+| Members/roles, invitations, audit, exports and CSVs | Yes | No | No | Yes |
+| Contact stage config, merge/delete; conversation delete | Yes | No | No | Yes (membership needed for ordinary inbox actions) |
+| Snippet; document/source list and parse status | Read only | No | No | Yes |
+| Request a change and view requests | Yes | No | No | Triage queue |
+| Bot create/archive/PATCH, settings/persona/widget domains | No | No | No | Yes, no membership required |
+| Knowledge uploads, ingestion, job cancel/retry, publish | No | No | No | Yes, no membership required |
+| Playground conversation/messages/feedback | No | No | No | Yes, no membership required |
+| Organization delete with exact-name body confirmation | No | No | No | Yes, no membership required |
+
+The last active admin cannot be removed or demoted. Tenant-row locks serialize those checks; ownership transfer has no endpoint or UI. Removing a member revokes the active membership while retaining its historical sender/assignment foreign-key anchor. Migration 0013 maps existing memberships and invitations from owner to admin, then removes owner from database constraints.
+
+Deletion disables bots/widgets, revokes current member login sessions, revokes memberships and invitations, expires visitor sessions and cancels jobs immediately. Users with other organizations can sign in again; deleted organizations stay inaccessible. The independent `organization_deletions` ledger survives tenant purge and holds the grace deadline, counts, actor, reason and temporary storage manifest. `ORG_DELETION_GRACE_DAYS` defaults to 30. The worker purges after the deadline; storage failures preserve the ledger/tenant for retry. No restore UI is included.
+
+Change requests accept `knowledge|text_change|domain|delete_org|other`, bounded text and optional bounded private attachments. Client admins submit/list; staff triage `pending|triaged|in_progress|completed|rejected`. Attachments are downloaded through scoped authorization with attachment disposition and nosniff; they are never rendered as active content. A request does not execute its requested action automatically.
+
+With self-service signup disabled, registration requires a valid, unexpired, unrevoked, unused invitation token for the registering email and an active tenant. The API validates this before creating an account. Channel connections and per-channel analytics filters remain deferred to the owner's Phase 3 scope; no channel work is authorized by this change.
+
 ## Invariants
 Enforce authorization server-side; never trust client-supplied tenant, role, bot or widget origin alone. Tenant resource IDs must be checked with tenant scope on reads/writes. Hash passwords with Argon2id or equivalent. Sessions: HttpOnly, Secure in production, SameSite, rotation/revocation, CSRF protection for cookie-based writes. No logs containing tokens or visitor PII. Audit privileged actions.
 ## Ingestion threat model

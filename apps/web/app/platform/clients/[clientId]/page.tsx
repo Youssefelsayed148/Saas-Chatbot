@@ -94,6 +94,12 @@ export default function PlatformClientPage() {
       <h1 data-testid="client-detail-name">
         {detail?.tenant.name ?? "Client"}
       </h1>
+      <p>
+        <a href={`/app/${clientId}/bots`}>Operate bots</a> ?{" "}
+        <a href={`/app/${clientId}/settings/data`}>
+          Organization data and deletion
+        </a>
+      </p>
       <p className="page-purpose">
         Review client health and manage plans, quotas and bot availability.
       </p>
@@ -145,7 +151,8 @@ export default function PlatformClientPage() {
           <section aria-label="Plan assignment" data-testid="client-plan">
             <h2>Plan assignment</h2>
             <p>
-              Plan limits are provisional; pricing and final limits are still under review.
+              Plan limits are provisional; pricing and final limits are still
+              under review.
             </p>
             <form onSubmit={(event) => void assignPlan(event)}>
               <label>

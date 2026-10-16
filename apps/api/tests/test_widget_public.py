@@ -70,8 +70,8 @@ def make_active_bot_with_knowledge(
 ) -> dict[str, Any]:
     """Bot + published revision (through the REAL pipeline) + active status."""
     bot = make_bot(users, name)
-    users.call(
-        "owner",
+    patched = users.call(
+        "staff",
         "PATCH",
         f"/api/v1/tenants/{users.tenant_id}/bots/{bot['id']}",
         json={
@@ -82,6 +82,7 @@ def make_active_bot_with_knowledge(
             }
         },
     )
+    assert patched.status_code == 200, patched.text
     storage_root = Path(retrieval_settings().storage_root)
     upload = upload_sources(users, bot["id"], [("hours.md", MD_HOURS.encode())], storage_root)
     assert upload.status_code == 201, upload.text
@@ -296,12 +297,13 @@ def test_unallowed_domain_is_rejected_as_defence_signal(
     PAGE origin (sent by the loader script) is compared, not the iframe's."""
     users = corpus["users_a"]
     bot = make_active_bot_with_knowledge(app, users, db, name="Domainbound")
-    users.call(
-        "owner",
+    patched = users.call(
+        "staff",
         "PATCH",
         f"/api/v1/tenants/{users.tenant_id}/bots/{bot['id']}",
         json={"config": {"allowed_domains": ["example.com"]}},
     )
+    assert patched.status_code == 200, patched.text
     client = app_client(app)
     good = client.post(
         f"/api/public/v1/widgets/{bot['widget_locator']}/sessions",

@@ -57,7 +57,7 @@ def test_inbox_filters_search_tags_and_per_user_unread(
     request.addfinalizer(setup["client"].close)
     conversation_id = setup["turn"]["conversation_id"]
     base = _base(users.tenant_id, conversation_id)
-    owner = users.as_user("owner")
+    owner = users.as_user("admin")
     editor = users.as_user("editor")
     viewer = users.as_user("viewer")
     list_url = f"/api/v1/tenants/{users.tenant_id}/inbox"
@@ -108,7 +108,7 @@ def test_inbox_filters_search_tags_and_per_user_unread(
     assert viewer.get(list_url).status_code == 200
     denied = viewer.post(base + "/tags", json={"tag": "blocked"}, headers=csrf_headers(viewer))
     assert denied.status_code == 403
-    hidden = users.as_user("owner").get(f"/api/v1/tenants/{foreign_users.tenant_id}/inbox")
+    hidden = users.as_user("admin").get(f"/api/v1/tenants/{foreign_users.tenant_id}/inbox")
     assert hidden.status_code == 404
 
     counts = owner.get(list_url + "/counts")
@@ -124,7 +124,7 @@ def test_tag_endpoint_hides_cross_tenant_conversation(
     foreign_users = _tenant(app, db, "inbox-isolation-b", request)
     setup = seed_setup(app, users, db, name="Inbox isolation")
     request.addfinalizer(setup["client"].close)
-    foreign = foreign_users.as_user("owner")
+    foreign = foreign_users.as_user("admin")
     path = _base(foreign_users.tenant_id, setup["turn"]["conversation_id"])
     response = foreign.post(path + "/tags", json={"tag": "secret"}, headers=csrf_headers(foreign))
     assert response.status_code == 404
@@ -148,7 +148,7 @@ def test_notification_counts_follow_waiting_and_assignment(
     conversation.status = "waiting_human"
     db.commit()
 
-    owner = users.as_user("owner")
+    owner = users.as_user("admin")
     editor = users.as_user("editor")
     counts_url = f"/api/v1/tenants/{users.tenant_id}/inbox/counts"
     waiting = owner.get(counts_url).json()
@@ -182,7 +182,7 @@ def test_sse_reconnects_across_two_app_instances(
 
     second_app = create_app()
     _override_widget_settings(second_app)
-    owner_id = UUID(users.users["owner"]["id"])
+    owner_id = UUID(users.users["admin"]["id"])
     with TestClient(second_app) as process_two:
         first = event_stream(users.tenant_id, owner_id, None)
         try:
@@ -229,7 +229,7 @@ def test_invalid_sse_cursor_and_inbox_rows_are_tenant_scoped(
     users = _tenant(app, db, "inbox-cursor", request)
     setup = seed_setup(app, users, db, name="Inbox cursor")
     request.addfinalizer(setup["client"].close)
-    owner = users.as_user("owner")
+    owner = users.as_user("admin")
     stream_url = f"/api/v1/tenants/{users.tenant_id}/inbox/events"
     invalid = owner.get(stream_url, headers={"Last-Event-ID": "not-a-cursor"})
     assert invalid.status_code == 400
@@ -239,7 +239,7 @@ def test_invalid_sse_cursor_and_inbox_rows_are_tenant_scoped(
     from app.inbox.listing import event_stream
 
     latest = max(row.id for row in rows)
-    stream = event_stream(users.tenant_id, UUID(users.users["owner"]["id"]), latest + 10_000)
+    stream = event_stream(users.tenant_id, UUID(users.users["admin"]["id"]), latest + 10_000)
     ready = _next_generator_event(stream)
     assert int(ready["id"]) == latest
     stream.close()

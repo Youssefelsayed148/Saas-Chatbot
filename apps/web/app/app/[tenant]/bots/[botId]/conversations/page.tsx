@@ -19,7 +19,7 @@ export default function ConversationsPage() {
   const botId = params.botId;
   const { roleIn } = useSession();
   const role = roleIn(tenantId);
-  const canDelete = roleSatisfies(role, "editor");
+  const canDelete = roleSatisfies(role, "admin");
   const canTenant = roleSatisfies(role, "admin");
 
   const [rows, setRows] = useState<Conversation[] | null>(null);

@@ -29,10 +29,13 @@ function RegisterForm() {
   const isInviteSignup = destination.startsWith("/accept-invite");
 
   useEffect(() => {
-    void api.authConfig().then((features) => {
-      setSelfServeSignup(features.self_serve_signup);
-      setFeatureLoaded(true);
-    }).catch(() => setFeatureLoaded(true));
+    void api
+      .authConfig()
+      .then((features) => {
+        setSelfServeSignup(features.self_serve_signup);
+        setFeatureLoaded(true);
+      })
+      .catch(() => setFeatureLoaded(true));
   }, []);
 
   async function onSubmit(event: React.FormEvent) {
@@ -49,7 +52,15 @@ function RegisterForm() {
     setSubmitting(true);
     try {
       try {
-        await api.register(email, password);
+        await api.register(
+          email,
+          password,
+          isInviteSignup
+            ? (new URL(destination, window.location.origin).searchParams.get(
+                "token",
+              ) ?? undefined)
+            : undefined,
+        );
       } catch (caught) {
         if (
           !(caught instanceof api.ApiError) ||
@@ -92,65 +103,73 @@ function RegisterForm() {
       <p className="eyebrow">YOUR AI WORKSPACE</p>
       <h1>Register</h1>
       {isInviteSignup ? (
-        <p className="page-purpose">Create your account to accept the invitation.</p>
+        <p className="page-purpose">
+          Create your account to accept the invitation.
+        </p>
       ) : (
-        <p className="page-purpose">{selfServeSignup ? "Create your workspace and first website assistant." : "Registration is available by invitation only."}</p>
+        <p className="page-purpose">
+          {selfServeSignup
+            ? "Create your workspace and first website assistant."
+            : "Registration is available by invitation only."}
+        </p>
       )}
       {!featureLoaded && <p role="status">Loading registration options…</p>}
-      {(isInviteSignup || (featureLoaded && selfServeSignup)) && <form onSubmit={onSubmit}>
-        {!isInviteSignup && (
-          <>
-            <label>
-              Organization name
-              <input
-                name="client-name"
-                required
-                maxLength={200}
-                value={clientName}
-                onChange={(event) => setClientName(event.target.value)}
-              />
-            </label>
-            <label>
-              First bot name
-              <input
-                name="bot-name"
-                required
-                maxLength={100}
-                value={botName}
-                onChange={(event) => setBotName(event.target.value)}
-              />
-            </label>
-          </>
-        )}
-        <label>
-          Email
-          <input
-            type="email"
-            name="email"
-            autoComplete="email"
-            required
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-          />
-        </label>
-        <div className="password-control">
-          <label htmlFor="auth-password">Password</label>
-          <PasswordField
-            id="auth-password"
-            type="password"
-            name="new-password"
-            autoComplete="new-password"
-            required
-            minLength={MIN_PASSWORD_LENGTH}
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
-        </div>
-        {error && <p role="alert">{error}</p>}
-        <button type="submit" disabled={submitting}>
-          {submitting ? "Creating account…" : "Create account"}
-        </button>
-      </form>}
+      {(isInviteSignup || (featureLoaded && selfServeSignup)) && (
+        <form onSubmit={onSubmit}>
+          {!isInviteSignup && (
+            <>
+              <label>
+                Organization name
+                <input
+                  name="client-name"
+                  required
+                  maxLength={200}
+                  value={clientName}
+                  onChange={(event) => setClientName(event.target.value)}
+                />
+              </label>
+              <label>
+                First bot name
+                <input
+                  name="bot-name"
+                  required
+                  maxLength={100}
+                  value={botName}
+                  onChange={(event) => setBotName(event.target.value)}
+                />
+              </label>
+            </>
+          )}
+          <label>
+            Email
+            <input
+              type="email"
+              name="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
+          </label>
+          <div className="password-control">
+            <label htmlFor="auth-password">Password</label>
+            <PasswordField
+              id="auth-password"
+              type="password"
+              name="new-password"
+              autoComplete="new-password"
+              required
+              minLength={MIN_PASSWORD_LENGTH}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+          </div>
+          {error && <p role="alert">{error}</p>}
+          <button type="submit" disabled={submitting}>
+            {submitting ? "Creating account…" : "Create account"}
+          </button>
+        </form>
+      )}
       <p>
         Already registered? <Link href="/login">Sign in</Link>
       </p>
