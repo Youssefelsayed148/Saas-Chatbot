@@ -255,7 +255,9 @@ def test_definite_provider_failures_release_reservations(app: FastAPI, db: Sessi
             FakeChatModel(raises=True), db, users.tenant_id, bid, settings, "website"
         )
         with pytest.raises(ProviderError):
-            failing.complete([{"role": "user", "content": "question"}], json_mode=True, max_tokens=50)
+            failing.complete(
+                [{"role": "user", "content": "question"}], json_mode=True, max_tokens=50
+            )
 
         def unavailable(texts: list[str]) -> EmbeddingBatch:
             raise EmbeddingError("Embedding provider is unavailable.")

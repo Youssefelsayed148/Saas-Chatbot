@@ -7,9 +7,9 @@ into a ``to_tsquery`` string:
 - English → ``to_tsquery('english', …)`` against the GIN-indexed ``fts_en``
   column (title+heading+text of the chunk).
 - Arabic → ``to_tsquery('arabic', …)`` against the normalised column
-  ``fts_ar`` (Snowball stemming, migration 0016); every Arabic term is matched with **and** without a leading
-  ``ال`` and with ``:*`` prefix matching. Terms are normalised with the same
-  rules as the stored ``text_norm``.
+  ``fts_ar`` (Snowball stemming, migration 0016); every Arabic term is matched with
+  **and** without a leading ``ال`` and with ``:*`` prefix matching. Terms are
+  normalised with the same rules as the stored ``text_norm``.
 
 The tsvector columns are precomputed and indexed — queries never call
 ``to_tsvector`` on chunk text (docs/14 §5: no per-query recomputation).

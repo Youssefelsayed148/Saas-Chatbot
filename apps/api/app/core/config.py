@@ -143,7 +143,10 @@ def validate_startup_settings(settings: Settings) -> None:
             "CHAT_STUB_MODEL cannot be enabled with environment=production; "
             "the offline stub model is a development/test aid."
         )
-    if settings.environment == "production" and "embedding_provider" not in settings.model_fields_set:
+    if (
+        settings.environment == "production"
+        and "embedding_provider" not in settings.model_fields_set
+    ):
         # Never fall back silently to a default (or to an unreachable local Ollama):
         # the embedding identity of a production deployment is an explicit choice.
         raise RuntimeError(
