@@ -89,6 +89,8 @@ class Settings(BaseSettings):
     embedding_ollama_base_url: str = "http://host.docker.internal:11434"
     embedding_timeout_seconds: float = Field(default=25.0, gt=0, le=120)
     embedding_test_stub: bool = False
+    retrieval_rrf_k: int = Field(default=60, ge=1)
+    retrieval_hnsw_max_scan_tuples: int = Field(default=20_000, ge=1)
     # Worker loop.
     worker_poll_seconds: float = Field(default=1.0, ge=0.1, le=60)
     worker_heartbeat_file: str = "/tmp/chatbot-worker-heartbeat"

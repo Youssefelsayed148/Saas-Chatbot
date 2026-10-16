@@ -1073,3 +1073,40 @@ $env:ENVIRONMENT='test'; $env:DATABASE_URL='postgresql://postgres@127.0.0.1:5546
 
 Exit 0: **10 passed (1.7m)**. No ECONNRESET reported. No full API/Playwright run,
 real embedding generation, dotenv reads, push, merge, deploy or destructive cleanup.
+
+
+## 2026-10-16 RAG Stage 2 ? hybrid retrieval and isolation
+
+Stage 1 implementation: `39e3888`. Stage 2 adds scoped parallel retrieval,
+rank fusion, iterative HNSW scans and exact SQL underfill repair. Chat/real
+embedding requests: 0. No isolation test returned foreign hits.
+
+Exact affected test commands (disposable pgvector DBs, mocked/test providers):
+
+```text
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage2_hybrid -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_hybrid_retrieval.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage2-hybrid
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage2_hybrid -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_hybrid_retrieval.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage2-hybrid2
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage2_hybrid -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_hybrid_retrieval.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage2-hybrid3
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage2_fts -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_retrieval.py tests/test_rag_stage0_baseline.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage2-fts
+```
+
+Outcomes: hybrid initial failed only log capture (Alembic disabled the imported
+logger; isolation already passed); second failed only HNSW index-plan assertion
+(tiny-fixture planner chose scoped B-tree + sort); third **6 passed** in 68.31s
+with explicit test-only forced ANN planner settings. Existing retrieval **9** +
+baseline **14** = **23 passed** in 113.29s. Existing Starlette warning only.
+Saved raw EXPLAIN with:
+`docker cp rag-stage0-checks:/tmp/rag-stage2-hybrid3/test_filtered_vector_isolation0/filtered-vector-explain.json docs/rag-phase/STAGE-2-EXPLAIN.json` (exit 0).
+
+- `docker exec rag-stage0-checks python -m mypy --no-incremental --cache-dir /tmp/rag-stage2-mypy`: initial 3 test annotation/import errors; corrected.
+- `docker exec rag-stage0-checks python -m mypy --no-incremental --cache-dir /tmp/rag-stage2-mypy2`: exit 0, **163 source files**.
+- `docker exec rag-stage0-checks python -m ruff check --no-cache app/retrieval app/core/config.py tests/test_hybrid_retrieval.py`: exit 0.
+- `.venv/Scripts/python.exe -m ruff format --check apps/api/app/retrieval apps/api/app/core/config.py apps/api/tests/test_hybrid_retrieval.py`: exit 0, **6 files** formatted.
+- No browser changes or full suites. No real embedding/chat calls, dotenv reads,
+  merge, push, Compose or deployment. Production chat integration belongs to
+  Stage 3 alongside the relevance gate.
+
+Owner clarification requested before Stage 3: whether either independent
+relevance signal suffices versus requiring both, and approval for explicitly
+untuned provisional cosine 0.50 / FTS rank 0.01 defaults without real embedding
+scores. The plan does not resolve this threshold tradeoff; no Stage 3 code started.

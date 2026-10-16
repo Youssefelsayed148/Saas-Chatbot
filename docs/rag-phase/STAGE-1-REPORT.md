@@ -1,7 +1,7 @@
 # Stage 1 — embedding foundation
 
-2026-10-16. Parent/checkpoint `ba7ffa0`; this stage's implementation hash is
-recorded in the final report. No chat requests or real OpenAI calls used.
+2026-10-16. Implementation commit `39e3888`, parent/checkpoint `ba7ffa0`.
+No chat requests or real OpenAI calls used.
 
 ## Changes
 
