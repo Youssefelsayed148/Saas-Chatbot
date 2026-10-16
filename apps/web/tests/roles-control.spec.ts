@@ -53,6 +53,17 @@ test("editor and viewer cannot obtain snippets or enter bot-control surfaces", a
     await page.request.get(`/api/v1/tenants/${tenantId}/bots`)
   ).json()) as { id: string }[];
   const botId = bots[0].id;
+  const me = await (await page.request.get("/api/v1/auth/me")).json();
+  expect(me.is_platform_staff).toBe(false);
+  const adminBot = await (
+    await page.request.get(`/api/v1/tenants/${tenantId}/bots/${botId}`)
+  ).json();
+  expect(adminBot.widget_locator).toEqual(expect.any(String));
+  expect(adminBot.widget_locator.length).toBeGreaterThan(0);
+  await page.goto(`/app/${tenantId}/bots/${botId}/install`);
+  await expect(page.getByTestId("install-snippet")).toContainText(
+    `data-locator="${adminBot.widget_locator}"`,
+  );
   const csrf = (await page.context().cookies()).find(
     (cookie) => cookie.name === "chatbot_csrf",
   )!.value;
