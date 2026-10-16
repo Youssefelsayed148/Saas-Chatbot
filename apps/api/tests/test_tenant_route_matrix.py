@@ -162,6 +162,8 @@ def test_every_openapi_route_role_and_cross_tenant(
     )
     try:
         for method, template, minimum in operations:
+            if role == "staff":
+                assert db.get(Membership, (tid, uid)) is None
             db.expire_all()
             # Reset business state so success assertions measure authorization,
             # not an earlier action's conflicting state.
