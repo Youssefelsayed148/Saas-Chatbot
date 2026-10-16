@@ -19,7 +19,6 @@ const ROLE_LEVEL: Record<Role, number> = {
   viewer: 1,
   editor: 2,
   admin: 3,
-  owner: 4,
 };
 
 interface SessionState {
@@ -48,7 +47,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       // An invalid or expired session is simply "signed out"; the UI then
       // redirects to /login instead of rendering an error.
       setMe(null);
-      if (!isSessionError(caught)) {
+      if (isSessionError(caught)) {
+        const here = `${window.location.pathname}${window.location.search}`;
+        if (here.startsWith("/app") || here.startsWith("/platform")) {
+          router.replace(`/login?next=${encodeURIComponent(here)}`);
+        }
+      } else {
         setError(
           caught instanceof Error ? caught.message : "Unexpected error.",
         );
@@ -57,7 +61,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     const onExpired = (): void => {
@@ -80,6 +84,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const roleIn = useCallback(
     (tenantId: string): Role | null => {
       if (!me) return null;
+      if (me.is_platform_staff) return "admin";
       const membership = me.memberships.find(
         (row) => row.tenant_id === tenantId,
       );

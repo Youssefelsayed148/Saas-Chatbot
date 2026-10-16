@@ -1,8 +1,8 @@
 """Platform-staff authorization (P4-06, docs/11, ADR-018/009).
 
 The ``users.is_platform_staff`` flag is SEPARATE from tenant roles: it grants
-access to the /platform operations area only. It never reuses the tenant
-context; no impersonation exists — staff actions run as the staff user with
+access to /platform and explicit operator actions in tenant scope without
+a membership; no impersonation exists — staff actions run as the staff user with
 actor attribution.
 
 Server-side only: the dependency resolves the session user again; the UI

@@ -568,3 +568,285 @@ Skipped because existing API supplies no reliable data: installation detection/s
 Final scope review: no backend source, migrations, infra, API contract, dependency manifest/lockfile, CSP/proxy, README or protected docs edits. Only requested MANUAL-TEST changes under existing implementation docs. Sandbox/origin/postMessage arguments match baseline AST; loader copies identical. No .env/key read, push, merge, deploy, paid API calls or cloud resources. Test API/worker/web processes stopped by harness; dedicated local PostgreSQL stopped via pg_ctl, data retained only in its temporary test cluster. Generated next-env.d.ts is restored to the pre-task tracked version.
 
 Limits: Chromium/local fixtures and automated keyboard/contrast/RTL/layout verification; manual screen-reader, other browsers and real customer-host embedding were not exercised. No production deployment approval implied. All authorized implementation and required verification are complete; no known blocking failure remains.
+# 2026-10-16 — Product cycle 1
+
+Branch: `feat/product-cycle-1`, based on local `main`; local commits only.
+No `.env` or credential files were read. API tests used `ENVIRONMENT=test` and a disposable local PostgreSQL cluster (`postgres_test`, `postgres_e2e_test`).
+
+Changed API specs, run one file at a time with `python -m pytest -q tests/<file>.py --tb=short -p no:cacheprovider`:
+
+- `test_self_service_signup.py`: 3 passed, 1 Starlette `httpx` deprecation warning (1.41s).
+- `test_bots.py`: 4 passed, 1 warning (1.99s).
+- `test_members.py`: 8 passed, 1 warning (3.37s).
+- `test_quotas.py`: 10 passed, 1 warning (4.39s).
+- `test_analytics.py`: 6 passed, 1 warning (49.04s).
+- `test_contacts.py`: 1 passed, 1 warning (7.43s); updated fixture to use a directly seeded test bot and owner/admin export assertions.
+- `test_knowledge_pipeline.py`: 9 passed, 1 warning (34.93s).
+- `test_knowledge_uploads.py`: 19 passed, 1 warning (38.43s); test fixture seeds bots without calling the now-forbidden tenant bot endpoint.
+- `test_tenant_data.py`: 2 passed, 1 warning (1.70s).
+- `test_followups_analytics.py`: 2 passed, 1 warning (24.43s).
+- `test_tenant_route_matrix.py`: 1 passed, 1 warning (5.14s); enumerates OpenAPI tenant routes, calls as viewer/editor/admin/owner, and probes foreign tenant IDs. The open-ended SSE route is exercised through its foreign-tenant authorization check.
+
+Web verification:
+
+- `npm run build`: passed; TypeScript and Next production build completed.
+- First `npm test -- --reporter=line`: 37 passed, 1 failed because `ui-redesign.spec.ts` expected the removed TBD wording. Updated the assertion to the current provisional plan copy.
+- Final `npm test -- --reporter=line`: 38 passed (4.1m), exit 0.
+- After removing the remaining Archive control from the bot Settings UI, reran `npm test -- --reporter=line`: 37 passed, 1 failed (5.8m). `knowledge.spec.ts` timed out while the web proxy logged `ECONNRESET` to the local API; it failed filling `Organization name` during owner registration. This was a test infrastructure failure; the full suite result for the preceding source revision was 38/38.
+- After removing remaining visible PLACEHOLDER copy and updating the accessible quota label assertion, focused `npm test -- --grep 'platform client mutations preserve plan' --reporter=line`: 1 passed (59.1s). Final `npm run typecheck`: exit 0.
+
+One ordinary in-sandbox pytest attempt hit restricted Windows temp-directory access; the same affected API specs were rerun successfully outside the sandbox against the disposable database. A test run interrupted while exercising the endless SSE stream; the route matrix was updated to verify its foreign-tenant rejection before streaming, then passed.
+
+
+## 2026-10-16 ? Phase 1 roles and operator control verification
+
+Scope: explicit owner change note; three client roles, operator-only bot control, migration 0013, last-admin locking, invite-only registration guard, soft-delete ledger/worker purge and admin change requests with attachments/operator triage. Local work only; no push/deploy, environment-file or credential reads, paid calls or channel implementation. APIs use the guarded disposable local PostgreSQL cluster on loopback.
+
+Intermediate verification (before the file-by-file logs below):
+- First test_members.py attempt inadvertently ran the previous test file after a path-writing error: 6 failed / 2 passed (obsolete owner/transfer assertions). Corrected file: `../../.venv/Scripts/python.exe -m pytest -q tests/test_members.py --tb=short -p no:cacheprovider` from apps/api: 5 passed, 1 warning, 2.30s.
+- test_tenant_route_matrix.py: initial ordinary run failed at temp setup (4 errors, Windows sandbox permissions); explicit workspace basetemp also failed with WinError 5. Subsequent disposable-DB runs outside sandbox: 1 passed / 3 failed (fixture payload/state); then 3 passed / 1 failed for an already-ingested source; then 3 passed / 1 failed for a staff assignment fixture FK; then 3 passed / 1 failed when probing unrequested membership-free inbox actions. The matrix now asserts all client routes and checks membership-free staff success for every operator-only route. It does not skip a tenant/client-role combination or accept 422/404 as an allowed role's success. SSE transport alone is bounded with a finite test generator, retaining the real endpoint/dependencies.
+- First test_tenant_data.py: 1 passed / 1 failed because requested_at and grace deadline used separate clocks; schedule now uses one timestamp. Corrected run is below.
+- Initial web typecheck found duplicate install imports and stale role labels; fixed. Initial lint found hook dependencies; fixed. Final pre-suite `npm.cmd run typecheck` and `npm.cmd run lint`: exit 0.
+- Changed-file Ruff initially reported formatting/import issues; fixed. Full-source Ruff also reports pre-existing untouched violations (for example quotas/sentiment.py and platform/router.py). Final changed-file check is recorded separately.
+- Focused mypy command `../../.venv/Scripts/python.exe -m mypy app/tenants/changes.py app/tenants/deletion.py app/db/models/operations.py app/core/permissions.py app/core/tenancy.py --follow-imports=silent`: mypy 2.4.0 INTERNAL ERROR, exit 1. Retrying with --no-incremental and an isolated --cache-dir produced the same internal error; no typecheck success claimed.
+
+Related tests and final full-suite file-by-file commands/results:
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_self_service_signup.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792112650788005700\'` — exit 0; 4 passed, 1 warning in 2.13s. Log: `.test-storage/roles-control/test_self_service_signup-1792112650788005700.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_change_requests.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792112655436147200\'` — exit 0; 1 passed, 1 warning in 1.30s. Log: `.test-storage/roles-control/test_change_requests-1792112655436147200.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_tenant_data.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792112657772958900\'` — exit 0; 2 passed, 1 warning in 2.41s. Log: `.test-storage/roles-control/test_tenant_data-1792112657772958900.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_tenant_route_matrix.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792112662370247400\'` — exit 0; 4 passed, 1 warning in 42.28s. Log: `.test-storage/roles-control/test_tenant_route_matrix-1792112662370247400.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_migrations.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792112706879674400\'` — exit 0; 1 passed, 1 warning in 4.69s. Log: `.test-storage/roles-control/test_migrations-1792112706879674400.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/eval/test_eval.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113028383492400\'` — exit 0; 2 passed, 1 warning in 12.93s. Log: `.test-storage/roles-control/test_eval-1792113028383492400.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_analytics.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113044356797800\'` — exit 0; 6 passed, 1 warning in 84.35s (0:01:24). Log: `.test-storage/roles-control/test_analytics-1792113044356797800.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_auth.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113131100782500\'` — exit 0; 15 passed, 1 warning in 7.39s. Log: `.test-storage/roles-control/test_auth-1792113131100782500.log`.
+
+Mypy diagnosis: repeating the focused command with `--no-incremental --show-traceback --cache-dir ../../.test-storage/roles-control/mypy-final` failed because importing ast_serialize raised `ImportError: DLL load failed ... An Application Control policy has blocked this file.` OS security control was not bypassed. Python static typing remains UNVERIFIED.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_bot_status.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113140928986200\'` — exit 0; 5 passed, 1 warning in 54.37s. Log: `.test-storage/roles-control/test_bot_status-1792113140928986200.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_bots.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113197520681600\'` — exit 1; 1 failed, 3 passed, 1 warning in 2.21s. Log: `.test-storage/roles-control/test_bots-1792113197520681600.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_change_requests.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113201339635400\'` — exit 0; 1 passed, 1 warning in 1.39s. Log: `.test-storage/roles-control/test_change_requests-1792113201339635400.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_chat.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113203738112300\'` — exit 0; 15 passed, 1 warning in 145.42s (0:02:25). Log: `.test-storage/roles-control/test_chat-1792113203738112300.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_contacts.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113351568409000\'` — exit 0; 1 passed, 1 warning in 11.86s. Log: `.test-storage/roles-control/test_contacts-1792113351568409000.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_conversations.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113365648329200\'` — exit 1; 1 failed, 12 passed, 1 warning in 142.33s (0:02:22). Log: `.test-storage/roles-control/test_conversations-1792113365648329200.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_conversations_view.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113509276410000\'` — exit 0; 5 passed, 1 warning in 59.99s. Log: `.test-storage/roles-control/test_conversations_view-1792113509276410000.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_cross_script.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113571579058100\'` — exit 0; 3 passed, 1 warning in 30.20s. Log: `.test-storage/roles-control/test_cross_script-1792113571579058100.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_database_guard.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113603706451200\'` — exit 0; 5 passed, 1 warning in 0.81s. Log: `.test-storage/roles-control/test_database_guard-1792113603706451200.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_followups_analytics.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113605429904100\'` — exit 0; 2 passed, 1 warning in 22.03s. Log: `.test-storage/roles-control/test_followups_analytics-1792113605429904100.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_handoff.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113628779954500\'` — exit 0; 5 passed, 1 warning in 48.48s. Log: `.test-storage/roles-control/test_handoff-1792113628779954500.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_health.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113679284126600\'` — exit 0; 6 passed, 1 warning in 1.16s. Log: `.test-storage/roles-control/test_health-1792113679284126600.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_inbox_list.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113681472639400\'` — exit 0; 5 passed, 1 warning in 16.76s. Log: `.test-storage/roles-control/test_inbox_list-1792113681472639400.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_invitations.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113699168942100\'` — exit 0; 6 passed, 1 warning in 2.83s. Log: `.test-storage/roles-control/test_invitations-1792113699168942100.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_jobs.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113702857747300\'` — exit 0; 8 passed, 1 warning in 1.34s. Log: `.test-storage/roles-control/test_jobs-1792113702857747300.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_knowledge_parsers.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113705342054900\'` — exit 0; 27 passed, 1 warning in 13.64s. Log: `.test-storage/roles-control/test_knowledge_parsers-1792113705342054900.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_knowledge_pipeline.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113720916312700\'` — exit 1; 2 failed, 7 passed, 1 warning in 31.63s. Log: `.test-storage/roles-control/test_knowledge_pipeline-1792113720916312700.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_knowledge_uploads.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113754675675700\'` — exit 1; 1 failed, 18 passed, 1 warning in 35.96s. Log: `.test-storage/roles-control/test_knowledge_uploads-1792113754675675700.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_members.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113792904465600\'` — exit 0; 5 passed, 1 warning in 2.86s. Log: `.test-storage/roles-control/test_members-1792113792904465600.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_migrations.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113797904304600\'` — exit 1; 1 failed, 1 warning in 19.41s. Log: `.test-storage/roles-control/test_migrations-1792113797904304600.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_models_constraints.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113818955511600\'` — exit 0; 13 passed, 1 warning in 1.48s. Log: `.test-storage/roles-control/test_models_constraints-1792113818955511600.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_platform.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113821326688200\'` — exit 1; 1 failed, 8 passed, 1 warning in 103.13s (0:01:43). Log: `.test-storage/roles-control/test_platform-1792113821326688200.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_platform_ops.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113926676420800\'` — exit 0; 4 passed, 1 warning in 2.43s. Log: `.test-storage/roles-control/test_platform_ops-1792113926676420800.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_quotas.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113931255073500\'` — exit 1; 1 failed, 9 passed, 1 warning in 16.30s. Log: `.test-storage/roles-control/test_quotas-1792113931255073500.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_retrieval.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792113949920426300\'` — exit 0; 9 passed, 1 warning in 89.37s (0:01:29). Log: `.test-storage/roles-control/test_retrieval-1792113949920426300.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_seed_demo.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114041608127100\'` — exit 1; 2 failed, 19 passed, 1 warning in 8.77s. Log: `.test-storage/roles-control/test_seed_demo-1792114041608127100.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_self_service_signup.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114052276019000\'` — exit 0; 4 passed, 1 warning in 1.87s. Log: `.test-storage/roles-control/test_self_service_signup-1792114052276019000.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_startup_guard.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114055075277100\'` — exit 0; 5 passed, 1 warning in 0.97s. Log: `.test-storage/roles-control/test_startup_guard-1792114055075277100.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_tenant_data.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114056971979100\'` — exit 0; 2 passed, 1 warning in 2.28s. Log: `.test-storage/roles-control/test_tenant_data-1792114056971979100.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_tenant_route_matrix.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114060598413500\'` — exit 0; 5 passed, 1 warning in 38.76s. Log: `.test-storage/roles-control/test_tenant_route_matrix-1792114060598413500.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_tenants.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114101551945100\'` — exit 0; 6 passed, 1 warning in 2.07s. Log: `.test-storage/roles-control/test_tenants-1792114101551945100.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_widget_appearance.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114104631754500\'` — exit 0; 3 passed, 1 warning in 31.03s. Log: `.test-storage/roles-control/test_widget_appearance-1792114104631754500.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_widget_leads.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114137796461700\'` — exit 0; 5 passed, 1 warning in 60.06s (0:01:00). Log: `.test-storage/roles-control/test_widget_leads-1792114137796461700.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_widget_public.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114200043130400\'` — exit 1; 1 failed, 13 passed, 1 warning in 155.09s (0:02:35). Log: `.test-storage/roles-control/test_widget_public-1792114200043130400.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_bots.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114435276233000\'` — exit 0; 4 passed, 1 warning in 1.79s. Log: `.test-storage/roles-control/test_bots-1792114435276233000.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_members.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114438039204000\'` — exit 0; 5 passed, 1 warning in 3.11s. Log: `.test-storage/roles-control/test_members-1792114438039204000.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_migrations.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114443108854100\'` — exit 0; 1 passed, 1 warning in 3.34s. Log: `.test-storage/roles-control/test_migrations-1792114443108854100.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_seed_demo.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114448141929100\'` — exit 0; 21 passed, 1 warning in 6.11s. Log: `.test-storage/roles-control/test_seed_demo-1792114448141929100.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_quotas.py --tb=short -p no:cacheprovider \'--basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114456150207300\'` — exit 0; 10 passed, 1 warning in 15.87s. Log: `.test-storage/roles-control/test_quotas-1792114456150207300.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_knowledge_pipeline.py --tb=short -p no:cacheprovider --basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114474275536100` — exit 1; 1 failed, 8 passed, 1 warning in 31.09s. Log: `.test-storage/roles-control/test_knowledge_pipeline-1792114474275536100.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_knowledge_uploads.py --tb=short -p no:cacheprovider --basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114507348328000` — exit 0; 19 passed, 1 warning in 35.52s. Log: `.test-storage/roles-control/test_knowledge_uploads-1792114507348328000.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_tenant_route_matrix.py --tb=short -p no:cacheprovider --basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114544775828400` — exit 0; 5 passed, 1 warning in 41.88s. Log: `.test-storage/roles-control/test_tenant_route_matrix-1792114544775828400.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_conversations.py --tb=short -p no:cacheprovider --basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114589182428100` — exit 0; 13 passed, 1 warning in 147.42s (0:02:27). Log: `.test-storage/roles-control/test_conversations-1792114589182428100.log`.
+
+Final web static checks after role/UI wiring: `npm.cmd run lint` ? exit 0; `npm.cmd run typecheck` ? exit 0. Changed-file `ruff check` ? all checks passed (see `.test-storage/roles-control/ruff-final.log`). Migration rollback limit: downgrade does not restore owner roles or the retired demo-owner login; no non-test migration was applied.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_platform.py --tb=short -p no:cacheprovider --basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114739034219600` — exit 0; 9 passed, 1 warning in 97.74s (0:01:37). Log: `.test-storage/roles-control/test_platform-1792114739034219600.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_widget_public.py --tb=short -p no:cacheprovider --basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792114838887423000` — exit 0; 14 passed, 1 warning in 142.42s (0:02:22). Log: `.test-storage/roles-control/test_widget_public-1792114838887423000.log`.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_knowledge_pipeline.py --tb=short -p no:cacheprovider --basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792115057389502400` — exit 0; 9 passed, 1 warning in 32.91s. Log: `.test-storage/roles-control/test_knowledge_pipeline-1792115057389502400.log`.
+
+- Owner clarification: viewers retain read-only contact lists and profiles. Contact writes remain editor+, and merge/delete/stage configuration remains admin.
+- Full API file-by-file sweep and affected-file rechecks complete: latest results total 278 passed across 37 files. The initial sweep was not wholly green; failures and rechecks are recorded above.
+- Full Playwright command from `apps/web`: `$env:ENVIRONMENT='test'; $env:DATABASE_URL='postgresql://postgres@127.0.0.1:55439/postgres'; $env:E2E_API_PORT='18135'; $env:API_PROXY_TARGET='http://127.0.0.1:18135'; npm.cmd test -- --reporter=line` (log `.test-storage/roles-control/playwright-full.log`); result pending.
+
+- Final changed-file Python Ruff check: exit 0, all checks passed. Final `git diff --check`: exit 0. The final API retry test recheck passed (9 tests); forced test retries use a past timestamp, with production scheduling unchanged.
+
+- Full Playwright run: exit 1; **37 passed, 3 failed (7.2m)**. Failed specs/tests: `overview.spec.ts` workspace/scoping (caller fixture was staff, so foreign tenant read correctly returned 200), `playground.spec.ts` expired session (new client-side role guard prevented the old protected fetch, so no redirect), `roles-control.spec.ts` change triage (test selected visible label while control had explicit accessible name). Corrected isolation fixture to assert as a client admin; centralized protected-page 401 redirect in session refresh; corrected test selector.
+- Deferred ECONNRESET observed during `overview.spec.ts`, test `unanswered list shows the question the bot could not confirm`: Next proxy `/api/v1/auth/me` read reset. That test passed; no flake behavior changed.
+- Scoped browser recheck from `apps/web`, same disposable environment as full run: `npm.cmd test -- tests/overview.spec.ts tests/playground.spec.ts tests/roles-control.spec.ts tests/dashboard.spec.ts --reporter=line` (log `.test-storage/roles-control/playwright-related.log`); result pending. These are affected specs and related session coverage only.
+- Scoped ESLint after these fixes: `node_modules/.bin/eslint.cmd lib/session.tsx tests/staff-helpers.ts tests/overview.spec.ts tests/roles-control.spec.ts --max-warnings 0` ? exit 0.
+
+- Session redirect recheck exposed an over-broad initial condition: the public `/accept-invite` landing page must remain available before authentication. Narrowed automatic initial-session redirect to `/app` and `/platform` only; existing expired-session event behavior is retained. Invitation UI journeys will receive a focused recheck on the final build.
+- TypeScript after session/test-helper fixes: `npm.cmd run typecheck` ? exit 0.
+
+- Scoped browser recheck: exit 1; **10 passed, 2 failed (3.2m)**. All three original failures now pass; the two invitation journeys failed due to the initial session redirect including the public invite landing page. That condition was already narrowed during the run; built output required a focused final recheck.
+- Final invitation recheck from `apps/web`, same environment: `npm.cmd test -- tests/dashboard.spec.ts tests/playground.spec.ts --grep 'team management|viewer is read-only' --reporter=line`; log `.test-storage/roles-control/playwright-invitations.log`, result pending.
+
+- From `apps/api`: `../../.venv/Scripts/python.exe -m pytest -q tests/test_tenant_data.py --tb=short -p no:cacheprovider --basetemp=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage\roles-control\tmp-1792115859147402500` — exit 0; 2 passed, 1 warning in 2.02s. Log: `.test-storage/roles-control/test_tenant_data-1792115859147402500.log`.
+
+- Final invitation browser recheck: exit 0; **2 passed (1.1m)**. All 40 browser scenarios have a passing latest result across the full sweep and scoped rechecks; no second full browser sweep was run.
+- Final purge review preserved prior cleanup of tenant visitor message-rate counters, moved to delayed purge. `tests/test_tenant_data.py` recheck passed 2 tests in 2.02s, including removal of that counter and preservation of an unrelated counter. Ruff for the two touched Python files passed.
+- Restored generated `next-env.d.ts` and timestamp-only `PHASE-03/EVAL-REPORT.md` output; neither is part of this change. Full changed-file list, 77-route matrix, per-file API/browser results, and unverified checks are in `implementation/PHASE-01/ROLES-OPERATOR-REPORT.md`.
+
+- Final session ESLint check from `apps/web`: `node_modules/.bin/eslint.cmd lib/session.tsx --max-warnings 0` ? exit 0. Final `git diff --check` ? exit 0. Verification complete; committing locally only. No push/deployment performed.
+
+- Phase 1 verification: docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/phase1verify phase1-verification-api python -m pytest -q tests/test_tenant_data.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1-test_tenant_data — exit 0. 2 passed, 1 warning in 7.07s Log: .test-storage/phase1-verification/test_tenant_data-typing.log
+
+- Phase 1 verification: docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/phase1verify phase1-verification-api python -m pytest -q tests/test_members.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1-test_members — exit 0. 5 passed, 1 warning in 6.41s Log: .test-storage/phase1-verification/test_members-typing.log
+
+- Phase 1 verification: docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/phase1verify phase1-verification-api python -m pytest -q tests/test_migrations.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1-test_migrations — exit 0. 1 passed, 1 warning in 7.35s Log: .test-storage/phase1-verification/test_migrations-typing.log
+
+- Phase 1 verification: docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/phase1verify phase1-verification-api python -m pytest -q tests/test_bots.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1-test_bots — exit 0. 4 passed, 1 warning in 6.62s Log: .test-storage/phase1-verification/test_bots-typing.log
+
+- Phase 1 verification: docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/phase1verify phase1-verification-api python -m pytest -q tests/test_self_service_signup.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1-test_self_service_signup — exit 0. 4 passed, 1 warning in 4.86s Log: .test-storage/phase1-verification/test_self_service_signup-typing.log
+
+- Phase 1 verification: docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/phase1verify phase1-verification-api python -m pytest -q tests/test_startup_guard.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1-test_startup_guard — exit 0. 5 passed, 1 warning in 3.14s Log: .test-storage/phase1-verification/test_startup_guard-typing.log
+
+- Phase 1 verification: docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/finalverify phase1-verification-api python -m pytest -q tests/test_auth.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1-final-test_auth — exit 0. 15 passed, 1 warning in 6.57s Log: .test-storage/phase1-verification/test_auth-final.log
+
+- Phase 1 verification: docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/finalverify phase1-verification-api python -m pytest -q tests/test_bot_status.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1-final-test_bot_status — exit 0. 5 passed, 1 warning in 90.54s (0:01:30) Log: .test-storage/phase1-verification/test_bot_status-final.log
+
+- Phase 1 verification: docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/phase1verify phase1-verification-api python -m pytest -q tests/test_widget_public.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1-test_widget_public — exit 0. 14 passed, 1 warning in 302.14s (0:05:02) Log: .test-storage/phase1-verification/test_widget_public-typing.log
+
+- Phase 1 verification: docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/finalverify phase1-verification-api python -m pytest -q tests/test_conversations.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1-final-test_conversations — exit 0. 13 passed, 1 warning in 239.26s (0:03:59) Log: .test-storage/phase1-verification/test_conversations-final.log
+
+- Phase 1 verification: docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/finalverify phase1-verification-api python -m pytest -q tests/test_handoff.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1-final-test_handoff — exit 0. 5 passed, 1 warning in 65.10s (0:01:05) Log: .test-storage/phase1-verification/test_handoff-final.log
+
+
+## 2026-10-16 Phase 1 verification of e5e3761
+
+- Starting HEAD: e5e376159b028c022f20fb03609de675816bd1b0. No push, deployment, cloud resources, paid model calls, direct .env/key-content inspection or printed secret values. Initial `docker compose ps --format json` was denied but may have internally parsed root dotenv; no-implicit-dotenv-read guarantee is UNVERIFIED. All subsequent container commands use plain Docker and explicit test settings. Isolated local PostgreSQL container on 127.0.0.1:55447; API checks container has current source mounted read-only, ENVIRONMENT=test. All pytest invocations run one file each; disposable databases only.
+- Docker status initially sandbox-denied; approved Docker access showed no running containers. First disposable DB container attempt on port 55439 failed because the host port was in use; switched to 55447 without touching the existing listener.
+- Initial host pytest from apps/api: `ENVIRONMENT=test DATABASE_URL=postgresql://postgres@127.0.0.1:55447/phase1verify ../../.venv/Scripts/python.exe -m pytest -q tests/test_tenant_route_matrix.py --tb=short -p no:cacheprovider --basetemp=../../.test-storage/phase1-verification/matrix-baseline` ? exit 1; EEEE. plus WinError 5 on basetemp. Moved pytest execution into the isolated API container, without bypassing OS controls.
+- `docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/phase1verify phase1-verification-api python -m pytest -q tests/test_self_service_signup.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1-signup` ? exit 0; 4 passed, 1 warning in 5.81s.
+- `docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/matrixverify phase1-verification-api python -m pytest -q tests/test_tenant_route_matrix.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1-matrix-expanded` ? exit 0; 5 passed, 1 warning in 32.07s. Staff no longer skipped on ordinary tenant routes; target-tenant membership asserted absent. Subsequent final file rerun records the added per-request assertion.
+- `docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/concurrencyverify phase1-verification-api python -m pytest -q tests/test_members.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1-concurrent` ? exit 0; 8 passed, 1 warning in 7.91s, including synchronized DELETE/DELETE, PATCH/PATCH and DELETE/PATCH requests.
+- `docker exec phase1-verification-api python -m mypy --no-incremental --cache-dir /tmp/phase1-mypy` ? baseline exit 1: 13 errors in 7 files (154 checked). First fix iteration: 6 Settings kwargs errors in 1 file. Final invocation exit 0: Success: no issues found in 154 source files (.test-storage/phase1-verification/mypy-final.log).
+- From apps/web, `ENVIRONMENT=test DATABASE_URL=postgresql://postgres@127.0.0.1:55447/phase1verify E2E_API_PORT=18147 API_PROXY_TARGET=http://127.0.0.1:18147 npm.cmd test -- --reporter=line` ? first sandbox launch exit 1 spawn EPERM before tests; approved full run exit 0: 40 passed (4.7m). No ECONNRESET. Two ignored SSE cleanup connection-closed tracebacks under ui-redesign.spec.ts; no proxy or worker behavior changed. Log .test-storage/phase1-verification/playwright-full.log.
+- Full Playwright repeated after owner-label cleanup, same command except DATABASE_URL=postgresql://postgres@127.0.0.1:55447/phase1final ? exit 0: 40 passed (4.1m), zero ECONNRESET/Failed-to-proxy/Traceback matches. Log .test-storage/phase1-verification/playwright-final-full.log. Neither run scoped tests or used retries.
+- From root `npm.cmd run lint` then `npm.cmd run typecheck` ? both exit 0. Extra broad root Ruff invocation (`.venv/Scripts/python.exe -m ruff check --no-cache apps/api/app apps/api/tests apps/api/alembic`) found 13 pre-existing import/line-length errors; no lint-clean claim for the whole API. Container Ruff initially could not write its cache/read-only source; source checks use --no-cache or local Ruff. No unrelated formatting rewrite performed.
+- Owner scan: `git grep -n -i -E 'owner|transfer-ownership|transfer_ownership|demo-owner' -- . ':!*.lock' ':!*.env*' ':!*key*'` plus tracked/untracked filename inventory. All authored source covered; inaccessible ignored temp/caches unverified. Complete per-hit classification and 77-route table: implementation/PHASE-01/VERIFICATION-e5e3761.md. Historical signed reports, legacy migrations/rejection tests, human product-owner wording, onboarding compatibility names and historical audit event identifiers intentionally retained.
+- ECONNRESET investigation only: installed proxy 30s timeout, shared httpxy keep-alive agents, Uvicorn 5s idle timeout, client-disconnect destruction, /health vs /ready, migration subprocess handling, separate worker process and bounded DB pool reviewed. Historical overview /auth/me reset found; precise cause and historic widget/knowledge socket/load data remain UNVERIFIED. No network-path behavior changed.
+
+- Phase 1 verification: docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/finalverify phase1-verification-api python -m pytest -q tests/test_inbox_list.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1-final-test_inbox_list — exit 0. 5 passed, 1 warning in 15.20s Log: .test-storage/phase1-verification/test_inbox_list-final.log
+
+- Phase 1 verification: docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/finalverify phase1-verification-api python -m pytest -q tests/test_knowledge_uploads.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1-final-test_knowledge_uploads — exit 0. 19 passed, 1 warning in 8.52s Log: .test-storage/phase1-verification/test_knowledge_uploads-final.log
+
+- Phase 1 verification: docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/finalverify phase1-verification-api python -m pytest -q tests/test_models_constraints.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1-final-test_models_constraints — exit 0. 13 passed, 1 warning in 1.03s Log: .test-storage/phase1-verification/test_models_constraints-final.log
+
+- Phase 1 verification: docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/finalverify phase1-verification-api python -m pytest -q tests/test_platform.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1-final-test_platform — exit 0. 9 passed, 1 warning in 136.05s (0:02:16) Log: .test-storage/phase1-verification/test_platform-final.log
+
+- Phase 1 verification: docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/finalverify phase1-verification-api python -m pytest -q tests/test_platform_ops.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1-final-test_platform_ops — exit 0. 4 passed, 1 warning in 4.22s Log: .test-storage/phase1-verification/test_platform_ops-final.log
+
+- Phase 1 verification: docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/finalverify phase1-verification-api python -m pytest -q tests/test_quotas.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1-final-test_quotas — exit 0. 10 passed, 1 warning in 9.11s Log: .test-storage/phase1-verification/test_quotas-final.log
+
+- Phase 1 verification: docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/finalverify phase1-verification-api python -m pytest -q tests/test_seed_demo.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1-final-test_seed_demo — exit 0. 21 passed, 1 warning in 3.52s Log: .test-storage/phase1-verification/test_seed_demo-final.log
+
+- Phase 1 verification: docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/finalverify phase1-verification-api python -m pytest -q tests/test_tenants.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1-final-test_tenants — exit 0. 6 passed, 1 warning in 3.34s Log: .test-storage/phase1-verification/test_tenants-final.log
+
+- Phase 1 verification: docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/finalverify phase1-verification-api python -m pytest -q tests/test_tenant_data.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1-final-test_tenant_data — exit 0. 2 passed, 1 warning in 4.79s Log: .test-storage/phase1-verification/test_tenant_data-final.log
+
+- Phase 1 verification: docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/finalverify phase1-verification-api python -m pytest -q tests/test_tenant_route_matrix.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1-final-test_tenant_route_matrix — exit 0. 5 passed, 1 warning in 28.68s Log: .test-storage/phase1-verification/test_tenant_route_matrix-final.log
+
+- Phase 1 verification: docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/finalverify phase1-verification-api python -m pytest -q tests/test_knowledge_pipeline.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1-final-test_knowledge_pipeline — exit 0. 9 passed, 1 warning in 36.31s Log: .test-storage/phase1-verification/test_knowledge_pipeline-final.log
+
+- Phase 1 verification: docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/finalverify phase1-verification-api python -m pytest -q tests/test_jobs.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1-final-test_jobs — exit 0. 8 passed, 1 warning in 4.15s Log: .test-storage/phase1-verification/test_jobs-final.log
+
+- Third full browser run after adding ordinary non-staff admin snippet assertions: from apps/web `ENVIRONMENT=test DATABASE_URL=postgresql://postgres@127.0.0.1:55447/phase1snippet E2E_API_PORT=18147 API_PROXY_TARGET=http://127.0.0.1:18147 npm.cmd test -- --reporter=line` ? exit 0; 40 passed (4.8m), no ECONNRESET or Failed-to-proxy matches. Four ignored SSE generator cleanup connection-closed tracebacks; no failures. Log .test-storage/phase1-verification/playwright-admin-full.log. No scoped rechecks.
+- Final API total for this verification: 185 passed across 22 unique test files (latest result per file); this is targeted coverage, not a full 37-file API rerun. Every pytest invocation used one file. Full per-file output table is in the verification report.
+- Changed Python implementation/test-file Ruff check ? exit 0, All checks passed. Exact file list is the changed core/config, main, tenants/deletion, widget/service, scripts/seed_demo and all changed Python test files; full API lint has pre-existing failures recorded above. Final API-container mypy ? exit 0; Success: no issues found in 154 source files.
+- OpenAPI equality check inside API container via stdin Python (`create_app().openapi()` compared to `TENANT_ROUTE_ROLES`) ? exit 0: Actual tenant operations: 77; Declared operations: 77; Missing declarations: set(); Unused declarations: set(). First `python -c` attempt hit Windows quote stripping/SyntaxError, then stdin preserved source correctly.
+- New browser test lint: initial direct root ESLint call exit 1 (no root eslint.config); rerun from apps/web `node_modules/.bin/eslint.cmd tests/roles-control.spec.ts --max-warnings 0` ? exit 0. Root npm lint/typecheck already passed; latest full browser run rebuilt the web app successfully.
+- All fixes remain local commits, separately grouped by verification item. No merge, push, deployment or non-test database changes. Detailed result: implementation/PHASE-01/VERIFICATION-e5e3761.md.
+
+- Phase 1 follow-up affected: `docker exec -e ENVIRONMENT=test -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/p1followaffected phase1-verification-api python -m pytest -q tests/test_tenant_route_matrix.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1follow-affected-test_tenant_route_matrix` ? exit 0; 6 passed, 1 warning in 26.30s. Log: `.test-storage/phase1-followup/affected-test_tenant_route_matrix.log`.
+
+- Phase 1 follow-up affected: `docker exec -e ENVIRONMENT=test -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/p1followaffected phase1-verification-api python -m pytest -q tests/test_knowledge_pipeline.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1follow-affected-test_knowledge_pipeline` ? exit 0; 9 passed, 1 warning in 33.68s. Log: `.test-storage/phase1-followup/affected-test_knowledge_pipeline.log`.
+
+- Phase 1 follow-up affected: `docker exec -e ENVIRONMENT=test -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/p1followaffected phase1-verification-api python -m pytest -q tests/test_knowledge_uploads.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1follow-affected-test_knowledge_uploads` ? exit 0; 19 passed, 1 warning in 10.43s. Log: `.test-storage/phase1-followup/affected-test_knowledge_uploads.log`.
+
+- Phase 1 follow-up affected: `docker exec -e ENVIRONMENT=test -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/p1followaffected phase1-verification-api python -m pytest -q tests/test_bots.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1follow-affected-test_bots` ? exit 0; 4 passed, 1 warning in 4.56s. Log: `.test-storage/phase1-followup/affected-test_bots.log`.
+
+- Phase 1 follow-up affected: `docker exec -e ENVIRONMENT=test -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/p1followaffected phase1-verification-api python -m pytest -q tests/test_members.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1follow-affected-test_members` ? exit 0; 8 passed, 1 warning in 5.53s. Log: `.test-storage/phase1-followup/affected-test_members.log`.
+
+- Phase 1 follow-up affected: `docker exec -e ENVIRONMENT=test -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/p1followaffected phase1-verification-api python -m pytest -q tests/test_conversations_view.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1follow-affected-test_conversations_view` ? exit 1; 1 warning, 5 errors in 30.15s. Log: `.test-storage/phase1-followup/affected-test_conversations_view.log`.
+
+- Phase 1 follow-up affected: `docker exec -e ENVIRONMENT=test -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/p1followaffected phase1-verification-api python -m pytest -q tests/test_widget_public.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1follow-affected-test_widget_public` ? exit 1; 1 passed, 1 warning, 13 errors in 71.72s (0:01:11). Log: `.test-storage/phase1-followup/affected-test_widget_public.log`.
+
+- Phase 1 follow-up affected: `docker exec -e ENVIRONMENT=test -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/p1followaffected phase1-verification-api python -m pytest -q tests/test_tenant_data.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1follow-affected-test_tenant_data` ? exit 0; 2 passed, 1 warning in 4.16s. Log: `.test-storage/phase1-followup/affected-test_tenant_data.log`.
+
+- Phase 1 follow-up affected-fix: `docker exec -e ENVIRONMENT=test -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/p1followaffected-fix phase1-verification-api python -m pytest -q tests/test_conversations_view.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1follow-affected-fix-test_conversations_view` ? exit 0; 5 passed, 1 warning in 79.08s (0:01:19). Log: `.test-storage/phase1-followup/affected-fix-test_conversations_view.log`.
+
+## Phase 1 follow-up implementation (2026-10-16)
+- Owner authorized local merge/tag/merged-branch cleanup; no push, deployment, cloud resources, paid calls, environment-file contents or Docker Compose used in this follow-up. Explicit ENVIRONMENT=test prevents Python dotenv loading; no web-directory .env filenames found. Plain Docker restarted only phase1-verification-db-2 and phase1-verification-api. Test source is mounted read-only; all databases are disposable and guarded by _test suffixes.
+- Eight knowledge GET permissions changed to platform_staff_only. Bot status list/detail remain readable while config/locator are redacted for every client role; no separate snippet API exists. All client knowledge/install pages and nav hidden. Visitor and client thread citations redacted; client export excludes knowledge/config/citations while preserving client operational exports. Stored citations and staff review remain intact. No migrations required.
+- Existing platform-linked deletion popup confirmed: preview counts, exact typed name, reason, cancel, immediate disablement. Added real browser coverage using an onboarded client with no staff membership; initial assertion expected 200 but actual successful DELETE is 204, corrected.
+- From apps/web: `ENVIRONMENT=test npm.cmd run typecheck` and `npm.cmd run lint`: both exit 0. Next generated next-env.d.ts now references production route types consistently with the production E2E build.
+- Initial `docker exec -e ENVIRONMENT=test phase1-verification-api python -m ruff check ...` and format attempt failed before linting: cache on read-only /app. Used --no-cache afterwards; no permissions bypass. Host `python -m ruff check apps/api/app apps/api/tests --no-cache` reported 9 issues (3 import order, 6 long lines, existing unrelated files); host formatter applied only changed files. Pinned container ruff check --no-cache on every changed API file then exit 0 (ruff-affected.log). API `docker exec -e ENVIRONMENT=test phase1-verification-api python -m mypy --no-incremental --cache-dir /tmp/p1follow-mypy`: exit 0, no issues in 154 source files.
+- From apps/web: `ENVIRONMENT=test DATABASE_URL=postgresql://postgres@127.0.0.1:55447/p1followaffected E2E_API_PORT=18147 API_PROXY_TARGET=http://127.0.0.1:18147 npm.cmd test -- knowledge.spec.ts install.spec.ts roles-control.spec.ts platform.spec.ts widget.spec.ts --reporter=line`: exit 1; 11 passed, 2 failed (2.4m). Failures were new platform assertion expecting 200 vs 204 and old widget expectation that a source label remains a SPAN. Corrected both assertions. Log: .test-storage/phase1-followup/playwright-affected.log.
+- From apps/web: same command with DATABASE_URL base p1followaffectedfix and only platform.spec.ts widget.spec.ts: exit 0; 6 passed (1.1m). Log: .test-storage/phase1-followup/playwright-affected-fix.log. Final affected spec coverage: knowledge 4, install 1, roles-control 2, platform 2, widget 4 = 13 passed. No full browser suite has run during implementation.
+- Initial affected API conversation-view and widget-public files failed fixture setup because publish_draft still read revisions as admin. Changed shared knowledge_helpers.py to use staff; rechecks run one file at a time (affected-fix logs). Initial outcomes retained above, never overwritten.
+- Full merge gate is reserved for main: exactly one recursive 37-file API pass (including tests/eval/test_eval.py), each pytest command has one file, plus exactly one unscoped Playwright run. No rerun for reporting.
+
+- Phase 1 follow-up affected-fix: `docker exec -e ENVIRONMENT=test -e DATABASE_URL=postgresql://postgres@host.docker.internal:55447/p1followaffected-fix phase1-verification-api python -m pytest -q tests/test_widget_public.py --tb=short -p no:cacheprovider --basetemp=/tmp/p1follow-affected-fix-test_widget_public` ? exit 0; 14 passed, 1 warning in 199.90s (0:03:19). Log: `.test-storage/phase1-followup/affected-fix-test_widget_public.log`.
+
+- Affected checks complete: 67 passed across 8 unique API files (latest result per file); 13 passed across 5 affected browser specs. Explicit final file results remain recorded above. Source review confirms 77 exact tenant routes and no new endpoint. Untracked inventory: none; no untracked/ignored content deleted. .test-storage, Playwright output and inaccessible generated pytest temp directories are ignored.

@@ -21,7 +21,7 @@ from app.auth.security import (
 )
 from app.core.config import Settings
 from app.core.errors import ApiError
-from app.db.models import Membership, Session, Tenant, User
+from app.db.models import Invitation, Membership, Session, Tenant, User
 
 
 class AuthService:
@@ -38,20 +38,44 @@ class AuthService:
         rows = self.db.execute(
             select(Membership, Tenant)
             .join(Tenant, Membership.tenant_id == Tenant.id)
-            .where(Membership.user_id == user_id, Membership.status == "active")
+            .where(
+                Membership.user_id == user_id,
+                Membership.status == "active",
+                Tenant.status == "active",
+            )
             .order_by(Tenant.created_at)
         ).all()
         return [(membership, tenant) for membership, tenant in rows]
 
     # --- commands ---------------------------------------------------------
 
-    def register(self, email: str, password: str) -> tuple[User, str]:
+    def register(
+        self, email: str, password: str, *, invite_token: str | None = None
+    ) -> tuple[User, str]:
         """Create user and start a session. Returns (user, cookie_token).
 
         EMAIL_TAKEN (409) reveals that an address is registered; accepted MVP
         trade-off per docs/05 409-conflict contract (no email verification in MVP).
         """
         email = email.strip()
+        if not self.settings.self_serve_signup:
+            invitation = self.db.scalar(
+                select(Invitation)
+                .join(Tenant)
+                .where(
+                    Invitation.token_hash == hash_token(invite_token or ""),
+                    Invitation.email == email.lower(),
+                    Invitation.accepted_at.is_(None),
+                    Invitation.revoked_at.is_(None),
+                    Invitation.expires_at > datetime.now(UTC),
+                    Tenant.status == "active",
+                )
+                .with_for_update()
+            )
+            if invitation is None:
+                raise ApiError(
+                    403, "INVITATION_REQUIRED", "A valid invitation for this email is required."
+                )
         if self.get_user_by_email(email) is not None:
             raise ApiError(409, "EMAIL_TAKEN", "An account with this email already exists.")
         user = User(

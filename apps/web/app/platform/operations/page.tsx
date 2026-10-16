@@ -76,11 +76,11 @@ export default function PlatformOperationsPage() {
         <Loading label="Loading platform operations…" />
       ) : (
         <>
-          <section aria-label="Placeholder quota plans">
-            <h2>PLACEHOLDER quota limits</h2>
+          <section aria-label="Provisional quota plans">
+            <h2>Provisional quota limits</h2>
             <p>
-              PLACEHOLDER values for verification only. Pricing and final plan
-              limits are TBD; no token or currency spend cap is enforced.
+              These values are for verification. Pricing and final plan limits
+              are still under review; no token or currency spend cap is enforced.
             </p>
             <table>
               <thead>

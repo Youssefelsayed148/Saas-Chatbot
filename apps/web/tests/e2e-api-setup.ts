@@ -95,6 +95,8 @@ export async function startServer(): Promise<ServerHandle> {
       env: {
         ...process.env,
         DATABASE_URL: databaseUrl,
+        ENVIRONMENT: "test",
+        SELF_SERVE_SIGNUP: "true",
         // The playground E2E runs the deterministic offline stub model
         // (dev-only; production never sets this).
         CHAT_STUB_MODEL: "1",

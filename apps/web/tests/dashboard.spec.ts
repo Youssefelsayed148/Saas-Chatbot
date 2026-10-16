@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { registerOwner, uniqueEmail } from "./e2e-helpers";
+import { registerAdmin, uniqueEmail } from "./e2e-helpers";
 import { promoteToStaff } from "./staff-helpers";
 
 /**
@@ -9,11 +9,47 @@ import { promoteToStaff } from "./staff-helpers";
 
 const PASSWORD = "Str0ngPass!";
 
-test("owner signup provisions organization and first bot, then archive bot", async ({
+test("self-service disabled hides public registration and organization creation", async ({
+  page,
+}) => {
+  await page.route("**/api/v1/auth/config", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ self_serve_signup: false }),
+    }),
+  );
+  await page.goto("/register");
+  await expect(
+    page.getByText("Registration is available by invitation only."),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Create account" }),
+  ).toHaveCount(0);
+
+  await page.unroute("**/api/v1/auth/config");
+  await registerAdmin(page, "self-serve-toggle");
+  await page.route("**/api/v1/auth/config", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ self_serve_signup: false }),
+    }),
+  );
+  await page.goto("/app");
+  await expect(
+    page.getByRole("heading", { name: "Your organizations" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Create organization" }),
+  ).toHaveCount(0);
+});
+
+test("admin signup provisions first bot and bot lifecycle stays with platform staff", async ({
   page,
 }) => {
   const orgName = `E2E Org ${Date.now()}`;
-  const { tenantId, botName } = await registerOwner(page, "E2E", {
+  const { tenantId, botName } = await registerAdmin(page, "E2E", {
     organizationName: orgName,
   });
   await page.goto("/app");
@@ -29,19 +65,11 @@ test("owner signup provisions organization and first bot, then archive bot", asy
     "draft",
   );
 
-  // Archive: the bot leaves the default list; it reappears with the archived toggle.
-  await row.getByRole("button", { name: "Archive" }).click();
-  await page
-    .getByRole("dialog")
-    .getByRole("button", { name: "Archive bot", exact: true })
-    .click();
-  await expect(page.getByText(/No bots yet/i)).toBeVisible();
-  await page.getByRole("checkbox", { name: /Show archived bots/i }).check();
+  await expect(page.getByRole("button", { name: "Create bot" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Archive" })).toHaveCount(0);
   await expect(
-    page
-      .getByRole("row", { name: new RegExp(botName) })
-      .locator("[data-status]"),
-  ).toHaveAttribute("data-status", "archived");
+    page.getByText("Contact us to add or change bots."),
+  ).toBeVisible();
 
   // Sign out returns to the protected flow requiring re-login.
   await page.getByRole("button", { name: "Sign out" }).click();
@@ -56,7 +84,7 @@ test("a second user cannot reach the first user's organization", async ({
 
   const first = await browser.newContext();
   const firstPage = await first.newPage();
-  await registerOwner(firstPage, "first", {
+  await registerAdmin(firstPage, "first", {
     email: firstEmail,
     organizationName: orgName,
   });
@@ -66,7 +94,7 @@ test("a second user cannot reach the first user's organization", async ({
   const secondEmail = uniqueEmail("second");
   const second = await browser.newContext();
   const secondPage = await second.newPage();
-  await registerOwner(secondPage, "second", { email: secondEmail });
+  await registerAdmin(secondPage, "second", { email: secondEmail });
   await secondPage.goto(orgPath);
 
   // The dashboard never renders the foreign org; the API answers 404 and the UI surfaces it.
@@ -80,25 +108,25 @@ test("a second user cannot reach the first user's organization", async ({
   await second.close();
 });
 
-test("team management: owner invites, invitee accepts, viewer sees read-only bots", async ({
+test("team management: admin invites, invitee accepts, viewer sees read-only bots", async ({
   browser,
 }) => {
-  const ownerEmail = uniqueEmail("owner");
+  const adminEmail = uniqueEmail("admin");
   const first = await browser.newContext();
-  const owner = await first.newPage();
-  const { tenantId } = await registerOwner(owner, "Team", {
-    email: ownerEmail,
+  const admin = await first.newPage();
+  const { tenantId } = await registerAdmin(admin, "Team", {
+    email: adminEmail,
   });
-  // Free PLACEHOLDER allows one bot; preserve editor creation with a staff-assigned Starter plan.
-  promoteToStaff(ownerEmail);
-  const csrf = await owner.evaluate(
+  // Staff plan assignment remains available to prepare admin/editor permission checks.
+  promoteToStaff(adminEmail);
+  const csrf = await admin.evaluate(
     () =>
       document.cookie
         .split("; ")
         .find((part) => part.startsWith("chatbot_csrf="))
         ?.split("=")[1] ?? "",
   );
-  const plan = await owner.request.patch(
+  const plan = await admin.request.patch(
     `/api/v1/platform/tenants/${tenantId}/plan`,
     {
       headers: { "X-CSRF-Token": csrf },
@@ -111,20 +139,20 @@ test("team management: owner invites, invitee accepts, viewer sees read-only bot
   expect(plan.status()).toBe(200);
 
   // Invite an editor and a viewer.
-  await owner.goto(
-    new URL(owner.url()).pathname.replace(/\/bots$/, "/settings/members"),
+  await admin.goto(
+    new URL(admin.url()).pathname.replace(/\/bots$/, "/settings/members"),
   );
   const editorEmail = uniqueEmail("editor");
-  await owner.getByLabel("Email", { exact: true }).fill(editorEmail);
-  await owner.getByRole("combobox", { name: "Role" }).selectOption("editor");
-  await owner.getByRole("button", { name: "Create invite link" }).click();
-  const inviteCode = (await owner.locator("code").textContent()) ?? "";
+  await admin.getByLabel("Email", { exact: true }).fill(editorEmail);
+  await admin.getByRole("combobox", { name: "Role" }).selectOption("editor");
+  await admin.getByRole("button", { name: "Create invite link" }).click();
+  const inviteCode = (await admin.locator("code").textContent()) ?? "";
   expect(inviteCode).toContain("/accept-invite?token=");
 
   const viewerEmail = uniqueEmail("viewer");
-  await owner.getByLabel("Email", { exact: true }).fill(viewerEmail);
-  await owner.getByRole("combobox", { name: "Role" }).selectOption("viewer");
-  await owner.getByRole("button", { name: "Create invite link" }).click();
+  await admin.getByLabel("Email", { exact: true }).fill(viewerEmail);
+  await admin.getByRole("combobox", { name: "Role" }).selectOption("viewer");
+  await admin.getByRole("button", { name: "Create invite link" }).click();
 
   // The editor registers with the invited address, lands back on the link, accepts.
   const second = await browser.newContext();
@@ -143,13 +171,28 @@ test("team management: owner invites, invitee accepts, viewer sees read-only bot
   await editor.getByRole("link", { name: /Team Org/i }).click();
   await editor.waitForURL(/\/app\/[0-9a-f-]{36}\/bots$/);
 
-  // The invited editor can create bots.
-  const editorBot = `Editor Bot ${Date.now()}`;
-  await editor.getByLabel("Bot name").fill(editorBot);
-  await editor.getByRole("button", { name: "Create bot" }).click();
+  // Tenant members cannot create bots; the client UI directs them to support.
+  await expect(editor.getByRole("button", { name: "Create bot" })).toHaveCount(
+    0,
+  );
   await expect(
-    editor.getByRole("row", { name: new RegExp(editorBot) }),
+    editor.getByText("Contact us to add or change bots."),
   ).toBeVisible();
+  const editorCsrf = await editor.evaluate(
+    () =>
+      document.cookie
+        .split("; ")
+        .find((part) => part.startsWith("chatbot_csrf="))
+        ?.split("=")[1] ?? "",
+  );
+  const deniedBot = await editor.request.post(
+    `/api/v1/tenants/${tenantId}/bots`,
+    {
+      headers: { "X-CSRF-Token": editorCsrf },
+      data: { name: `Editor Bot ${Date.now()}` },
+    },
+  );
+  expect(deniedBot.status()).toBe(403);
 
   await first.close();
   await second.close();
@@ -157,7 +200,7 @@ test("team management: owner invites, invitee accepts, viewer sees read-only bot
 
 test("expired session sends the user back to login", async ({ page }) => {
   const email = uniqueEmail("expiry");
-  await registerOwner(page, "expiry", { email });
+  await registerAdmin(page, "expiry", { email });
   // Simulate expiry by poisoning the HttpOnly cookie through the app itself is not
   // possible, so the sign-out mutation is exercised: after logout the protected
   // page redirects to /login (server-side revocation path).

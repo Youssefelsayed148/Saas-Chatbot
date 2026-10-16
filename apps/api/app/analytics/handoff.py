@@ -92,11 +92,14 @@ def handoff_analytics(
     workload = (
         context.db.execute(
             text(
-                """SELECT assigned_user_id, count(*) AS count FROM conversations
-            WHERE tenant_id = :tenant_id AND source = 'website'
-              AND created_at >= :start AND created_at <= :end
-              AND status <> 'resolved' AND assigned_user_id IS NOT NULL
-            GROUP BY assigned_user_id ORDER BY assigned_user_id"""
+                """SELECT users.email AS member_name, count(*) AS count
+            FROM conversations
+            JOIN users ON users.id = conversations.assigned_user_id
+            WHERE conversations.tenant_id = :tenant_id AND conversations.source = 'website'
+              AND conversations.created_at >= :start AND conversations.created_at <= :end
+              AND conversations.status <> 'resolved'
+              AND conversations.assigned_user_id IS NOT NULL
+            GROUP BY users.email ORDER BY users.email"""
             ),
             {"tenant_id": context.tenant_id, "start": start, "end": end},
         )
@@ -116,5 +119,5 @@ def handoff_analytics(
             "open": int(totals["open"] or 0),
         },
         "sentiment_distribution": {str(row["sentiment"]): int(row["count"]) for row in sentiment},
-        "agent_workload": {str(row["assigned_user_id"]): int(row["count"]) for row in workload},
+        "agent_workload": {str(row["member_name"]): int(row["count"]) for row in workload},
     }

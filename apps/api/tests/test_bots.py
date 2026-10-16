@@ -1,20 +1,32 @@
 """P1-03: bots CRUD, validation and soft-archive behaviour."""
 
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi.testclient import TestClient
+from sqlalchemy import update
 from sqlalchemy.orm import Session as OrmSession
 
-from tests.helpers import create_tenant, logged_in, seeded_tenant
+from app.db.models import User
+from tests.helpers import create_tenant, logged_in, make_bot, seeded_tenant
 
 
 def test_bot_create_list_get_update_archive(app: Any, db: OrmSession) -> None:
     users = seeded_tenant(app, db)
     try:
         tenant_id = users.tenant_id
+        db.execute(
+            update(User)
+            .where(User.id == UUID(users.users["staff"]["id"]))
+            .values(is_platform_staff=True)
+        )
+        db.commit()
+        denied = users.call(
+            "admin", "POST", f"/api/v1/tenants/{tenant_id}/bots", json={"name": "Denied"}
+        )
+        assert denied.status_code == 403
         create = users.call(
-            "owner", "POST", f"/api/v1/tenants/{tenant_id}/bots", json={"name": "First"}
+            "staff", "POST", f"/api/v1/platform/tenants/{tenant_id}/bots", json={"name": "First"}
         )
         assert create.status_code == 201
         bot: dict[str, Any] = create.json()
@@ -30,7 +42,7 @@ def test_bot_create_list_get_update_archive(app: Any, db: OrmSession) -> None:
         assert single.json()["name"] == "First"
 
         patch = users.call(
-            "editor",
+            "staff",
             "PATCH",
             f"/api/v1/tenants/{tenant_id}/bots/{bot['id']}",
             json={"name": "First Renamed", "config": {"default_language": "ar"}},
@@ -39,7 +51,24 @@ def test_bot_create_list_get_update_archive(app: Any, db: OrmSession) -> None:
         assert patch.json()["name"] == "First Renamed"
         assert patch.json()["config"]["default_language"] == "ar"
 
-        archive = users.call("owner", "DELETE", f"/api/v1/tenants/{tenant_id}/bots/{bot['id']}")
+        for role in ("admin", "editor", "viewer"):
+            for path in (
+                f"/api/v1/tenants/{tenant_id}/bots",
+                f"/api/v1/tenants/{tenant_id}/bots/{bot['id']}",
+            ):
+                response = users.call(role, "GET", path)
+                assert response.status_code == 200
+                rows = response.json() if isinstance(response.json(), list) else [response.json()]
+                assert all(row["config"] == {} and row["widget_locator"] is None for row in rows)
+        staff_bot = users.call(
+            "staff", "GET", f"/api/v1/tenants/{tenant_id}/bots/{bot['id']}"
+        ).json()
+        assert staff_bot["config"]["default_language"] == "ar"
+        assert staff_bot["widget_locator"]
+
+        archive = users.call(
+            "staff", "DELETE", f"/api/v1/platform/tenants/{tenant_id}/bots/{bot['id']}"
+        )
         assert archive.status_code == 200
         assert archive.json()["status"] == "archived"
 
@@ -54,12 +83,13 @@ def test_bot_create_list_get_update_archive(app: Any, db: OrmSession) -> None:
         assert [row["id"] for row in with_archived.json()] == [bot["id"]]
         direct = users.call("editor", "GET", f"/api/v1/tenants/{tenant_id}/bots/{bot['id']}")
         assert direct.status_code == 200
-        assert direct.json()["config"]["default_language"] == "ar"
+        assert direct.json()["config"] == {}
+        assert direct.json()["widget_locator"] is None
 
         # Editing an archived bot is a conflict.
         assert (
             users.call(
-                "editor",
+                "staff",
                 "PATCH",
                 f"/api/v1/tenants/{tenant_id}/bots/{bot['id']}",
                 json={"name": "No"},
@@ -70,7 +100,7 @@ def test_bot_create_list_get_update_archive(app: Any, db: OrmSession) -> None:
         # Archiving twice is idempotent.
         assert (
             users.call(
-                "owner", "DELETE", f"/api/v1/tenants/{tenant_id}/bots/{bot['id']}"
+                "staff", "DELETE", f"/api/v1/platform/tenants/{tenant_id}/bots/{bot['id']}"
             ).status_code
             == 200
         )
@@ -81,42 +111,37 @@ def test_bot_create_list_get_update_archive(app: Any, db: OrmSession) -> None:
 def test_bot_config_validation(app: Any, db: OrmSession) -> None:
     users = seeded_tenant(app, db)
     try:
-        bot = users.call(
-            "owner",
-            "POST",
-            f"/api/v1/tenants/{users.tenant_id}/bots",
-            json={"name": "Cfg"},
-        ).json()
+        bot = make_bot(users, "Cfg")
         url = f"/api/v1/tenants/{users.tenant_id}/bots/{bot['id']}"
 
         assert (
-            users.call("owner", "PATCH", url, json={"config": {"colour": "red"}}).status_code == 422
+            users.call("staff", "PATCH", url, json={"config": {"colour": "red"}}).status_code == 422
         )
         assert (
             users.call(
-                "owner", "PATCH", url, json={"config": {"default_language": "fr"}}
+                "staff", "PATCH", url, json={"config": {"default_language": "fr"}}
             ).status_code
             == 422
         )
         assert (
             users.call(
-                "owner", "PATCH", url, json={"config": {"allowed_domains": ["not a domain"]}}
+                "staff", "PATCH", url, json={"config": {"allowed_domains": ["not a domain"]}}
             ).status_code
             == 422
         )
         assert (
             users.call(
-                "owner",
+                "staff",
                 "PATCH",
                 url,
                 json={"config": {"welcome_message": {"de": "hi"}}},
             ).status_code
             == 422
         )
-        assert users.call("owner", "PATCH", url, json={"unknown_field": 1}).status_code == 422
+        assert users.call("staff", "PATCH", url, json={"unknown_field": 1}).status_code == 422
 
         valid = users.call(
-            "owner",
+            "staff",
             "PATCH",
             url,
             json={
@@ -135,7 +160,7 @@ def test_bot_config_validation(app: Any, db: OrmSession) -> None:
         # Empty name cannot be saved.
         assert (
             users.call(
-                "owner", "POST", f"/api/v1/tenants/{users.tenant_id}/bots", json={"name": ""}
+                "staff", "POST", f"/api/v1/tenants/{users.tenant_id}/bots", json={"name": ""}
             ).status_code
             == 422
         )
@@ -148,9 +173,9 @@ def test_unknown_bot_id_is_404(app: Any, db: OrmSession) -> None:
     try:
         ghost = uuid4()
         url = f"/api/v1/tenants/{users.tenant_id}/bots/{ghost}"
-        assert users.call("owner", "GET", url).status_code == 404
-        assert users.call("owner", "PATCH", url, json={"name": "x"}).status_code == 404
-        assert users.call("owner", "DELETE", url).status_code == 404
+        assert users.call("admin", "GET", url).status_code == 404
+        assert users.call("admin", "PATCH", url, json={"name": "x"}).status_code == 403
+        assert users.call("admin", "DELETE", url).status_code == 403
     finally:
         users.cleanup()
 

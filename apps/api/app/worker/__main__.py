@@ -7,6 +7,7 @@ A heartbeat file powers the Compose healthcheck; SIGTERM stops after the
 current job.
 """
 
+import logging
 import os
 import signal
 import socket
@@ -82,7 +83,13 @@ def main() -> None:
             if time.monotonic() - started - last_purge >= settings.retention_purge_interval_seconds:
                 session = session_factory(engine)()
                 try:
+                    from app.tenants.deletion import purge_deleted_organizations
+
+                    purge_deleted_organizations(session, settings)
                     run_retention_purge(session, settings)
+                except Exception:
+                    session.rollback()
+                    logging.exception("Organization/retention maintenance failed; will retry.")
                 finally:
                     session.close()
                 last_purge = time.monotonic() - started

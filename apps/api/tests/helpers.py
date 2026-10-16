@@ -42,7 +42,7 @@ def create_tenant(client: TestClient, name: str = "Acme", slug: str | None = Non
 
 
 class TenantUsers:
-    """Owner + admin + editor + viewer for one tenant, each with own client."""
+    """Three client members plus a separate staff account with no membership."""
 
     def __init__(
         self,
@@ -80,16 +80,16 @@ class TenantUsers:
 def seeded_tenant(
     app: FastAPI, db: Any, prefix: str = "seed", plan_label: str = "business"
 ) -> TenantUsers:
-    """Register an owner, create the tenant, then add admin/editor/viewer rows."""
-    owner_client, owner_payload = logged_in(app, f"{prefix}-owner@example.com")
+    """Create an admin-led tenant, editor/viewer members, and independent staff."""
+    admin_client, admin_payload = logged_in(app, f"{prefix}-admin@example.com")
     try:
-        tenant_id = create_tenant(owner_client, name=f"Org {prefix}")
+        tenant_id = create_tenant(admin_client, name=f"Org {prefix}")
     except Exception:
-        owner_client.close()
+        admin_client.close()
         raise
-    roles = {"owner": "owner", "admin": "admin", "editor": "editor", "viewer": "viewer"}
+    roles = {"admin": "admin", "editor": "editor", "viewer": "viewer", "staff": "platform_staff"}
     members = TenantUsers(
-        app, tenant_id, roles, prefix, existing={"owner": (owner_client, owner_payload)}
+        app, tenant_id, roles, prefix, existing={"admin": (admin_client, admin_payload)}
     )
     from sqlalchemy import text
 
@@ -98,7 +98,11 @@ def seeded_tenant(
         text("UPDATE tenants SET plan_label = :plan WHERE id = CAST(:tid AS uuid)"),
         {"plan": plan_label, "tid": str(tenant_id)},
     )
-    for role in ("admin", "editor", "viewer"):
+    db.execute(
+        text("UPDATE users SET is_platform_staff = true WHERE id = CAST(:uid AS uuid)"),
+        {"uid": members.users["staff"]["id"]},
+    )
+    for role in ("editor", "viewer"):
         db.execute(
             text(
                 "INSERT INTO memberships (tenant_id, user_id, role, status, created_at) "
@@ -111,20 +115,50 @@ def seeded_tenant(
 
 
 def make_bot(users: TenantUsers, name: str = "Bot") -> dict[str, Any]:
-    response = users.call(
-        "owner", "POST", f"/api/v1/tenants/{users.tenant_id}/bots", json={"name": name}
+    """Insert fixture bots directly; tenant members cannot create bots anymore."""
+    import secrets
+    from uuid import uuid4
+
+    from sqlalchemy import insert
+
+    from app.db.models import Bot
+    from app.db.session import get_engine
+
+    bot = Bot(
+        id=uuid4(),
+        tenant_id=users.tenant_id,
+        name=name,
+        status="draft",
+        config={},
+        widget_locator="w" + secrets.token_hex(16),
     )
-    assert response.status_code == 201, response.text
-    payload: dict[str, Any] = response.json()
-    return payload
+    with get_engine().begin() as connection:
+        connection.execute(
+            insert(Bot).values(
+                id=bot.id,
+                tenant_id=bot.tenant_id,
+                name=bot.name,
+                status=bot.status,
+                config=bot.config,
+                widget_locator=bot.widget_locator,
+            )
+        )
+    return {
+        "id": str(bot.id),
+        "tenant_id": str(bot.tenant_id),
+        "name": bot.name,
+        "status": bot.status,
+        "config": bot.config,
+        "widget_locator": bot.widget_locator,
+    }
 
 
 def make_invitation(
     users: TenantUsers, email: str, role: str = "viewer"
 ) -> tuple[str, dict[str, Any]]:
-    """Create an invitation as the owner; returns (token, invitation payload)."""
+    """Create an invitation as admin; return (token, invitation payload)."""
     response = users.call(
-        "owner",
+        "admin",
         "POST",
         f"/api/v1/tenants/{users.tenant_id}/invitations",
         json={"email": email, "role": role},

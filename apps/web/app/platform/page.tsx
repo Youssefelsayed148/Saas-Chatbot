@@ -23,7 +23,7 @@ export default function PlatformHomePage() {
 
   const [clientName, setClientName] = useState("");
   const [ownerEmail, setOwnerEmail] = useState("");
-  const [botName, setBotName] = useState("");
+  const [botName, setBotName] = useState("Website assistant");
   const [files, setFiles] = useState<FileList | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
@@ -185,7 +185,7 @@ export default function PlatformHomePage() {
             />
           </label>
           <label>
-            Owner email (one-time invite link, no email)
+            Admin email (one-time invite link, no email)
             <input
               data-testid="ob-owner-email"
               type="email"
@@ -195,9 +195,10 @@ export default function PlatformHomePage() {
             />
           </label>
           <label>
-            Bot name (optional)
+            Bot name
             <input
               data-testid="ob-bot-name"
+              required
               maxLength={100}
               value={botName}
               onChange={(event) => setBotName(event.target.value)}
@@ -221,7 +222,7 @@ export default function PlatformHomePage() {
         {inviteLink && (
           <div data-testid="ob-invite-link">
             <p>
-              Owner one-time invite link (copy and send it yourself; shown
+              Admin one-time invite link (copy and send it yourself; shown
               once):
             </p>
             <code>{inviteLink}</code>

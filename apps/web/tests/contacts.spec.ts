@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { registerOwner } from "./e2e-helpers";
+import { registerAdmin } from "./e2e-helpers";
 
-test("owner creates, edits, and reviews a contact profile", async ({
+test("admin creates, edits, and reviews a contact profile", async ({
   page,
 }) => {
-  const { tenantId } = await registerOwner(page, "CRM");
+  const { tenantId } = await registerAdmin(page, "CRM");
   await page.goto(`/app/${tenantId}/contacts`);
   await expect(page.getByRole("heading", { name: "Contacts" })).toBeVisible();
   await page.getByLabel("Name", { exact: true }).fill("Ada Lovelace");

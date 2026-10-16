@@ -38,10 +38,10 @@ def test_follow_up_permissions_isolation_cancel_and_widget_delivery(
     assert users.call("viewer", "GET", base).status_code == 200
     assert other.call("viewer", "GET", foreign_base).json()["follow_ups"] == []
     assert users.call("viewer", "POST", base, json=body).status_code == 403
-    assert other.call("owner", "POST", foreign_base, json=body).status_code == 404
+    assert other.call("admin", "POST", foreign_base, json=body).status_code == 404
     assert (
         users.call(
-            "owner", "POST", base, json={**body, "send_at": "2030-01-01T12:00:00"}
+            "admin", "POST", base, json={**body, "send_at": "2030-01-01T12:00:00"}
         ).status_code
         == 422
     )
@@ -51,7 +51,7 @@ def test_follow_up_permissions_isolation_cancel_and_widget_delivery(
     follow_up_id = scheduled.json()["id"]
     assert scheduled.json()["status"] == "scheduled"
     assert users.call("viewer", "DELETE", f"{base}/{follow_up_id}").status_code == 403
-    assert other.call("owner", "DELETE", f"{foreign_base}/{follow_up_id}").status_code == 404
+    assert other.call("admin", "DELETE", f"{foreign_base}/{follow_up_id}").status_code == 404
 
     job = db.execute(
         select(Job).where(
@@ -98,14 +98,14 @@ def test_follow_up_permissions_isolation_cancel_and_widget_delivery(
         .json()
         == rows
     )
-    inbox = users.call("owner", "GET", f"/api/v1/tenants/{users.tenant_id}/inbox")
+    inbox = users.call("admin", "GET", f"/api/v1/tenants/{users.tenant_id}/inbox")
     assert inbox.status_code == 200, inbox.text
     inbox_rows = inbox.json()["conversations"]
     assert len(inbox_rows) == 1
     assert inbox_rows[0]["id"] == conversation_id
     assert inbox_rows[0]["last_message"] == body["text"]
 
-    next_schedule = users.call("owner", "POST", base, json={**body, "text": "Cancel me."})
+    next_schedule = users.call("admin", "POST", base, json={**body, "text": "Cancel me."})
     assert next_schedule.status_code == 201
     cancelled = users.call("editor", "DELETE", f"{base}/{next_schedule.json()['id']}")
     assert cancelled.status_code == 204
@@ -155,7 +155,7 @@ def test_tenant_analytics_match_conversations_messages_and_assignments(
     assert data["conversations_by_channel"] == {"website": 1}
     assert data["resolved_vs_open"] == {"resolved": 0, "open": 1}
     assert data["sentiment_distribution"] == {"negative": 1}
-    assert data["agent_workload"] == {str(conversation.assigned_user_id): 1}
+    assert data["agent_workload"] == {users.users["editor"]["email"]: 1}
     assert (
         other.call("viewer", "GET", f"/api/v1/tenants/{other.tenant_id}/analytics").json()[
             "total_conversations"

@@ -256,12 +256,31 @@ def notification_counts(context: TenantContextDep) -> dict[str, int]:
     }
 
 
+@router.get("/assignees")
+def list_assignees(context: TenantContextDep) -> list[dict[str, object]]:
+    context.require_role("editor")
+    from app.tenants.service import TenantService
+
+    return [
+        {
+            "user_id": user.id,
+            "email": user.email,
+            "role": member.role,
+            "status": member.status,
+            "joined_at": member.created_at,
+        }
+        for member, user in TenantService(context.db).members_of(context.tenant_id)
+        if member.role in ("admin", "editor")
+    ]
+
+
 @router.post("/{conversation_id}/read")
 def mark_read(
     conversation_id: UUID,
     context: TenantContextDep,
     _: CsrfOk,
 ) -> dict[str, int]:
+    context.require_role("editor")
     row = _conversation_or_404(context, conversation_id)
     latest = context.db.execute(
         select(Message.created_at, Message.id)

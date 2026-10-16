@@ -25,7 +25,7 @@ def _set_small_limiter(app: FastAPI, attempts: int = 2, window_seconds: int = 60
     )
 
 
-def _register(client: TestClient, email: str = "owner@example.com") -> dict[str, Any]:
+def _register(client: TestClient, email: str = "admin@example.com") -> dict[str, Any]:
     response = client.post(
         "/api/v1/auth/register", json={"email": email, "password": "Str0ngPass!"}
     )
@@ -35,7 +35,7 @@ def _register(client: TestClient, email: str = "owner@example.com") -> dict[str,
 
 
 def _login(
-    client: TestClient, email: str = "owner@example.com", password: str = "Str0ngPass!"
+    client: TestClient, email: str = "admin@example.com", password: str = "Str0ngPass!"
 ) -> dict[str, Any]:
     response = client.post("/api/v1/auth/login", json={"email": email, "password": password})
     assert response.status_code == 200
@@ -53,11 +53,11 @@ def _error_code(response: Any) -> str:
 def test_register_sets_session_and_csrf_cookies(client: TestClient) -> None:
     client.cookies.clear()
     response = client.post(
-        "/api/v1/auth/register", json={"email": "owner@example.com", "password": "Str0ngPass!"}
+        "/api/v1/auth/register", json={"email": "admin@example.com", "password": "Str0ngPass!"}
     )
     assert response.status_code == 201
     payload: dict[str, Any] = response.json()
-    assert payload["email"] == "owner@example.com"
+    assert payload["email"] == "admin@example.com"
     assert payload["is_platform_staff"] is False
     assert payload["memberships"] == []
 
@@ -111,7 +111,7 @@ def test_unknown_email_and_wrong_password_fail_identically(client: TestClient) -
 
     _register(client)
     wrong_password = client.post(
-        "/api/v1/auth/login", json={"email": "owner@example.com", "password": "Wr0ngPass!"}
+        "/api/v1/auth/login", json={"email": "admin@example.com", "password": "Wr0ngPass!"}
     )
     assert wrong_password.status_code == 401
     # Same code and message as unknown email: no account-existence oracle.
@@ -183,7 +183,7 @@ def test_me_includes_memberships_once_tenants_exist(client: TestClient, db: OrmS
         text(
             "INSERT INTO memberships (tenant_id, user_id, role, status, created_at) "
             "VALUES ("
-            "(SELECT id FROM tenants WHERE slug='acme'), CAST(:uid AS uuid), 'owner', 'active',"
+            "(SELECT id FROM tenants WHERE slug='acme'), CAST(:uid AS uuid), 'admin', 'active',"
             "NOW()"
             ")"
         ),
@@ -195,7 +195,7 @@ def test_me_includes_memberships_once_tenants_exist(client: TestClient, db: OrmS
     memberships = me.json()["memberships"]
     assert len(memberships) == 1
     assert memberships[0]["tenant_name"] == "Acme"
-    assert memberships[0]["role"] == "owner"
+    assert memberships[0]["role"] == "admin"
 
 
 def test_login_rotates_session(client: TestClient) -> None:
@@ -211,7 +211,7 @@ def test_login_rotates_session(client: TestClient) -> None:
     client.cookies.clear()
     client.cookies.set(SESSION_COOKIE_NAME, first_token, domain="testserver.local")
     login_response = client.post(
-        "/api/v1/auth/login", json={"email": "owner@example.com", "password": "Str0ngPass!"}
+        "/api/v1/auth/login", json={"email": "admin@example.com", "password": "Str0ngPass!"}
     )
     assert login_response.status_code == 200
     second_token = client.cookies.get(SESSION_COOKIE_NAME)
@@ -260,15 +260,15 @@ def test_login_rate_limited(client: TestClient, app: FastAPI) -> None:
     _register(client)
     _set_small_limiter(app, attempts=2)
     first = client.post(
-        "/api/v1/auth/login", json={"email": "owner@example.com", "password": "Wr0ngPass!"}
+        "/api/v1/auth/login", json={"email": "admin@example.com", "password": "Wr0ngPass!"}
     )
     assert first.status_code == 401
     second = client.post(
-        "/api/v1/auth/login", json={"email": "owner@example.com", "password": "Wr0ngPass!"}
+        "/api/v1/auth/login", json={"email": "admin@example.com", "password": "Wr0ngPass!"}
     )
     assert second.status_code == 401
     third = client.post(
-        "/api/v1/auth/login", json={"email": "owner@example.com", "password": "Str0ngPass!"}
+        "/api/v1/auth/login", json={"email": "admin@example.com", "password": "Str0ngPass!"}
     )
     assert third.status_code == 429
     assert _error_code(third) == "RATE_LIMITED"

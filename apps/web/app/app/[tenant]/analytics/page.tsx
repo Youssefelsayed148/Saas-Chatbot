@@ -9,7 +9,10 @@ import { Empty, Loading, Notice } from "@/lib/ui";
 
 function duration(seconds: number | null): string {
   if (seconds === null) return "No replies recorded";
-  if (seconds < 60) return `${Math.round(seconds)} seconds`;
+  if (seconds < 60) {
+    const rounded = Math.round(seconds);
+    return `${rounded} ${rounded === 1 ? "second" : "seconds"}`;
+  }
   if (seconds < 3600) return `${Math.round(seconds / 60)} minutes`;
   return `${(seconds / 3600).toFixed(1)} hours`;
 }
@@ -88,9 +91,9 @@ export default function HandoffAnalyticsPage() {
             <h2>Agent workload</h2>
             {Object.keys(data.agent_workload).length ? (
               <ul>
-                {Object.entries(data.agent_workload).map(([userId, count]) => (
-                  <li key={userId}>
-                    {userId}: {count} open assignments
+                {Object.entries(data.agent_workload).map(([memberName, count]) => (
+                  <li key={memberName}>
+                    {memberName}: {count} open assignments
                   </li>
                 ))}
               </ul>

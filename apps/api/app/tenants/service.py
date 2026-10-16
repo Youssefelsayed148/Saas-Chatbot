@@ -1,17 +1,17 @@
 """Tenant service: create/list/get + membership and invitation management.
 
 Business rules (docs/14 s19, docs/06):
-- Tenant creation makes the creator owner and audits the event.
-- Owner/admin create invitations; admin cannot create owner invitations.
+- Tenant creation makes the creator admin and audits the event.
+- Admins manage invitations and member roles.
 - Tokens are single-use, hashed at rest, expire and can be revoked/resended.
 - Accepting requires a session whose email matches the invitation.
-- Owner roles cannot be changed/removed by non-owners; the last owner is
-  protected; role changes never allow self-escalation.
+- The last active admin cannot be demoted or removed (under a tenant row lock).
 """
 
 import re
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
+from typing import cast
 from uuid import UUID, uuid4
 
 from sqlalchemy import func, select
@@ -22,8 +22,9 @@ from app.core.audit import record_audit
 from app.core.errors import ApiError
 from app.core.tenancy import ROLE_LEVELS, TenantContext
 from app.db.models import Invitation, Membership, Tenant, User
-from app.tenants.schemas import MAX_INVITATION_EXPIRY_DAYS
+from app.db.models.core import ClientRole
 from app.quotas.service import lock_tenant, require_capacity
+from app.tenants.schemas import MAX_INVITATION_EXPIRY_DAYS
 
 SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 DEFAULT_INVITATION_EXPIRY_DAYS = 7
@@ -37,9 +38,11 @@ class TenantService:
 
     def create_tenant(self, user: User, name: str, slug: str | None) -> Tenant:
         slug = self._unique_slug(slug or name)
-        tenant = Tenant(id=uuid4(), name=name.strip(), slug=slug, status="active")
-        owner = Membership(tenant_id=tenant.id, user_id=user.id, role="owner", status="active")
-        self.db.add_all([tenant, owner])
+        tenant = Tenant(
+            id=uuid4(), name=name.strip(), slug=slug, status="active", quota_overrides={"bots": 1}
+        )
+        admin = Membership(tenant_id=tenant.id, user_id=user.id, role="admin", status="active")
+        self.db.add_all([tenant, admin])
         self.db.flush()  # tenants row must exist before its audit event
         record_audit(
             self.db,
@@ -61,7 +64,7 @@ class TenantService:
     def update_tenant(self, context: "TenantContext", retention_days: int | None) -> Tenant:
         """Tenant-level settings (P4-04): the message retention window (docs/14 §7).
 
-        Owner/admin only (privileged write → audited)."""
+        Admin only (privileged write → audited)."""
         tenant = context.tenant
         changed = tenant.retention_days != retention_days
         tenant.retention_days = retention_days
@@ -83,7 +86,11 @@ class TenantService:
         rows = self.db.execute(
             select(Membership, Tenant)
             .join(Tenant, Membership.tenant_id == Tenant.id)
-            .where(Membership.user_id == user_id, Membership.status == "active")
+            .where(
+                Membership.user_id == user_id,
+                Membership.status == "active",
+                Tenant.status == "active",
+            )
             .order_by(Tenant.created_at)
         ).all()
         return [(membership, tenant) for membership, tenant in rows]
@@ -120,9 +127,6 @@ class TenantService:
     ) -> tuple[Invitation, str]:
         tenant = lock_tenant(self.db, context.tenant_id)
         require_capacity(self.db, tenant, "seats")
-        # Admins may not mint owner invitations (owner transfer, docs/06).
-        if role == "owner" and context.role != "owner":
-            raise ApiError(403, "FORBIDDEN", "Only an owner can create owner invitations.")
         if role not in ROLE_LEVELS:
             raise ApiError(422, "VALIDATION_ERROR", f"Unknown role: {role}.")
         if expiry_days > MAX_INVITATION_EXPIRY_DAYS:
@@ -295,29 +299,26 @@ class TenantService:
     # --- members -----------------------------------------------------------
 
     def change_role(self, context: TenantContext, user_id: UUID, new_role: str) -> Membership:
+        lock_tenant(self.db, context.tenant_id)
         if new_role not in ROLE_LEVELS:
             raise ApiError(422, "VALIDATION_ERROR", f"Unknown role: {new_role}.")
-        if new_role == "owner" and context.role != "owner":
-            raise ApiError(403, "FORBIDDEN", "Only an owner can grant the owner role.")
         membership = self._get_membership(context.tenant_id, user_id)
-        if membership.role == "owner" and context.role != "owner":
-            raise ApiError(403, "FORBIDDEN", "Non-owners cannot change an owner's role.")
         if membership.role == new_role:
             return membership
-        if membership.role == "owner" and new_role != "owner":
-            # Downgrading an owner: check a second owner remains atomically.
-            owners = self.db.execute(
+        if membership.role == "admin" and new_role != "admin":
+            # Downgrading an admin: check a second admin remains atomically.
+            admins = self.db.execute(
                 select(func.count())
                 .select_from(Membership)
                 .where(
                     Membership.tenant_id == context.tenant_id,
-                    Membership.role == "owner",
+                    Membership.role == "admin",
                     Membership.status == "active",
                     Membership.user_id != user_id,
                 )
             ).scalar_one()
-            if owners == 0:
-                raise ApiError(403, "LAST_OWNER", "The last owner cannot be demoted or removed.")
+            if admins == 0:
+                raise ApiError(403, "LAST_ADMIN", "The last admin cannot be demoted or removed.")
         record_audit(
             self.db,
             action="member.role_changed",
@@ -327,17 +328,16 @@ class TenantService:
             target_id=str(membership.user_id),
             metadata={"from": membership.role, "to": new_role},
         )
-        membership.role = new_role
+        membership.role = cast(ClientRole, new_role)
         self.db.add(membership)
         self.db.commit()
         return membership
 
     def remove_member(self, context: TenantContext, user_id: UUID) -> None:
+        lock_tenant(self.db, context.tenant_id)
         membership = self._get_membership(context.tenant_id, user_id)
-        if membership.role == "owner" and context.role != "owner":
-            raise ApiError(403, "FORBIDDEN", "Non-owners cannot remove an owner.")
-        if membership.user_id == context.user.id and self._owner_count(context.tenant_id) == 1:
-            raise ApiError(403, "LAST_OWNER", "The last owner cannot leave or be removed.")
+        if membership.role == "admin" and self._admin_count(context.tenant_id) == 1:
+            raise ApiError(403, "LAST_ADMIN", "The last admin cannot leave or be removed.")
         record_audit(
             self.db,
             action="member.removed",
@@ -347,7 +347,10 @@ class TenantService:
             target_id=str(membership.user_id),
             metadata={"was_role": membership.role},
         )
-        self.db.delete(membership)
+        # Keep the membership anchor for historical senders/assignments.
+        # Authorization and seat counts only include active memberships.
+        membership.status = "revoked"
+        self.db.add(membership)
         self.db.commit()
 
     def _get_membership(self, tenant_id: UUID, user_id: UUID) -> Membership:
@@ -362,14 +365,14 @@ class TenantService:
             raise ApiError(404, "NOT_FOUND", "Member not found.")
         return membership
 
-    def _owner_count(self, tenant_id: UUID) -> int:
+    def _admin_count(self, tenant_id: UUID) -> int:
         return int(
             self.db.execute(
                 select(func.count())
                 .select_from(Membership)
                 .where(
                     Membership.tenant_id == tenant_id,
-                    Membership.role == "owner",
+                    Membership.role == "admin",
                     Membership.status == "active",
                 )
             ).scalar_one()

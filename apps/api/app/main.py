@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.routing import APIRoute
 
 from app.analytics.handoff import router as handoff_analytics_router
 from app.analytics.router import router as analytics_router
@@ -11,14 +12,16 @@ from app.contacts.router import router as contacts_router
 from app.conversations.router import router as conversations_router
 from app.core.config import get_settings, validate_startup_settings
 from app.core.errors import REQUEST_ID_HEADER, RequestIdMiddleware, install_error_handlers
+from app.core.permissions import TENANT_ROUTE_ROLES
 from app.followups.router import router as followups_router
 from app.inbox.listing import router as inbox_listing_router
 from app.inbox.router import router as inbox_router
 from app.knowledge.router import router as knowledge_router
 from app.platform.router import router as platform_router
 from app.provisioning.router import router as provisioning_router
-from app.tenants.router import router as tenants_router
+from app.tenants.changes import router as changes_router
 from app.tenants.data import router as tenant_data_router
+from app.tenants.router import router as tenants_router
 from app.widget.router import router as widget_router
 
 # Same-origin deployment (web + api under one gateway in production). Local dev uses
@@ -40,6 +43,42 @@ def create_app() -> FastAPI:
         allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=[REQUEST_ID_HEADER, "Content-Type", "X-CSRF-Token"],
     )
+    tenant_routers = (
+        changes_router,
+        tenants_router,
+        tenant_data_router,
+        bots_router,
+        knowledge_router,
+        chat_router,
+        conversations_router,
+        followups_router,
+        contacts_router,
+        inbox_router,
+        inbox_listing_router,
+        analytics_router,
+        handoff_analytics_router,
+        widget_router,
+    )
+    # Every tenant endpoint must have an explicit reviewed declaration. Missing
+    # entries fail startup, rather than silently granting the lowest role.
+    for source_router in tenant_routers:
+        for route in source_router.routes:
+            if not isinstance(route, APIRoute) or not route.path.startswith("/api/v1/tenants"):
+                continue
+            minimums = {TENANT_ROUTE_ROLES[(method, route.path)] for method in route.methods or ()}
+            if len(minimums) != 1:
+                raise RuntimeError(f"Inconsistent route roles: {route.path}")
+            route.openapi_extra = {**(route.openapi_extra or {}), "x-minimum-role": minimums.pop()}
+
+    for source_router in (platform_router, changes_router):
+        for route in source_router.routes:
+            if isinstance(route, APIRoute) and route.path.startswith("/api/v1/platform"):
+                route.openapi_extra = {
+                    **(route.openapi_extra or {}),
+                    "x-minimum-role": "platform_staff_only",
+                }
+
+    application.include_router(changes_router)
     application.include_router(health_router)
     application.include_router(auth_router)
     application.include_router(tenants_router)

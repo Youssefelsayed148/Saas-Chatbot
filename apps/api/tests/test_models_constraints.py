@@ -30,7 +30,7 @@ def _tenant(db: OrmSession, name: str = "Acme") -> Tenant:
     return tenant
 
 
-def _membership(db: OrmSession, tenant: Tenant, user: User, role: str = "owner") -> Membership:
+def _membership(db: OrmSession, tenant: Tenant, user: User, role: str = "admin") -> Membership:
     membership = Membership(tenant_id=tenant.id, user_id=user.id, role=role, status="active")
     db.add(membership)
     db.flush()
@@ -45,8 +45,8 @@ def _bot(db: OrmSession, tenant: Tenant, name: str = "Bot") -> Bot:
 
 
 def test_duplicate_email_case_insensitive(db: OrmSession) -> None:
-    _user(db, "owner@example.com")
-    duplicate = User(id=uuid4(), email="OWNER@example.com", password_hash="argon2id$x")
+    _user(db, "admin@example.com")
+    duplicate = User(id=uuid4(), email="ADMIN@example.com", password_hash="argon2id$x")
     db.add(duplicate)
     with pytest.raises(IntegrityError):
         db.flush()
@@ -66,7 +66,7 @@ def test_email_unique_across_register_flow(db: OrmSession) -> None:
 def test_membership_unique_tenant_user(db: OrmSession) -> None:
     tenant = _tenant(db)
     user = _user(db, "member@example.com")
-    _membership(db, tenant, user, role="owner")
+    _membership(db, tenant, user, role="admin")
     again = Membership(tenant_id=tenant.id, user_id=user.id, role="editor", status="active")
     db.add(again)
     with pytest.raises(IntegrityError):
@@ -223,7 +223,7 @@ def test_audit_events_allow_null_tenant_and_actor(db: OrmSession) -> None:
 def test_cascade_delete_tenant_removes_owned_rows(db: OrmSession) -> None:
     tenant = _tenant(db, "Cascade")
     user = _user(db, "cascade@example.com")
-    _membership(db, tenant, user, role="owner")
+    _membership(db, tenant, user, role="admin")
     _bot(db, tenant)
     db.commit()
 

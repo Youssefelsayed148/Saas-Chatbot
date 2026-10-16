@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import * as api from "@/lib/api";
 import type { PlaygroundMessage } from "@/lib/api";
-import { roleSatisfies, useSession } from "@/lib/session";
+import { useSession } from "@/lib/session";
 import { Loading, Notice } from "@/lib/ui";
 import BotWorkspaceNav from "@/lib/bot-workspace-nav";
 
@@ -13,9 +13,8 @@ export default function PlaygroundPage() {
   const params = useParams<{ tenant: string; botId: string }>();
   const tenantId = params.tenant;
   const botId = params.botId;
-  const { roleIn } = useSession();
-  const role = roleIn(tenantId);
-  const canChat = roleSatisfies(role, "editor");
+  const { me } = useSession();
+  const canChat = !!me?.is_platform_staff;
 
   const [messages, setMessages] = useState<PlaygroundMessage[] | null>(null);
   const [threadError, setThreadError] = useState<string | null>(null);
@@ -43,11 +42,12 @@ export default function PlaygroundPage() {
   }, [tenantId, botId]);
 
   useEffect(() => {
+    if (!me?.is_platform_staff) return;
     const timer = setTimeout(() => {
       void loadThread();
     }, 0);
     return () => clearTimeout(timer);
-  }, [loadThread]);
+  }, [loadThread, me?.is_platform_staff]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "nearest" });
@@ -114,6 +114,14 @@ export default function PlaygroundPage() {
     }
   }
 
+  if (!me?.is_platform_staff)
+    return (
+      <main>
+        <h1>Playground</h1>
+        <Notice message="Platform staff access required." />
+      </main>
+    );
+
   return (
     <main>
       <BotWorkspaceNav tenantId={tenantId} botId={botId} />
@@ -122,9 +130,7 @@ export default function PlaygroundPage() {
         Test answers against your published knowledge before visitors do.
       </p>
       {!canChat && (
-        <Notice
-          message={`Read-only view: trying the assistant requires the editor role (you are ${role}).`}
-        />
+        <Notice message="Only platform operators can use the playground." />
       )}
       {notReady && (
         <Notice

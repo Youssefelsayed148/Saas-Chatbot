@@ -151,7 +151,7 @@ def conversation_detail(
                 "id": str(message.id),
                 "sender_type": message.sender_type,
                 "text": message.text,
-                "citations": message.citations or [],
+                "citations": (message.citations or []) if context.user.is_platform_staff else [],
                 "can_answer": message.can_answer,
                 "needs_human": message.needs_human,
                 "created_at": message.created_at.isoformat(),
@@ -171,7 +171,7 @@ def delete_conversation(
 ) -> dict[str, str]:
     """Explicit deletion of one conversation and its messages (retention era
     evidence; GDPR-style erasure before P5's contact flows exist)."""
-    context.require_role("editor")
+    context.require_role("admin")
     get_bot(context, bot_id)
     conversation = get_conversation_scoped(context, bot_id, conversation_id)
     context.db.execute(delete(Message).where(Message.conversation_id == conversation.id))

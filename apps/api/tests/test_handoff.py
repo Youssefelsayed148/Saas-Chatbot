@@ -40,7 +40,7 @@ def test_handoff_state_cycle_viewer_tenant_and_widget_scope(
     path = _actions_path(users.tenant_id, setup["turn"]["conversation_id"])
 
     viewer = users.as_user("viewer")
-    foreign = corpus["users_b"].as_user("owner")
+    foreign = corpus["users_b"].as_user("admin")
     foreign_path = _actions_path(corpus["users_b"].tenant_id, setup["turn"]["conversation_id"])
     route_actions = [
         ("GET", "", None),
@@ -66,11 +66,11 @@ def test_handoff_state_cycle_viewer_tenant_and_widget_scope(
         hidden = foreign.request(method, foreign_path + suffix, **foreign_kwargs)
         assert hidden.status_code == 404, hidden.text
 
-    owner = users.as_user("owner")
-    takeover = owner.post(path + "/takeover", headers=csrf_headers(owner))
+    admin = users.as_user("admin")
+    takeover = admin.post(path + "/takeover", headers=csrf_headers(admin))
     assert takeover.status_code == 200, takeover.text
     assert takeover.json()["conversation"]["mode"] == "human"
-    assert takeover.json()["conversation"]["assigned_user_id"] == users.users["owner"]["id"]
+    assert takeover.json()["conversation"]["assigned_user_id"] == users.users["admin"]["id"]
 
     # While in human mode the widget accepts visitor text, but returns no AI answer.
     visitor_turn = client.post(
@@ -99,7 +99,7 @@ def test_handoff_state_cycle_viewer_tenant_and_widget_scope(
         headers=csrf_headers(editor),
     )
     assert note.status_code == 201, note.text
-    note_messages = owner.get(path).json()["messages"]
+    note_messages = admin.get(path).json()["messages"]
     assert any(
         message["sender_type"] == "system"
         and message["text"] == "Internal note: Check the order details before follow-up."
@@ -112,7 +112,7 @@ def test_handoff_state_cycle_viewer_tenant_and_widget_scope(
         headers={"X-Session-Token": session["token"]},
     )
     assert feedback.status_code == 200, feedback.text
-    detail_messages = owner.get(path).json()["messages"]
+    detail_messages = admin.get(path).json()["messages"]
     ai_detail = next(message for message in detail_messages if message["id"] == ai_message_id)
     assert ai_detail["feedback"] == ["up"]
 
@@ -137,10 +137,10 @@ def test_handoff_state_cycle_viewer_tenant_and_widget_scope(
     )
     assert guessed.status_code == 401
 
-    returned = owner.post(path + "/return-to-ai", headers=csrf_headers(owner))
+    returned = admin.post(path + "/return-to-ai", headers=csrf_headers(admin))
     assert returned.status_code == 200
     assert returned.json()["conversation"]["mode"] == "ai"
-    resolved = owner.post(path + "/resolve", headers=csrf_headers(owner))
+    resolved = admin.post(path + "/resolve", headers=csrf_headers(admin))
     assert resolved.status_code == 200
     assert resolved.json()["conversation"]["status"] == "resolved"
 
@@ -151,7 +151,7 @@ def test_handoff_state_cycle_viewer_tenant_and_widget_scope(
     )
     assert reopened.status_code == 201, reopened.text
     assert reopened.json()["ai_message"] is not None
-    state = owner.get(path)
+    state = admin.get(path)
     assert state.json()["conversation"]["status"] == "open"
     assert state.json()["conversation"]["mode"] == "ai"
 
@@ -188,7 +188,7 @@ def test_two_concurrent_takeovers_only_one_wins(
         response = client.post(path + "/takeover", headers=csrf_headers(client))
         results.append((response.status_code, response.json()))
 
-    threads = [threading.Thread(target=take, args=(role,)) for role in ("owner", "editor")]
+    threads = [threading.Thread(target=take, args=(role,)) for role in ("admin", "editor")]
     for thread in threads:
         thread.start()
     for thread in threads:
@@ -198,7 +198,7 @@ def test_two_concurrent_takeovers_only_one_wins(
     conflict = next(body for status, body in results if status == 409)
     assert conflict["error"]["code"] == "TAKEOVER_CONFLICT"
     assert conflict["error"]["details"]["assigned_user_id"] in {
-        users.users["owner"]["id"],
+        users.users["admin"]["id"],
         users.users["editor"]["id"],
     }
     conversation = db.execute(
@@ -206,7 +206,7 @@ def test_two_concurrent_takeovers_only_one_wins(
     ).scalar_one()
     assert conversation.mode == "human"
     assert conversation.assigned_user_id in {
-        UUID(users.users["owner"]["id"]),
+        UUID(users.users["admin"]["id"]),
         UUID(users.users["editor"]["id"]),
     }
 
@@ -236,9 +236,9 @@ def test_handoff_rules_and_reopen_after_resolution(
     assert conversation is not None and conversation.status == "waiting_human"
     assert conversation.handoff_reason == "visitor_requested"
 
-    owner = users.as_user("owner")
+    admin = users.as_user("admin")
     path = _actions_path(users.tenant_id, conversation_id)
-    owner.post(path + "/resolve", headers=csrf_headers(owner))
+    admin.post(path + "/resolve", headers=csrf_headers(admin))
     # Account/order routes hand off immediately; a new visitor turn reopens first.
     order = client.post(base, json={"text": "Can you track my order?"}, headers=headers)
     assert order.status_code == 201

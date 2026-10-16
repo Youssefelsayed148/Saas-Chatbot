@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import Depends
+from fastapi import Depends, Request
 from sqlalchemy.orm import Session as OrmSession
 
 from app.auth.cookies import get_current_user
@@ -17,7 +17,7 @@ from app.core.errors import ApiError
 from app.db.models import Membership, Tenant, User
 from app.db.session import get_session
 
-ROLE_LEVELS: dict[str, int] = {"viewer": 1, "editor": 2, "admin": 3, "owner": 4}
+ROLE_LEVELS: dict[str, int] = {"viewer": 1, "editor": 2, "admin": 3}
 ROLES = tuple(ROLE_LEVELS)
 
 
@@ -34,20 +34,24 @@ class TenantContext:
     db: OrmSession
     user: User
     tenant: Tenant
-    membership: Membership
+    membership: Membership | None
 
     @property
     def role(self) -> str:
-        return self.membership.role
+        return self.membership.role if self.membership else "platform_staff"
 
     def require_role(self, minimum: str) -> None:
         """Raise 403 unless the caller holds at least `minimum` (docs/06 matrix)."""
-        if not role_at_least(self.role, minimum):
+        if not self.user.is_platform_staff and not role_at_least(self.role, minimum):
             raise ApiError(
                 403,
                 "FORBIDDEN",
                 f"This action requires the {minimum} role or higher.",
             )
+
+    def require_operator(self) -> None:
+        if not self.user.is_platform_staff:
+            raise ApiError(403, "FORBIDDEN", "Only platform staff can control the bot.")
 
     # Convenience for services that need ids as primitives.
     @property
@@ -57,11 +61,12 @@ class TenantContext:
 
 def get_tenant_context(
     tenant_id: UUID,
+    request: Request,
     db: Annotated[OrmSession, Depends(get_session)],
     user: Annotated[User, Depends(get_current_user)],
 ) -> TenantContext:
     tenant = db.get(Tenant, tenant_id)
-    if tenant is None:
+    if tenant is None or tenant.status != "active":
         raise ApiError(404, "NOT_FOUND", "Resource not found.")
     membership = (
         db.query(Membership)
@@ -72,10 +77,23 @@ def get_tenant_context(
         )
         .one_or_none()
     )
-    if membership is None:
+    if membership is None and not user.is_platform_staff:
         # Do not reveal the tenant exists: a hidden resource looks like a 404.
         raise ApiError(404, "NOT_FOUND", "Resource not found.")
-    return TenantContext(db=db, user=user, tenant=tenant, membership=membership)
+    context = TenantContext(db=db, user=user, tenant=tenant, membership=membership)
+    minimum = request.scope["route"].openapi_extra["x-minimum-role"]
+    route = request.scope["route"]
+    inbox_action = request.method != "GET" and (
+        "/inbox/" in route.path
+        or route.path.startswith("/api/v1/tenants/{tenant_id}/conversations/")
+    )
+    if minimum == "editor" and membership is None and inbox_action:
+        raise ApiError(403, "FORBIDDEN", "Inbox actions require an active tenant membership.")
+    if minimum == "platform_staff_only":
+        context.require_operator()
+    else:
+        context.require_role(minimum)
+    return context
 
 
 TenantContextDep = Annotated[TenantContext, Depends(get_tenant_context)]

@@ -4,6 +4,7 @@
  * the tabs that exist TODAY — no placeholders for later phases (Inbox,
  * Contacts, Channels arrive in P5/P6). */
 
+import { useSession } from "./session";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -26,6 +27,7 @@ export default function BotWorkspaceNav({
   botName?: string;
 }) {
   const pathname = usePathname();
+  const { me } = useSession();
   const base = `/app/${tenantId}/bots/${botId}`;
   return (
     <nav
@@ -38,7 +40,13 @@ export default function BotWorkspaceNav({
         {botName && <strong> {botName}</strong>}
       </span>
       <span className="bot-nav-tabs">
-        {TABS.map((tab) => {
+        {TABS.filter(
+          (tab) =>
+            me?.is_platform_staff ||
+            !["settings", "playground", "knowledge", "install"].includes(
+              tab.key,
+            ),
+        ).map((tab) => {
           const href =
             tab.key === "overview"
               ? `${base}/overview`

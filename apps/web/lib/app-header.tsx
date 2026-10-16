@@ -31,6 +31,11 @@ export function AppShell({
   const links: Destination[] = platform
     ? [
         { label: "Clients", href: "/platform", symbol: "◈" },
+        {
+          label: "Change requests",
+          href: "/platform/change-requests",
+          symbol: "?",
+        },
         { label: "Operations", href: "/platform/operations", symbol: "▥" },
         { label: "Client workspaces", href: "/app", symbol: "↗" },
       ]
@@ -42,6 +47,11 @@ export function AppShell({
           { label: "Contacts", href: `${base}/contacts`, symbol: "◎" },
           ...(roleSatisfies(role, "admin")
             ? [
+                {
+                  label: "Request a change",
+                  href: `${base}/settings/requests`,
+                  symbol: "?",
+                },
                 {
                   label: "Team",
                   href: `${base}/settings/members`,

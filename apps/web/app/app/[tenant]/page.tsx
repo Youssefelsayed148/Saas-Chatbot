@@ -9,6 +9,7 @@ import { Empty, Loading, Notice } from "@/lib/ui";
 export default function TenantOverview() {
   const { tenant } = useParams<{ tenant: string }>();
   const { me, loading } = useSession();
+  const canReadKnowledge = !!me?.is_platform_staff;
   const router = useRouter();
   const [data, setData] = useState<{
     counts: api.InboxCounts;
@@ -27,9 +28,10 @@ export default function TenantOverview() {
         api.listInbox(tenant, { limit: "5" }),
       ]);
       // The checklist refers to the first current bot only; no per-bot request fan-out.
-      const revisions = bots[0]
-        ? await api.listRevisions(tenant, bots[0].id)
-        : null;
+      const revisions =
+        bots[0] && canReadKnowledge
+          ? await api.listRevisions(tenant, bots[0].id)
+          : null;
       setData({
         counts,
         bots,
@@ -43,7 +45,7 @@ export default function TenantOverview() {
         caught instanceof Error ? caught.message : "Could not load overview.",
       );
     }
-  }, [tenant]);
+  }, [tenant, canReadKnowledge]);
   useEffect(() => {
     if (!loading && !me) router.replace("/login");
     if (!me) return;
@@ -93,7 +95,7 @@ export default function TenantOverview() {
               </div>
               {!data.recent.conversations.length ? (
                 <Empty>
-                  No conversations yet. Open a bot’s Install tab to test your
+                  No conversations yet. Ask your operator to verify your website
                   widget.
                 </Empty>
               ) : (
@@ -128,13 +130,15 @@ export default function TenantOverview() {
                       : "Create your first bot"}
                   </Link>
                 </li>
-                {data.bots[0] && (
+                {data.bots[0] && canReadKnowledge && (
                   <li>
                     <span aria-hidden="true">{data.published ? "✓" : "○"}</span>
                     <Link href={`${base}/bots/${data.bots[0].id}/knowledge`}>
                       {data.published
                         ? "Knowledge published"
-                        : "Publish knowledge"}
+                        : me?.is_platform_staff
+                          ? "Publish knowledge"
+                          : "Review knowledge"}
                       <small dir="auto">{data.bots[0].name}</small>
                     </Link>
                   </li>
@@ -142,9 +146,9 @@ export default function TenantOverview() {
               </ol>
             </section>
           </div>
-          <section aria-label="PLACEHOLDER plan usage">
+          <section aria-label="Plan usage">
             <div className="section-heading">
-              <h2>PLACEHOLDER plan usage</h2>
+              <h2>Plan usage</h2>
               <span className="badge">{data.quota.plan}</span>
             </div>
             <div className="usage-grid">
@@ -168,13 +172,12 @@ export default function TenantOverview() {
             </div>
             {data.quota.warnings.length > 0 && (
               <p role="status">
-                Approaching the PLACEHOLDER limit for{" "}
+                Approaching the plan limit for{" "}
                 {data.quota.warnings.map(humanLabel).join(", ")}.
               </p>
             )}
             <p className="muted">
-              PLACEHOLDER limits for verification; final pricing and limits are
-              TBD. Measured provider tokens this month:{" "}
+              Plan limits are provisional. Measured provider tokens this month:{" "}
               {data.quota.measured_tokens_this_month}.
             </p>
           </section>

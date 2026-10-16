@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { registerOwner } from "./e2e-helpers";
+import { registerAdmin } from "./e2e-helpers";
 
 test("Arabic inbox rows preserve unread markers and removable filter requests", async ({
   page,
 }) => {
-  const { tenantId } = await registerOwner(page, "Arabic inbox");
+  const { tenantId } = await registerAdmin(page, "Arabic inbox");
   await page.route(`**/api/v1/tenants/${tenantId}/inbox?**`, (route) =>
     route.fulfill({
       json: {
@@ -66,7 +66,7 @@ test("Arabic inbox rows preserve unread markers and removable filter requests", 
 test("tenant Overview reads existing data and keeps Bots as the signup destination", async ({
   page,
 }) => {
-  const { tenantId } = await registerOwner(page, "Overview route");
+  const { tenantId } = await registerAdmin(page, "Overview route");
   await expect(page).toHaveURL(`/app/${tenantId}/bots`);
   const writes: string[] = [];
   page.on("request", (request) => {
@@ -80,17 +80,15 @@ test("tenant Overview reads existing data and keeps Bots as the signup destinati
   await expect(
     page.getByText("First bot created", { exact: true }),
   ).toBeVisible();
-  await expect(
-    page.getByText(/final pricing and limits are TBD/),
-  ).toBeVisible();
+  await expect(page.getByText(/Plan limits are provisional/)).toBeVisible();
   expect(writes).toEqual([]);
 });
 
 test("workspace theme persists and keyboard palette only navigates", async ({
   page,
 }) => {
-  const { tenantId } = await registerOwner(page, "Shell");
-  await expect(page.getByTestId("workspace-context")).toContainText("owner");
+  const { tenantId } = await registerAdmin(page, "Shell");
+  await expect(page.getByTestId("workspace-context")).toContainText("admin");
   const before = await page.locator("html").getAttribute("data-theme");
   await page.getByTestId("theme-toggle").first().click();
   await expect(page.locator("html")).toHaveAttribute(
@@ -113,7 +111,7 @@ test("workspace theme persists and keyboard palette only navigates", async ({
 
 test("mobile navigation opens and dismisses with Escape", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 800 });
-  await registerOwner(page, "Mobile");
+  await registerAdmin(page, "Mobile");
   await page.getByRole("button", { name: "Open navigation" }).click();
   const drawer = page.getByRole("dialog", {
     name: "Workspace navigation",

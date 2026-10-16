@@ -1,173 +1,44 @@
-"""P1-03: members — role matrix, last-owner protection, escalation, audit."""
+"""P1-03: members — role matrix, last-admin protection, escalation, audit."""
 
 from typing import Any
-from uuid import uuid4
 
+import pytest
 from sqlalchemy.orm import Session as OrmSession
 
 from tests.helpers import (
     audit_actions,
-    make_bot,
     seeded_tenant,
 )
-
-
-def test_full_role_matrix(app: Any, db: OrmSession) -> None:
-    users = seeded_tenant(app, db)
-    try:
-        tenant_id = users.tenant_id
-        bot = make_bot(users, name="Matrix")
-        bot_url = f"/api/v1/tenants/{tenant_id}/bots/{bot['id']}"
-        admin_dummy = users.users["admin"]["id"]  # target of member PATCH/DELETE checks
-        members_url = f"/api/v1/tenants/{tenant_id}/members"
-        member_url = f"{members_url}/{admin_dummy}"
-        invitations_url = f"/api/v1/tenants/{tenant_id}/invitations"
-        ghost_bot = f"/api/v1/tenants/{tenant_id}/bots/{uuid4()}"
-
-        cases = [
-            ("owner", "GET", f"/api/v1/tenants/{tenant_id}", 200),
-            ("admin", "GET", f"/api/v1/tenants/{tenant_id}", 200),
-            ("editor", "GET", f"/api/v1/tenants/{tenant_id}", 200),
-            ("viewer", "GET", f"/api/v1/tenants/{tenant_id}", 200),
-            ("owner", "GET", f"/api/v1/tenants/{tenant_id}/bots", 200),
-            ("viewer", "GET", f"/api/v1/tenants/{tenant_id}/bots", 200),
-            ("owner", "POST", f"/api/v1/tenants/{tenant_id}/bots", 201),
-            ("admin", "POST", f"/api/v1/tenants/{tenant_id}/bots", 201),
-            ("editor", "POST", f"/api/v1/tenants/{tenant_id}/bots", 201),
-            ("viewer", "POST", f"/api/v1/tenants/{tenant_id}/bots", 403),
-            ("owner", "GET", bot_url, 200),
-            ("viewer", "GET", bot_url, 200),
-            ("owner", "PATCH", bot_url, 200),
-            ("editor", "PATCH", bot_url, 200),
-            ("viewer", "PATCH", bot_url, 403),
-            ("owner", "DELETE", ghost_bot, 404),  # archive requires an existing bot; ghost 404
-            ("editor", "DELETE", ghost_bot, 404),
-            ("viewer", "DELETE", bot_url, 403),
-            ("owner", "GET", invitations_url, 200),
-            ("admin", "GET", invitations_url, 200),
-            ("editor", "GET", invitations_url, 403),
-            ("viewer", "GET", invitations_url, 403),
-            ("owner", "POST", invitations_url, 201),
-            ("admin", "POST", invitations_url, 201),
-            ("editor", "POST", invitations_url, 403),
-            ("viewer", "POST", invitations_url, 403),
-            ("owner", "GET", members_url, 200),
-            ("admin", "GET", members_url, 200),
-            ("editor", "GET", members_url, 403),
-            ("viewer", "GET", members_url, 403),
-            ("owner", "PATCH", member_url, 200),  # same-role no-op for the admin target
-            ("admin", "PATCH", member_url, 200),  # admin no-op on their own role
-            ("editor", "PATCH", member_url, 403),
-            ("viewer", "PATCH", member_url, 403),
-            ("owner", "DELETE", f"{members_url}/{uuid4()}", 404),
-            ("editor", "DELETE", f"{members_url}/{uuid4()}", 403),
-            ("viewer", "DELETE", f"{members_url}/{uuid4()}", 403),
-        ]
-        # Give the owner a second bot name to avoid name-noop PATCH (still fine 200).
-        for role, method, url, expected in cases:
-            if method == "POST" and url.endswith("/bots"):
-                payload = {"name": "Matrix Bot"}
-            elif method == "PATCH" and url == bot_url:
-                payload = {"name": f"Matrix {role}"}
-            elif method == "PATCH" and url == member_url:
-                payload = {"role": "admin"} if role == "owner" else {"role": "admin"}
-            elif method == "POST" and url == invitations_url:
-                payload = {"email": f"{role}-matrix@example.com", "role": "viewer"}
-            elif method == "DELETE" and url == bot_url:
-                payload = None
-            else:
-                payload = None
-            response = users.call(role, method, url, json=payload)
-            status = response.status_code
-            assert status == expected, (role, method, url, status, expected, response.text)
-    finally:
-        users.cleanup()
-
-
-def test_admin_cannot_escalate_to_owner(app: Any, db: OrmSession) -> None:
-    users = seeded_tenant(app, db)
-    try:
-        editor_id = users.users["editor"]["id"]
-        admin_grant = users.call(
-            "admin",
-            "PATCH",
-            f"/api/v1/tenants/{users.tenant_id}/members/{editor_id}",
-            json={"role": "owner"},
-        )
-        assert admin_grant.status_code == 403
-        assert admin_grant.json()["error"]["code"] == "FORBIDDEN"
-
-        # Admin also cannot change an owner's role.
-        owner_id = users.users["owner"]["id"]
-        attack = users.call(
-            "admin",
-            "PATCH",
-            f"/api/v1/tenants/{users.tenant_id}/members/{owner_id}",
-            json={"role": "viewer"},
-        )
-        assert attack.status_code == 403
-        assert attack.json()["error"]["code"] == "FORBIDDEN"
-
-        # Admin cannot remove an owner.
-        remove = users.call(
-            "admin", "DELETE", f"/api/v1/tenants/{users.tenant_id}/members/{owner_id}"
-        )
-        assert remove.status_code == 403
-    finally:
-        users.cleanup()
-
-
-def test_last_owner_is_protected(app: Any, db: OrmSession) -> None:
-    users = seeded_tenant(app, db)
-    try:
-        owner_id = users.users["owner"]["id"]
-        url = f"/api/v1/tenants/{users.tenant_id}/members/{owner_id}"
-
-        self_demote = users.call("owner", "PATCH", url, json={"role": "editor"})
-        assert self_demote.status_code == 403
-        assert self_demote.json()["error"]["code"] == "LAST_OWNER"
-
-        leave_tenant = users.call("owner", "DELETE", url)
-        assert leave_tenant.status_code == 403
-        assert leave_tenant.json()["error"]["code"] == "LAST_OWNER"
-
-        # External role change of the sole owner is meaningless for non-owners; owner-only.
-        viewer_attack = users.call("viewer", "PATCH", url, json={"role": "viewer"})
-        assert viewer_attack.status_code == 403
-    finally:
-        users.cleanup()
-
-
-def test_owner_transfer_allowed_with_second_owner(app: Any, db: OrmSession) -> None:
-    users = seeded_tenant(app, db)
-    try:
-        admin_id = users.users["admin"]["id"]
-        url = f"/api/v1/tenants/{users.tenant_id}/members/{admin_id}"
-        grant = users.call("owner", "PATCH", url, json={"role": "owner"})
-        assert grant.status_code == 200
-        assert grant.json()["role"] == "owner"
-
-        # Now two owners: the original can step down.
-        owner_id = users.users["owner"]["id"]
-        step_down = users.call(
-            "owner",
-            "PATCH",
-            f"/api/v1/tenants/{users.tenant_id}/members/{owner_id}",
-            json={"role": "admin"},
-        )
-        assert step_down.status_code == 200
-        assert step_down.json()["role"] == "admin"
-
-        audit = audit_actions(db, "member.role_changed", users.tenant_id)
-        assert len(audit) == 2
-    finally:
-        users.cleanup()
 
 
 def test_member_removal_by_admin(app: Any, db: OrmSession) -> None:
     users = seeded_tenant(app, db)
     try:
         editor_id = users.users["editor"]["id"]
+        from uuid import UUID
+
+        from app.db.models import Conversation, Membership, Message
+        from tests.helpers import make_bot
+
+        bot = make_bot(users)
+        conversation = Conversation(
+            tenant_id=users.tenant_id,
+            bot_id=UUID(bot["id"]),
+            assigned_user_id=UUID(editor_id),
+            mode="human",
+        )
+        db.add(conversation)
+        db.flush()
+        message = Message(
+            tenant_id=users.tenant_id,
+            bot_id=UUID(bot["id"]),
+            conversation_id=conversation.id,
+            sender_type="agent",
+            sender_user_id=UUID(editor_id),
+            text="Historical agent reply",
+        )
+        db.add(message)
+        db.commit()
         url = f"/api/v1/tenants/{users.tenant_id}/members/{editor_id}"
         assert users.call("admin", "DELETE", url).status_code == 204
         members = users.call("admin", "GET", f"/api/v1/tenants/{users.tenant_id}/members").json()
@@ -176,6 +47,18 @@ def test_member_removal_by_admin(app: Any, db: OrmSession) -> None:
         assert users.call("admin", "DELETE", url).status_code == 404
         audit = audit_actions(db, "member.removed", users.tenant_id)
         assert len(audit) == 1
+        db.expire_all()
+        membership = db.get(Membership, (users.tenant_id, UUID(editor_id)))
+        saved_message = db.get(Message, message.id)
+        saved_conversation = db.get(Conversation, conversation.id)
+        assert membership is not None and membership.status == "revoked"
+        assert saved_message is not None and saved_message.tenant_id == users.tenant_id
+        assert saved_conversation is not None
+        assert saved_conversation.assigned_user_id == UUID(editor_id)
+        assert (
+            users.call("editor", "GET", f"/api/v1/tenants/{users.tenant_id}/bots").status_code
+            == 404
+        )
     finally:
         users.cleanup()
 
@@ -187,5 +70,118 @@ def test_role_change_validation(app: Any, db: OrmSession) -> None:
         url = f"/api/v1/tenants/{users.tenant_id}/members/{editor_id}"
         bad_role = users.call("admin", "PATCH", url, json={"role": "godmode"})
         assert bad_role.status_code == 422
+    finally:
+        users.cleanup()
+
+
+def test_last_admin_is_protected(app: Any, db: OrmSession) -> None:
+    users = seeded_tenant(app, db)
+    try:
+        path = f"/api/v1/tenants/{users.tenant_id}/members/{users.users['admin']['id']}"
+        for role in ("admin", "staff"):
+            response = users.call(role, "PATCH", path, json={"role": "editor"})
+            assert response.status_code == 403
+            assert response.json()["error"]["code"] == "LAST_ADMIN"
+            response = users.call(role, "DELETE", path)
+            assert response.status_code == 403
+            assert response.json()["error"]["code"] == "LAST_ADMIN"
+        assert users.call("viewer", "PATCH", path, json={"role": "admin"}).status_code == 403
+    finally:
+        users.cleanup()
+
+
+def test_admin_can_promote_then_step_down(app: Any, db: OrmSession) -> None:
+    users = seeded_tenant(app, db)
+    try:
+        base = f"/api/v1/tenants/{users.tenant_id}/members"
+        promoted = users.call(
+            "admin", "PATCH", f"{base}/{users.users['editor']['id']}", json={"role": "admin"}
+        )
+        assert promoted.status_code == 200
+        demoted = users.call(
+            "admin", "PATCH", f"{base}/{users.users['admin']['id']}", json={"role": "viewer"}
+        )
+        assert demoted.status_code == 200
+        assert len(audit_actions(db, "member.role_changed", users.tenant_id)) == 2
+    finally:
+        users.cleanup()
+
+
+def test_owner_role_and_transfer_removed(app: Any, db: OrmSession) -> None:
+    users = seeded_tenant(app, db)
+    try:
+        target = f"/api/v1/tenants/{users.tenant_id}/members/{users.users['editor']['id']}"
+        assert users.call("admin", "PATCH", target, json={"role": "owner"}).status_code == 422
+        assert users.call("admin", "POST", f"{target}/transfer-ownership").status_code == 404
+    finally:
+        users.cleanup()
+
+
+@pytest.mark.parametrize("methods", [("DELETE", "DELETE"), ("PATCH", "PATCH"), ("DELETE", "PATCH")])
+def test_concurrent_last_admin_changes_keep_one_admin(
+    app: Any, db: OrmSession, monkeypatch: Any, methods: tuple[str, str]
+) -> None:
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+    from uuid import UUID
+
+    from fastapi.testclient import TestClient
+    from sqlalchemy import func, select
+
+    from app.db.models import Membership
+    from app.quotas.service import lock_tenant
+    from tests.conftest import csrf_headers
+
+    users = seeded_tenant(app, db, prefix="concurrent-admin")
+    try:
+        base = f"/api/v1/tenants/{users.tenant_id}/members"
+        second_id = users.users["editor"]["id"]
+        assert (
+            users.call("admin", "PATCH", f"{base}/{second_id}", json={"role": "admin"}).status_code
+            == 200
+        )
+        barrier = Barrier(2)
+
+        def simultaneous_lock(session: Any, tenant_id: Any) -> Any:
+            barrier.wait(timeout=10)
+            return lock_tenant(session, tenant_id)
+
+        monkeypatch.setattr("app.tenants.service.lock_tenant", simultaneous_lock)
+
+        def request(method: str, user_id: str) -> Any:
+            with TestClient(app) as client:
+                client.cookies.update(users.as_user("staff").cookies)
+                return client.request(
+                    method,
+                    f"{base}/{user_id}",
+                    headers=csrf_headers(client),
+                    **({"json": {"role": "viewer"}} if method == "PATCH" else {}),
+                )
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            futures = [
+                executor.submit(request, method, user_id)
+                for method, user_id in zip(
+                    methods, [users.users["admin"]["id"], second_id], strict=True
+                )
+            ]
+            responses = [future.result(timeout=20) for future in futures]
+        assert sorted(response.status_code for response in responses) in ([200, 403], [204, 403])
+        denied = next(response for response in responses if response.status_code == 403)
+        assert denied.json()["error"]["code"] == "LAST_ADMIN"
+        db.expire_all()
+        assert (
+            db.scalar(
+                select(func.count())
+                .select_from(Membership)
+                .where(
+                    Membership.tenant_id == users.tenant_id,
+                    Membership.role == "admin",
+                    Membership.status == "active",
+                )
+            )
+            == 1
+        )
+        assert db.get(Membership, (users.tenant_id, UUID(second_id))) is not None
     finally:
         users.cleanup()

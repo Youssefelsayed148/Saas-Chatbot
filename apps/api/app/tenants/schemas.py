@@ -2,6 +2,7 @@
 
 import re
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
@@ -41,7 +42,7 @@ class TenantOut(BaseModel):
 
 
 class TenantUpdateRequest(BaseModel):
-    """Tenant-level settings (P4-04): retention only for now; owner/admin only."""
+    """Tenant-level settings (P4-04): retention only for now; admin only."""
 
     model_config = ConfigDict(extra="forbid")
     retention_days: int | None = Field(default=None, ge=1, le=365)
@@ -51,20 +52,20 @@ class MemberOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     user_id: UUID
     email: str
-    role: str
+    role: Literal["admin", "editor", "viewer"]
     status: str
     joined_at: datetime
 
 
 class MemberRoleUpdateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    role: str
+    role: Literal["admin", "editor", "viewer"]
 
 
 class InvitationCreateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     email: EmailStr
-    role: str = "viewer"
+    role: Literal["admin", "editor", "viewer"] = "viewer"
     expiry_days: int = Field(
         default=DEFAULT_INVITATION_EXPIRY_DAYS, ge=1, le=MAX_INVITATION_EXPIRY_DAYS
     )
@@ -76,7 +77,7 @@ class InvitationOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
     email: str
-    role: str
+    role: Literal["admin", "editor", "viewer"]
     expires_at: datetime
     created_at: datetime
     expired: bool
@@ -98,4 +99,4 @@ class MembershipResultOut(BaseModel):
     tenant_id: UUID
     tenant_name: str
     tenant_slug: str
-    role: str
+    role: Literal["admin", "editor", "viewer"]

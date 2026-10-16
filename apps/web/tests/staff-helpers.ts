@@ -30,6 +30,10 @@ function pythonBin(): string {
 }
 
 export function promoteToStaff(email: string): void {
+  setPlatformStaff(email, true);
+}
+
+export function setPlatformStaff(email: string, enabled: boolean): void {
   const databaseUrl = process.env.E2E_DATABASE_URL;
   if (!databaseUrl) {
     throw new Error(
@@ -45,12 +49,13 @@ export function promoteToStaff(email: string): void {
         "url = sqlalchemy.make_url(sys.argv[2]).set(drivername='postgresql')",
         "if not (url.database or '').endswith('_test'): raise RuntimeError('Staff promotion requires a disposable test database')",
         "with psycopg.connect(url.render_as_string(hide_password=False), autocommit=True) as conn:",
-        "    result = conn.execute('UPDATE users SET is_platform_staff = TRUE WHERE email = %s', (sys.argv[1],))",
+        "    result = conn.execute('UPDATE users SET is_platform_staff = %s WHERE email = %s', (sys.argv[3] == 'true', sys.argv[1]))",
         "    if result.rowcount != 1: raise RuntimeError('Expected one registered staff user')",
         "",
       ].join("\n"),
       email,
       databaseUrl,
+      String(enabled),
     ],
     { cwd: path.join(repoRoot(), "apps", "api"), stdio: "pipe" },
   );

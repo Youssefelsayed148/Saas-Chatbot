@@ -15,7 +15,8 @@ export default function TenantDataPage() {
   const { me, refresh, roleIn } = useSession();
   const role = roleIn(tenantId);
   const canAdmin = roleSatisfies(role, "admin");
-  const isOwner = role === "owner";
+  const isOperator = !!me?.is_platform_staff;
+  const [counts, setCounts] = useState<Record<string, number>>({});
   const deleteDialog = useRef<HTMLDialogElement>(null);
   const [tenant, setTenant] = useState<api.Tenant | null>(null);
   const [audit, setAudit] = useState<api.TenantAuditEvent[]>([]);
@@ -27,6 +28,10 @@ export default function TenantDataPage() {
 
   const load = useCallback(async () => {
     try {
+      if (isOperator) {
+        const preview = await api.deletionPreview(tenantId);
+        setCounts(preview.counts);
+      }
       const [nextTenant, nextAudit] = await Promise.all([
         api.getTenant(tenantId),
         canAdmin
@@ -43,7 +48,7 @@ export default function TenantDataPage() {
           : "Could not load tenant data.",
       );
     }
-  }, [tenantId, canAdmin, query]);
+  }, [tenantId, canAdmin, query, isOperator]);
 
   useEffect(() => {
     if (!me || !canAdmin) return;
@@ -76,7 +81,7 @@ export default function TenantDataPage() {
     event.preventDefault();
     if (
       !tenant ||
-      !isOwner ||
+      !isOperator ||
       confirmName !== tenant.name ||
       reason.trim().length < 3
     ) {
@@ -125,8 +130,9 @@ export default function TenantDataPage() {
           <section aria-label="Tenant export">
             <h2>Export tenant data</h2>
             <p>
-              Downloads contacts, identities, conversations, messages,
-              knowledge, jobs, usage, and audit history as JSON.
+              Downloads contacts, identities, conversations, messages, usage,
+              and audit history as JSON. Platform staff exports also include
+              knowledge, jobs and bot configuration.
             </p>
             <button
               type="button"
@@ -166,7 +172,7 @@ export default function TenantDataPage() {
               ))}
             </ul>
           </section>
-          {isOwner && (
+          {isOperator && (
             <section aria-label="Delete tenant data" className="danger-zone">
               <h2>Delete organization and data</h2>
               <p>
@@ -179,11 +185,13 @@ export default function TenantDataPage() {
                   event.preventDefault();
                   if (
                     tenant &&
-                    isOwner &&
+                    isOperator &&
                     confirmName === tenant.name &&
                     reason.trim().length >= 3
-                  )
+                  ) {
+                    setConfirmName("");
                     deleteDialog.current?.showModal();
+                  }
                 }}
               >
                 <label>
@@ -212,17 +220,30 @@ export default function TenantDataPage() {
                     reason.trim().length < 3
                   }
                 >
-                  Permanently delete organization
+                  Schedule organization deletion
                 </button>
               </form>
               <dialog ref={deleteDialog} aria-labelledby="delete-tenant-title">
-                <h2 id="delete-tenant-title">
-                  Permanently delete this organization?
-                </h2>
+                <h2 id="delete-tenant-title">Delete this organization?</h2>
                 <p>
-                  This removes {tenant.name} and its bots, knowledge, contacts
-                  and conversations. This action cannot be undone.
+                  This disables {tenant.name} immediately and schedules data and
+                  storage removal after the grace period.
                 </p>
+                <ul>
+                  {Object.entries(counts).map(([kind, count]) => (
+                    <li key={kind}>
+                      {kind}: {count}
+                    </li>
+                  ))}
+                </ul>
+                <label>
+                  Type the organization name
+                  <input
+                    aria-label="Confirm organization name"
+                    value={confirmName}
+                    onChange={(event) => setConfirmName(event.target.value)}
+                  />
+                </label>
                 <div className="action-row">
                   <button
                     className="quiet-button"

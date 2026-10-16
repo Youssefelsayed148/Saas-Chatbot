@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { registerOwner } from "./e2e-helpers";
+import { registerOperator } from "./e2e-helpers";
 
 /**
  * P4-03 E2E: appearance settings are saved and reflected, the Install page
@@ -11,7 +11,7 @@ import { registerOwner } from "./e2e-helpers";
 async function createOrgAndBot(
   page: Page,
 ): Promise<{ tenantId: string; botId: string; locator: string }> {
-  const { tenantId, botName } = await registerOwner(page, "Install", {});
+  const { tenantId, botName } = await registerOperator(page, "Install", {});
   await page
     .getByRole("row", { name: new RegExp(botName) })
     .getByRole("link")

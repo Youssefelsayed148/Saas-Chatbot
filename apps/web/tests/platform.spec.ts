@@ -1,10 +1,10 @@
 import { expect, type Page, test } from "@playwright/test";
-import { registerOwner } from "./e2e-helpers";
+import { registerAdmin } from "./e2e-helpers";
 import { promoteToStaff } from "./staff-helpers";
 
 /**
  * P4-06 E2E (docs/11): /platform gated SERVER-SIDE (non-staff redirected);
- * staff view the client list, onboard a client end to end (tenant + owner
+ * staff view the client list, onboard a client end to end (tenant + admin
  * one-time invite + bot), and open the client detail (bots, members, audit).
  * The staff flag is not a tenant role and has no self-service path, so the
  * E2E sets it the way the pytest suite does — a direct UPDATE on the SAME
@@ -41,7 +41,7 @@ test("staff list, onboard a client end to end, and open the client detail", asyn
   const staffEmail = `platform.${Date.now()}@example.com`;
 
   // Register through the UI, then promote directly in the E2E database.
-  await registerOwner(page, "Platform", { email: staffEmail });
+  await registerAdmin(page, "Platform", { email: staffEmail });
   promoteToStaff(staffEmail);
 
   await page.goto("/platform");
@@ -56,7 +56,7 @@ test("staff list, onboard a client end to end, and open the client detail", asyn
   await page.getByTestId("ob-client-name").fill(clientName);
   await page
     .getByTestId("ob-owner-email")
-    .fill(`owner.${Date.now()}@client.example`);
+    .fill(`admin.${Date.now()}@client.example`);
   await page.getByTestId("ob-bot-name").fill("First Bot");
   await page.getByTestId("ob-submit").click();
   const invite = page.getByTestId("ob-invite-link");
@@ -89,4 +89,60 @@ test("staff list, onboard a client end to end, and open the client detail", asyn
   await page.getByTestId("client-detail-bots");
   const csrf = await csrfOf(page);
   expect(csrf).toBeTruthy();
+
+  // The onboarded client has no membership for this operator.
+  const clientId = page.url().split("/").at(-1)!;
+  const preview = await (
+    await page.request.get(`/api/v1/tenants/${clientId}/data/deletion-preview`)
+  ).json();
+  const me = await (await page.request.get("/api/v1/auth/me")).json();
+  expect(
+    me.memberships.some(
+      (membership: { tenant_id: string }) => membership.tenant_id === clientId,
+    ),
+  ).toBe(false);
+  await page
+    .getByRole("link", { name: "Organization data and deletion" })
+    .click();
+  await page.getByLabel(`Type ${clientName} to confirm`).fill(clientName);
+  await page
+    .getByLabel("Reason for deletion")
+    .fill("Disposable browser test cleanup");
+  const schedule = page.getByRole("button", {
+    name: "Schedule organization deletion",
+  });
+  await schedule.click();
+  const dialog = page.getByRole("dialog", {
+    name: "Delete this organization?",
+  });
+  await expect(dialog).toBeVisible();
+  for (const [kind, count] of Object.entries(preview.counts)) {
+    await expect(
+      dialog.getByText(`${kind}: ${count}`, { exact: true }),
+    ).toBeVisible();
+  }
+  const confirm = dialog.getByRole("button", {
+    name: "Delete organization now",
+  });
+  await expect(confirm).toBeDisabled();
+  await dialog.getByLabel("Confirm organization name").fill(`${clientName} `);
+  await expect(confirm).toBeDisabled();
+  await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+  expect((await page.request.get(`/api/v1/tenants/${clientId}`)).status()).toBe(
+    200,
+  );
+  await page.getByLabel(`Type ${clientName} to confirm`).fill(clientName);
+  await schedule.click();
+  await dialog.getByLabel("Confirm organization name").fill(clientName);
+  await expect(confirm).toBeEnabled();
+  const deleted = page.waitForResponse(
+    (response) =>
+      response.request().method() === "DELETE" &&
+      response.url().endsWith(`/tenants/${clientId}/data`),
+  );
+  await confirm.click();
+  expect((await deleted).status()).toBe(204);
+  expect((await page.request.get(`/api/v1/tenants/${clientId}`)).status()).toBe(
+    404,
+  );
 });

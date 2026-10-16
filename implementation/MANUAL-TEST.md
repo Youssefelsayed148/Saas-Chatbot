@@ -68,7 +68,7 @@ $env:DATABASE_URL = "<same dev URL as above>"
 ..\..\.venv\Scripts\python.exe -m scripts.seed_demo
 ```
 
-Logins are printed by the script: `demo-owner@example.com`, `demo-admin@example.com`, `demo-editor@example.com`, `demo-viewer@example.com`. For a `*_dev` database the password is `FakeDemoOnly!123`; for `*_demo` set `DEMO_SEED_PASSWORD` (8–128 chars) first.
+Logins are printed by the script: `demo-admin@example.com`, `demo-editor@example.com`, `demo-viewer@example.com`. For a `*_dev` database the password is `FakeDemoOnly!123`; for `*_demo` set `DEMO_SEED_PASSWORD` (8–128 chars) first.
 
 ## 4. Real model (OpenRouter) vs stub
 
@@ -96,23 +96,23 @@ Behavioural check: ask something paraphrased in the widget. A real model rewrite
 Use the seeded demo tenant for steps 7–8 if you want data already there; otherwise use the fresh tenant from step 1.
 
 1. **Sign up.** `/register`: organization name, first bot name, email, password. You land on `/app/<tenant>/bots` with one bot, and the plan is Free.
-2. **Create a second bot** (or open the first bot). Bot > Settings: choose Activate bot (status Active).
-3. **Upload knowledge.** Bot > Knowledge: the upload control is enabled right after signup (no reload). Upload a short `.md`/`.txt` with some facts (e.g. opening hours).
+2. **Operator setup.** Sign in as platform staff and open the target client from /platform. Open its bot > Settings and activate it. Client roles cannot create, archive or edit bots.
+3. **Upload knowledge as staff.** Bot > Knowledge: upload a short `.md`/`.txt` with facts (e.g. opening hours). Client roles request changes; knowledge and document status are operator-only.
 4. **Wait for ingestion.** The job moves Queued > Processing > Completed (raw states pending > running > succeeded) (needs the worker). Preview documents and chunks, then **Publish**.
 5. **Chat in the widget.** Open the sample page URL with the bot's locator, click the bubble, ask about the uploaded facts. Expect a grounded answer with a citation; ask something off-topic and expect it to say it cannot confirm.
 6. **Handoff.** In the widget ask for a human. In Workspace > Inbox the thread shows Waiting for human: choose Take over, send a reply, then Return to AI. The reply appears in the widget through polling; it also remains after reopening.
 7. **Contacts.** Submit the widget lead form (name, email, consent). Dashboard > Contacts lists the lead; open it and change its stage.
 8. **Overview.** Bot > Overview: messages, conversations, widget opens and leads match what you just did; the unanswered list shows the off-topic question; leads CSV downloads.
 9. **Invite a teammate.** Team > Create invite link (role editor). Copy the `/accept-invite?token=...` link, open it in a separate browser profile after registering with the invited email, accept. The teammate sees the tenant with editor rights.
-10. **Hit a plan limit.** On the Free plan keep creating bots/invites until you get **429 QUOTA_EXCEEDED** with the plan message (Overview and Bots show PLACEHOLDER plan usage). Accepting an invite you already hold must still work at the seat limit.
+10. **Hit a plan limit.** Staff bot creation and admin invitations enforce plan limits with 429 QUOTA_EXCEEDED. Accepting an already-reserved invitation must work at the seat limit.
 11. **Tenant isolation.** With a second account (another tenant), open the first tenant's URL: expect 404, not 403.
-12. **Delete a tenant.** Owner > Tenant data and audit > Permanently delete organization: type the exact tenant name and a reason of at least three characters, then confirm in the final dialog. Cancel must send no deletion request. Expect the tenant, its bots, knowledge and uploaded files to disappear and the owner to lose access.
+12. **Delete a tenant as staff.** Tenant data and audit > Schedule organization deletion: supply a meaningful reason and exact name, then enter the name again in the counts popup. Cancel sends no mutation. Access is disabled immediately; tenant rows and storage remain until the configurable grace period elapses (default 30 days).
 
 
 ## 6. Redesigned UI checks
 
 - Sidebar Overview opens `/app/<tenant>`; Bots, post-login and organization switching still use `/app/<tenant>/bots`. Tenant Overview is read-only. The first-bot checklist derives published knowledge from revisions; installation is not claimed.
-- The top bar shows Client workspace, tenant name and role. `/platform` has a distinct Platform admin shell. Staff access does not grant tenant permissions.
+- The top bar shows Client workspace, tenant name and role. `/platform` has a distinct Platform admin shell. Staff can operate a target client?s bots without tenant membership; inbox actions require a client membership.
 - Appearance follows the system initially; a manual choice persists per viewer in this browser. Check both themes, a second signed-in viewer and storage-disabled behavior.
 - Ctrl/Cmd+K opens page navigation. Search, use arrow keys/Enter and Escape; focus returns to the trigger. It never executes mutations. At 360px, open the mobile navigation drawer and dismiss it with Escape.
 - Archive opens a cancelable confirmation. Tenant deletion still requires exact name/reason. Contact erasure has an explicit optional message-erasure checkbox. Cancel any dialog and verify no mutation occurs.
@@ -121,3 +121,19 @@ Use the seeded demo tenant for steps 7–8 if you want data already there; other
 - At 360x800 and 1440x900, verify no horizontal page scrolling, including tables, forms, snippets and dialogs. Check visible focus and reduced-motion preference. Widgets retain bot color/placement/language from existing config only.
 - Verify widget 429 server text is displayed verbatim; do not substitute or translate it. Test lead consent, failure/retry, handoff and reopening history.
 - Automated screenshots are saved under `implementation/ui-screens/` after the final two successful full browser runs. Large images are not committed.
+
+
+## Phase 1 roles and operator control ? 2026-10-16
+
+Apply migration 0013 before testing. The client demo logins are demo-admin, demo-editor and demo-viewer; demo-owner is retired. Use a separate staff account for operator actions. The client admin never becomes platform staff by changing a tenant role. Existing onboarding payload fields `owner_email`/`owner_invite` are retained for compatibility; they now invite an admin.
+
+1. With signup disabled, POST registration without an invite, with a forged/expired/revoked/used token, or with a token for another email: 403 and no new user. A valid matching token registers, then accepts once.
+2. Admin can manage members/invitations and audit/exports/CSVs. Promote another admin before demoting/removing the current admin. Demoting/removing the sole admin returns LAST_ADMIN. No ownership-transfer UI or endpoint exists.
+3. All client roles see no knowledge, document status, Install snippet or settings controls. Guess their URLs and verify server restrictions; bot responses omit configuration and locator for all client roles.
+4. Client roles receive 403 for knowledge reads (sources/detail/template, jobs/detail, documents/chunks, revisions), upload/ingestion/job cancel/retry/publish, bot PATCH, playground/feedback and organization deletion. Staff without membership in the target client performs these through the scoped API or links from platform client detail.
+5. Editor can reply, take over/return/resolve/assign, tag/note, schedule follow-ups and create/edit contacts. Assignment choices use the editor-accessible assignees endpoint. Admin alone can configure stages, merge/delete contacts or delete conversations. Viewer cannot mutate, including read markers.
+6. Admin opens Request a change, chooses a type, supplies text and optionally attachments. Confirm it appears with pending status. A separate staff account opens /platform/change-requests, downloads evidence and triages. Refresh the admin list to see the updated status. A deletion request only creates a request; staff must execute the deletion separately.
+7. Staff opens Organization data and deletion. Confirm the popup shows resource counts and requires the exact organization name. Mismatched case/whitespace returns 422 at the API. Successful deletion immediately disables bots/widget and existing client sessions; a new login cannot access the organization. Grace defaults to 30 days, configurable with ORG_DELETION_GRACE_DAYS. Only use a disposable test organization to exercise expiry/purge; verify knowledge and request attachment storage is cleaned and the independent ledger survives.
+8. Keep tenant A/B guessed-ID checks. Channel connections and per-channel analytics filtering are deferred to Phase 3 per this change note. If Playwright sees ECONNRESET, record the spec name and failure; do not change the flake handling in this scope.
+
+- Verify client inbox/conversation views and visitor widget turn/history show no citations or source links. Client exports retain operational data but exclude knowledge, bot configuration and citations. Staff retain knowledge and install access.

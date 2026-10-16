@@ -6,7 +6,7 @@ A developer runs web, API and DB locally. A user registers, logs in/out, creates
 |---|---|---|
 | P1-01 | Toolchain, Compose, health/ready, CI (DONE) | see P1-01-REPORT.md |
 | P1-02 | SQLAlchemy 2 + Alembic; tables `users`, `sessions`, `tenants`, `memberships`, `bots`, `audit_events`; Argon2id; register/login/logout/me with cookie sessions + CSRF; `is_platform_staff` column (unused yet) | Upgrade/downgrade on disposable DB; constraint tests; valid/invalid/expired/revoked session tests; no secrets in logs |
-| P1-03 | Tenant create/get/list-mine; membership roles; role dependency; bot create/list/get/update/archive (soft) with audit; stable error format | Role matrix tests (owner/admin/editor/viewer); tenant A/B isolation by guessed UUID returns 404; validation tests |
+| P1-03 | Tenant create/get/list-mine; membership roles; role dependency; bot create/list/get/update/archive (soft) with audit; stable error format | Role matrix tests (admin/editor/viewer and independent platform staff); tenant A/B isolation by guessed UUID returns 404; validation tests |
 | P1-04 | Next.js: register, login, org selector/creation, bots list/create/edit/archive, role-aware UI, loading/error/empty states; Playwright E2E; phase verification report | Browser E2E creates tenant + bot against the real API; no mocked data in UI; all checks pass; owner sign-off |
 ## Directory contract (additions to P1-01)
 `apps/api/app/modules/{auth,tenants,bots}/` each with `models.py, schemas.py, service.py, router.py`; `apps/api/app/db/{base.py,session.py}`; `apps/api/alembic/`; `apps/api/tests/{unit,integration}/`. Services receive tenant context explicitly; routers contain no business logic.

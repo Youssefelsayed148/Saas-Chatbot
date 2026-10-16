@@ -138,6 +138,7 @@ def analytics_conversations_csv(
     from_date: Annotated[str | None, Query(alias="from")] = None,
     to_date: Annotated[str | None, Query(alias="to")] = None,
 ) -> Response:
+    context.require_role("admin")
     get_bot(context, bot_id)
     start, end = _window(from_date, to_date)
     rows: list[dict[str, object]] = service.conversations_csv(
@@ -166,6 +167,7 @@ def analytics_leads_csv(
     from_date: Annotated[str | None, Query(alias="from")] = None,
     to_date: Annotated[str | None, Query(alias="to")] = None,
 ) -> Response:
+    context.require_role("admin")
     get_bot(context, bot_id)
     start, end = _window(from_date, to_date)
     rows: list[dict[str, object]] = service.lead_contacts(

@@ -6,13 +6,13 @@
  * secret (docs/05) — it only names the bot; sessions carry the authority.
  */
 
+import { useSession } from "@/lib/session";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { LabelBadge } from "@/lib/labels";
 import * as api from "@/lib/api";
-import { useSession } from "@/lib/session";
 import { Loading, Notice } from "@/lib/ui";
 import BotWorkspaceNav from "@/lib/bot-workspace-nav";
 
@@ -27,10 +27,10 @@ function originOf(): string {
 }
 
 export default function InstallPage() {
+  const { me, roleIn } = useSession();
   const params = useParams<{ tenant: string; botId: string }>();
   const tenantId = params.tenant;
   const botId = params.botId;
-  const { roleIn } = useSession();
   const role = roleIn(tenantId);
 
   const [bot, setBot] = useState<api.Bot | null>(null);
@@ -38,6 +38,7 @@ export default function InstallPage() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
+    if (!me?.is_platform_staff) return;
     const timer = setTimeout(() => {
       void (async () => {
         try {
@@ -53,7 +54,15 @@ export default function InstallPage() {
       })();
     }, 0);
     return () => clearTimeout(timer);
-  }, [tenantId, botId]);
+  }, [tenantId, botId, me?.is_platform_staff]);
+
+  if (!me?.is_platform_staff)
+    return (
+      <main>
+        <h1>Install</h1>
+        <Notice message="Platform staff access required." />
+      </main>
+    );
 
   if (loadError) {
     return (

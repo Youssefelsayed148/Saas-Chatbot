@@ -3,15 +3,16 @@
 Guarded server-side by users.is_platform_staff (never a tenant role); no
 impersonation, actor attribution on every staff action. Client list and
 detail are read views; onboarding goes through the SHARED ProvisioningService
-with a REQUIRED Idempotency-Key and returns the owner one-time invite link
+with a REQUIRED Idempotency-Key and returns the admin one-time invite link
 (shown once). Non-staff calls reach 403 FORBIDDEN.
 """
 
 import csv
 import io
 import json
+import secrets
 from typing import Annotated, Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import (
     APIRouter,
@@ -23,11 +24,13 @@ from fastapi import (
     Response,
     UploadFile,
 )
+from app.auth import cookies
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session as OrmSession
 
 from app.core.audit import record_audit
+from app.bots.schemas import BotOut
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
 from app.db.models import (
@@ -52,6 +55,11 @@ router = APIRouter(prefix="/api/v1/platform")
 
 DbSession = Annotated[OrmSession, Depends(get_session)]
 CurrentSettings = Annotated[Settings, Depends(get_settings)]
+CsrfOk = Annotated[None, Depends(cookies.require_csrf)]
+
+
+class PlatformBotCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
 
 
 class ReasonAction(BaseModel):
@@ -283,6 +291,52 @@ def platform_quota_override(
     )
     db.commit()
     return {"tenant_id": str(tenant.id), "limits": tenant.quota_overrides}
+
+
+@router.post("/tenants/{tenant_id}/bots", response_model=BotOut, status_code=201)
+def platform_create_bot(
+    tenant_id: UUID,
+    payload: PlatformBotCreate,
+    staff: PlatformStaffDep,
+    db: DbSession,
+    _: CsrfOk,
+) -> BotOut:
+    from app.quotas.service import lock_tenant, require_capacity
+
+    tenant = lock_tenant(db, tenant_id)
+    require_capacity(db, tenant, "bots")
+    bot = Bot(
+        id=uuid4(), tenant_id=tenant.id, name=payload.name.strip(), status="draft",
+        config={}, widget_locator="w" + secrets.token_hex(16),
+    )
+    db.add(bot)
+    db.flush()
+    record_audit(
+        db, action="platform.bot.created", tenant_id=tenant.id, actor_user_id=staff.id,
+        target_type="bot", target_id=str(bot.id),
+    )
+    db.commit()
+    return BotOut.model_validate(bot)
+
+
+@router.delete("/tenants/{tenant_id}/bots/{bot_id}", response_model=BotOut, status_code=200)
+def platform_archive_bot(
+    tenant_id: UUID, bot_id: UUID, staff: PlatformStaffDep, db: DbSession, _: CsrfOk
+) -> BotOut:
+    from datetime import UTC, datetime
+
+    bot = db.execute(select(Bot).where(Bot.id == bot_id, Bot.tenant_id == tenant_id)).scalar_one_or_none()
+    if bot is None:
+        raise ApiError(404, "NOT_FOUND", "Resource not found.")
+    if bot.status != "archived":
+        bot.status = "archived"
+        bot.updated_at = datetime.now(UTC)
+        record_audit(
+            db, action="platform.bot.archived", tenant_id=tenant_id, actor_user_id=staff.id,
+            target_type="bot", target_id=str(bot.id),
+        )
+        db.commit()
+    return BotOut.model_validate(bot)
 
 
 @router.post("/bots/{bot_id}/pause")
@@ -532,7 +586,7 @@ async def platform_onboarding(
     settings: CurrentSettings,
     client_name: Annotated[str, Form(min_length=1, max_length=200)],
     owner_email: Annotated[str, Form()],
-    bot_name: Annotated[str | None, Form(max_length=100)] = None,
+    bot_name: Annotated[str, Form(min_length=1, max_length=100)] = "Website assistant",
     plan_label: Annotated[str, Form(max_length=40)] = "starter",
     notes: Annotated[str | None, Form(max_length=500)] = None,
     files: Annotated[list[UploadFile], File()] | None = None,
@@ -540,13 +594,13 @@ async def platform_onboarding(
 ) -> dict[str, Any]:
     """Staff onboarding through the SHARED ProvisioningService. Idempotency-Key
     REQUIRED (a replay re-reads the durable row and returns it). The actor is
-    the staff user; the owner one-time invite link is returned once."""
+    the staff user; the admin one-time invite link is returned once."""
     if not idempotency_key or not idempotency_key.strip():
         raise ApiError(400, "VALIDATION_ERROR", "Idempotency-Key header is required.")
     payload = ProvisioningPayload(
         client_name=client_name,
         owner_email=owner_email,
-        bot_name=bot_name or None,
+        bot_name=bot_name,
         plan_label=plan_label or "starter",
         notes=notes,
     )

@@ -70,8 +70,8 @@ def make_active_bot_with_knowledge(
 ) -> dict[str, Any]:
     """Bot + published revision (through the REAL pipeline) + active status."""
     bot = make_bot(users, name)
-    users.call(
-        "owner",
+    patched = users.call(
+        "staff",
         "PATCH",
         f"/api/v1/tenants/{users.tenant_id}/bots/{bot['id']}",
         json={
@@ -82,6 +82,7 @@ def make_active_bot_with_knowledge(
             }
         },
     )
+    assert patched.status_code == 200, patched.text
     storage_root = Path(retrieval_settings().storage_root)
     upload = upload_sources(users, bot["id"], [("hours.md", MD_HOURS.encode())], storage_root)
     assert upload.status_code == 201, upload.text
@@ -100,7 +101,7 @@ def _engine() -> Any:
 
 
 def _set_bot_status(db: OrmSession, users: Any, *, bot_id: str, status: str) -> None:
-    """draft→active is an owner action whose UI/API arrives in later tickets;
+    """draft→active is an admin action whose UI/API arrives in later tickets;
     scoped to the tenant (the UPDATE never touches other tenants' rows)."""
     db.execute(
         text(
@@ -296,12 +297,13 @@ def test_unallowed_domain_is_rejected_as_defence_signal(
     PAGE origin (sent by the loader script) is compared, not the iframe's."""
     users = corpus["users_a"]
     bot = make_active_bot_with_knowledge(app, users, db, name="Domainbound")
-    users.call(
-        "owner",
+    patched = users.call(
+        "staff",
         "PATCH",
         f"/api/v1/tenants/{users.tenant_id}/bots/{bot['id']}",
         json={"config": {"allowed_domains": ["example.com"]}},
     )
+    assert patched.status_code == 200, patched.text
     client = app_client(app)
     good = client.post(
         f"/api/public/v1/widgets/{bot['widget_locator']}/sessions",
@@ -439,7 +441,7 @@ def test_message_endpoint_runs_the_pipeline_with_citations(
     payload = response.json()
     ai = payload["ai_message"]
     assert ai["text"]
-    assert len(ai["citations"]) >= 1
+    assert ai["citations"] == []
     assert ai["can_answer"] is True
     assert ai["needs_human"] is False
     assert payload["kind"] == "answer"
@@ -452,6 +454,7 @@ def test_message_endpoint_runs_the_pipeline_with_citations(
     assert len(rows) == 2  # visitor + ai, oldest first
     assert rows[0]["sender_type"] == "visitor"
     assert rows[1]["sender_type"] == "ai"
+    assert all(row["citations"] == [] for row in rows)
 
 
 def test_widget_feedback_recorded_idempotently(

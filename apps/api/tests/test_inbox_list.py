@@ -57,12 +57,12 @@ def test_inbox_filters_search_tags_and_per_user_unread(
     request.addfinalizer(setup["client"].close)
     conversation_id = setup["turn"]["conversation_id"]
     base = _base(users.tenant_id, conversation_id)
-    owner = users.as_user("owner")
+    admin = users.as_user("admin")
     editor = users.as_user("editor")
     viewer = users.as_user("viewer")
     list_url = f"/api/v1/tenants/{users.tenant_id}/inbox"
 
-    initial = owner.get(list_url)
+    initial = admin.get(list_url)
     assert initial.status_code == 200, initial.text
     assert initial.json()["total"] == 1
     item = initial.json()["conversations"][0]
@@ -78,22 +78,22 @@ def test_inbox_filters_search_tags_and_per_user_unread(
         {"unread": "true"},
         {"q": "opening hours"},
     ):
-        result = owner.get(list_url, params=params)
+        result = admin.get(list_url, params=params)
         assert result.status_code == 200, result.text
         assert result.json()["total"] == 1, params
-    assert owner.get(list_url, params={"status": "resolved"}).json()["total"] == 0
+    assert admin.get(list_url, params={"status": "resolved"}).json()["total"] == 0
 
     added = editor.post(base + "/tags", json={"tag": "  Urgent "}, headers=csrf_headers(editor))
     assert added.status_code == 201, added.text
     assert added.json()["tags"] == ["urgent"]
-    tagged = owner.get(list_url, params={"tag": "URGENT"})
+    tagged = admin.get(list_url, params={"tag": "URGENT"})
     assert tagged.status_code == 200
     assert tagged.json()["conversations"][0]["tags"] == ["urgent"]
 
-    # Read markers are per-member: marking as read for the owner leaves the
+    # Read markers are per-member: marking as read for the admin leaves the
     # same visitor message unread for the editor.
-    assert owner.post(base + "/read", headers=csrf_headers(owner)).json() == {"unread_count": 0}
-    assert owner.get(list_url).json()["conversations"][0]["unread_count"] == 0
+    assert admin.post(base + "/read", headers=csrf_headers(admin)).json() == {"unread_count": 0}
+    assert admin.get(list_url).json()["conversations"][0]["unread_count"] == 0
     assert editor.get(list_url).json()["conversations"][0]["unread_count"] == 1
 
     later = setup["client"].post(
@@ -102,16 +102,16 @@ def test_inbox_filters_search_tags_and_per_user_unread(
         headers={"X-Session-Token": setup["session"]["token"]},
     )
     assert later.status_code == 201, later.text
-    assert owner.get(list_url).json()["conversations"][0]["unread_count"] == 1
+    assert admin.get(list_url).json()["conversations"][0]["unread_count"] == 1
     assert editor.get(list_url).json()["conversations"][0]["unread_count"] == 2
 
     assert viewer.get(list_url).status_code == 200
     denied = viewer.post(base + "/tags", json={"tag": "blocked"}, headers=csrf_headers(viewer))
     assert denied.status_code == 403
-    hidden = users.as_user("owner").get(f"/api/v1/tenants/{foreign_users.tenant_id}/inbox")
+    hidden = users.as_user("admin").get(f"/api/v1/tenants/{foreign_users.tenant_id}/inbox")
     assert hidden.status_code == 404
 
-    counts = owner.get(list_url + "/counts")
+    counts = admin.get(list_url + "/counts")
     assert counts.status_code == 200
     assert counts.json()["unread_messages"] >= 1
     assert counts.json()["unread_conversations"] == 1
@@ -124,7 +124,7 @@ def test_tag_endpoint_hides_cross_tenant_conversation(
     foreign_users = _tenant(app, db, "inbox-isolation-b", request)
     setup = seed_setup(app, users, db, name="Inbox isolation")
     request.addfinalizer(setup["client"].close)
-    foreign = foreign_users.as_user("owner")
+    foreign = foreign_users.as_user("admin")
     path = _base(foreign_users.tenant_id, setup["turn"]["conversation_id"])
     response = foreign.post(path + "/tags", json={"tag": "secret"}, headers=csrf_headers(foreign))
     assert response.status_code == 404
@@ -148,19 +148,19 @@ def test_notification_counts_follow_waiting_and_assignment(
     conversation.status = "waiting_human"
     db.commit()
 
-    owner = users.as_user("owner")
+    admin = users.as_user("admin")
     editor = users.as_user("editor")
     counts_url = f"/api/v1/tenants/{users.tenant_id}/inbox/counts"
-    waiting = owner.get(counts_url).json()
+    waiting = admin.get(counts_url).json()
     assert waiting["waiting_human"] == 1
     assert waiting["assigned_to_me"] == 0
 
-    takeover = owner.post(
+    takeover = admin.post(
         f"/api/v1/tenants/{users.tenant_id}/conversations/{conversation_id}/takeover",
-        headers=csrf_headers(owner),
+        headers=csrf_headers(admin),
     )
     assert takeover.status_code == 200, takeover.text
-    assigned = owner.get(counts_url).json()
+    assigned = admin.get(counts_url).json()
     assert assigned["waiting_human"] == 0
     assert assigned["assigned_to_me"] == 1
     assert editor.get(counts_url).json()["assigned_to_me"] == 0
@@ -182,9 +182,9 @@ def test_sse_reconnects_across_two_app_instances(
 
     second_app = create_app()
     _override_widget_settings(second_app)
-    owner_id = UUID(users.users["owner"]["id"])
+    admin_id = UUID(users.users["admin"]["id"])
     with TestClient(second_app) as process_two:
-        first = event_stream(users.tenant_id, owner_id, None)
+        first = event_stream(users.tenant_id, admin_id, None)
         try:
             initial = _next_generator_event(first)
             assert initial["event"] == "inbox.ready"
@@ -205,7 +205,7 @@ def test_sse_reconnects_across_two_app_instances(
         finally:
             first.close()
 
-        resumed = event_stream(users.tenant_id, owner_id, cursor)
+        resumed = event_stream(users.tenant_id, admin_id, cursor)
         try:
             ready = _next_generator_event(resumed)
             assert ready["event"] == "inbox.ready"
@@ -229,9 +229,9 @@ def test_invalid_sse_cursor_and_inbox_rows_are_tenant_scoped(
     users = _tenant(app, db, "inbox-cursor", request)
     setup = seed_setup(app, users, db, name="Inbox cursor")
     request.addfinalizer(setup["client"].close)
-    owner = users.as_user("owner")
+    admin = users.as_user("admin")
     stream_url = f"/api/v1/tenants/{users.tenant_id}/inbox/events"
-    invalid = owner.get(stream_url, headers={"Last-Event-ID": "not-a-cursor"})
+    invalid = admin.get(stream_url, headers={"Last-Event-ID": "not-a-cursor"})
     assert invalid.status_code == 400
     rows = db.query(InboxEvent).filter(InboxEvent.tenant_id == users.tenant_id).all()
     assert rows
@@ -239,7 +239,7 @@ def test_invalid_sse_cursor_and_inbox_rows_are_tenant_scoped(
     from app.inbox.listing import event_stream
 
     latest = max(row.id for row in rows)
-    stream = event_stream(users.tenant_id, UUID(users.users["owner"]["id"]), latest + 10_000)
+    stream = event_stream(users.tenant_id, UUID(users.users["admin"]["id"]), latest + 10_000)
     ready = _next_generator_event(stream)
     assert int(ready["id"]) == latest
     stream.close()

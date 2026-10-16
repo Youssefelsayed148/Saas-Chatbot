@@ -70,7 +70,7 @@ def test_list_and_detail_show_threads_with_citations(
 ) -> None:
     users = corpus["users_a"]
     setup = seed_setup(app, users, db)
-    client = users.as_user("owner")
+    client = users.as_user("admin")
     listing = client.get(
         f"/api/v1/tenants/{users.tenant_id}/bots/{setup['bot']['id']}/conversations"
     )
@@ -88,10 +88,15 @@ def test_list_and_detail_show_threads_with_citations(
     assert detail.status_code == 200, detail.text
     messages = detail.json()["messages"]
     assert [m["sender_type"] for m in messages] == ["visitor", "ai"]
-    assert len(messages[1]["citations"]) >= 1
-    citation = messages[1]["citations"][0]
-    assert citation["title"]
-    assert citation["source_url"] is not None
+    assert messages[1]["citations"] == []
+    for role in ("editor", "viewer", "staff"):
+        base = f"/api/v1/tenants/{users.tenant_id}/bots/{setup['bot']['id']}"
+        path = f"{base}/conversations/{thread['id']}"
+        rows = users.call(role, "GET", path).json()["messages"]
+        assert bool(rows[1]["citations"]) == (role == "staff")
+        inbox_path = f"/api/v1/tenants/{users.tenant_id}/conversations/{thread['id']}"
+        rows = users.call(role, "GET", inbox_path).json()["messages"]
+        assert bool(rows[1]["citations"]) == (role == "staff")
 
 
 def test_playground_threads_are_excluded_from_the_list(
@@ -105,7 +110,7 @@ def test_playground_threads_are_excluded_from_the_list(
 
     playground_user, _payload = logged_in(app, "playground-view@example.com")
     del playground_user
-    listing = users.as_user("owner").get(
+    listing = users.as_user("admin").get(
         f"/api/v1/tenants/{users.tenant_id}/bots/{setup['bot']['id']}/conversations"
     )
     assert all(row["id"] for row in listing.json()["conversations"])
@@ -125,15 +130,15 @@ def test_tenant_b_and_foreign_ids_are_404(
     other = corpus["users_b"]
     bot_id = setup["bot"]["id"]
     base = f"/api/v1/tenants/{other.tenant_id}/bots/{bot_id}/conversations/{thread_id}"
-    assert other.as_user("owner").get(base).status_code == 404
+    assert other.as_user("admin").get(base).status_code == 404
     assert (
-        other.as_user("owner")
-        .delete(base, headers={"X-CSRF-Token": other.as_user("owner").cookies.get("chatbot_csrf")})
+        other.as_user("admin")
+        .delete(base, headers={"X-CSRF-Token": other.as_user("admin").cookies.get("chatbot_csrf")})
         .status_code
         == 404
     )
     # Tenant A reading a guessed thread id → 404
-    guessed = users.as_user("owner").get(
+    guessed = users.as_user("admin").get(
         f"/api/v1/tenants/{users.tenant_id}/bots/{bot_id}/conversations/{uuid4()}"
     )
     assert guessed.status_code == 404
@@ -152,12 +157,17 @@ def test_viewer_reads_but_editor_deletes(
         headers={"X-CSRF-Token": users.as_user("viewer").cookies.get("chatbot_csrf")},
     )
     assert viewer_del.status_code == 403
-    removed = users.as_user("editor").delete(
+    editor_del = users.as_user("editor").delete(
         f"/api/v1/tenants/{users.tenant_id}/bots/{setup['bot']['id']}/conversations/{thread_id}",
         headers={"X-CSRF-Token": users.as_user("editor").cookies.get("chatbot_csrf")},
     )
+    assert editor_del.status_code == 403
+    removed = users.as_user("admin").delete(
+        f"/api/v1/tenants/{users.tenant_id}/bots/{setup['bot']['id']}/conversations/{thread_id}",
+        headers={"X-CSRF-Token": users.as_user("admin").cookies.get("chatbot_csrf")},
+    )
     assert removed.status_code == 200
-    gone = users.as_user("owner").get(
+    gone = users.as_user("admin").get(
         f"/api/v1/tenants/{users.tenant_id}/bots/{setup['bot']['id']}/conversations/{thread_id}"
     )
     assert gone.status_code == 404
@@ -180,17 +190,17 @@ def test_retention_setting_roundtrip_and_purge(
         headers={"X-CSRF-Token": users.as_user("viewer").cookies.get("chatbot_csrf")},
     )
     assert denied.status_code == 403
-    patched = users.as_user("owner").patch(
+    patched = users.as_user("admin").patch(
         tenant_path,
         json={"retention_days": 7},
-        headers={"X-CSRF-Token": users.as_user("owner").cookies.get("chatbot_csrf")},
+        headers={"X-CSRF-Token": users.as_user("admin").cookies.get("chatbot_csrf")},
     )
     assert patched.status_code == 200, patched.text
     assert patched.json()["retention_days"] == 7
-    invalid = users.as_user("owner").patch(
+    invalid = users.as_user("admin").patch(
         tenant_path,
         json={"retention_days": 0},
-        headers={"X-CSRF-Token": users.as_user("owner").cookies.get("chatbot_csrf")},
+        headers={"X-CSRF-Token": users.as_user("admin").cookies.get("chatbot_csrf")},
     )
     assert invalid.status_code == 422
 

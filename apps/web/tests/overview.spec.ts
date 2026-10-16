@@ -1,5 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
-import { registerOwner } from "./e2e-helpers";
+import { registerOperator } from "./e2e-helpers";
+import { setPlatformStaff } from "./staff-helpers";
 
 /**
  * P4-05 E2E: per-bot workspace shell (Overview/Playground/etc.) + the Overview
@@ -22,7 +23,10 @@ async function csrfToken(page: Page): Promise<string> {
 }
 
 async function registerAndPrepare(page: Page, store: string, hours: string) {
-  const { tenantId, botName } = await registerOwner(page, `Overview ${store}`);
+  const { tenantId, botName } = await registerOperator(
+    page,
+    `Overview ${store}`,
+  );
   await page
     .getByRole("row", { name: new RegExp(botName) })
     .getByRole("link")
@@ -132,7 +136,7 @@ test("workspace shell + measured overview with per-bot scoping and CSV", async (
   const contextB = await browser.newContext();
   const pageB = await contextB.newPage();
   const b = await registerAndPrepare(pageB, "Beta", "11:00");
-  // context B stays open until the scoping assertions made below; the owner
+  // context B stays open until the scoping assertions made below; the admin
   // session in tenant B is required to read bot B's OWN summary.
 
   // real visitor activity in tenant A only
@@ -172,7 +176,10 @@ test("workspace shell + measured overview with per-bot scoping and CSV", async (
   await expect(section).toContainText("Widget opens: 1");
   await expect(section).toContainText("Leads: 1");
 
-  // Per-bot/tenant scoping: user A's session must NEVER read bot B's numbers.
+  // Setup requires an operator; isolation must be asserted as a client admin.
+  const caller = await (await page.request.get("/api/v1/auth/me")).json();
+  setPlatformStaff(caller.email as string, false);
+  // Per-bot/tenant scoping: client A cannot read bot B's numbers.
   expect(
     (
       await page.request.get(

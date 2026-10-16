@@ -7,24 +7,22 @@ import { useCallback, useEffect, useState } from "react";
 import { LabelBadge } from "@/lib/labels";
 import * as api from "@/lib/api";
 import type { Bot } from "@/lib/api";
-import { roleSatisfies, useSession } from "@/lib/session";
-import { Loading, Notice, ConfirmAction } from "@/lib/ui";
+import { useSession } from "@/lib/session";
+import { Loading, Notice } from "@/lib/ui";
 import BotWorkspaceNav from "@/lib/bot-workspace-nav";
 
 export default function BotSettingsPage() {
   const params = useParams<{ tenant: string; botId: string }>();
   const tenantId = params.tenant;
   const botId = params.botId;
-  const { roleIn } = useSession();
-  const role = roleIn(tenantId);
-  const canEdit = roleSatisfies(role, "editor");
+  const { me } = useSession();
+  const canEdit = !!me?.is_platform_staff;
 
   const [bot, setBot] = useState<Bot | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-  const [archiving, setArchiving] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
 
   const [name, setName] = useState("");
@@ -148,22 +146,15 @@ export default function BotSettingsPage() {
     }
   }
 
-  async function onArchive() {
-    setArchiving(true);
-    setSaveError(null);
-    try {
-      await api.archiveBot(tenantId, botId);
-      await load();
-    } catch (caught) {
-      setSaveError(
-        caught instanceof Error
-          ? caught.message
-          : "Could not archive this bot.",
-      );
-    } finally {
-      setArchiving(false);
-    }
-  }
+  if (me && !me.is_platform_staff)
+    return (
+      <main>
+        <BotWorkspaceNav tenantId={tenantId} botId={botId} />
+        <h1>Bot status</h1>
+        <p>{bot?.status ?? "Loading status?"}</p>
+        <p>Contact your operator to request settings changes.</p>
+      </main>
+    );
 
   if (loadError) {
     return (
@@ -223,9 +214,7 @@ export default function BotSettingsPage() {
         </p>
       )}
       {!canEdit && (
-        <Notice
-          message={`Read-only view: editing requires the editor role (you are ${role}).`}
-        />
+        <Notice message="Only platform operators can edit bot settings." />
       )}
       <form onSubmit={onSave}>
         <label>
@@ -399,22 +388,6 @@ export default function BotSettingsPage() {
           </button>
         )}
       </form>
-      {canEdit && bot.status !== "archived" && (
-        <section aria-label="Archive">
-          <ConfirmAction
-            title="Archive this bot?"
-            description="The bot will disappear from the default list. Its knowledge and history are retained."
-            disabled={archiving}
-            onConfirm={() => void onArchive()}
-            confirmLabel="Archive bot"
-          >
-            {archiving ? "Archiving..." : "Archive bot"}
-          </ConfirmAction>
-          <p className="muted">
-            Archived bots disappear from the default list but are not deleted.
-          </p>
-        </section>
-      )}
       {bot.status === "archived" && <Notice message="This bot is archived." />}
     </main>
   );

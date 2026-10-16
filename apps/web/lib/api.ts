@@ -28,7 +28,7 @@ export class ApiError extends Error {
   }
 }
 
-export type Role = "owner" | "admin" | "editor" | "viewer";
+export type Role = "admin" | "editor" | "viewer";
 
 export interface Contact {
   id: string;
@@ -191,6 +191,10 @@ export interface Me {
   email: string;
   is_platform_staff: boolean;
   memberships: Membership[];
+}
+
+export function authConfig(): Promise<{ self_serve_signup: boolean }> {
+  return api<{ self_serve_signup: boolean }>("auth/config");
 }
 
 export interface Tenant {
@@ -750,10 +754,14 @@ export async function api<T>(
 
 // --- contract helpers ------------------------------------------------------
 
-export async function register(email: string, password: string): Promise<Me> {
+export async function register(
+  email: string,
+  password: string,
+  inviteToken?: string,
+): Promise<Me> {
   return api<Me>("auth/register", {
     method: "POST",
-    body: { email, password },
+    body: { email, password, invite_token: inviteToken },
   });
 }
 
@@ -1391,4 +1399,72 @@ export async function messageFeedback(
     `tenants/${tenantId}/bots/${botId}/messages/${messageId}/feedback`,
     { method: "POST", body: { rating } },
   );
+}
+
+export interface ChangeRequest {
+  id: string;
+  tenant_id: string;
+  requester_id: string | null;
+  type: "knowledge" | "text_change" | "domain" | "delete_org" | "other";
+  text: string;
+  attachments: { id: string; name: string; size_bytes: number }[];
+  status: "pending" | "triaged" | "in_progress" | "completed" | "rejected";
+  created_at: string;
+  updated_at: string;
+}
+
+export function deletionPreview(
+  tenantId: string,
+): Promise<{ name: string; counts: Record<string, number> }> {
+  return api(`tenants/${tenantId}/data/deletion-preview`);
+}
+
+export function listChangeRequests(
+  tenantId?: string,
+): Promise<ChangeRequest[]> {
+  return api(
+    tenantId
+      ? `tenants/${tenantId}/change-requests`
+      : "platform/change-requests",
+  );
+}
+
+export function triageChangeRequest(
+  id: string,
+  status: ChangeRequest["status"],
+): Promise<ChangeRequest> {
+  return api(`platform/change-requests/${id}`, {
+    method: "PATCH",
+    body: { status },
+  });
+}
+
+export async function createChangeRequest(
+  tenantId: string,
+  type: ChangeRequest["type"],
+  text: string,
+  files: File[],
+): Promise<ChangeRequest> {
+  const form = new FormData();
+  form.set("type", type);
+  form.set("text", text);
+  for (const file of files) form.append("files", file);
+  const response = await fetch(`/api/v1/tenants/${tenantId}/change-requests`, {
+    method: "POST",
+    headers: csrfHeader(),
+    credentials: "same-origin",
+    body: form,
+  });
+  const payload = await response.json();
+  if (!response.ok)
+    throw new ApiError(
+      payload.error?.code ?? "REQUEST_FAILED",
+      response.status,
+      payload.error?.message ?? "Request could not be saved.",
+    );
+  return payload as ChangeRequest;
+}
+
+export function listAssignees(tenantId: string): Promise<Member[]> {
+  return api(`tenants/${tenantId}/inbox/assignees`);
 }

@@ -9,8 +9,8 @@ from tests.conftest import csrf_headers
 from tests.helpers import audit_actions, create_tenant, logged_in, make_bot
 
 
-def test_create_tenant_makes_creator_owner(app: Any, db: OrmSession) -> None:
-    client, payload = logged_in(app, "owner-acme@example.com")
+def test_create_tenant_makes_creator_admin(app: Any, db: OrmSession) -> None:
+    client, payload = logged_in(app, "admin-acme@example.com")
     try:
         response = client.post(
             "/api/v1/tenants", json={"name": "Acme Ltd"}, headers=csrf_headers(client)
@@ -24,9 +24,9 @@ def test_create_tenant_makes_creator_owner(app: Any, db: OrmSession) -> None:
 
         me = client.get("/api/v1/auth/me").json()
         roles = {m["tenant_id"]: m["role"] for m in me["memberships"]}
-        assert roles[tenant_id] == "owner"
+        assert roles[tenant_id] == "admin"
 
-        # Exactly one membership row for this user and it is the owner.
+        # Exactly one membership row for this user and it is the admin.
         rows = (
             db.execute(
                 __import__("sqlalchemy").text(
@@ -37,7 +37,7 @@ def test_create_tenant_makes_creator_owner(app: Any, db: OrmSession) -> None:
             .scalars()
             .all()
         )
-        assert rows == ["owner"]
+        assert rows == ["admin"]
 
         audits = audit_actions(db, "tenant.created")
         assert len(audits) == 1
@@ -128,7 +128,7 @@ def test_bots_of_other_tenant_are_hidden_on_every_endpoint(app: Any, db: OrmSess
                 "U",
                 (),
                 {
-                    "clients": {"owner": member},
+                    "clients": {"admin": member},
                     "users": {},
                     "tenant_id": tenant_a,
                     "roles": {},

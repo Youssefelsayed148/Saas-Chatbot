@@ -1,7 +1,7 @@
 """Shared ProvisioningService (docs/12): one path for staff onboarding (P4-06)
 and, later, self-service signup (P7-03 uses the SAME service).
 
-Creates: tenant (unique slug) → owner one-time invitation (docs/14 §19: staff
+Creates: tenant (unique slug) → admin one-time invitation (docs/14 §19: staff
 copy the link; there is no email provider) → optional bot → optional
 website-to-knowledge skill output, stored under generated tenant keys
 (uploaded into a bot later through the ordinary Knowledge flow). Durable
@@ -24,7 +24,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as OrmSession
 
 from app.core.audit import record_audit
-from app.core.config import Settings
+from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
 from app.db.models import Invitation, Membership, ProvisioningRequest, Tenant, User
 from app.quotas.plans import PLAN_LABELS
@@ -65,7 +65,7 @@ def generate_request_id() -> UUID:
 class ProvisioningService:
     def __init__(self, db: OrmSession, settings: Settings | None = None) -> None:
         self.db = db
-        self.settings = settings or Settings()
+        self.settings = settings or get_settings()
 
     # --- durable request bookkeeping -----------------------------------------
 
@@ -115,6 +115,8 @@ class ProvisioningService:
         service re-checks it (defence in depth)."""
         if not actor.is_platform_staff:
             raise ApiError(403, "FORBIDDEN", "Platform staff access required.")
+        if not payload.bot_name:
+            raise ApiError(422, "VALIDATION_ERROR", "A bot name is required for onboarding.")
         mode = "platform"
         file_blobs: list[tuple[str, bytes]] = [
             (name, data.read() or b"") for name, data in (files or [])
@@ -272,6 +274,7 @@ class ProvisioningService:
             name=payload.client_name.strip(),
             slug=slug,
             plan_label="free" if self_service else (payload.plan_label or "starter"),
+            quota_overrides={"bots": 1},
         )
         self.db.add(tenant)
         self.db.flush()  # tenant must exist before its audit row
@@ -289,13 +292,13 @@ class ProvisioningService:
             metadata={"request_id": str(row.id), "plan_label": tenant.plan_label},
         )
 
-        # Owner one-time invitation (docs/14 §19): raw token is shown ONCE in
-        # the response; only its SHA-256 hash is stored. Ownership arrives
+        # Admin one-time invitation (docs/14 §19): raw token is shown ONCE in
+        # the response; only its SHA-256 hash is stored. Admin access arrives
         # when the invited user accepts (no email provider).
         raw_token: str | None = None
         invitation: Invitation | None = None
         if self_service:
-            membership = Membership(tenant_id=tenant.id, user_id=actor.id, role="owner")
+            membership = Membership(tenant_id=tenant.id, user_id=actor.id, role="admin")
             self.db.add(membership)
             record_audit(
                 self.db,
@@ -312,7 +315,7 @@ class ProvisioningService:
                 id=uuid4(),
                 tenant_id=tenant.id,
                 email=payload.owner_email,
-                role="owner",
+                role="admin",
                 token_hash=self._token_hash(raw_token),
                 expires_at=datetime.now(UTC) + timedelta(days=OWNER_INVITATION_EXPIRY_DAYS),
                 created_by=actor.id,

@@ -101,7 +101,7 @@ def test_upload_parse_chunk_into_draft_revision(
     db.expire_all()
 
     listing = users.call(
-        "owner", "GET", f"/api/v1/tenants/{users.tenant_id}/bots/{bot_id}/jobs"
+        "staff", "GET", f"/api/v1/tenants/{users.tenant_id}/bots/{bot_id}/jobs"
     ).json()
     assert listing[0]["status"] == "succeeded"
     assert listing[0]["error"] is None
@@ -154,7 +154,7 @@ def test_pdf_pages_become_documents(
     db.expire_all()
 
     documents = users.call(
-        "owner",
+        "staff",
         "GET",
         f"/api/v1/tenants/{users.tenant_id}/bots/{bot_id}/documents",
         params={"revision": "draft"},
@@ -177,7 +177,7 @@ def test_docx_sections_tables_and_headings(
     run_one_ingest_job(_engine_of(), tmp_path)
     db.expire_all()
     documents = users.call(
-        "owner",
+        "staff",
         "GET",
         f"/api/v1/tenants/{users.tenant_id}/bots/{bot_id}/documents",
         params={"revision": "draft"},
@@ -204,7 +204,7 @@ def test_qa_csv_one_chunk_per_row(
     assert all(row[1].startswith("Q: ") for row in rows)
     assert all(row[1].count("A: ") == 1 for row in rows)  # one chunk, never split
     documents = users.call(
-        "owner",
+        "staff",
         "GET",
         f"/api/v1/tenants/{users.tenant_id}/bots/{bot_id}/documents",
         params={"revision": "draft"},
@@ -268,7 +268,7 @@ def test_reingest_unchanged_source_is_noop(
     requeue = start_ingestion(users, bot_id, [source_id])
     assert requeue.status_code == 404
     retry = users.call(
-        "owner",
+        "staff",
         "POST",
         f"/api/v1/tenants/{str(users.tenant_id)}/bots/{bot_id}/jobs/{job_id}/retry",
         json={},
@@ -310,7 +310,7 @@ def test_publish_rollback_and_failed_job_isolation(
     run_one_ingest_job(_engine_of(), tmp_path)
     db.expire_all()
     draft_one = revision_of(db, str(users.tenant_id), "draft")
-    publish = users.call("admin", "POST", f"{base}/revisions/{draft_one}/publish")
+    publish = users.call("staff", "POST", f"{base}/revisions/{draft_one}/publish")
     assert publish.status_code == 200, publish.text
     db.expire_all()
     published_now = revision_of(db, str(users.tenant_id), "published")
@@ -325,9 +325,9 @@ def test_publish_rollback_and_failed_job_isolation(
     run_jobs_to_completion(_engine_of(), tmp_path, db)
     db.expire_all()
 
-    jobs = users.call("owner", "GET", f"{base}/jobs").json()
+    jobs = users.call("staff", "GET", f"{base}/jobs").json()
     failed_job = jobs[0]
-    assert failed_job["status"] == "failed"
+    assert failed_job["status"] == "failed", failed_job
     assert "corrupt" in failed_job["error"]
 
     # The published pointer and its chunks are unchanged (the draft carries a
@@ -343,16 +343,16 @@ def test_publish_rollback_and_failed_job_isolation(
     db.expire_all()
     draft_two = revision_of(db, str(users.tenant_id), "draft")
     assert draft_two not in (None, draft_one)
-    publish_two = users.call("admin", "POST", f"{base}/revisions/{draft_two}/publish")
+    publish_two = users.call("staff", "POST", f"{base}/revisions/{draft_two}/publish")
     assert publish_two.status_code == 200
     db.expire_all()
 
     # Rollback to the previous revision (archived) is the same pointer swap.
-    rollback = users.call("admin", "POST", f"{base}/revisions/{draft_one}/publish")
+    rollback = users.call("staff", "POST", f"{base}/revisions/{draft_one}/publish")
     assert rollback.status_code == 200
     db.expire_all()
     assert revision_of(db, str(users.tenant_id), "published") == draft_one
-    revisions = users.call("owner", "GET", f"{base}/revisions").json()
+    revisions = users.call("staff", "GET", f"{base}/revisions").json()
     assert "published_revision_id" in revisions
 
 
@@ -366,7 +366,7 @@ def test_publish_empty_revision_rejected_and_idempotent(
     # ghost revision is 404; publish-without-ingest is 409 (nothing).
     ghost = str(uuid4())
     base = f"/api/v1/tenants/{users.tenant_id}/bots/{bot_id}"
-    assert users.call("admin", "POST", f"{base}/revisions/{ghost}/publish").status_code == 404
+    assert users.call("staff", "POST", f"{base}/revisions/{ghost}/publish").status_code == 404
 
 
 # --- multi-tenant isolation ---------------------------------------------------

@@ -14,7 +14,7 @@ def test_platform_ops_require_staff_reason_and_record_audit(app: Any, db: Any) -
     tenant = seeded_tenant(app, db, prefix="p7ops")
     bot = make_bot(tenant, "Ops bot")
     staff = staff_login(app, db)
-    owner = tenant.as_user("owner")
+    admin = tenant.as_user("admin")
     job = Job(
         id=uuid4(),
         tenant_id=tenant.tenant_id,
@@ -29,7 +29,7 @@ def test_platform_ops_require_staff_reason_and_record_audit(app: Any, db: Any) -
     db.add(job)
     db.commit()
 
-    assert platform_call(owner, "GET", "/operations/jobs").status_code == 403
+    assert platform_call(admin, "GET", "/operations/jobs").status_code == 403
     invalid = platform_call(staff, "POST", f"/operations/jobs/{job.id}/retry", json={"reason": " "})
     assert invalid.status_code == 422
     retried = platform_call(

@@ -63,9 +63,15 @@ def bot_quota_status(bot_id: UUID, context: TenantContextDep) -> dict[str, objec
 
 @router.post("/api/v1/tenants", response_model=TenantOut, status_code=201)
 def create_tenant(
-    body: TenantCreateRequest, db: DbSession, user: CurrentUserDep, _: CsrfOk
+    body: TenantCreateRequest,
+    db: DbSession,
+    user: CurrentUserDep,
+    settings: CurrentSettingsDep,
+    _: CsrfOk,
 ) -> TenantOut:
-    """Create an organization; the creator becomes its owner (docs/06)."""
+    """Create an organization; the creator becomes its admin (docs/06)."""
+    if not settings.self_serve_signup:
+        raise ApiError(403, "FORBIDDEN", "Self-service signup is disabled.")
     service = TenantService(db)
     tenant = service.create_tenant(user, body.name, body.slug)
     return TenantOut.model_validate(tenant)
@@ -82,7 +88,7 @@ def update_tenant(
     context: TenantContextDep,
     _: CsrfOk,
 ) -> TenantOut:
-    """Tenant settings (P4-04): retention window (owner/admin only, audited)."""
+    """Tenant settings (P4-04): retention window (admin only, audited)."""
     context.require_role("admin")
     service = TenantService(context.db)
     tenant = service.update_tenant(context, body.retention_days)
@@ -134,7 +140,7 @@ def remove_member(user_id: UUID, context: TenantContextDep, _: CsrfOk) -> Respon
     return Response(status_code=204)
 
 
-# --- invitations (owner/admin) ----------------------------------------------
+# --- invitations (admin) ----------------------------------------------
 
 
 @router.post(

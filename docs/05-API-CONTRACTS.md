@@ -4,13 +4,13 @@ JSON error: `{ "error": {"code":"FORBIDDEN","message":"...","request_id":"..."}}
 |---|---|---|
 | POST /api/v1/auth/register, /login, /logout | public/session | Auth lifecycle |
 | GET /api/v1/me | session | User + memberships |
-| GET/POST/DELETE /api/v1/tenants/{tenant_id}/invitations ; POST /api/v1/invitations/accept | owner/admin ; accept = session + token | Team invitations by one-time link (docs/14 §19) |
+| GET/POST/DELETE /api/v1/tenants/{tenant_id}/invitations ; POST /api/v1/invitations/accept | admin ; accept = session + token | Team invitations by one-time link (docs/14 §19) |
 | GET/PATCH/DELETE /api/v1/tenants/{tenant_id}/members | admin+ | List, change role, remove |
 | POST /api/v1/tenants | session | Create organization |
 | GET /api/v1/tenants/{tenant_id} | member | Tenant details |
 | GET/POST /api/v1/tenants/{tenant_id}/bots | member editor+ for POST | Bot listing/create |
 | GET/PATCH/DELETE /api/v1/tenants/{tenant_id}/bots/{bot_id} | role-based | Bot lifecycle |
-| POST /api/v1/tenants/{tenant_id}/provisioning | owner or platform staff | Shared onboarding request; Idempotency-Key |
+| POST /api/v1/tenants/{tenant_id}/provisioning | platform staff | Shared onboarding request; Idempotency-Key |
 | GET /api/v1/tenants/{tenant_id}/provisioning/{id} | authorized | Progress |
 | POST /api/v1/tenants/{tenant_id}/bots/{bot_id}/sources | editor+ | Add source |
 | POST /api/v1/tenants/{tenant_id}/bots/{bot_id}/ingestion | editor+ | Start job |
@@ -31,9 +31,9 @@ JSON error: `{ "error": {"code":"FORBIDDEN","message":"...","request_id":"..."}}
 | POST/GET /api/v1/tenants/{tenant_id}/followups | editor+ | Schedule/list follow-ups (P5) |
 | GET /api/public/v1/sessions/{session_id}/messages?since=cursor | session capability | Widget polls for agent replies (P5) |
 | POST /api/channels/manyosiris/events | HMAC signature (no cookie) | Inbound Many events, 202 then job (P6) |
-| POST/GET /api/v1/tenants/{tenant_id}/channels/connections | owner/admin + staff approval | Link a bot to a Many channel (P6) |
+| POST/GET /api/v1/tenants/{tenant_id}/channels/connections | admin + staff approval | Link a bot to a Many channel (P6) |
 | GET /api/v1/platform/tenants, /tenants/{id} | platform staff | Client list and detail (P4-06) |
-| POST /api/v1/platform/onboarding | platform staff + Idempotency-Key | Staff onboarding via ProvisioningService; returns owner one-time invite link (P4-06) |
+| POST /api/v1/platform/onboarding | platform staff + Idempotency-Key | Staff onboarding via ProvisioningService; returns admin one-time invite link (P4-06) |
 | GET /api/v1/platform/{jobs,connections,analytics,audit} ; POST /api/v1/platform/{bots,connections}/{id}/pause | platform staff, reason required | Advanced operations (P7) |
 
 ## Contracts must include

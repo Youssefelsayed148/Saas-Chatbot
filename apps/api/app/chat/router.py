@@ -69,7 +69,7 @@ def playground_turn(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> PlaygroundTurnResponse:
     """One dashboard playground turn (editor+: it runs the pipeline)."""
-    context.require_role("editor")
+    context.require_operator()
     from app.chat.models import model_from_settings
     from app.knowledge.service import get_bot as get_bot_scoped
 
@@ -150,7 +150,7 @@ def message_feedback(
     _: CsrfOk,
 ) -> dict[str, object]:
     """Thumbs up/down on one AI message; idempotent per rater+rating (§7)."""
-    context.require_role("editor")
+    context.require_operator()
     record_feedback(
         context.db,
         tenant_id=context.tenant_id,

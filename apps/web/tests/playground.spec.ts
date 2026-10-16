@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { registerOwner, uniqueEmail } from "./e2e-helpers";
+import { registerOperator, uniqueEmail } from "./e2e-helpers";
 
 /**
  * P3-04 E2E: the dashboard playground chats over REAL published knowledge
@@ -17,7 +17,7 @@ const KNOWLEDGE_MD =
 async function createOrgAndBot(
   page: Page,
 ): Promise<{ tenantId: string; botId: string }> {
-  const { tenantId, botName } = await registerOwner(page, "Chat", {});
+  const { tenantId, botName } = await registerOperator(page, "Chat", {});
   await page
     .getByRole("row", { name: new RegExp(botName) })
     .getByRole("link")
@@ -28,7 +28,7 @@ async function createOrgAndBot(
   return { tenantId, botId };
 }
 
-/** Upload + ingest + publish through the owner's request context (cookies shared). */
+/** Upload + ingest + publish through the admin's request context (cookies shared). */
 async function publishKnowledge(
   page: Page,
   tenantId: string,
@@ -145,22 +145,22 @@ test("an expired session pushes the playground back to login", async ({
 });
 
 test("viewer is read-only in the playground", async ({ browser }) => {
-  const ownerContext = await browser.newContext();
-  const owner = await ownerContext.newPage();
-  await createOrgAndBot(owner);
+  const adminContext = await browser.newContext();
+  const admin = await adminContext.newPage();
+  await createOrgAndBot(admin);
 
   // Invite a viewer through the members page.
-  await owner.goto(
-    new URL(owner.url()).pathname.replace(
+  await admin.goto(
+    new URL(admin.url()).pathname.replace(
       /\/bots\/[0-9a-f-]+\/settings$/,
       "/settings/members",
     ),
   );
   const viewerEmail = uniqueEmail("pg-viewer");
-  await owner.getByLabel("Email", { exact: true }).fill(viewerEmail);
-  await owner.getByRole("combobox", { name: "Role" }).selectOption("viewer");
-  await owner.getByRole("button", { name: "Create invite link" }).click();
-  const inviteCode = (await owner.locator("code").last().textContent()) ?? "";
+  await admin.getByLabel("Email", { exact: true }).fill(viewerEmail);
+  await admin.getByRole("combobox", { name: "Role" }).selectOption("viewer");
+  await admin.getByRole("button", { name: "Create invite link" }).click();
+  const inviteCode = (await admin.locator("code").last().textContent()) ?? "";
   expect(inviteCode).toContain("/accept-invite?token=");
 
   const viewerContext = await browser.newContext();
@@ -180,15 +180,24 @@ test("viewer is read-only in the playground", async ({ browser }) => {
     .getByRole("link")
     .first()
     .click();
-  await viewer.getByRole("link", { name: "Playground" }).click();
   await expect(
-    viewer.getByText(
-      /Read-only view: trying the assistant requires the editor role/,
-    ),
+    viewer.getByRole("link", { name: "Playground", exact: true }),
+  ).toHaveCount(0);
+  const botId = new URL(viewer.url()).pathname.split("/")[4];
+  const tenantId = new URL(viewer.url()).pathname.split("/")[2];
+  await viewer.goto(`/app/${tenantId}/bots/${botId}/playground`);
+  await expect(
+    viewer.getByText("Platform staff access required."),
   ).toBeVisible();
-  await expect(viewer.getByTestId("playground-send")).toHaveCount(0);
-  await expect(viewer.getByTestId("playground-input")).toBeDisabled();
+  await expect(viewer.getByTestId("playground-input")).toHaveCount(0);
+  expect(
+    (
+      await viewer.request.get(
+        `/api/v1/tenants/${tenantId}/bots/${botId}/playground/conversation`,
+      )
+    ).status(),
+  ).toBe(403);
 
-  await ownerContext.close();
+  await adminContext.close();
   await viewerContext.close();
 });

@@ -26,7 +26,7 @@ def test_avatar_http_url_saved_and_publicly_exposed(
     bot = make_bot(users, "Styled")
     bot_id = str(bot["id"])
     saved = users.call(
-        "owner",
+        "staff",
         "PATCH",
         f"/api/v1/tenants/{users.tenant_id}/bots/{bot_id}",
         json={
@@ -58,7 +58,7 @@ def test_avatar_rejects_non_http_values(corpus: dict[str, Any]) -> None:
     bot_id = str(bot["id"])
     for bad in ("data:text/html,<script>", "javascript:alert(1)", "not-a-url"):
         response = users.call(
-            "owner",
+            "staff",
             "PATCH",
             f"/api/v1/tenants/{users.tenant_id}/bots/{bot_id}",
             json={"config": {"avatar": bad}},

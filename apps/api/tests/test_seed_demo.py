@@ -107,9 +107,9 @@ def test_seed_twice_has_expected_counts_and_keeps_other_tenant(
     assert sorted(path.relative_to(tmp_path) for path in tmp_path.rglob("*.md")) == files_before
     assert len(files_before) == 4
     assert db.scalar(select(func.count()).select_from(Tenant)) == 2
-    assert db.scalar(select(func.count()).select_from(User)) == 4
+    assert db.scalar(select(func.count()).select_from(User)) == 3
     for model, expected in (
-        (Membership, 4),
+        (Membership, 3),
         (Bot, 1),
         (Source, 4),
         (SourcePage, 4),
@@ -201,7 +201,7 @@ def sha256_bytes(data: bytes) -> str:
 
 def test_seed_conflicting_email_rolls_back(db: Session, tmp_path: Path) -> None:
     unrelated = User(
-        id=uuid4(), email="demo-owner@example.com", password_hash=hash_password("OtherFake!123")
+        id=uuid4(), email="demo-admin@example.com", password_hash=hash_password("OtherFake!123")
     )
     db.add(unrelated)
     db.commit()
@@ -219,8 +219,8 @@ def test_seed_wrong_password_preserves_existing_data(db: Session, tmp_path: Path
     seed_demo(db, storage, settings, FAKE_PASSWORD)
     with pytest.raises(ValueError, match="password mismatch"):
         seed_demo(db, storage, settings, "OtherFake!123")
-    owner = db.scalar(select(User).where(User.id == demo_id("user/owner")))
-    assert owner is not None and verify_password(FAKE_PASSWORD, owner.password_hash)
+    admin = db.scalar(select(User).where(User.id == demo_id("user/admin")))
+    assert admin is not None and verify_password(FAKE_PASSWORD, admin.password_hash)
     assert db.scalar(select(func.count()).select_from(Tenant)) == 1
     assert len(list(tmp_path.rglob("*.md"))) == 4
 

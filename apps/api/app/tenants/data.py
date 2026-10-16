@@ -8,12 +8,11 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Response
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import delete, or_, select
+from sqlalchemy import select
 
 from app.auth import cookies
 from app.core.audit import record_audit
 from app.core.config import Settings, get_settings
-from app.core.errors import ApiError
 from app.core.tenancy import TenantContextDep
 from app.db.models import (
     AuditEvent,
@@ -33,14 +32,10 @@ from app.db.models import (
     KnowledgeRevision,
     Membership,
     Message,
-    ProvisioningRequest,
-    RateLimitCounter,
     Source,
     SourcePage,
-    Tenant,
     UsageEvent,
     User,
-    VisitorSession,
 )
 from app.knowledge.storage import Storage, get_storage
 
@@ -87,9 +82,11 @@ def export_tenant_data(
     invitations = _rows(db, Invitation, tenant_id)
     sources = _rows(db, Source, tenant_id)
     audit_rows = _rows(db, AuditEvent, tenant_id)
-    storage: Storage | None = get_storage(settings) if sources else None
+    storage: Storage | None = (
+        get_storage(settings) if sources and context.user.is_platform_staff else None
+    )
     source_files: list[dict[str, Any]] = []
-    for source in sources:
+    for source in sources if context.user.is_platform_staff else []:
         try:
             assert storage is not None
             raw_file = storage.open(source.storage_key)
@@ -337,6 +334,21 @@ def export_tenant_data(
             ),
         ),
     }
+    if not context.user.is_platform_staff:
+        for key in (
+            "sources",
+            "source_files",
+            "source_pages",
+            "documents",
+            "chunks",
+            "knowledge_revisions",
+            "jobs",
+        ):
+            export_data.pop(key, None)
+        for bot in export_data["bots"]:
+            bot.pop("config", None)
+        for message in export_data["messages"]:
+            message["citations"] = []
     record_audit(
         db,
         action="tenant.data.exported",
@@ -408,6 +420,14 @@ def tenant_audit_review(
     }
 
 
+@router.get("/deletion-preview")
+def deletion_preview(context: TenantContextDep) -> dict[str, Any]:
+    context.require_operator()
+    from app.tenants.deletion import deletion_counts
+
+    return {"name": context.tenant.name, "counts": deletion_counts(context.db, context.tenant_id)}
+
+
 @router.delete("", status_code=204)
 def delete_tenant_data(
     body: DeleteTenantRequest,
@@ -415,57 +435,8 @@ def delete_tenant_data(
     settings: Annotated[Settings, Depends(get_settings)],
     _: CsrfOk,
 ) -> Response:
-    context.require_role("owner")
-    tenant: Tenant = context.tenant
-    if body.confirm_name.strip() != tenant.name:
-        raise ApiError(
-            422, "CONFIRMATION_MISMATCH", "Enter the organization name exactly to confirm deletion."
-        )
-    tenant_id = tenant.id
-    storage_keys = [source.storage_key for source in _rows(context.db, Source, tenant_id)]
-    session_ids = list(
-        context.db.execute(
-            select(VisitorSession.id).where(VisitorSession.tenant_id == tenant_id)
-        ).scalars()
-    )
-    if session_ids:
-        context.db.execute(
-            delete(RateLimitCounter).where(
-                or_(
-                    *(
-                        RateLimitCounter.bucket_key.like(f"widget:msg:%:{session_id}")
-                        for session_id in session_ids
-                    )
-                )
-            )
-        )
-    requests = _rows(context.db, ProvisioningRequest, tenant_id)
-    for request in requests:
-        files = request.result.get("files", []) if isinstance(request.result, dict) else []
-        if isinstance(files, list):
-            storage_keys.extend(
-                item["storage_key"]
-                for item in files
-                if isinstance(item, dict) and isinstance(item.get("storage_key"), str)
-            )
-        context.db.delete(request)
-    record_audit(
-        context.db,
-        action="tenant.data.deleted",
-        tenant_id=tenant_id,
-        actor_user_id=context.user.id,
-        target_type="tenant",
-        target_id=str(tenant_id),
-        metadata={"reason": body.reason, "storage_file_count": len(storage_keys)},
-    )
-    context.db.flush()
-    # Core DELETE: child rows go via ON DELETE CASCADE; the ORM would try to null
-    # memberships.tenant_id (a primary-key column) instead.
-    context.db.expunge(tenant)
-    context.db.execute(delete(Tenant).where(Tenant.id == tenant_id))
-    context.db.commit()
-    if storage_keys:
-        storage = get_storage(settings)
-        for key in storage_keys:
-            storage.delete(key)
+    context.require_operator()
+    from app.tenants.deletion import schedule_deletion
+
+    schedule_deletion(context, body.confirm_name, body.reason, settings)
     return Response(status_code=204)

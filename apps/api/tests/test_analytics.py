@@ -81,7 +81,7 @@ def test_summary_counts_measured_messages_leads_and_feedback(
     app: Any, db: Any, corpus: dict[str, Any]
 ) -> None:
     mesh = _seed_activity(app, db, corpus)
-    client = corpus["users_a"].as_user("owner")
+    client = corpus["users_a"].as_user("staff")
     summary = client.get(f"{path_of(mesh['bot_a'], str(mesh['users_a'].tenant_id))}/summary")
     assert summary.status_code == 200, summary.text
     body = summary.json()
@@ -101,7 +101,7 @@ def test_summary_counts_measured_messages_leads_and_feedback(
 
 def test_volume_top_questions_unanswered_leads(app: Any, db: Any, corpus: dict[str, Any]) -> None:
     mesh = _seed_activity(app, db, corpus)
-    client = corpus["users_a"].as_user("owner")
+    client = corpus["users_a"].as_user("staff")
     base = path_of(mesh["bot_a"], str(mesh["users_a"].tenant_id))
     volume = client.get(f"{base}/volume")
     assert volume.status_code == 200
@@ -150,11 +150,11 @@ def test_playground_threads_are_never_counted(app: Any, db: Any, corpus: dict[st
         config={},
     )
     conversation = get_or_create_playground_conversation(
-        db, tenant_id=users.tenant_id, bot_id=bot.id, user_id=users.users["owner"]["id"]
+        db, tenant_id=users.tenant_id, bot_id=bot.id, user_id=users.users["admin"]["id"]
     )
     append_message(db, conversation, sender_type="visitor", text="playground probe")
     db.commit()
-    client = users.as_user("owner")
+    client = users.as_user("staff")
     base = f"/api/v1/tenants/{users.tenant_id}/bots/{bot.id}/analytics"
     summary = client.get(f"{base}/summary").json()
     assert summary["messages"] == 3  # the playground turn is EXCLUDED
@@ -165,8 +165,8 @@ def test_bot_scoping_and_csv_exports(app: Any, db: Any, corpus: dict[str, Any]) 
     mesh = _seed_activity(app, db, corpus)
     users_a = mesh["users_a"]
     users_b = mesh["users_b"]
-    client_a = users_a.as_user("owner")
-    client_b = users_b.as_user("owner")
+    client_a = users_a.as_user("staff")
+    client_b = users_b.as_user("staff")
     base_a = path_of(mesh["bot_a"], str(users_a.tenant_id))
     base_b = f"/api/v1/tenants/{users_a.tenant_id}/bots/{mesh['bot_b']['id']}/analytics"
     # tenant B bot reached via tenant A's URL → 404 (per-bot isolation)
@@ -179,12 +179,14 @@ def test_bot_scoping_and_csv_exports(app: Any, db: Any, corpus: dict[str, Any]) 
     assert summary_b.status_code == 200
     assert summary_b.json()["messages"] == 0 and summary_b.json()["leads"] == 0
 
-    csv_conversations = client_a.get(f"{base_a}/conversations.csv")
+    assert users_a.as_user("viewer").get(f"{base_a}/conversations.csv").status_code == 403
+    assert users_a.as_user("editor").get(f"{base_a}/leads.csv").status_code == 403
+    csv_conversations = users_a.as_user("admin").get(f"{base_a}/conversations.csv")
     assert csv_conversations.status_code == 200
     assert csv_conversations.headers["content-type"].startswith("text/csv")
     body = csv_conversations.text
     assert "conversation_id" in body and body.count("\n") >= 3
-    csv_leads = client_a.get(f"{base_a}/leads.csv")
+    csv_leads = users_a.as_user("admin").get(f"{base_a}/leads.csv")
     assert csv_leads.status_code == 200
     assert "display_name" in csv_leads.text and "Lead One" in csv_leads.text
 
@@ -197,11 +199,11 @@ def test_viewer_can_read_but_date_validation_works(
     viewer = users.as_user("viewer")
     base = path_of(mesh["bot_a"], str(users.tenant_id))
     assert viewer.get(f"{base}/summary").status_code == 200  # read allowed
-    bad = users.as_user("owner").get(
+    bad = users.as_user("admin").get(
         f"{base}/summary?from=not-a-date",
     )
     assert bad.status_code == 422
-    inverted = users.as_user("owner").get(
+    inverted = users.as_user("admin").get(
         f"{base}/summary?from=2026-06-01&to=2026-05-01",
     )
     assert inverted.status_code == 422
@@ -212,7 +214,7 @@ def test_analytics_dates_filter_the_window(app: Any, db: Any, corpus: dict[str, 
 
     mesh = _seed_activity(app, db, corpus)
     users = mesh["users_a"]
-    client = users.as_user("owner")
+    client = users.as_user("staff")
     base = path_of(mesh["bot_a"], str(users.tenant_id))
     today = dt.date.today()
     in_window = client.get(
