@@ -327,3 +327,25 @@ def test_lexical_signal_count_uses_postgres_terms_and_tenant_scope(
     assert all(c.fts_match == 0 and c.matched_terms == 0 for c in foreign)
     arabic = run_retrieval(db, users, bot_id, "العمل", question_language="ar")
     assert arabic.evidence and all(c.matched_terms == 1 for c in arabic.evidence)
+
+
+def test_arabic_index_uses_the_real_arabic_configuration(db: OrmSession) -> None:
+    definition = db.execute(
+        text(
+            "SELECT pg_get_expr(d.adbin, d.adrelid) FROM pg_attrdef d "
+            "JOIN pg_attribute a ON a.attrelid = d.adrelid AND a.attnum = d.adnum "
+            "WHERE d.adrelid = 'chunks'::regclass AND a.attname = 'fts_ar'"
+        )
+    ).scalar_one()
+    assert "'arabic'" in definition and "text_norm" in definition
+    # Snowball stemming: singular and plural share a lexeme (the simple config did not).
+    assert db.execute(
+        text("SELECT to_tsvector('arabic', 'المكتبات') = to_tsvector('arabic', 'مكتبة')")
+    ).scalar_one()
+
+
+def test_arabic_text_is_normalised_before_indexing() -> None:
+    # Diacritics and tatweel removed; alef (أ إ آ) and ya (ى) variants folded.
+    assert normalise_text("أَإآ") == "ااا"
+    assert normalise_text("مَدرَسـة") == "مدرسة"
+    assert normalise_text("على") == "علي"

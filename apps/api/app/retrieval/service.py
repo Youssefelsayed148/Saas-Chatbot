@@ -1,8 +1,8 @@
 """Retrieval service (docs/14 §1, §2, §5): language-aware keyword search.
 
 One pass = query the GIN-indexed tsvector columns for the question's
-language (``fts_en`` for English, ``fts_simple`` for Arabic-normalised
-chunks) — always filtered by ``tenant_id``, ``bot_id``,
+language (``fts_en`` for English, ``fts_ar`` with the PostgreSQL ``arabic``
+configuration over Arabic-normalised chunks) — always filtered by ``tenant_id``, ``bot_id``,
 ``revision_id = bots.published_revision_id`` and chunk ``language``.
 If the language pass is empty, a second pass runs against the bot's
 primary content language (results are still cited in the visitor's
@@ -85,12 +85,12 @@ class RetrievalResult:
 
 def _fts_column(language: str) -> str:
     if language == "ar":
-        return "fts_simple"
+        return "fts_ar"
     return "fts_en"
 
 
 def _tsquery_config(language: str) -> str:
-    return "simple" if language == "ar" else "english"
+    return "arabic" if language == "ar" else "english"
 
 
 def score_lexical(
