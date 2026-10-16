@@ -141,6 +141,8 @@ def test_every_openapi_route_role_and_cross_tenant(
     db.add(Membership(tenant_id=tid, user_id=UUID(extra_payload["id"]), role="viewer"))
     db.commit()
     ids["user_id"] = UUID(extra_payload["id"])
+    if role == "staff":
+        assert db.scalar(select(Membership).where(Membership.user_id == uid)) is None
     operations = []
     for path, methods in app.openapi()["paths"].items():
         if not path.startswith("/api/v1/tenants"):
@@ -160,8 +162,6 @@ def test_every_openapi_route_role_and_cross_tenant(
     )
     try:
         for method, template, minimum in operations:
-            if role == "staff" and minimum != "platform_staff_only":
-                continue
             db.expire_all()
             # Reset business state so success assertions measure authorization,
             # not an earlier action's conflicting state.
@@ -233,10 +233,18 @@ def test_every_openapi_route_role_and_cross_tenant(
                     }
                 if template.endswith("/change-requests"):
                     kwargs = {"data": {"type": "other", "text": "Matrix request"}}
+            membership_required = minimum == "editor" and method != "GET" and (
+                "/inbox/" in template
+                or template.startswith("/api/v1/tenants/{tenant_id}/conversations/")
+            )
             allowed = (
-                role == "staff"
+                (role == "staff" and not membership_required)
                 or minimum == "authenticated"
-                or (minimum != "platform_staff_only" and ROLE_LEVELS[role] >= ROLE_LEVELS[minimum])
+                or (
+                    role != "staff"
+                    and minimum != "platform_staff_only"
+                    and ROLE_LEVELS[role] >= ROLE_LEVELS[minimum]
+                )
             )
             # Give destructive endpoints disposable targets, preserving the main fixture.
             if method == "DELETE" and template.endswith("/contacts/{contact_id}"):
