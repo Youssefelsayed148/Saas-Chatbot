@@ -9,7 +9,27 @@ import { promoteToStaff } from "./staff-helpers";
 
 const PASSWORD = "Str0ngPass!";
 
-test("owner signup provisions organization and first bot, then archive bot", async ({
+test("self-service disabled hides public registration and organization creation", async ({
+  page,
+}) => {
+  await page.route("**/api/v1/auth/config", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ self_serve_signup: false }) }),
+  );
+  await page.goto("/register");
+  await expect(page.getByText("Registration is available by invitation only.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Create account" })).toHaveCount(0);
+
+  await page.unroute("**/api/v1/auth/config");
+  await registerOwner(page, "self-serve-toggle");
+  await page.route("**/api/v1/auth/config", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ self_serve_signup: false }) }),
+  );
+  await page.goto("/app");
+  await expect(page.getByRole("heading", { name: "Your organizations" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Create organization" })).toHaveCount(0);
+});
+
+test("owner signup provisions first bot and bot lifecycle stays with platform staff", async ({
   page,
 }) => {
   const orgName = `E2E Org ${Date.now()}`;
@@ -29,19 +49,9 @@ test("owner signup provisions organization and first bot, then archive bot", asy
     "draft",
   );
 
-  // Archive: the bot leaves the default list; it reappears with the archived toggle.
-  await row.getByRole("button", { name: "Archive" }).click();
-  await page
-    .getByRole("dialog")
-    .getByRole("button", { name: "Archive bot", exact: true })
-    .click();
-  await expect(page.getByText(/No bots yet/i)).toBeVisible();
-  await page.getByRole("checkbox", { name: /Show archived bots/i }).check();
-  await expect(
-    page
-      .getByRole("row", { name: new RegExp(botName) })
-      .locator("[data-status]"),
-  ).toHaveAttribute("data-status", "archived");
+  await expect(page.getByRole("button", { name: "Create bot" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Archive" })).toHaveCount(0);
+  await expect(page.getByText("Contact us to add or change bots.")).toBeVisible();
 
   // Sign out returns to the protected flow requiring re-login.
   await page.getByRole("button", { name: "Sign out" }).click();
@@ -89,7 +99,7 @@ test("team management: owner invites, invitee accepts, viewer sees read-only bot
   const { tenantId } = await registerOwner(owner, "Team", {
     email: ownerEmail,
   });
-  // Free PLACEHOLDER allows one bot; preserve editor creation with a staff-assigned Starter plan.
+  // Staff plan assignment remains available to prepare owner/editor permission checks.
   promoteToStaff(ownerEmail);
   const csrf = await owner.evaluate(
     () =>
@@ -143,13 +153,17 @@ test("team management: owner invites, invitee accepts, viewer sees read-only bot
   await editor.getByRole("link", { name: /Team Org/i }).click();
   await editor.waitForURL(/\/app\/[0-9a-f-]{36}\/bots$/);
 
-  // The invited editor can create bots.
-  const editorBot = `Editor Bot ${Date.now()}`;
-  await editor.getByLabel("Bot name").fill(editorBot);
-  await editor.getByRole("button", { name: "Create bot" }).click();
-  await expect(
-    editor.getByRole("row", { name: new RegExp(editorBot) }),
-  ).toBeVisible();
+  // Tenant members cannot create bots; the client UI directs them to support.
+  await expect(editor.getByRole("button", { name: "Create bot" })).toHaveCount(0);
+  await expect(editor.getByText("Contact us to add or change bots.")).toBeVisible();
+  const editorCsrf = await editor.evaluate(
+    () => document.cookie.split("; ").find((part) => part.startsWith("chatbot_csrf="))?.split("=")[1] ?? "",
+  );
+  const deniedBot = await editor.request.post(`/api/v1/tenants/${tenantId}/bots`, {
+    headers: { "X-CSRF-Token": editorCsrf },
+    data: { name: `Editor Bot ${Date.now()}` },
+  });
+  expect(deniedBot.status()).toBe(403);
 
   await first.close();
   await second.close();

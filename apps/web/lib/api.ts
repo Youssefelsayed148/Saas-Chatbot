@@ -193,6 +193,10 @@ export interface Me {
   memberships: Membership[];
 }
 
+export function authConfig(): Promise<{ self_serve_signup: boolean }> {
+  return api<{ self_serve_signup: boolean }>("auth/config");
+}
+
 export interface Tenant {
   id: string;
   name: string;
@@ -1056,6 +1060,16 @@ export async function removeMember(
   await api<unknown>(`tenants/${tenantId}/members/${userId}`, {
     method: "DELETE",
   });
+}
+
+export async function transferOwnership(
+  tenantId: string,
+  userId: string,
+): Promise<void> {
+  await api<unknown>(
+    `tenants/${tenantId}/members/${userId}/transfer-ownership`,
+    { method: "POST" },
+  );
 }
 
 export async function listInvitations(tenantId: string): Promise<Invitation[]> {

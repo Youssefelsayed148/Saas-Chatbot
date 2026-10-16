@@ -145,7 +145,7 @@ export default function PlatformClientPage() {
           <section aria-label="Plan assignment" data-testid="client-plan">
             <h2>Plan assignment</h2>
             <p>
-              PLACEHOLDER plans and limits; final pricing and limits are TBD.
+              Plan limits are provisional; pricing and final limits are still under review.
             </p>
             <form onSubmit={(event) => void assignPlan(event)}>
               <label>
@@ -171,7 +171,7 @@ export default function PlatformClientPage() {
             </form>
             <form onSubmit={(event) => void saveQuotaOverrides(event)}>
               <label>
-                PLACEHOLDER quota overrides (JSON)
+                Quota overrides (JSON)
                 <textarea
                   dir="auto"
                   value={quotaOverrides}

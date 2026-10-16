@@ -191,7 +191,7 @@ test("platform client mutations preserve plan, quota and pause reason payloads",
   await page.getByRole("button", { name: "Save plan" }).click();
   await expect.poll(() => actions.length).toBe(1);
   await page
-    .getByLabel("PLACEHOLDER quota overrides (JSON)")
+    .getByLabel("Quota overrides (JSON)")
     .fill('{"bots":5}');
   await page.getByRole("button", { name: "Save override with reason" }).click();
   await expect.poll(() => actions.length).toBe(2);

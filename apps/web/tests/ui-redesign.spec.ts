@@ -81,7 +81,7 @@ test("tenant Overview reads existing data and keeps Bots as the signup destinati
     page.getByText("First bot created", { exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByText(/final pricing and limits are TBD/),
+    page.getByText(/Plan limits are provisional/),
   ).toBeVisible();
   expect(writes).toEqual([]);
 });

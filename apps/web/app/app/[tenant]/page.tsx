@@ -142,9 +142,9 @@ export default function TenantOverview() {
               </ol>
             </section>
           </div>
-          <section aria-label="PLACEHOLDER plan usage">
+          <section aria-label="Plan usage">
             <div className="section-heading">
-              <h2>PLACEHOLDER plan usage</h2>
+              <h2>Plan usage</h2>
               <span className="badge">{data.quota.plan}</span>
             </div>
             <div className="usage-grid">
@@ -168,13 +168,12 @@ export default function TenantOverview() {
             </div>
             {data.quota.warnings.length > 0 && (
               <p role="status">
-                Approaching the PLACEHOLDER limit for{" "}
+                Approaching the plan limit for{" "}
                 {data.quota.warnings.map(humanLabel).join(", ")}.
               </p>
             )}
             <p className="muted">
-              PLACEHOLDER limits for verification; final pricing and limits are
-              TBD. Measured provider tokens this month:{" "}
+              Plan limits are provisional. Measured provider tokens this month:{" "}
               {data.quota.measured_tokens_this_month}.
             </p>
           </section>

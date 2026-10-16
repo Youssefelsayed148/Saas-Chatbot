@@ -14,6 +14,17 @@ export default function OrgSelectorPage() {
   const [name, setName] = useState("");
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [selfServeSignup, setSelfServeSignup] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    void api.authConfig().then((features) => {
+      if (mounted) setSelfServeSignup(features.self_serve_signup);
+    }).catch(() => {
+      if (mounted) setSelfServeSignup(false);
+    });
+    return () => { mounted = false; };
+  }, []);
 
   useEffect(() => {
     // Authentication check happens after the provider loads /me.
@@ -50,7 +61,7 @@ export default function OrgSelectorPage() {
       </p>
       {loading && <Loading label="Loading organizations…" />}
       {!loading && error && <Notice message={error} tone="error" />}
-      {!loading && !error && me && me.memberships.length === 0 && (
+      {!loading && !error && me && me.memberships.length === 0 && selfServeSignup && (
         <Empty>
           You do not belong to an organization yet. Create your first one below.
         </Empty>
@@ -67,7 +78,7 @@ export default function OrgSelectorPage() {
           ))}
         </ul>
       )}
-      <section aria-label="Create organization">
+      {!loading && !error && me && selfServeSignup && <section aria-label="Create organization">
         <h2>Create organization</h2>
         <form onSubmit={onCreate}>
           <label>
@@ -85,7 +96,10 @@ export default function OrgSelectorPage() {
           </button>
         </form>
         {createError && <Notice message={createError} tone="error" />}
-      </section>
+      </section>}
+      {!loading && !error && me && me.memberships.length === 0 && !selfServeSignup && (
+        <Empty>Your account needs an invitation to join an organization.</Empty>
+      )}
     </main>
   );
 }

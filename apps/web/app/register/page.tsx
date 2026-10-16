@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 
 import { PasswordField } from "@/lib/password-field";
 import { ThemeToggle } from "@/lib/theme";
@@ -15,6 +15,8 @@ function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { refresh } = useSession();
+  const [selfServeSignup, setSelfServeSignup] = useState(false);
+  const [featureLoaded, setFeatureLoaded] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [clientName, setClientName] = useState("");
@@ -26,9 +28,20 @@ function RegisterForm() {
     next.startsWith("/") && !next.startsWith("//") ? next : "/app";
   const isInviteSignup = destination.startsWith("/accept-invite");
 
+  useEffect(() => {
+    void api.authConfig().then((features) => {
+      setSelfServeSignup(features.self_serve_signup);
+      setFeatureLoaded(true);
+    }).catch(() => setFeatureLoaded(true));
+  }, []);
+
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
+    if (!isInviteSignup && !selfServeSignup) {
+      setError("Registration is available by invitation only.");
+      return;
+    }
     if (password.length < MIN_PASSWORD_LENGTH) {
       setError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
       return;
@@ -78,10 +91,13 @@ function RegisterForm() {
       </div>
       <p className="eyebrow">YOUR AI WORKSPACE</p>
       <h1>Register</h1>
-      <p className="page-purpose">
-        Create your workspace and first website assistant.
-      </p>
-      <form onSubmit={onSubmit}>
+      {isInviteSignup ? (
+        <p className="page-purpose">Create your account to accept the invitation.</p>
+      ) : (
+        <p className="page-purpose">{selfServeSignup ? "Create your workspace and first website assistant." : "Registration is available by invitation only."}</p>
+      )}
+      {!featureLoaded && <p role="status">Loading registration options…</p>}
+      {(isInviteSignup || (featureLoaded && selfServeSignup)) && <form onSubmit={onSubmit}>
         {!isInviteSignup && (
           <>
             <label>
@@ -134,7 +150,7 @@ function RegisterForm() {
         <button type="submit" disabled={submitting}>
           {submitting ? "Creating account…" : "Create account"}
         </button>
-      </form>
+      </form>}
       <p>
         Already registered? <Link href="/login">Sign in</Link>
       </p>

@@ -13,7 +13,7 @@ const CHANGEABLE_ROLES: Role[] = ["viewer", "editor", "admin", "owner"];
 export default function MembersPage() {
   const params = useParams<{ tenant: string }>();
   const tenantId = params.tenant;
-  const { me, roleIn } = useSession();
+  const { me, roleIn, refresh } = useSession();
   const role = roleIn(tenantId);
   const isAdmin = roleSatisfies(role, "admin");
 
@@ -242,6 +242,28 @@ export default function MembersPage() {
                   <tr key={member.user_id}>
                     <td>{member.email}</td>
                     <td>
+                      {role === "owner" && !isSelf && (
+                        <button
+                          type="button"
+                          disabled={busy === `transfer-${member.user_id}`}
+                          onClick={async () => {
+                            if (!window.confirm(`Transfer ownership to ${member.email}? Your role will become admin.`)) return;
+                            setBusy(`transfer-${member.user_id}`);
+                            setActionError(null);
+                            try {
+                              await api.transferOwnership(tenantId, member.user_id);
+                              await Promise.all([load(), refresh()]);
+                            } catch (caught) {
+                              setActionError(caught instanceof Error ? caught.message : "Could not transfer ownership.");
+                              await load();
+                            } finally {
+                              setBusy(null);
+                            }
+                          }}
+                        >
+                          Transfer ownership to {member.email}
+                        </button>
+                      )}
                       {isOwner ? (
                         <span title="Owners can only be changed by other owners">
                           {member.role}
