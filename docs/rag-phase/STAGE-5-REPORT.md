@@ -1,6 +1,6 @@
 # Stage 5 — parsing limits and staff ingestion status
 
-2026-10-16. Parent `85dbe92`; implementation hash follows next checkpoint.
+2026-10-16. Implementation `75ee690`, parent `85dbe92`.
 Provider requests: **0**.
 
 - DOCX tables retain the first row and repeat its labels on every data row.

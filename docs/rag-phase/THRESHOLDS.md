@@ -23,3 +23,12 @@ queries skip it. Retrieval-only evaluations disable preprocessing explicitly.
 Synthetic vectors test mechanics only. They cannot validate multilingual
 semantic performance or calibrate a real embedding model. Stage 6 will append
 the measured comparison and owner calibration instructions.
+
+Stage 6: all 32 cases measured in both modes using **synthetic lexical vectors**.
+Candidate hit@8 is 9/22 FTS and 22/22 hybrid because the entire four-chunk demo
+fits within k=8. This is coverage, not evidence of semantic improvement. Both
+modes reject 6/10 unanswerable cases and wrongly refuse 12/22 answerable cases
+at the gate. Arabic accepted evidence remains 0/6. Synthetic positive/negative
+scores overlap; no threshold was tuned from them. Approved provisional values
+remain unchanged. Real-score calibration is pending the owner; see
+`OWNER-CHECKS.md`. OpenAI floor remains unconfigured until reviewed calibration.

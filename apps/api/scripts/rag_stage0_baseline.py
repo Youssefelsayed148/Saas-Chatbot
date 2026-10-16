@@ -125,7 +125,16 @@ class BudgetModel(ChatModel):
                 continue
             if isinstance(content, str) and content.strip():
                 self.raw_completion = content
-                self.usage_totals = payload.get("usage")
+                usage = payload.get("usage")
+                if isinstance(usage, dict):
+                    self.usage_totals = {
+                        key: value
+                        for key, value in usage.items()
+                        if key in {"prompt_tokens", "completion_tokens", "total_tokens"}
+                        and isinstance(value, int)
+                        and not isinstance(value, bool)
+                        and value >= 0
+                    } or None
                 return content
         raise ProviderError("Stage 0 provider attempts exhausted.")
 

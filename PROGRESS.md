@@ -1241,3 +1241,43 @@ Exit0:**4 passed(1.1m)**. Client knowledge denial retained. Provider requests0.
 No full suites, OCR implementation, new schema, dotenv reads, merge,push,deploy.
 
 - Final pipeline recheck:exit0,**9 passed**,31.45s. Final mypy `/tmp/rag-stage5-final-mypy`:exit0,167files. Final six-file Ruff/format checks:exit0. Browser ECONNRESET0.
+
+
+## 2026-10-16 RAG Stage 6 ? eval and owner calibration tools
+
+Stage5 `75ee690`. Added operator eval helpers/API runner and requested root
+owner scripts. Neither root owner script executed (not even --help). Both AST
+parsed; provider/budget helpers exercised only with mocked HTTP. No real calls.
+
+```text
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage6_eval -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_rag_evaluation.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage6-eval
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage6_budget -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_rag_evaluation.py tests/test_rag_stage0_baseline.py -k 'not two_mode_retrieval_eval' --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage6-budget
+```
+
+First **6 passed**,5.98s, including one64-row offline FTS/hybrid comparison.
+Final after usage/budget accounting review **20 passed**,1comparison deselected,
+3.09s (6eval/budget +14baseline). **21 unique affected tests** overall, existing
+Starlette warning only. No comparison rerun for reporting. Test vectors are
+synthetic lexical vectors, not actual bge-m3. Hybrid candidate coverage22/22
+versus FTS9/22 is trivial with4chunks andk8; Arabic accepted0/6 both modes.
+Unanswerable gate refusals6/10 and answerable wrong refusals12/22 both. No
+semantic improvement or generation-quality claim. Thresholds stay owner-approved
+provisional0.50/0.01; real-model tuning pending owner, not inferred from fake data.
+
+Artifacts copied without rerun:
+`docker cp rag-stage0-checks:/tmp/rag-stage6-eval/test_two_mode_retrieval_eval_i0/summary.json docs/rag-phase/STAGE-6-COMPARISON.json`;
+`docker cp rag-stage0-checks:/tmp/rag-stage6-eval/test_two_mode_retrieval_eval_i0/retrieval-results.jsonl docs/rag-phase/STAGE-6-RETRIEVAL-RESULTS.jsonl` (bothexit0).
+
+Initial mypy on eval code found4annotation/narrowing errors; corrected.
+Intermediate passed170files. Final
+`docker exec rag-stage0-checks python -m mypy --no-incremental --cache-dir /tmp/rag-stage6-final-mypy app tests alembic scripts/rag_phase2_eval.py scripts/rag_stage0_baseline.py`:
+exit0,**171 source files**. New-file Ruff/import/line formatting corrected;
+root CLI broad exception guards intentionally redact unexpected diagnostics.
+Affected six-file Ruff checks passed. Owner entrypoints parsed using ast.parse,
+without importing/executing them. No UI changes/browser runs/full suites.
+
+Review fixed BudgetModel's raw nested provider usage to satisfy its typed integer
+counter contract, and records actual reserved requests rather than a blocked
+attempt at cap40. Calibration batch usage logged once per batch. Safe error
+boundaries prevent configuration/provider values in CLI diagnostics. Exact owner
+commands in docs/rag-phase/OWNER-CHECKS.md. No dotenv reads, merge,push,deploy.
