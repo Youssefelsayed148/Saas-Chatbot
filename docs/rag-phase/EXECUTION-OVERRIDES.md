@@ -44,3 +44,12 @@
 The plan's RAG ADR-008 identifier collides with the older register's deferred
 billing ADR-008. This document does not renumber or resolve that unrelated billing
 decision; the approved RAG plan controls this work.
+
+## Local merge approval
+
+2026-10-16: after receiving the final test totals and pending quality checks,
+the owner explicitly instructed: "merge approved do it". This authorizes the
+local merge into `main` and safe deletion of the merged feature branch despite
+the remaining calibration and live-quality checks. It supersedes the earlier
+conditional merge restriction only. Pending criteria remain pending; no
+`phase-2-complete` tag until they pass. No push or real provider calls authorized.

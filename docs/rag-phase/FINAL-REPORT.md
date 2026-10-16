@@ -76,8 +76,10 @@ before that file's first execution in the final gate. No full-suite restart.
 | New routes staff-only; clients see no new operator data | **PASS** | Exact matrix 82=82, client roles denied, visitors citation-redacted, staff panels hidden from clients. Stage 7 fixes the export trace leak after an owner-authorized stop; regression covers client redaction and staff retention. Full browser gate passed. |
 
 No meaningful semantic improvement has been demonstrated, so the completion
-gate remains open. Leave the branch unmerged and do not create
-`phase-2-complete`. Real-call criteria are PENDING rather than reported as passed.
+gate remains open. After reviewing this limitation, the owner explicitly
+approved the local merge on 2026-10-16 ("merge approved do it"), overriding the
+earlier instruction to leave the branch unmerged. Calibration and real-call
+criteria remain PENDING. Do not create `phase-2-complete` until they pass.
 
 ## Full verification, run once
 
@@ -200,6 +202,8 @@ not implemented. Unknown usage retains conservative reservations and can reject
 early; no currency-spend ceiling was invented.
 
 No push, deployment, Compose execution, production database mutation, destructive
-cleanup, merge or completion tag. All database work used local disposable tests.
+cleanup or completion tag. The owner subsequently authorized local merge and
+safe deletion of the merged feature branch. All database work used local
+disposable tests.
 
 Changed-file inventory and all exact final API commands are in `FINAL-TEST-RESULTS.json`. No further implementation changes followed the covered accounting correction. Final report/evidence changes did not trigger suite reruns.

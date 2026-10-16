@@ -1367,3 +1367,14 @@ Exit 0, **176 source files**. Host Ruff check/format of
 `apps/api/tests/test_embedding_foundation.py` passed. No unrelated Ruff fixes.
 
 Final API gate completed: **353 passed, 44/44 files**, all exit 0, counts {'failed': 0, 'skipped': 0, 'deselected': 0, 'error': 0}. Exact command per file, counts and timings copied without rerun to docs/rag-phase/FINAL-TEST-RESULTS.json. Embedding foundation16 includes all five final accounting regressions. Full Playwright40passed, ECONNRESET0. No new provider requests. Semantic multilingual improvement and complete live refusal quality remain unestablished; leave feature branch unmerged and untagged.
+
+## 2026-10-16 Owner-approved local merge
+
+Owner subsequently instructed "merge approved do it", after the pending quality
+checks were reported. This overrides the earlier unmerged restriction. Record
+the approval in the execution overrides and final report, preserve all phase
+commits, merge into local `main`, then delete only the merged feature branch
+using `git branch -d`. Working tree was clean at `b4c8d05`; main `946f2cb` is an
+ancestor. No code changes or test reruns for this documentation/Git operation.
+Existing results remain 353 API / 40 Playwright passed. Calibration and live
+semantic/refusal quality remain PENDING; no completion tag, provider calls or push.
