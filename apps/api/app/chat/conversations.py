@@ -291,7 +291,7 @@ def visitor_chat_turn(
             "language": language,
         }
 
-    model = model or default_model()
+    model = model or default_model(bot)
     if model is None:
         db.commit()
         raise ApiError(
@@ -315,6 +315,7 @@ def visitor_chat_turn(
         settings=settings,
     )
     response_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
+    reply.trace["channel"] = conversation.channel
     ai_message = append_message(
         db,
         conversation,
@@ -333,7 +334,7 @@ def visitor_chat_turn(
         external_key=f"message:{ai_message.id}",
         message_id=ai_message.id,
         conversation_id=conversation.id,
-        payload=({"provider_usage": model.usage_totals} if model.usage_totals is not None else {}),
+        payload={"provider_usage": model.usage_totals, "rag_trace": reply.trace},
     )
     decision = decide_handoff(
         db,

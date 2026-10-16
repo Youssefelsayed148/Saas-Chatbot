@@ -1380,6 +1380,37 @@ export interface PlaygroundConversation {
   messages: PlaygroundMessage[];
 }
 
+export interface RagTrace {
+  message_id: string;
+  created_at: string;
+  trace: {
+    retrieval_mode: string;
+    gate: string;
+    rewrite_used: boolean;
+    model: string | null;
+    tokens: Record<string, number> | null;
+    cost_usd: string | null;
+    chunks: {
+      chunk_id: string;
+      title: string;
+      locator: string;
+      vector_similarity: number | null;
+      fts_match: number;
+      accepted: boolean;
+    }[];
+  };
+}
+
+export async function ragTraces(
+  tenantId: string,
+  botId: string,
+): Promise<RagTrace[]> {
+  const result = await api<{ traces: RagTrace[] }>(
+    `tenants/${tenantId}/bots/${botId}/rag/traces`,
+  );
+  return result.traces;
+}
+
 export async function playgroundConversation(
   tenantId: string,
   botId: string,

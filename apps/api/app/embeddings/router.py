@@ -12,7 +12,7 @@ from app.core.audit import record_audit
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
 from app.core.tenancy import TenantContextDep
-from app.db.models import Job
+from app.db.models import Job, UsageEvent
 from app.embeddings.backfill import queue_backfill, scoped_bot
 
 BASE = "/api/v1/tenants/{tenant_id}/bots/{bot_id}/rag"
@@ -32,6 +32,33 @@ class RagPatch(BaseModel):
 class BackfillRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     embedding_model: str | None = Field(default=None, min_length=3, max_length=200)
+
+
+@router.get(BASE + "/traces")
+def get_traces(bot_id: UUID, context: TenantContextDep) -> dict[str, object]:
+    context.require_operator()
+    scoped_bot(context.db, context.tenant_id, bot_id)
+    rows = context.db.scalars(
+        select(UsageEvent)
+        .where(
+            UsageEvent.tenant_id == context.tenant_id,
+            UsageEvent.bot_id == bot_id,
+            UsageEvent.kind == "message",
+            UsageEvent.payload["rag_trace"].is_not(None),
+        )
+        .order_by(UsageEvent.created_at.desc(), UsageEvent.id.desc())
+        .limit(50)
+    )
+    return {
+        "traces": [
+            {
+                "message_id": str(row.message_id),
+                "created_at": row.created_at.isoformat(),
+                "trace": row.payload["rag_trace"],
+            }
+            for row in rows
+        ]
+    }
 
 
 @router.get(BASE)

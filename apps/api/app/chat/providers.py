@@ -12,6 +12,7 @@ import json
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 
 import httpx
 
@@ -76,12 +77,14 @@ class OpenAICompatibleModel(ChatModel):
         self.blocked = False
         self.requests_used = 0
         self.model_used: str | None = None
+        self.last_cost_usd: Decimal | None = None
         self.temperature = temperature
         self.usage_totals = None
 
     def complete(self, messages: list[dict[str, str]], *, json_mode: bool, max_tokens: int) -> str:
         if self.blocked:
             raise ProviderError("Provider unavailable for this turn.")
+        self.last_cost_usd = None
         body: dict[str, object] = {
             "messages": messages,
             "temperature": self.temperature,
@@ -120,6 +123,12 @@ class OpenAICompatibleModel(ChatModel):
                     continue
                 usage = payload.get("usage")
                 if isinstance(usage, dict):
+                    try:
+                        cost = Decimal(str(usage.get("cost")))
+                        if cost.is_finite() and cost >= 0:
+                            self.last_cost_usd = cost
+                    except InvalidOperation:
+                        pass
                     measured = {
                         key: value
                         for key, value in usage.items()

@@ -1,6 +1,6 @@
 # Stage 3 — rewrite, relevance gate and safe refusal
 
-2026-10-16. Parent `8f163e9`; this stage's hash follows in the next checkpoint.
+2026-10-16. Implementation `555ffc7`, parent `8f163e9`.
 Provider requests: **0**. Owner approved **cosine OR FTS**, with explicitly
 untuned `bge-m3 (Ollama), provisional` defaults 0.50 / 0.01.
 

@@ -116,6 +116,12 @@ test("playground chat: grounded answer, citation, thumbs, thread persists", asyn
   await expect(page.getByTestId("citations")).toContainText(
     "https://pg-cited.example.com/hours",
   );
+  await expect(page.getByTestId("answer-traces")).toContainText("passed");
+  await page.getByTestId("answer-traces").locator("summary").first().click();
+  await expect(page.getByTestId("answer-traces")).toContainText(
+    "Opening hours",
+  );
+  await expect(page.getByTestId("answer-traces")).toContainText("cosine");
 
   // Thumbs up once: the second click is disabled (idempotent per rater).
   const thumbs = page.locator("[aria-label='Thumbs up']").first();

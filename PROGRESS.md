@@ -1161,3 +1161,42 @@ calibration, dotenv reads, paid calls, merge, push, deployment or Compose.
 - Final `ruff check` affected retrieval gate/chat/config/tests scope: exit 0;
   `ruff format --check` same scope including conversations.py: **9 files**, exit 0.
 - Stage 3 total: **71 unique affected API tests**; **7 affected browser tests**.
+
+
+## 2026-10-16 RAG Stage 4 ? grounded generation and private traces
+
+Stage 3 committed `555ffc7`. Added per-bot model selection on playground/widget,
+private JSON traces stored in existing message usage events, one staff-only
+trace route (exact matrix now81), typed staff playground trace panel and
+optional post-check callback hook. Existing strict citation validation kept.
+OpenAI transport tested only with mocked HTTP. Real provider requests: 0.
+
+```text
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage4_traces -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_rag_traces.py tests/test_rag_gate.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage4-traces
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage4_matrix -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_tenant_route_matrix.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage4-matrix
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage4_widget -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_widget_public.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage4-widget
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage4_citations -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_chat.py -k 'citation or invalid_json or provider_failure' --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage4-citations
+```
+
+First command **17 passed** (3 trace +14 gate),5.76s. Matrix **6 passed**,24.87s.
+Other outcomes below. No cross-tenant/bot hits or client exposure in checks.
+`docker cp rag-stage0-checks:/tmp/rag-stage4-traces/test_sample_traces_and_postche0/sample-traces.json docs/rag-phase/STAGE-4-SAMPLE-TRACES.json`:exit0.
+Samples are mocked answerable/refusal/follow-up traces, not live quality evidence.
+
+Initial mypy found2new test setup/narrowing errors; corrected. Final
+`docker exec rag-stage0-checks python -m mypy --no-incremental --cache-dir /tmp/rag-stage4-mypy2`:exit0,**167 source files**.
+`ruff check` and `ruff format --check` on app/chat, widget/service.py,
+embeddings/router.py, core/permissions.py, tenant matrix +trace tests:exit0,
+**14 files** formatted. Host Ruff fixed new-file formatting only.
+`npm.cmd run lint` and `npm.cmd run typecheck`:exit0. Touched web files formatted.
+
+Affected browser command from apps/web:
+
+```powershell
+$env:ENVIRONMENT='test'; $env:DATABASE_URL='postgresql://postgres@127.0.0.1:55462/rag_stage4_browser_test'; $env:E2E_API_PORT='18162'; $env:API_PROXY_TARGET='http://127.0.0.1:18162'; $env:STORAGE_ROOT='D:/Projects/Work Projects/The Osiris Labs/SAAS-chats-ai/.test-storage/rag-stage-0/stage4-browser-storage'; npm.cmd test -- tests/playground.spec.ts --reporter=line 2>&1 | Tee-Object -FilePath '../../.test-storage/rag-stage-0/stage4-browser.log'; exit $LASTEXITCODE
+```
+
+Exit0,**3 passed(1.1m)**,including trace panel and viewer restriction. No full
+suites or new migration. No dotenv reads, real provider calls, merge,push,deploy.
+
+- Widget public: exit0, **14 passed**,216.30s. Selected citation/error: exit0, **4 passed**,12 deselected,58.71s. Stage4 total **41 affected API tests**. Browser log checked as UTF-16: ECONNRESET0.
