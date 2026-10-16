@@ -107,7 +107,17 @@ async function visitAndLead(
   const input = frame.getByTestId("widget-input");
   await expect(input).toBeVisible();
   await input.fill(question);
+  // A restored conversation can already contain an AI bubble. Wait for this
+  // turn to commit before navigating away, rather than accepting the old bubble.
+  const messageResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      /^\/api\/public\/v1\/sessions\/[^/]+\/messages$/.test(
+        new URL(response.url()).pathname,
+      ),
+  );
   await frame.getByTestId("widget-send").click();
+  expect((await messageResponse).status()).toBe(201);
   await expect(frame.getByTestId("widget-ai-msg").last()).toBeVisible({
     timeout: 45_000,
   });

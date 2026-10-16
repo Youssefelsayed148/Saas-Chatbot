@@ -74,7 +74,7 @@ def playground_turn(
     from app.knowledge.service import get_bot as get_bot_scoped
 
     bot = get_bot_scoped(context, bot_id)
-    model = model_from_settings(settings)
+    model = model_from_settings(settings, bot)
     if model is None:
         from app.core.errors import ApiError
 

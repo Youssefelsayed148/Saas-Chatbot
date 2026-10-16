@@ -203,6 +203,16 @@ def test_condense_helper_rules() -> None:
     assert condense(model, history=["a"], question="x", language="en") is None  # multi-line
 
 
+def test_self_contained_history_skips_rewrite_but_reaches_generation(
+    app: Any, db: OrmSession, corpus: dict[str, Any]
+) -> None:
+    model = EchoFirstEvidenceId("Open until 17:00.", True)
+    reply = answer(db, corpus, model, "What are your opening hours?", history=["Previous turn"])
+    assert reply.kind == "answer" and reply.condensed_question is None
+    assert len(model.calls) == 1 and model.calls[0][1]
+    assert any(message["content"] == "Previous turn" for message in model.calls[0][0])
+
+
 # --- strict output contract -----------------------------------------------------
 
 
@@ -265,7 +275,7 @@ def test_zero_hit_retrieval_is_cannot_confirm(
     reply = answer(db, corpus, model, "wireless charging pads?")
     assert reply.kind == "cannot_confirm"
     assert reply.needs_human is True
-    assert "cannot confirm that from the information" in reply.answer
+    assert "I don't have that information" in reply.answer
     assert model.calls == []  # no evidence → no model call
 
 

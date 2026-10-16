@@ -13,7 +13,7 @@ RUN useradd --create-home api
 RUN mkdir -p /data/storage && chown -R api:api /data
 USER api
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--timeout-keep-alive", "65"]
 
 FROM base AS checks
 USER root

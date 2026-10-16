@@ -425,7 +425,8 @@ class UsageEvent(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "kind IN ('message', 'widget_open', 'lead', 'feedback_up', 'feedback_down', 'handoff', 'sentiment_run')",
+            "kind IN ('message', 'widget_open', 'lead', 'feedback_up', 'feedback_down', 'handoff', 'sentiment_run')"
+            " OR kind = 'ai_usage'",
             name="ck_usage_events_kind",
         ),
         ForeignKeyConstraint(

@@ -42,6 +42,22 @@ test("client admin requests a change and a separate operator triages it", async 
   await expect(request.getByText(/Status: triaged/)).toBeVisible();
   await page.reload();
   await expect(page.getByText(/Status: triaged/)).toBeVisible();
+  await page.goto(`/app/${tenantId}/analytics`);
+  await expect(page.getByTestId("rag-operator-panel")).toHaveCount(0);
+  await operator.goto(`/app/${tenantId}/analytics`);
+  const aiPanel = operator.getByTestId("rag-operator-panel");
+  await expect(aiPanel).toBeVisible();
+  await aiPanel.getByLabel(/AI tokens per month/).fill("12345");
+  await aiPanel
+    .getByRole("button", { name: "Save AI limits", exact: true })
+    .click();
+  await expect(aiPanel.getByText("AI limits saved.")).toBeVisible();
+  const limits = await operator.request.get(
+    `/api/v1/tenants/${tenantId}/bots/${bot.id}/rag`,
+  );
+  expect((await limits.json()).effective_limits.monthly_tokens).toBe(12345);
+  await aiPanel.getByRole("button", { name: "Reset to plan defaults" }).click();
+  await expect(aiPanel.getByLabel(/AI tokens per month/)).toHaveValue("");
   await operatorContext.close();
   expect(botName).toBeTruthy();
 });
@@ -108,6 +124,8 @@ test("all client roles cannot obtain snippets or enter bot-control surfaces", as
     await expect(
       member.getByRole("heading", { name: "Overview", exact: true }),
     ).toBeVisible();
+    await member.goto(`/app/${tenantId}/analytics`);
+    await expect(member.getByTestId("rag-operator-panel")).toHaveCount(0);
     await expect(member.getByText("Resource not found.")).toHaveCount(0);
     await member.goto(`/app/${tenantId}/bots/${botId}/overview`);
     for (const name of ["Knowledge", "Playground", "Settings", "Install"])

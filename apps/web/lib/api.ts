@@ -1160,6 +1160,8 @@ export interface KnowledgeDocument {
   text: string;
   total_chars: number;
   chunk_count: number;
+  status: string;
+  warnings: string[];
   created_at: string;
 }
 
@@ -1378,6 +1380,88 @@ export interface PlaygroundConversation {
   conversation_id: string;
   message_count: number;
   messages: PlaygroundMessage[];
+}
+
+export interface RagTrace {
+  message_id: string;
+  created_at: string;
+  trace: {
+    retrieval_mode: string;
+    gate: string;
+    rewrite_used: boolean;
+    model: string | null;
+    tokens: Record<string, number> | null;
+    cost_usd: string | null;
+    chunks: {
+      chunk_id: string;
+      title: string;
+      locator: string;
+      vector_similarity: number | null;
+      fts_match: number;
+      accepted: boolean;
+    }[];
+  };
+}
+
+export async function ragTraces(
+  tenantId: string,
+  botId: string,
+): Promise<RagTrace[]> {
+  const result = await api<{ traces: RagTrace[] }>(
+    `tenants/${tenantId}/bots/${botId}/rag/traces`,
+  );
+  return result.traces;
+}
+
+export const RAG_LIMIT_NAMES = [
+  "documents",
+  "chunks",
+  "storage_bytes",
+  "monthly_messages",
+  "monthly_tokens",
+  "monthly_embedding_tokens",
+  "monthly_ocr_pages",
+] as const;
+export type RagLimitName = (typeof RAG_LIMIT_NAMES)[number];
+export type RagLimits = Partial<Record<RagLimitName, number | null>>;
+export interface RagCost {
+  channel: string;
+  model: string;
+  event_type: string;
+  events: number;
+  measured_tokens: number;
+  reserved_or_accounted_tokens: number;
+  cost_usd: string;
+  unmeasured_events: number;
+}
+export async function ragLimits(
+  tenantId: string,
+  botId: string,
+): Promise<{
+  limits: RagLimits;
+  effective_limits: RagLimits;
+  usage: Record<string, number>;
+}> {
+  return api(`tenants/${tenantId}/bots/${botId}/rag`);
+}
+export async function patchRagLimits(
+  tenantId: string,
+  botId: string,
+  limits: RagLimits | null,
+): Promise<void> {
+  await api(`tenants/${tenantId}/bots/${botId}/rag`, {
+    method: "PATCH",
+    body: { limits },
+  });
+}
+export async function ragCosts(
+  tenantId: string,
+  botId: string,
+): Promise<RagCost[]> {
+  const result = await api<{ costs: RagCost[] }>(
+    `tenants/${tenantId}/bots/${botId}/rag/costs`,
+  );
+  return result.costs;
 }
 
 export async function playgroundConversation(

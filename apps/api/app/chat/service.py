@@ -13,20 +13,40 @@ chain failed — the handoff machine (P5) consumes that flag.
 """
 
 import json
+import logging
+import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
 from app.chat import prompts
 from app.chat.providers import ChatModel, ProviderError
 from app.chat.routing import route
+from app.chat.tracing import TracedModel
 from app.core.config import Settings, get_settings
-from app.db.models import Bot
+from app.db.models import Bot, Tenant
 from app.knowledge.language import detect_language
-from app.retrieval.service import RetrievalResult, RetrievedChunk, retrieve
+from app.retrieval.gate import relevance_gate
+from app.retrieval.hybrid import retrieve_hybrid as retrieve
+from app.retrieval.service import RetrievalResult, RetrievedChunk
 
 MAX_TOKENS = 700
+logger = logging.getLogger(__name__)
+
+# Conservative heuristic: history alone is not a reason to spend a rewrite.
+FOLLOW_UP = re.compile(
+    r"^(?:and\b|what about\b|how about\b|also\b|then\b|that\b|those\b|it\b|they\b|"
+    r"وماذا|ومتى|وهل|وبالنسبة|وكام|وكم|و يوم|طيب)|\b(?:it|them|those|that one)\b",
+    re.IGNORECASE,
+)
+
+
+def needs_rewrite(question: str, history: list[str]) -> bool:
+    return bool(history and FOLLOW_UP.search(question.strip()))
+
 
 CONDENSE_SYSTEM = (
     "You condense a visitor follow-up into a standalone search query in the "
@@ -58,6 +78,7 @@ class ChatReply:
     citations: list[dict[str, str | None]] = field(default_factory=list)
     condensed_question: str | None = None
     used_fallback: bool = False  # cross-language retrieval fallback
+    trace: dict[str, object] = field(default_factory=dict)
 
 
 def _support_contact(bot: Bot) -> str:
@@ -182,8 +203,20 @@ def chat_answer(
     language_hint: str | None = None,
     model: ChatModel,
     settings: Settings | None = None,
+    post_check: Callable[[str, list[RetrievedChunk]], bool] | None = None,
 ) -> ChatReply:
     settings = settings or get_settings()
+    trace: dict[str, object] = {
+        "retrieval_mode": "not_run",
+        "gate": "not_run",
+        "chunks": [],
+        "rewrite_used": False,
+        "model": None,
+        "tokens": None,
+        "cost_usd": None,
+        "post_check": "not_configured",
+    }
+    model = TracedModel(model, trace)
     history = [message for message in (history or []) if message.strip()][-6:]
 
     language = (
@@ -212,10 +245,20 @@ def chat_answer(
             needs_human=routed.needs_human,
             language=language,
             kind=routed.kind,
+            trace=trace,
         )
 
-    # 2) Follow-up condensation (only with history; failure keeps the raw text).
-    condensed = condense(model, history=history, question=question, language=language)
+    # 2) Rewrite only context-dependent follow-ups, if enabled for this plan.
+    condensed = None
+    if settings.chat_rewrite_enabled and needs_rewrite(question, history):
+        plan = db.scalar(
+            select(Tenant.plan_label)
+            .join(Bot, Bot.tenant_id == Tenant.id)
+            .where(Tenant.id == tenant_id, Bot.id == bot.id)
+        )
+        if plan in settings.chat_rewrite_plans:
+            condensed = condense(model, history=history, question=question, language=language)
+    trace["rewrite_used"] = condensed is not None
 
     # 3) Retrieval on the condensed (or raw) question.
     revision_id = bot.published_revision_id
@@ -241,9 +284,47 @@ def chat_answer(
                 model, question=raw, target_language=target
             ),
         )
-        evidence = retrieval.evidence
+        decision = relevance_gate(retrieval, settings)
+        evidence = decision.passed[: settings.retrieval_final_k]
+        trace.update(
+            retrieval_mode=retrieval.mode,
+            degradation_reason=retrieval.degradation_reason,
+            embedding_model=retrieval.embedding_model,
+            embedding_tokens=retrieval.embedding_tokens,
+            embedding_cost_usd=(
+                str(retrieval.embedding_cost_usd)
+                if retrieval.embedding_cost_usd is not None
+                else None
+            ),
+            gate="passed" if evidence else "refused",
+            vector_floor=decision.vector_floor,
+            fts_minimum=decision.fts_minimum,
+            chunks=[
+                {
+                    "chunk_id": str(chunk.chunk_id),
+                    "document_id": str(chunk.document_id),
+                    "title": chunk.title,
+                    "locator": chunk.page_ref,
+                    "vector_similarity": chunk.vector_similarity,
+                    "fts_match": chunk.fts_match,
+                    "rrf_score": chunk.rrf_score,
+                    "accepted": chunk in evidence,
+                }
+                for chunk in retrieval.evidence
+            ],
+        )
+        logger.info(
+            "rag.gate tenant=%s bot=%s mode=%s accepted=%s rejected=%s rewrite=%s",
+            tenant_id,
+            bot.id,
+            retrieval.mode,
+            len(evidence),
+            len(decision.rejected_ids),
+            condensed is not None,
+        )
 
     if not evidence:
+        trace["gate"] = "refused"
         contact = _support_contact(bot)
         return ChatReply(
             answer=prompts.canned("cannot_confirm", language, support_contact=contact),
@@ -253,6 +334,7 @@ def chat_answer(
             kind="cannot_confirm",
             condensed_question=condensed,
             used_fallback=bool(retrieval and retrieval.used_fallback),
+            trace=trace,
         )
 
     # 4) Build the prompt: evidence as DATA; question (plus condensed note).
@@ -294,6 +376,7 @@ def chat_answer(
         user_text = f"{question}\n\n" + "\n".join(extra)
     messages = [
         {"role": "system", "content": system},
+        *({"role": "user", "content": previous} for previous in history),
         {"role": "user", "content": user_text},
     ]
 
@@ -302,6 +385,11 @@ def chat_answer(
     try:
         raw = model.complete(messages, json_mode=True, max_tokens=settings.chat_max_tokens)
         parsed = _parse_reply(raw, evidence)
+        if parsed and parsed[1] and post_check is not None:
+            accepted = post_check(parsed[0], evidence)
+            trace["post_check"] = "passed" if accepted else "rejected"
+            if not accepted:
+                parsed = None
     except ProviderError:
         parsed = None
     if parsed is None:
@@ -313,6 +401,7 @@ def chat_answer(
             kind="busy",
             condensed_question=condensed,
             used_fallback=bool(retrieval and retrieval.used_fallback),
+            trace=trace,
         )
     answer, can_answer, chunk_ids = parsed
     by_id = {chunk.chunk_id: chunk for chunk in evidence}
@@ -335,4 +424,5 @@ def chat_answer(
         citations=citations,
         condensed_question=condensed,
         used_fallback=bool(retrieval and retrieval.used_fallback),
+        trace=trace,
     )

@@ -22,6 +22,8 @@ export default function PlaygroundPage() {
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [notReady, setNotReady] = useState(false);
+  const [traces, setTraces] = useState<api.RagTrace[]>([]);
+  const [traceError, setTraceError] = useState<string | null>(null);
   const [feedbackGiven, setFeedbackGiven] = useState<
     Record<string, "up" | "down">
   >({});
@@ -41,13 +43,23 @@ export default function PlaygroundPage() {
     }
   }, [tenantId, botId]);
 
+  const loadTraces = useCallback(async () => {
+    try {
+      setTraces(await api.ragTraces(tenantId, botId));
+      setTraceError(null);
+    } catch {
+      setTraceError("Could not load answer traces.");
+    }
+  }, [tenantId, botId]);
+
   useEffect(() => {
     if (!me?.is_platform_staff) return;
     const timer = setTimeout(() => {
       void loadThread();
+      void loadTraces();
     }, 0);
     return () => clearTimeout(timer);
-  }, [loadThread, me?.is_platform_staff]);
+  }, [loadThread, loadTraces, me?.is_platform_staff]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "nearest" });
@@ -61,6 +73,7 @@ export default function PlaygroundPage() {
     setSending(true);
     try {
       const turn = await api.playgroundTurn(tenantId, botId, text);
+      void loadTraces();
       setDraft("");
       setNotReady(false);
       setMessages((current) => [
@@ -211,6 +224,37 @@ export default function PlaygroundPage() {
           </ul>
         )}
         <div ref={bottomRef} />
+      </section>
+
+      <section aria-label="Answer traces" data-testid="answer-traces">
+        <h2>Answer traces</h2>
+        {traceError && <Notice message={traceError} tone="error" />}
+        {traces.length === 0 && (
+          <p className="muted">No recorded answers yet.</p>
+        )}
+        {traces.map(({ message_id, trace }) => (
+          <details key={message_id}>
+            <summary>
+              {trace.retrieval_mode} · {trace.gate} ·{" "}
+              {trace.rewrite_used ? "rewritten" : "original query"}
+            </summary>
+            <p>
+              Model: {trace.model ?? "No generation"}; tokens:{" "}
+              {trace.tokens?.total_tokens ?? "Unmeasured"}; cost:{" "}
+              {trace.cost_usd === null ? "Unmeasured" : `$${trace.cost_usd}`}
+            </p>
+            <ul>
+              {trace.chunks.map((chunk) => (
+                <li key={chunk.chunk_id}>
+                  {chunk.title} ({chunk.locator}) · cosine{" "}
+                  {chunk.vector_similarity?.toFixed(3) ?? "—"} · FTS{" "}
+                  {chunk.fts_match.toFixed(3)} ·{" "}
+                  {chunk.accepted ? "used" : "excluded"}
+                </li>
+              ))}
+            </ul>
+          </details>
+        ))}
       </section>
 
       {sendError && !notReady && <Notice message={sendError} tone="error" />}

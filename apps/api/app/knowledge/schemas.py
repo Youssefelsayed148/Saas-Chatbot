@@ -75,6 +75,8 @@ class DocumentOut(BaseModel):
     text: str
     total_chars: int
     chunk_count: int = 0
+    status: str = "parsed"
+    warnings: list[str] = Field(default_factory=list)
     created_at: datetime
 
 

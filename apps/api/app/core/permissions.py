@@ -1,6 +1,11 @@
 """Reviewed authorization declarations. The tenant dependency enforces this metadata."""
 
 TENANT_ROUTE_ROLES: dict[tuple[str, str], str] = {
+    ("GET", "/api/v1/tenants/{tenant_id}/bots/{bot_id}/rag/costs"): "platform_staff_only",
+    ("GET", "/api/v1/tenants/{tenant_id}/bots/{bot_id}/rag/traces"): "platform_staff_only",
+    ("GET", "/api/v1/tenants/{tenant_id}/bots/{bot_id}/rag"): "platform_staff_only",
+    ("PATCH", "/api/v1/tenants/{tenant_id}/bots/{bot_id}/rag"): "platform_staff_only",
+    ("POST", "/api/v1/tenants/{tenant_id}/bots/{bot_id}/rag/backfill"): "platform_staff_only",
     ("GET", "/api/v1/tenants/{tenant_id}/inbox/assignees"): "editor",
     ("GET", "/api/v1/tenants/{tenant_id}/change-requests"): "admin",
     ("POST", "/api/v1/tenants/{tenant_id}/change-requests"): "admin",

@@ -4,15 +4,22 @@ chat service then emits the not-ready/busy canned reply."""
 
 from app.chat.providers import ChatModel, OpenAICompatibleModel
 from app.core.config import Settings, get_settings
+from app.db.models import Bot
 
 
-def model_from_settings(settings: Settings) -> ChatModel | None:
+def model_from_settings(settings: Settings, bot: Bot | None = None) -> ChatModel | None:
     if settings.chat_stub_model:
         from app.chat.providers import ExtractiveStubModel
 
         return ExtractiveStubModel()
-    if settings.chat_openrouter_api_key is not None:
-        chain = list(settings.chat_free_model_chain)
+    provider = (
+        bot.generation_provider
+        if bot is not None
+        else ("openrouter" if settings.chat_openrouter_api_key else "openai")
+    )
+    override = bot.generation_model if bot is not None else None
+    if provider == "openrouter" and settings.chat_openrouter_api_key is not None:
+        chain = [override] if override else list(settings.chat_free_model_chain)
         if not chain:
             return None  # no configured model ids → not ready
         return OpenAICompatibleModel(
@@ -22,20 +29,24 @@ def model_from_settings(settings: Settings) -> ChatModel | None:
             fallback_models=chain[1:],
             free_only=True,
             timeout_seconds=25.0,
-            retries=2,
+            retries=0,
         )
-    if settings.chat_openai_api_key is not None and settings.chat_openai_model:
+    if (
+        provider == "openai"
+        and settings.chat_openai_api_key is not None
+        and (override or settings.chat_openai_model)
+    ):
         return OpenAICompatibleModel(
             base_url=settings.chat_openai_base_url,
             api_key=settings.chat_openai_api_key.get_secret_value(),
-            model=settings.chat_openai_model,
+            model=override or settings.chat_openai_model,
             free_only=False,
             timeout_seconds=25.0,
-            retries=2,
+            retries=0,
         )
     return None
 
 
-def default_model() -> ChatModel | None:
+def default_model(bot: Bot | None = None) -> ChatModel | None:
     """Request-time model (built per call; construction is cheap)."""
-    return model_from_settings(get_settings())
+    return model_from_settings(get_settings(), bot)

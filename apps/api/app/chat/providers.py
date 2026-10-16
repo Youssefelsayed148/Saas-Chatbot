@@ -12,6 +12,9 @@ import json
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
+
+import httpx
 
 from app.core.errors import ApiError
 
@@ -36,9 +39,6 @@ class ProviderChainAttempt:
     error: str
 
 
-RETRYABLE_HTTP_STATUS = {408, 409, 425, 429}
-
-
 class OpenAICompatibleModel(ChatModel):
     """A simple sync client for OpenAI-compatible chat endpoints.
 
@@ -55,7 +55,8 @@ class OpenAICompatibleModel(ChatModel):
         fallback_models: list[str] | None = None,
         free_only: bool = True,
         timeout_seconds: float = 25.0,
-        retries: int = 2,
+        retries: int = 0,
+        transport: httpx.BaseTransport | None = None,
         temperature: float = 0.2,
     ) -> None:
         if not api_key:
@@ -71,13 +72,19 @@ class OpenAICompatibleModel(ChatModel):
         self.fallback_models = list(fallback_models or [])
         self.free_only = free_only
         self.timeout_seconds = timeout_seconds
-        self.retries = retries
+        del retries  # compatibility only: retries are forbidden for all callers
+        self.transport = transport
+        self.blocked = False
+        self.requests_used = 0
+        self.model_used: str | None = None
+        self.last_cost_usd: Decimal | None = None
         self.temperature = temperature
         self.usage_totals = None
 
     def complete(self, messages: list[dict[str, str]], *, json_mode: bool, max_tokens: int) -> str:
-        from httpx import Client, HTTPError
-
+        if self.blocked:
+            raise ProviderError("Provider unavailable for this turn.")
+        self.last_cost_usd = None
         body: dict[str, object] = {
             "messages": messages,
             "temperature": self.temperature,
@@ -85,58 +92,58 @@ class OpenAICompatibleModel(ChatModel):
         }
         if json_mode:
             body["response_format"] = {"type": "json_object"}
-
-        chain: list[ProviderChainAttempt] = []
-        for model in [self.model, *self.fallback_models]:
-            body["model"] = model
-            last_error: Exception | None = None
-            for _attempt in range(self.retries + 1):
+        # One attempt per model; at most the immediate next model as fallback.
+        # An auth/quota response blocks all subsequent calls on this turn's
+        # model instance, including preprocessing followed by generation.
+        with httpx.Client(
+            base_url=self.base_url,
+            headers={"Authorization": f"Bearer {self._api_key}"},
+            timeout=self.timeout_seconds,
+            transport=self.transport,
+            follow_redirects=False,
+        ) as client:
+            for model in [self.model, *self.fallback_models[:1]]:
+                body["model"] = model
+                self.requests_used += 1
                 try:
-                    response = Client(
-                        base_url=self.base_url,
-                        headers={"Authorization": f"Bearer {self._api_key}"},
-                        timeout=self.timeout_seconds,
-                    ).post("/chat/completions", json=body)
-                except HTTPError as http_error:
-                    # Network error or timeout: retry this model, then next.
-                    last_error = ProviderError(f"model {model}: {type(http_error).__name__}")
+                    response = client.post("chat/completions", json=body)
+                except httpx.HTTPError:
                     continue
-                if response.status_code in RETRYABLE_HTTP_STATUS:
-                    last_error = ProviderError(f"model {model}: HTTP {response.status_code}")
-                    continue
-                if response.status_code >= 500:
-                    last_error = ProviderError(f"model {model}: HTTP {response.status_code}")
-                    continue
+                if response.status_code in (401, 402, 403, 429):
+                    self.blocked = True
+                    raise ProviderError("Provider unavailable for this turn.")
                 if response.status_code != 200:
-                    last_error = ProviderError(f"model {model}: HTTP {response.status_code}")
-                    break  # non-retryable: try the next model immediately
+                    continue
                 try:
                     payload = response.json()
                     content = payload["choices"][0]["message"]["content"]
-                except (KeyError, IndexError, ValueError) as parse_error:
-                    last_error = ProviderError(f"model {model}: malformed response ({parse_error})")
-                    break
+                except (KeyError, IndexError, ValueError, TypeError):
+                    continue
                 if not isinstance(content, str) or not content.strip():
-                    last_error = ProviderError(f"model {model}: empty completion")
                     continue
                 usage = payload.get("usage")
                 if isinstance(usage, dict):
+                    try:
+                        cost = Decimal(str(usage.get("cost")))
+                        if cost.is_finite() and cost >= 0:
+                            self.last_cost_usd = cost
+                    except InvalidOperation:
+                        pass
                     measured = {
                         key: value
                         for key, value in usage.items()
                         if key in ("prompt_tokens", "completion_tokens", "total_tokens")
                         and isinstance(value, int)
+                        and not isinstance(value, bool)
                         and value >= 0
                     }
                     if measured:
                         totals = self.usage_totals or {}
                         self.usage_totals = {
-                            key: totals.get(key, 0) + value
-                            for key, value in measured.items()
+                            key: totals.get(key, 0) + value for key, value in measured.items()
                         }
+                self.model_used = model
                 return content
-            if last_error is not None:
-                chain.append(ProviderChainAttempt(model=model, error=str(last_error)))
         raise ProviderError("All configured models failed.")
 
 

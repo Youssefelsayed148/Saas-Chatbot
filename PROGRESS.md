@@ -931,3 +931,450 @@ Final web static checks after role/UI wiring: `npm.cmd run lint` ? exit 0; `npm.
 - Final single API gate on main: 282 passed, 0 failed across all 37 files, each invoked once individually. Full per-file table: implementation/PHASE-01/FOLLOW-UP-MERGE-REPORT.md. Offline eval report copied with `docker cp phase1-verification-api:/tmp/p1follow-gate-eval/implementation/PHASE-03/EVAL-REPORT.md .test-storage/phase1-followup/eval-gate.md` (exit 0); historical tracked eval report unchanged.
 - Local cleanup commands, all exit 0: `git tag phase-1-complete fde670f83c0f5e67e0ffe597a519f0ddd8d6c62b`; `git branch -d feat/p1-01-foundation feat/product-cycle-1 feat/ui-redesign`; `git worktree prune`. Deleted tips: 1bea650, 4f5a00f, 51bafec, all merged into main. One worktree retained on main; no secondary worktree removal. Untracked inventory before cleanup: empty. Ignored files/logs/storage retained; no force, push, reset or clean operation. No unmerged local branches remain.
 - Evidence-only report commit follows the tested merge. No source changed after the merge gate, and no full or affected tests were rerun for reporting. Whole-repository host Ruff has 9 existing findings; changed-file pinned Ruff, web lint/typecheck and full API mypy passed. Hosted CI/live providers/production remain unverified.
+
+## 2026-10-16 RAG Phase 2 — Stage 0 checkpoint
+
+Scope: Stage 0 only. Report: `implementation/RAG-PHASE-02/STAGE-0-REPORT.md`. The live baseline stopped at its first HTTP 429; Stage 0 remains pending owner disposition. No automatic retries, waiting for quota, model rotation, or Stage 1 work.
+
+Setup commands and outcomes:
+
+- `git log --oneline phase-1-complete..HEAD` on initial main: only `946f2cb docs: record Phase 1 merge gate and safe cleanup`.
+- `git merge-base --is-ancestor phase-1-complete HEAD`: exit 0. Tag points to `fde670f83c0f5e67e0ffe597a519f0ddd8d6c62b`; initial HEAD `946f2cb16989379a4d0996db6434932e5feda18d`.
+- `git switch -c feat/rag-phase-2`: initially sandbox-denied writing refs; approved retry exit 0.
+- `git add -- docs/RAG-PLAN-v2.md docs/RAG-PHASE-PROMPT-v2.md`; `git commit -m "docs(rag): record approved Phase 2 plan and execution gates"`: exit 0, first commit `0c70c5b`. Corrected the filename reference in the prompt.
+- Process-environment presence checks, including elevated execution: both required variables not set, model count 0; no values printed. Owner then explicitly allowed scoped `.env` loading. Both entries were set there; chain was non-JSON comma-separated text with 3 candidates, not all passing the `:free` guard.
+- `.venv/Scripts/python.exe .test-storage/rag-stage-0/configure-chain.py`: first invocation exit 1, single public catalog lookup succeeded but same-model zero-priced `:free` variants were absent for positions 1 and 3; no mutation. After explicit owner approval to replace unavailable entries, same command exit 0 using only cached catalog: retained one entry, replaced two, updated only the chain to JSON with 3 verified zero-priced `:free` IDs. Key unchanged. No key/model values displayed. Exactly 1 catalog request overall; no model smoke tests. `.env` remains ignored and unstaged.
+- Owner explicitly approved raw FTS plus at most one generation call, disabling rewrite/translation model calls for this baseline. This is an eval-only budget choice; production chat is unchanged.
+
+Disposable infrastructure, plain Docker only:
+
+```powershell
+docker run --detach --name rag-stage0-postgres --publish 127.0.0.1:55461:5432 --env POSTGRES_HOST_AUTH_METHOD=trust --env POSTGRES_DB=rag_stage0_base_test postgres:17
+docker run --detach --name rag-stage0-checks --env ENVIRONMENT=test --mount 'type=bind,source=D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\apps\api,target=/app,readonly' --workdir /app saas-chats-ai-p5-close-checks:latest sleep infinity
+```
+
+Both exit 0. No running containers initially. Test trust authentication is restricted to the disposable container's loopback-published port. No existing application database was used. The checks mount intentionally stays read-only.
+
+Affected Playwright commands, from `apps/web` (three scheduled runs, no retries):
+
+```powershell
+$env:ENVIRONMENT='test'; $env:DATABASE_URL='postgresql://postgres@127.0.0.1:55461/rag_stage0_run1_test'; $env:E2E_API_PORT='18161'; $env:API_PROXY_TARGET='http://127.0.0.1:18161'; $env:STORAGE_ROOT='D:/Projects/Work Projects/The Osiris Labs/SAAS-chats-ai/.test-storage/rag-stage-0/storage-run1'; npm.cmd test -- tests/widget.spec.ts tests/knowledge.spec.ts tests/overview.spec.ts --reporter=line 2>&1 | Tee-Object -FilePath '../../.test-storage/rag-stage-0/playwright-run1.log'; exit $LASTEXITCODE
+$env:ENVIRONMENT='test'; $env:DATABASE_URL='postgresql://postgres@127.0.0.1:55461/rag_stage0_run2_test'; $env:E2E_API_PORT='18161'; $env:API_PROXY_TARGET='http://127.0.0.1:18161'; $env:STORAGE_ROOT='D:/Projects/Work Projects/The Osiris Labs/SAAS-chats-ai/.test-storage/rag-stage-0/storage-run2'; npm.cmd test -- tests/widget.spec.ts tests/knowledge.spec.ts tests/overview.spec.ts --reporter=line 2>&1 | Tee-Object -FilePath '../../.test-storage/rag-stage-0/playwright-run2.log'; exit $LASTEXITCODE
+$env:ENVIRONMENT='test'; $env:DATABASE_URL='postgresql://postgres@127.0.0.1:55461/rag_stage0_run3_test'; $env:E2E_API_PORT='18161'; $env:API_PROXY_TARGET='http://127.0.0.1:18161'; $env:STORAGE_ROOT='D:/Projects/Work Projects/The Osiris Labs/SAAS-chats-ai/.test-storage/rag-stage-0/storage-run3'; npm.cmd test -- tests/widget.spec.ts tests/knowledge.spec.ts tests/overview.spec.ts --reporter=line 2>&1 | Tee-Object -FilePath '../../.test-storage/rag-stage-0/playwright-run3.log'; exit $LASTEXITCODE
+```
+
+- Run 1: exit 0, 10 passed (1.8m).
+- Run 2: exit 1, 9 passed and 1 failed (2.2m). `overview.spec.ts:127` expected Messages: 2, got 1. Existing helper accepted an old AI bubble and navigated before the new POST completed. Preserved trace `.test-storage/rag-stage-0/run2-overview-trace.zip` shows POST statuses 201 then -1. Added explicit wait for the new POST 201, without weakening any message-count assertion.
+- Run 3 after synchronization fix: exit 0, 10 passed (1.6m).
+- All three logs: 0 ECONNRESET, 0 Failed-to-proxy, 0 Traceback matches. PowerShell Tee logs are UTF-16; the first UTF-8 log-reading attempt failed with UnicodeDecodeError and was corrected to UTF-16 without rerunning tests. An earlier local raw-answer summary failed with a Windows console UnicodeEncodeError; rerendered as UTF-8. Neither error came from the widget/API or caused provider calls.
+- Initial Uvicorn default probe had a PowerShell/native quoting SyntaxError; corrected stdin-based probe verified default 5 seconds. Same API socket test before/after 6 seconds idle: HTTP 200 both times, socket identity unchanged, exit 0. Log `.test-storage/rag-stage-0/keep-alive-socket.log`. The socket check used Python `http.client.HTTPConnection('127.0.0.1', 18161, timeout=10)`, read `/health`, saved the socket, slept 6 seconds, read `/health` again, and asserted both statuses and socket identity. No model calls.
+- Retained 65-second keep-alive in Dockerfile, stack command and E2E launcher. ECONNRESET root cause remains UNVERIFIED; it did not reproduce. Latest instruction's affected-spec-only rule takes precedence over the original prompt's three-full-suite wording. No full suites run.
+
+Affected API budget/checkpoint tests (only this new file; all HTTP mocked):
+
+```powershell
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55461/rag_stage0_checks -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_rag_stage0_baseline.py --tb=short -p no:cacheprovider --basetemp=/tmp/rag-stage0-budget
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55461/rag_stage0_checks -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_rag_stage0_baseline.py --tb=short -p no:cacheprovider --basetemp=/tmp/rag-stage0-budget-final
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55461/rag_stage0_checks -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_rag_stage0_baseline.py --tb=short -p no:cacheprovider --basetemp=/tmp/rag-stage0-budget-passed
+```
+
+- Initial: exit 0, 12 passed, 1 existing Starlette warning (1.52s); `budget-tests.log`.
+- Added real-FTS/replay integration test: exit 1, 12 passed, 1 failed (1.72s); `budget-tests-final.log`. Found current `RetrievalResult.candidates` is never populated. Corrected eval instrumentation to observe the existing ranked SQL function, without extra retrieval queries or production changes.
+- Final: exit 0, **13 passed**, 1 existing warning (1.44s); `budget-tests-passed.log`. Tests cover immediate quota/auth stop, no retries, one fallback maximum, preprocessing skipped without requests, checkpoint/redaction, disposable DB guard, real FTS expected-ID hit and replay prevention.
+
+Static checks:
+
+- `npm.cmd run lint` and `npm.cmd run typecheck` from root: exit 0 initially and after the overview synchronization fix.
+- `node node_modules/prettier/bin/prettier.cjs --check apps/web/tests/e2e-api-setup.ts infra/compose.yaml`: initially reported harness formatting; formatted only the touched harness. After editing overview, changed-file check reported overview formatting; formatted only that touched spec. Final `node node_modules/prettier/bin/prettier.cjs --check apps/web/tests/e2e-api-setup.ts apps/web/tests/overview.spec.ts infra/compose.yaml`: exit 0.
+- `docker exec rag-stage0-checks python -m ruff check --no-cache app tests`: exit 1; **9 pre-existing findings**, unchanged (full list in Stage 0 report; log `ruff-existing.log`). No broad fixes.
+- Initial `docker exec rag-stage0-checks python -m ruff check --no-cache --fix scripts/rag_stage0_baseline.py tests/test_rag_stage0_baseline.py`: could not write on read-only mount. Used host Ruff only for these two new files. Initial checks found import/format/line-length issues and B023 capture; fixed. Initial expanded mypy found a test-only implicit-reexport reference; corrected. These initial failures are not represented as passing checks.
+- Final `docker exec rag-stage0-checks python -m ruff check --no-cache scripts/rag_stage0_baseline.py tests/test_rag_stage0_baseline.py`: exit 0, all checks passed.
+- Final `docker exec rag-stage0-checks python -m ruff format --no-cache --check scripts/rag_stage0_baseline.py tests/test_rag_stage0_baseline.py`: exit 0, 2 files already formatted.
+- Final `docker exec rag-stage0-checks python -m mypy --no-incremental --cache-dir /tmp/rag-stage0-passed-mypy app tests alembic scripts/rag_stage0_baseline.py`: exit 0, no issues in **156 source files**. Earlier pre-script baseline mypy passed for 154 files; intermediate `app tests scripts/...` invocation passed 142; first complete 156-file check failed only on the corrected test reference.
+- `git diff --check`: passed before report updates; final check recorded below. No tests are rerun for documentation/reporting.
+
+Fixture validation: `.venv/Scripts/python.exe -` with an inline AST/JSON check verified 32 unique case IDs, all five types, 10 unanswerable cases, the first 20 cases in Arabic/mixed/unanswerable buckets, and expected source keys present in seed_demo.FAQS. No eval/provider request. Synthetic `Settings(_env_file=None)` checks via `../../.venv/Scripts/python.exe -` from apps/api accepted JSON-array whitespace, preserved inside-string whitespace, and rejected comma/space-separated non-JSON input. No real dotenv/key reads in those synthetic checks.
+
+Single live eval command, from `apps/api`:
+
+```powershell
+$env:ENVIRONMENT='test'; $env:DATABASE_URL='postgresql://postgres@127.0.0.1:55461/rag_stage0_baseline_test'; Remove-Item Env:CHAT_STUB_MODEL -ErrorAction SilentlyContinue; ../../.venv/Scripts/python.exe -m scripts.rag_stage0_baseline --database-url postgresql://postgres@127.0.0.1:55461/rag_stage0_baseline_test --cases ../../implementation/RAG-PHASE-02/stage-0-eval.jsonl --output ../../.test-storage/rag-stage-0/baseline --scoped-dotenv ../../.env 2>&1 | Tee-Object -FilePath '../../.test-storage/rag-stage-0/baseline-run.log'; exit $LASTEXITCODE
+```
+
+Exit **2**, immediate stop at first HTTP 429 on `mixed-booking`; **9/32 completed**, 1 quota-stopped, 22 unattempted. **5 completion requests** (HTTP statuses: four 200, one 429), **1 catalog request** overall. The quota-stopped question used its primary attempt and one allowed fallback; no requests followed 429. No rerun or resume. Results/journal are UTF-8, flushed and fsynced per attempted question, under `.test-storage/rag-stage-0/baseline/`.
+
+Partial metrics on completed cases only: hit@8 **3/9 (33.3%)**, wrong refusals **6/9 (66.7%)**, returned citations valid **3/3**, internal-marker matches **0/9**. Arabic 0/6 hits with six wrong refusals; mixed 3/3 completed hits and correct prices/hours. Unanswerable refusal correctness, paraphrases, follow-ups, complete-set quality and exhaustive widget/API error safety remain UNVERIFIED. Partial metrics are not full-set results. Owner was immediately asked to keep Stage 0 pending or accept the partial baseline at STOP 0. One Stage 0 implementation commit is deferred pending that answer; only first docs commit exists so far.
+
+- Final `git diff --check` after the report/progress update: exit 0. No test reruns for docs/reporting.
+- `docker stop rag-stage0-checks rag-stage0-postgres`: exit 0. Only these disposable containers stopped; data and raw checkpoints preserved for an explicitly approved continuation. No removal or destructive cleanup.
+
+## 2026-10-16 Whole-phase continuation — Stage 0
+
+Owner changed numbered STOP gates to checkpoints and persistent quota stops to
+chat-only PENDING states; explicitly retained minimal client bot navigation
+fields while hiding all operator data. Overrides: `docs/rag-phase/EXECUTION-OVERRIDES.md`.
+Latest no-dotenv instruction supersedes the earlier scoped permission. Process
+checks: both required variables not set, chain length 0. No new provider calls.
+
+- `docker start rag-stage0-postgres rag-stage0-checks`: exit 0, preserved disposable containers only.
+- `docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55461/rag_stage0_checks -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_rag_stage0_baseline.py --tb=short -p no:cacheprovider --basetemp=/tmp/rag-stage0-resume`: exit 0, **14 passed**, 1 existing warning, 3.72s. Log `.test-storage/rag-stage-0/budget-tests-resume.log`.
+- `docker exec rag-stage0-checks python -m ruff check --no-cache scripts/rag_stage0_baseline.py tests/test_rag_stage0_baseline.py`: exit 0.
+- `docker exec rag-stage0-checks python -m ruff format --no-cache --check scripts/rag_stage0_baseline.py tests/test_rag_stage0_baseline.py`: exit 0, two files formatted.
+- `docker exec rag-stage0-checks python -m mypy --no-incremental --cache-dir /tmp/rag-stage0-commit-mypy app tests alembic scripts/rag_stage0_baseline.py`: exit 0, **156 source files**.
+- From apps/api, with ENVIRONMENT=test, DATABASE_URL=postgresql://postgres@127.0.0.1:55461/rag_stage0_baseline_test, CHAT_STUB_MODEL unset: `../../.venv/Scripts/python.exe -m scripts.rag_stage0_baseline --database-url postgresql://postgres@127.0.0.1:55461/rag_stage0_baseline_test --cases ../../implementation/RAG-PHASE-02/stage-0-eval.jsonl --output ../../.test-storage/rag-stage-0/baseline --retrieval-only`: exit 0, all **32** cases, **0 chat/embedding requests**. Existing live artifacts unchanged. Expected-source hits: Arabic 0/6, mixed 4/4, paraphrase 3/8, follow-up 2/4; answerable total 9/22. Unanswerable empty evidence 6/10; generation/refusal correctness for remaining cases PENDING.
+- Reused the already completed three affected Playwright runs, without rerunning for reporting. Full suites remain reserved for the final exit gate.
+
+## 2026-10-16 RAG Stage 1 — embedding foundation
+
+Stage 0 implementation committed locally as `ba7ffa0`. Stage 1 adds the fixed
+1024-dim schema, three provider adapters, staff-only settings/backfill routes,
+ingestion scheduling, and resumable/fenced job processing. See
+`docs/rag-phase/STAGE-1-REPORT.md`. Chat requests used: **0**. Real OpenAI calls:
+**0**. Ollama probe unavailable; deterministic test-only vectors, no model pull.
+
+Infrastructure: `docker run --detach --name rag-phase2-postgres --publish 127.0.0.1:55462:5432 --env POSTGRES_HOST_AUTH_METHOD=trust --env POSTGRES_DB=rag_phase2_base_test pgvector/pgvector:pg17` — exit 0. Preserved Stage 0 database on port 55461 untouched by the vector migration. First native-quoted Ollama probe had a SyntaxError; corrected stdin-based HTTPX probe to `http://host.docker.internal:11434/api/tags` reported unavailable. No retry/model pull/provider credential used.
+
+Exact affected API commands (all run with mocked provider HTTP/test vectors and
+ENVIRONMENT=test in the checks container; each database is disposable):
+
+```text
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage1 -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_embedding_foundation.py --tb=short -p no:cacheprovider --basetemp=/tmp/rag-stage1-foundation
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage1 -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_embedding_foundation.py --tb=short -p no:cacheprovider --basetemp=/tmp/rag-stage1-foundation-fixed
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage1 -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_embedding_foundation.py --tb=short -p no:cacheprovider --basetemp=/tmp/rag-stage1-foundation-final
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage1_pipeline -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_knowledge_pipeline.py --tb=short -p no:cacheprovider --basetemp=/tmp/rag-stage1-pipeline
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage1_pipeline -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_knowledge_pipeline.py --tb=short -p no:cacheprovider --basetemp=/tmp/rag-stage1-pipeline-fixed
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage1_matrix -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_tenant_route_matrix.py --tb=short -p no:cacheprovider --basetemp=/tmp/rag-stage1-matrix
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage1_migrations -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_migrations.py --tb=short -p no:cacheprovider --basetemp=/tmp/rag-stage1-migrations
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage1_jobs -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_jobs.py --tb=short -p no:cacheprovider --basetemp=/tmp/rag-stage1-jobs
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage1_startup -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_startup_guard.py --tb=short -p no:cacheprovider --basetemp=/tmp/rag-stage1-startup
+```
+
+Outcomes in command order: foundation initial 9 passed/1 failed (unflushed test
+setup pointer), fixed 10 passed, final with new lease-fence test **11 passed**
+(9.68s); pipeline initial 6 passed/3 failed (old single-job assumptions), fixed
+**9 passed** (32.15s); matrix **6 passed** (23.58s); migrations **1 passed**
+(4.83s); jobs **8 passed** (3.60s); startup **5 passed** (1.82s). Each has the
+existing Starlette warning. Logs: `.test-storage/rag-stage-0/stage1-*.log`.
+
+Static commands:
+
+- `docker exec rag-stage0-checks python -m mypy --no-incremental --cache-dir /tmp/rag-stage1-first-mypy`: initial exit 1, three object/counter typing errors; fixed with explicit integer narrowing. Intermediate and final checks passed.
+- Final `docker exec rag-stage0-checks python -m mypy --no-incremental --cache-dir /tmp/rag-stage1-commit-mypy`: exit 0, **161 source files**.
+- `docker exec rag-stage0-checks python -m ruff check --no-cache app/embeddings app/db/models/types.py app/db/models/core.py app/core/config.py app/jobs/runner.py app/main.py app/core/permissions.py alembic/versions/0014_rag_embeddings.py tests/test_tenant_route_matrix.py tests/test_embedding_foundation.py tests/test_knowledge_pipeline.py`: exit 0 after initial new-file line/import formatting fixes.
+- Same file scope with `python -m ruff format --no-cache --check`: exit 0, **14 files** formatted.
+- `docker exec rag-stage0-checks python -m ruff check --no-cache --output-format concise app tests`: exactly **9 pre-existing findings**, exit 1; no new findings. Subsequent combined command's overall exit 0 came from the successful format check, not a repo-wide Ruff pass.
+- `npm.cmd run lint`; `npm.cmd run typecheck`: exit 0. Changed E2E launcher Prettier check exit 0.
+
+Affected browser command from apps/web:
+
+```powershell
+$env:ENVIRONMENT='test'; $env:DATABASE_URL='postgresql://postgres@127.0.0.1:55462/rag_stage1_browser_test'; $env:E2E_API_PORT='18162'; $env:API_PROXY_TARGET='http://127.0.0.1:18162'; $env:STORAGE_ROOT='D:/Projects/Work Projects/The Osiris Labs/SAAS-chats-ai/.test-storage/rag-stage-0/stage1-browser-storage'; npm.cmd test -- tests/widget.spec.ts tests/knowledge.spec.ts tests/overview.spec.ts --reporter=line 2>&1 | Tee-Object -FilePath '../../.test-storage/rag-stage-0/stage1-browser.log'; exit $LASTEXITCODE
+```
+
+Exit 0: **10 passed (1.7m)**. No ECONNRESET reported. No full API/Playwright run,
+real embedding generation, dotenv reads, push, merge, deploy or destructive cleanup.
+
+
+## 2026-10-16 RAG Stage 2 ? hybrid retrieval and isolation
+
+Stage 1 implementation: `39e3888`. Stage 2 adds scoped parallel retrieval,
+rank fusion, iterative HNSW scans and exact SQL underfill repair. Chat/real
+embedding requests: 0. No isolation test returned foreign hits.
+
+Exact affected test commands (disposable pgvector DBs, mocked/test providers):
+
+```text
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage2_hybrid -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_hybrid_retrieval.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage2-hybrid
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage2_hybrid -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_hybrid_retrieval.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage2-hybrid2
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage2_hybrid -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_hybrid_retrieval.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage2-hybrid3
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage2_fts -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_retrieval.py tests/test_rag_stage0_baseline.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage2-fts
+```
+
+Outcomes: hybrid initial failed only log capture (Alembic disabled the imported
+logger; isolation already passed); second failed only HNSW index-plan assertion
+(tiny-fixture planner chose scoped B-tree + sort); third **6 passed** in 68.31s
+with explicit test-only forced ANN planner settings. Existing retrieval **9** +
+baseline **14** = **23 passed** in 113.29s. Existing Starlette warning only.
+Saved raw EXPLAIN with:
+`docker cp rag-stage0-checks:/tmp/rag-stage2-hybrid3/test_filtered_vector_isolation0/filtered-vector-explain.json docs/rag-phase/STAGE-2-EXPLAIN.json` (exit 0).
+
+- `docker exec rag-stage0-checks python -m mypy --no-incremental --cache-dir /tmp/rag-stage2-mypy`: initial 3 test annotation/import errors; corrected.
+- `docker exec rag-stage0-checks python -m mypy --no-incremental --cache-dir /tmp/rag-stage2-mypy2`: exit 0, **163 source files**.
+- `docker exec rag-stage0-checks python -m ruff check --no-cache app/retrieval app/core/config.py tests/test_hybrid_retrieval.py`: exit 0.
+- `.venv/Scripts/python.exe -m ruff format --check apps/api/app/retrieval apps/api/app/core/config.py apps/api/tests/test_hybrid_retrieval.py`: exit 0, **6 files** formatted.
+- No browser changes or full suites. No real embedding/chat calls, dotenv reads,
+  merge, push, Compose or deployment. Production chat integration belongs to
+  Stage 3 alongside the relevance gate.
+
+Owner clarification requested before Stage 3: whether either independent
+relevance signal suffices versus requiring both, and approval for explicitly
+untuned provisional cosine 0.50 / FTS rank 0.01 defaults without real embedding
+scores. The plan does not resolve this threshold tradeoff; no Stage 3 code started.
+
+
+## 2026-10-16 RAG Stage 3 ? relevance gate, rewrite, refusal
+
+Owner approved cosine OR FTS, and explicitly untuned configurable bge-m3
+cosine 0.50 / FTS ts_rank_cd 0.01 defaults. OpenAI calibration remains pending;
+unknown model identities cannot pass on vectors without their own floor.
+Stage 2 implementation hash: `8f163e9`. No real provider requests.
+
+Affected API commands:
+
+```text
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage3_gate -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_rag_gate.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage3-gate
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage3_chat -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_chat.py tests/test_cross_script.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage3-chat
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage3_conversations -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_conversations.py tests/test_handoff.py tests/test_analytics.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage3-conversations
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage3_baseline -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_rag_stage0_baseline.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage3-baseline
+```
+
+Gate/budget/all-case checks: **13 passed**, 1.83s; baseline compatibility:
+**14 passed**, 1.96s. Existing Starlette warning only. Other file outcomes
+recorded below when complete. Raw-FTS, translation/rewrite-off gate measurement:
+32 cases, expected-source accepted hits 9/22; unanswerable rejected 6/10.
+Four unanswerable questions still pass keyword relevance; this is not a claim
+of generation/refusal correctness. Arabic 0/6, mixed 4/4, paraphrase 3/8,
+follow-up 2/4 expected hits. Saved `docs/rag-phase/STAGE-3-GATE-RESULTS.json`.
+Fixture copied verbatim to API tests/fixtures for portable container tests.
+First artifact copy used a wrong truncated pytest directory; locate + corrected
+copy succeeded without rerunning tests or spending requests.
+
+- `docker exec rag-stage0-checks python -m mypy --no-incremental --cache-dir /tmp/rag-stage3-mypy`: exit 0, **165 source files**.
+- `.venv/Scripts/python.exe -m ruff check apps/api/app/retrieval/gate.py apps/api/app/chat/service.py apps/api/app/chat/providers.py apps/api/app/chat/models.py apps/api/app/chat/prompts.py apps/api/app/core/config.py apps/api/tests/test_rag_gate.py apps/api/tests/test_chat.py`: exit 0.
+- Same eight-file scope with `ruff format --check`: exit 0, **8 files**.
+
+Affected browser command from apps/web (offline stubs/disposable DB):
+
+```powershell
+$env:ENVIRONMENT='test'; $env:DATABASE_URL='postgresql://postgres@127.0.0.1:55462/rag_stage3_browser_test'; $env:E2E_API_PORT='18162'; $env:API_PROXY_TARGET='http://127.0.0.1:18162'; $env:STORAGE_ROOT='D:/Projects/Work Projects/The Osiris Labs/SAAS-chats-ai/.test-storage/rag-stage-0/stage3-browser-storage'; npm.cmd test -- tests/widget.spec.ts tests/playground.spec.ts --reporter=line 2>&1 | Tee-Object -FilePath '../../.test-storage/rag-stage-0/stage3-browser.log'; exit $LASTEXITCODE
+```
+
+Exit 0: **7 passed (1.3m)**, ECONNRESET **0**. No full suites, live semantic
+calibration, dotenv reads, paid calls, merge, push, deployment or Compose.
+
+- Chat/cross-script: exit 0, **19 passed** (16 + 3), 249.76s.
+- Conversations/handoff/analytics: exit 0, **24 passed** (13 + 5 + 6), 397.86s.
+- Review found history included the current message and oldest turns. Corrected
+  to recent prior visitor turns, scoped by tenant+bot, using configured window.
+  `docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage3_history -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_rag_gate.py -k rewrite_history --tb=short -p no:cacheprovider --basetemp=/tmp/rag-stage3-history`: exit 0, **1 passed**, 13 deselected, 1.59s.
+- Final `docker exec rag-stage0-checks python -m mypy --no-incremental --cache-dir /tmp/rag-stage3-final-mypy`: exit 0, **165 files**.
+- Final `ruff check` affected retrieval gate/chat/config/tests scope: exit 0;
+  `ruff format --check` same scope including conversations.py: **9 files**, exit 0.
+- Stage 3 total: **71 unique affected API tests**; **7 affected browser tests**.
+
+
+## 2026-10-16 RAG Stage 4 ? grounded generation and private traces
+
+Stage 3 committed `555ffc7`. Added per-bot model selection on playground/widget,
+private JSON traces stored in existing message usage events, one staff-only
+trace route (exact matrix now81), typed staff playground trace panel and
+optional post-check callback hook. Existing strict citation validation kept.
+OpenAI transport tested only with mocked HTTP. Real provider requests: 0.
+
+```text
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage4_traces -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_rag_traces.py tests/test_rag_gate.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage4-traces
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage4_matrix -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_tenant_route_matrix.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage4-matrix
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage4_widget -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_widget_public.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage4-widget
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage4_citations -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_chat.py -k 'citation or invalid_json or provider_failure' --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage4-citations
+```
+
+First command **17 passed** (3 trace +14 gate),5.76s. Matrix **6 passed**,24.87s.
+Other outcomes below. No cross-tenant/bot hits or client exposure in checks.
+`docker cp rag-stage0-checks:/tmp/rag-stage4-traces/test_sample_traces_and_postche0/sample-traces.json docs/rag-phase/STAGE-4-SAMPLE-TRACES.json`:exit0.
+Samples are mocked answerable/refusal/follow-up traces, not live quality evidence.
+
+Initial mypy found2new test setup/narrowing errors; corrected. Final
+`docker exec rag-stage0-checks python -m mypy --no-incremental --cache-dir /tmp/rag-stage4-mypy2`:exit0,**167 source files**.
+`ruff check` and `ruff format --check` on app/chat, widget/service.py,
+embeddings/router.py, core/permissions.py, tenant matrix +trace tests:exit0,
+**14 files** formatted. Host Ruff fixed new-file formatting only.
+`npm.cmd run lint` and `npm.cmd run typecheck`:exit0. Touched web files formatted.
+
+Affected browser command from apps/web:
+
+```powershell
+$env:ENVIRONMENT='test'; $env:DATABASE_URL='postgresql://postgres@127.0.0.1:55462/rag_stage4_browser_test'; $env:E2E_API_PORT='18162'; $env:API_PROXY_TARGET='http://127.0.0.1:18162'; $env:STORAGE_ROOT='D:/Projects/Work Projects/The Osiris Labs/SAAS-chats-ai/.test-storage/rag-stage-0/stage4-browser-storage'; npm.cmd test -- tests/playground.spec.ts --reporter=line 2>&1 | Tee-Object -FilePath '../../.test-storage/rag-stage-0/stage4-browser.log'; exit $LASTEXITCODE
+```
+
+Exit0,**3 passed(1.1m)**,including trace panel and viewer restriction. No full
+suites or new migration. No dotenv reads, real provider calls, merge,push,deploy.
+
+- Widget public: exit0, **14 passed**,216.30s. Selected citation/error: exit0, **4 passed**,12 deselected,58.71s. Stage4 total **41 affected API tests**. Browser log checked as UTF-16: ECONNRESET0.
+
+
+## 2026-10-16 RAG Stage 5 ? parsing and staff status
+
+Stage4 commit `85dbe92`. DOCX table first row is retained as header and repeated
+as labels for each subsequent row. Existing CSV records remain whole. Parser
+subprocess owns a POSIX session/process group; cleanup kills the complete group
+on timeout and after output, including helpers. Windows uses argument-vector
+taskkill /T /F; Windows descendant behavior remains UNVERIFIED. Parser input
+bytes are checked against the same existing per-plan upload cap. Existing PDF
+page, DOCX expansion, source/page quotas and timeout remain enforced.
+No OCR path found (`rg -n 'OCR|ocr' apps/api/app -g '*.py'`); scanned PDF rejection
+retained, OCR deferred per prompt. Derived document parsed status/chunk count/
+warnings are returned/rendered only on existing staff knowledge surfaces.
+
+```text
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage5_parsers -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_knowledge_parsers.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage5-parsers
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage5_pipeline -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_knowledge_pipeline.py tests/test_knowledge_uploads.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage5-pipeline
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage5_pipeline -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_knowledge_pipeline.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage5-plan-cap
+```
+
+Parser **29 passed**,6.88s, including actual nested helper PID and bounded timeout;
+pipeline/upload **28 passed** (9+19),36.19s. Final pipeline check follows below:
+review found the initial global10MB guard would reject previously allowed
+business/pro uploads, so parser settings now use the scoped tenant plan cap,
+matching upload behavior. No failing test was hidden; this was found in review.
+
+`docker exec rag-stage0-checks python -m mypy --no-incremental --cache-dir /tmp/rag-stage5-mypy`:exit0,**167 source files**.
+Affected Ruff check and six-file format check passed after initial new-line/import
+formatting fixes. `npm.cmd run lint` and `npm.cmd run typecheck`:exit0.
+
+Affected browser command from apps/web:
+
+```powershell
+$env:ENVIRONMENT='test'; $env:DATABASE_URL='postgresql://postgres@127.0.0.1:55462/rag_stage5_browser_test'; $env:E2E_API_PORT='18162'; $env:API_PROXY_TARGET='http://127.0.0.1:18162'; $env:STORAGE_ROOT='D:/Projects/Work Projects/The Osiris Labs/SAAS-chats-ai/.test-storage/rag-stage-0/stage5-browser-storage'; npm.cmd test -- tests/knowledge.spec.ts --reporter=line 2>&1 | Tee-Object -FilePath '../../.test-storage/rag-stage-0/stage5-browser.log'; exit $LASTEXITCODE
+```
+
+Exit0:**4 passed(1.1m)**. Client knowledge denial retained. Provider requests0.
+No full suites, OCR implementation, new schema, dotenv reads, merge,push,deploy.
+
+- Final pipeline recheck:exit0,**9 passed**,31.45s. Final mypy `/tmp/rag-stage5-final-mypy`:exit0,167files. Final six-file Ruff/format checks:exit0. Browser ECONNRESET0.
+
+
+## 2026-10-16 RAG Stage 6 ? eval and owner calibration tools
+
+Stage5 `75ee690`. Added operator eval helpers/API runner and requested root
+owner scripts. Neither root owner script executed (not even --help). Both AST
+parsed; provider/budget helpers exercised only with mocked HTTP. No real calls.
+
+```text
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage6_eval -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_rag_evaluation.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage6-eval
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage6_budget -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_rag_evaluation.py tests/test_rag_stage0_baseline.py -k 'not two_mode_retrieval_eval' --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage6-budget
+```
+
+First **6 passed**,5.98s, including one64-row offline FTS/hybrid comparison.
+Final after usage/budget accounting review **20 passed**,1comparison deselected,
+3.09s (6eval/budget +14baseline). **21 unique affected tests** overall, existing
+Starlette warning only. No comparison rerun for reporting. Test vectors are
+synthetic lexical vectors, not actual bge-m3. Hybrid candidate coverage22/22
+versus FTS9/22 is trivial with4chunks andk8; Arabic accepted0/6 both modes.
+Unanswerable gate refusals6/10 and answerable wrong refusals12/22 both. No
+semantic improvement or generation-quality claim. Thresholds stay owner-approved
+provisional0.50/0.01; real-model tuning pending owner, not inferred from fake data.
+
+Artifacts copied without rerun:
+`docker cp rag-stage0-checks:/tmp/rag-stage6-eval/test_two_mode_retrieval_eval_i0/summary.json docs/rag-phase/STAGE-6-COMPARISON.json`;
+`docker cp rag-stage0-checks:/tmp/rag-stage6-eval/test_two_mode_retrieval_eval_i0/retrieval-results.jsonl docs/rag-phase/STAGE-6-RETRIEVAL-RESULTS.jsonl` (bothexit0).
+
+Initial mypy on eval code found4annotation/narrowing errors; corrected.
+Intermediate passed170files. Final
+`docker exec rag-stage0-checks python -m mypy --no-incremental --cache-dir /tmp/rag-stage6-final-mypy app tests alembic scripts/rag_phase2_eval.py scripts/rag_stage0_baseline.py`:
+exit0,**171 source files**. New-file Ruff/import/line formatting corrected;
+root CLI broad exception guards intentionally redact unexpected diagnostics.
+Affected six-file Ruff checks passed. Owner entrypoints parsed using ast.parse,
+without importing/executing them. No UI changes/browser runs/full suites.
+
+Review fixed BudgetModel's raw nested provider usage to satisfy its typed integer
+counter contract, and records actual reserved requests rather than a blocked
+attempt at cap40. Calibration batch usage logged once per batch. Safe error
+boundaries prevent configuration/provider values in CLI diagnostics. Exact owner
+commands in docs/rag-phase/OWNER-CHECKS.md. No dotenv reads, merge,push,deploy.
+
+
+## 2026-10-16 RAG Stage 7 ? privacy fix, metering and caps
+
+Owner approved export redaction first, then continued Stage7, and configurable
+caps with unset values uncapped. Stage6 commit `fa1baff`. New fields/units/defaults
+and conservative reservation behavior: docs/rag-phase/LIMITS-AND-METERING.md.
+No real provider calls. All work on disposable local databases.
+
+Exact affected API commands:
+
+```text
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage7_privacy -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_tenant_data.py -k export_contains --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage7-privacy
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage7_limits -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_rag_limits.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage7-limits
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage7_matrix -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_tenant_route_matrix.py tests/test_migrations.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage7-matrix
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage7_embedding -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_embedding_foundation.py tests/test_hybrid_retrieval.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage7-embedding
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage7_pipeline -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_knowledge_pipeline.py tests/test_tenant_data.py tests/test_rag_traces.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage7-pipeline
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage7_limits -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_rag_limits.py -k measured_events --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage7-cost
+```
+
+Outcomes in order: export1passed(1deselected),3.06s; limits8passed,10.21s;
+matrix6+migrations1=7passed,30.87s; embedding11+hybrid6=17passed,87.54s;
+pipeline9+export2+traces3=14passed,44.12s; final explicit-cost-precedence check
+1passed(7deselected),2.61s. **46 unique affected tests**, all passed. Existing
+Starlette warning only; isolation/backfill/privacy/migration checks passed.
+
+Initial mypy found two new JSON integer narrowing issues; corrected. Intermediate
+mypy174filespassed. Final
+`docker exec rag-stage0-checks python -m mypy --no-incremental --cache-dir /tmp/rag-stage7-final-mypy app tests alembic scripts/rag_phase2_eval.py scripts/rag_stage0_baseline.py`:
+exit0,**176 files**. Affected Ruff checks passed. Broad inventory
+`.venv/Scripts/python.exe -m ruff check --no-cache apps/api/app apps/api/tests --output-format concise`:
+exit1, exactly9existingfindings. A broad formatting invocation touched unrelated
+sentiment formatting; restored only that agent-created formatting from HEAD
+before final checks/commit, preserving all9oldfindings. No user edits discarded.
+Web `npm.cmd run lint` and `npm.cmd run typecheck`:exit0.
+
+Affected browser command from apps/web:
+
+```powershell
+$env:ENVIRONMENT='test'; $env:DATABASE_URL='postgresql://postgres@127.0.0.1:55462/rag_stage7_browser_test'; $env:E2E_API_PORT='18162'; $env:API_PROXY_TARGET='http://127.0.0.1:18162'; $env:STORAGE_ROOT='D:/Projects/Work Projects/The Osiris Labs/SAAS-chats-ai/.test-storage/rag-stage-0/stage7-browser-storage'; npm.cmd test -- tests/roles-control.spec.ts tests/playground.spec.ts --reporter=line 2>&1 | Tee-Object -FilePath '../../.test-storage/rag-stage-0/stage7-browser.log'; exit $LASTEXITCODE
+```
+
+Exit0,**5passed(1.3m)**. Includes staff cap save/reset, all client-role panel hiding,
+and playground tracing. No full suites before final gate. No real APIs, dotenv,
+Compose,push,merge,deploy or destructive cleanup.
+
+## 2026-10-16 RAG final exit gate (single run)
+
+Stage 7 implementation commit: `e1d1c23`. Full API gate launched once with
+`.venv/Scripts/python.exe .test-storage/rag-phase2-final/run_api.py`.
+The runner enumerates all 44 test files, executes each separately in
+`rag-stage0-checks` against its own disposable pgvector database, and saves exact
+commands, counts and logs after each file to
+`.test-storage/rag-phase2-final/api-results.json`. It refuses automatic replay.
+No API gate failure observed at this checkpoint; final counts follow when done.
+
+Single unscoped Playwright command from apps/web:
+
+```powershell
+$env:ENVIRONMENT='test'
+$env:DATABASE_URL='postgresql://postgres@127.0.0.1:55462/rag_final_browser_test'
+$env:E2E_API_PORT='18162'
+$env:API_PROXY_TARGET='http://127.0.0.1:18162'
+$env:STORAGE_ROOT='D:/Projects/Work Projects/The Osiris Labs/SAAS-chats-ai/.test-storage/rag-phase2-final/browser-storage'
+npm.cmd test -- --reporter=line 2>&1 | Tee-Object -FilePath '../../.test-storage/rag-phase2-final/playwright-full.log'
+```
+
+Exit 0: **40 passed (3.5m)**. UTF-16 log scanned: ECONNRESET 0,
+Failed to proxy 0, Python tracebacks 0. No browser rerun. Existing Next/Node
+warnings do not fail the suite. API/worker stopped normally by the harness.
+
+Final review corrected embedding accounting: missing/invalid usage must retain
+unknown cost rather than compute OpenAI USD 0. Added five mocked cases before
+`test_embedding_foundation.py` was first executed by the API gate. No real call
+or suite restart. Initial mypy found one new test payload inference error;
+explicit `dict[str, object]` corrected it. Final command:
+
+```text
+docker exec rag-stage0-checks python -m mypy --no-incremental --cache-dir /tmp/rag-final-cost-mypy2 app tests alembic scripts/rag_phase2_eval.py scripts/rag_stage0_baseline.py
+```
+
+Exit 0, **176 source files**. Host Ruff check/format of
+`apps/api/app/embeddings/providers.py` and
+`apps/api/tests/test_embedding_foundation.py` passed. No unrelated Ruff fixes.
+
+Final API gate completed: **353 passed, 44/44 files**, all exit 0, counts {'failed': 0, 'skipped': 0, 'deselected': 0, 'error': 0}. Exact command per file, counts and timings copied without rerun to docs/rag-phase/FINAL-TEST-RESULTS.json. Embedding foundation16 includes all five final accounting regressions. Full Playwright40passed, ECONNRESET0. No new provider requests. Semantic multilingual improvement and complete live refusal quality remain unestablished; leave feature branch unmerged and untagged.
+
+## 2026-10-16 Owner-approved local merge
+
+Owner subsequently instructed "merge approved do it", after the pending quality
+checks were reported. This overrides the earlier unmerged restriction. Record
+the approval in the execution overrides and final report, preserve all phase
+commits, merge into local `main`, then delete only the merged feature branch
+using `git branch -d`. Working tree was clean at `b4c8d05`; main `946f2cb` is an
+ancestor. No code changes or test reruns for this documentation/Git operation.
+Existing results remain 353 API / 40 Playwright passed. Calibration and live
+semantic/refusal quality remain PENDING; no completion tag, provider calls or push.

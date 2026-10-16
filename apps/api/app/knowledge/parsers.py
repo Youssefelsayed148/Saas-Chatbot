@@ -137,10 +137,19 @@ def parse_docx(data: bytes, original_name: str, limits: ParseLimits) -> list[Par
                 if item.text.strip():
                     buffer.append(item.text)
         elif isinstance(item, Table):
-            # Table rows become plain lines of text (docs/14 §3).
-            for row in item.rows:
-                cells = [cell.text.strip() for cell in row.cells]
-                line = " — ".join(cell for cell in cells if cell)
+            # Keep the header line and repeat its labels in every data row, so
+            # chunks retain column meaning when a large table crosses a boundary.
+            rows = [[cell.text.strip() for cell in row.cells] for row in item.rows]
+            headers = rows[0] if rows else []
+            if any(headers):
+                buffer.append(" — ".join(headers))
+            for cells in rows[1:]:
+                pairs = []
+                for index, cell in enumerate(cells):
+                    label = headers[index] if index < len(headers) else ""
+                    if cell:
+                        pairs.append(f"{label or f'Column {index + 1}'}: {cell}")
+                line = " — ".join(pairs)
                 if line:
                     buffer.append(line)
     flush()

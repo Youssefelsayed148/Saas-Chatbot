@@ -41,8 +41,8 @@ CANNED = {
             "Please try again shortly, or contact {support_contact}."
         ),
         "cannot_confirm": (
-            "I cannot confirm that from the information I have. "
-            "Please contact {support_contact} — our team will help you."
+            "I don't have that information. "
+            "I can connect you with our team in the inbox, or contact {support_contact}."
         ),
         "handoff": (
             "That needs help from a person on our team. Please contact "

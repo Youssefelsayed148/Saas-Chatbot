@@ -13,6 +13,7 @@ from app.conversations.router import router as conversations_router
 from app.core.config import get_settings, validate_startup_settings
 from app.core.errors import REQUEST_ID_HEADER, RequestIdMiddleware, install_error_handlers
 from app.core.permissions import TENANT_ROUTE_ROLES
+from app.embeddings.router import router as rag_router
 from app.followups.router import router as followups_router
 from app.inbox.listing import router as inbox_listing_router
 from app.inbox.router import router as inbox_router
@@ -49,6 +50,7 @@ def create_app() -> FastAPI:
         tenant_data_router,
         bots_router,
         knowledge_router,
+        rag_router,
         chat_router,
         conversations_router,
         followups_router,
@@ -85,6 +87,7 @@ def create_app() -> FastAPI:
     application.include_router(tenant_data_router)
     application.include_router(bots_router)
     application.include_router(knowledge_router)
+    application.include_router(rag_router)
     application.include_router(chat_router)
     application.include_router(conversations_router)
     application.include_router(followups_router)

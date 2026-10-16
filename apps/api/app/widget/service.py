@@ -280,7 +280,7 @@ def widget_message_turn(
     conversation = get_or_create_conversation_for_session(
         db, bot=bot, visitor_session=visitor_session
     )
-    model = model_from_settings(settings)
+    model = model_from_settings(settings, bot)
     if model is None:
         raise ApiError(
             503, "MODEL_NOT_CONFIGURED", "The assistant is not configured for this deployment yet."

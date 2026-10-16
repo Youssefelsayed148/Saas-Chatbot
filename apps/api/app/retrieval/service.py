@@ -20,6 +20,7 @@ ranked hits. Defaults: ``top_k=8`` candidates, ``final_k=4`` chunks,
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import text
@@ -55,6 +56,9 @@ class RetrievedChunk:
     # Total text length of the document (small-document rule).
     document_total_chars: int
     rank: float
+    vector_similarity: float | None = None
+    fts_match: float = 0.0
+    rrf_score: float = 0.0
 
 
 @dataclass
@@ -69,6 +73,11 @@ class RetrievalResult:
     fallback_query: str | None = None
     candidates: list[RetrievedChunk] = field(default_factory=list)
     evidence: list[RetrievedChunk] = field(default_factory=list)
+    mode: str = "fts_only"
+    degradation_reason: str | None = None
+    embedding_model: str | None = None
+    embedding_tokens: int | None = None
+    embedding_cost_usd: Decimal | None = None
 
 
 def _fts_column(language: str) -> str:
@@ -163,6 +172,7 @@ def _whole_document_chunks(
     db: OrmSession,
     *,
     tenant_id: UUID,
+    bot_id: UUID,
     revision_id: UUID,
     language: str,
     document_id: UUID,
@@ -192,6 +202,7 @@ def _whole_document_chunks(
             FROM chunks c
             JOIN documents d ON d.id = c.document_id
             WHERE c.tenant_id = CAST(:tenant_id AS uuid)
+              AND c.bot_id = CAST(:bot_id AS uuid)
               AND c.revision_id = CAST(:revision_id AS uuid)
               AND c.language = :language
               AND c.document_id = CAST(:document_id AS uuid)
@@ -200,6 +211,7 @@ def _whole_document_chunks(
         ),
         {
             "tenant_id": str(tenant_id),
+            "bot_id": str(bot_id),
             "revision_id": str(revision_id),
             "language": language,
             "document_id": str(document_id),
@@ -234,7 +246,7 @@ def _retrieve_one_pass(
     question: str,
     settings: Settings,
     always_include_document_ids: set[str] | None,
-) -> list[RetrievedChunk]:
+) -> tuple[list[RetrievedChunk], list[RetrievedChunk]]:
     """Ranked evidence list for one language pass (expansion + reserved slots)."""
     tsquery_text = build_tsquery(question, language)
     if tsquery_text is None:
@@ -267,6 +279,7 @@ def _retrieve_one_pass(
             _whole_document_chunks(
                 db,
                 tenant_id=tenant_id,
+                bot_id=bot_id,
                 revision_id=revision_id,
                 language=language,
                 document_id=document_id,
@@ -282,6 +295,7 @@ def _retrieve_one_pass(
             _whole_document_chunks(
                 db,
                 tenant_id=tenant_id,
+                bot_id=bot_id,
                 revision_id=revision_id,
                 language=language,
                 document_id=ranked[0].document_id,
@@ -299,6 +313,7 @@ def _retrieve_one_pass(
             whole = _whole_document_chunks(
                 db,
                 tenant_id=tenant_id,
+                bot_id=bot_id,
                 revision_id=revision_id,
                 language=language,
                 document_id=candidate.document_id,
@@ -310,7 +325,10 @@ def _retrieve_one_pass(
             remaining -= 1
             add([candidate])
     del evidence[settings.retrieval_max_evidence_chunks :]
-    return evidence
+    scores = {chunk.document_id: chunk.rank for chunk in ranked}
+    for chunk in (*ranked, *evidence):
+        chunk.fts_match = scores.get(chunk.document_id, 0.0)
+    return ranked, evidence
 
 
 def retrieve(
@@ -336,7 +354,7 @@ def retrieve(
     if question_language not in SUPPORTED_LANGUAGES:
         question_language = "en"
 
-    evidence = _retrieve_one_pass(
+    candidates, evidence = _retrieve_one_pass(
         db,
         tenant_id=tenant_id,
         bot_id=bot_id,
@@ -352,6 +370,7 @@ def retrieve(
             applied_language=question_language,
             used_fallback=False,
             evidence=evidence,
+            candidates=candidates,
         )
 
     fallback_language = (
@@ -370,7 +389,7 @@ def retrieve(
         fallback_query = translate_query(question, fallback_language)
         if not (fallback_query and fallback_query.strip()):
             fallback_query = None
-    evidence = _retrieve_one_pass(
+    candidates, evidence = _retrieve_one_pass(
         db,
         tenant_id=tenant_id,
         bot_id=bot_id,
@@ -386,4 +405,5 @@ def retrieve(
         used_fallback=True,
         fallback_query=fallback_query,
         evidence=evidence,
+        candidates=candidates,
     )

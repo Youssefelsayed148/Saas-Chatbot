@@ -11,6 +11,7 @@ from app.db.models import (
     Conversation,
     Message,
     Tenant,
+    UsageEvent,
 )
 from tests.helpers import make_bot, seeded_tenant
 
@@ -76,6 +77,16 @@ def test_export_contains_contacts_conversations_and_identities_scoped_to_tenant(
                 text="A private conversation",
                 citations=[{"chunk_id": "private-chunk", "title": "Private source"}],
             ),
+            UsageEvent(
+                tenant_id=tenant_a.tenant_id,
+                bot_id=UUID(bot_a["id"]),
+                kind="message",
+                external_key="export-private-trace",
+                payload={
+                    "rag_trace": {"chunks": ["private-trace-chunk"], "cost_usd": "1.25"},
+                    "provider_usage": {"total_tokens": 123},
+                },
+            ),
         ]
     )
     db.commit()
@@ -103,6 +114,9 @@ def test_export_contains_contacts_conversations_and_identities_scoped_to_tenant(
     assert audit.json()["events"][0]["action"] == "tenant.data.exported"
     assert all("config" not in row for row in exported["bots"])
     assert all(row["citations"] == [] for row in exported["messages"])
+    assert exported["usage_events"][0]["payload"] == {}
+    assert "private-trace-chunk" not in json.dumps(exported)
+    assert "provider_usage" not in json.dumps(exported)
     for key in (
         "sources",
         "source_files",
@@ -119,6 +133,7 @@ def test_export_contains_contacts_conversations_and_identities_scoped_to_tenant(
     assert "sources" in staff_export and "knowledge_revisions" in staff_export
     assert "config" in staff_export["bots"][0]
     assert staff_export["messages"][0]["citations"][0]["title"] == "Private source"
+    assert staff_export["usage_events"][0]["payload"]["rag_trace"]["cost_usd"] == "1.25"
     tenant_a.cleanup()
     tenant_b.cleanup()
 

@@ -1,0 +1,320 @@
+[
+  {
+    "id": "ar-hours",
+    "type": "arabic",
+    "unanswerable": false,
+    "gate_passed": false,
+    "expected_hit": false,
+    "fts_scores": [],
+    "generation_measured": false
+  },
+  {
+    "id": "ar-checkup",
+    "type": "arabic",
+    "unanswerable": false,
+    "gate_passed": false,
+    "expected_hit": false,
+    "fts_scores": [],
+    "generation_measured": false
+  },
+  {
+    "id": "ar-cleaning",
+    "type": "arabic",
+    "unanswerable": false,
+    "gate_passed": false,
+    "expected_hit": false,
+    "fts_scores": [],
+    "generation_measured": false
+  },
+  {
+    "id": "ar-booking",
+    "type": "arabic",
+    "unanswerable": false,
+    "gate_passed": false,
+    "expected_hit": false,
+    "fts_scores": [],
+    "generation_measured": false
+  },
+  {
+    "id": "ar-location",
+    "type": "arabic",
+    "unanswerable": false,
+    "gate_passed": false,
+    "expected_hit": false,
+    "fts_scores": [],
+    "generation_measured": false
+  },
+  {
+    "id": "ar-close",
+    "type": "arabic",
+    "unanswerable": false,
+    "gate_passed": false,
+    "expected_hit": false,
+    "fts_scores": [],
+    "generation_measured": false
+  },
+  {
+    "id": "mixed-checkup",
+    "type": "mixed",
+    "unanswerable": false,
+    "gate_passed": true,
+    "expected_hit": true,
+    "fts_scores": [
+      0.5,
+      0.1,
+      0.1
+    ],
+    "generation_measured": false
+  },
+  {
+    "id": "mixed-cleaning",
+    "type": "mixed",
+    "unanswerable": false,
+    "gate_passed": true,
+    "expected_hit": true,
+    "fts_scores": [
+      0.1
+    ],
+    "generation_measured": false
+  },
+  {
+    "id": "mixed-hours",
+    "type": "mixed",
+    "unanswerable": false,
+    "gate_passed": true,
+    "expected_hit": true,
+    "fts_scores": [
+      0.5
+    ],
+    "generation_measured": false
+  },
+  {
+    "id": "mixed-booking",
+    "type": "mixed",
+    "unanswerable": false,
+    "gate_passed": true,
+    "expected_hit": true,
+    "fts_scores": [
+      0.4
+    ],
+    "generation_measured": false
+  },
+  {
+    "id": "unknown-insurance-ar",
+    "type": "unanswerable",
+    "unanswerable": true,
+    "gate_passed": false,
+    "expected_hit": false,
+    "fts_scores": [],
+    "generation_measured": false
+  },
+  {
+    "id": "unknown-phone-ar",
+    "type": "unanswerable",
+    "unanswerable": true,
+    "gate_passed": false,
+    "expected_hit": false,
+    "fts_scores": [],
+    "generation_measured": false
+  },
+  {
+    "id": "unknown-emergency-ar",
+    "type": "unanswerable",
+    "unanswerable": true,
+    "gate_passed": false,
+    "expected_hit": false,
+    "fts_scores": [],
+    "generation_measured": false
+  },
+  {
+    "id": "unknown-implant-mixed",
+    "type": "unanswerable",
+    "unanswerable": true,
+    "gate_passed": false,
+    "expected_hit": false,
+    "fts_scores": [],
+    "generation_measured": false
+  },
+  {
+    "id": "unknown-saturday",
+    "type": "unanswerable",
+    "unanswerable": true,
+    "gate_passed": true,
+    "expected_hit": false,
+    "fts_scores": [
+      0.5
+    ],
+    "generation_measured": false
+  },
+  {
+    "id": "unknown-dentist",
+    "type": "unanswerable",
+    "unanswerable": true,
+    "gate_passed": false,
+    "expected_hit": false,
+    "fts_scores": [],
+    "generation_measured": false
+  },
+  {
+    "id": "unknown-payment",
+    "type": "unanswerable",
+    "unanswerable": true,
+    "gate_passed": false,
+    "expected_hit": false,
+    "fts_scores": [],
+    "generation_measured": false
+  },
+  {
+    "id": "unknown-cancellation",
+    "type": "unanswerable",
+    "unanswerable": true,
+    "gate_passed": true,
+    "expected_hit": false,
+    "fts_scores": [
+      0.3
+    ],
+    "generation_measured": false
+  },
+  {
+    "id": "unknown-whitening",
+    "type": "unanswerable",
+    "unanswerable": true,
+    "gate_passed": true,
+    "expected_hit": false,
+    "fts_scores": [
+      0.2
+    ],
+    "generation_measured": false
+  },
+  {
+    "id": "unknown-parking",
+    "type": "unanswerable",
+    "unanswerable": true,
+    "gate_passed": true,
+    "expected_hit": false,
+    "fts_scores": [
+      0.1
+    ],
+    "generation_measured": false
+  },
+  {
+    "id": "para-start",
+    "type": "paraphrase",
+    "unanswerable": false,
+    "gate_passed": false,
+    "expected_hit": false,
+    "fts_scores": [],
+    "generation_measured": false
+  },
+  {
+    "id": "para-schedule",
+    "type": "paraphrase",
+    "unanswerable": false,
+    "gate_passed": true,
+    "expected_hit": false,
+    "fts_scores": [
+      0.1
+    ],
+    "generation_measured": false
+  },
+  {
+    "id": "para-exam",
+    "type": "paraphrase",
+    "unanswerable": false,
+    "gate_passed": false,
+    "expected_hit": false,
+    "fts_scores": [],
+    "generation_measured": false
+  },
+  {
+    "id": "para-clean",
+    "type": "paraphrase",
+    "unanswerable": false,
+    "gate_passed": true,
+    "expected_hit": true,
+    "fts_scores": [
+      0.1
+    ],
+    "generation_measured": false
+  },
+  {
+    "id": "para-arrange",
+    "type": "paraphrase",
+    "unanswerable": false,
+    "gate_passed": false,
+    "expected_hit": false,
+    "fts_scores": [],
+    "generation_measured": false
+  },
+  {
+    "id": "para-confirm",
+    "type": "paraphrase",
+    "unanswerable": false,
+    "gate_passed": true,
+    "expected_hit": true,
+    "fts_scores": [
+      0.6
+    ],
+    "generation_measured": false
+  },
+  {
+    "id": "para-find",
+    "type": "paraphrase",
+    "unanswerable": false,
+    "gate_passed": true,
+    "expected_hit": true,
+    "fts_scores": [
+      0.1
+    ],
+    "generation_measured": false
+  },
+  {
+    "id": "para-street",
+    "type": "paraphrase",
+    "unanswerable": false,
+    "gate_passed": false,
+    "expected_hit": false,
+    "fts_scores": [],
+    "generation_measured": false
+  },
+  {
+    "id": "follow-cleaning",
+    "type": "follow-up",
+    "unanswerable": false,
+    "gate_passed": true,
+    "expected_hit": true,
+    "fts_scores": [
+      0.1
+    ],
+    "generation_measured": false
+  },
+  {
+    "id": "follow-close",
+    "type": "follow-up",
+    "unanswerable": false,
+    "gate_passed": false,
+    "expected_hit": false,
+    "fts_scores": [],
+    "generation_measured": false
+  },
+  {
+    "id": "follow-confirm",
+    "type": "follow-up",
+    "unanswerable": false,
+    "gate_passed": true,
+    "expected_hit": true,
+    "fts_scores": [
+      0.1
+    ],
+    "generation_measured": false
+  },
+  {
+    "id": "follow-address",
+    "type": "follow-up",
+    "unanswerable": false,
+    "gate_passed": false,
+    "expected_hit": false,
+    "fts_scores": [],
+    "generation_measured": false
+  }
+]

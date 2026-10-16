@@ -1,0 +1,101 @@
+[
+  {
+    "retrieval_mode": "hybrid",
+    "gate": "passed",
+    "chunks": [
+      {
+        "chunk_id": "21ec4186-03bb-423b-90c5-1bd2e82581dc",
+        "document_id": "42cbd220-d43d-46d5-b7b1-a31a95a30185",
+        "title": "Hours",
+        "locator": "Section 1",
+        "vector_similarity": 0.8,
+        "fts_match": 0.0,
+        "rrf_score": 0.0,
+        "accepted": true
+      }
+    ],
+    "rewrite_used": false,
+    "model": "mock:unmeasured",
+    "tokens": null,
+    "cost_usd": null,
+    "post_check": "not_configured",
+    "events": [
+      {
+        "kind": "generation",
+        "model": "mock:unmeasured",
+        "tokens": null,
+        "cost_usd": null,
+        "latency_ms": 0,
+        "status": "ok"
+      }
+    ],
+    "degradation_reason": null,
+    "embedding_model": "ollama:bge-m3",
+    "embedding_tokens": null,
+    "embedding_cost_usd": null,
+    "vector_floor": 0.5,
+    "fts_minimum": 0.01
+  },
+  {
+    "retrieval_mode": "hybrid",
+    "gate": "refused",
+    "chunks": [],
+    "rewrite_used": false,
+    "model": null,
+    "tokens": null,
+    "cost_usd": null,
+    "post_check": "not_configured",
+    "events": [],
+    "degradation_reason": null,
+    "embedding_model": "ollama:bge-m3",
+    "embedding_tokens": null,
+    "embedding_cost_usd": null,
+    "vector_floor": 0.5,
+    "fts_minimum": 0.01
+  },
+  {
+    "retrieval_mode": "hybrid",
+    "gate": "passed",
+    "chunks": [
+      {
+        "chunk_id": "21ec4186-03bb-423b-90c5-1bd2e82581dc",
+        "document_id": "42cbd220-d43d-46d5-b7b1-a31a95a30185",
+        "title": "Hours",
+        "locator": "Section 1",
+        "vector_similarity": 0.8,
+        "fts_match": 0.0,
+        "rrf_score": 0.0,
+        "accepted": true
+      }
+    ],
+    "rewrite_used": true,
+    "model": "mock:unmeasured",
+    "tokens": null,
+    "cost_usd": null,
+    "post_check": "not_configured",
+    "events": [
+      {
+        "kind": "rewrite",
+        "model": "mock:unmeasured",
+        "tokens": null,
+        "cost_usd": null,
+        "latency_ms": 0,
+        "status": "ok"
+      },
+      {
+        "kind": "generation",
+        "model": "mock:unmeasured",
+        "tokens": null,
+        "cost_usd": null,
+        "latency_ms": 0,
+        "status": "ok"
+      }
+    ],
+    "degradation_reason": null,
+    "embedding_model": "ollama:bge-m3",
+    "embedding_tokens": null,
+    "embedding_cost_usd": null,
+    "vector_floor": 0.5,
+    "fts_minimum": 0.01
+  }
+]

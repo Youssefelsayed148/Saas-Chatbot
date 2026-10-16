@@ -1,0 +1,99 @@
+{
+  "modes": {
+    "fts_only": {
+      "cases": 32,
+      "answerable_hit_at_k": [
+        9,
+        22
+      ],
+      "gate_refusal_correctness": [
+        6,
+        10
+      ],
+      "gate_wrong_refusals": [
+        12,
+        22
+      ],
+      "generation_metrics": "PENDING (retrieval-only)",
+      "by_type": {
+        "arabic": {
+          "cases": 6,
+          "hits": 0,
+          "gate_passes": 0
+        },
+        "mixed": {
+          "cases": 4,
+          "hits": 4,
+          "gate_passes": 4
+        },
+        "unanswerable": {
+          "cases": 10,
+          "hits": 0,
+          "gate_passes": 4
+        },
+        "paraphrase": {
+          "cases": 8,
+          "hits": 3,
+          "gate_passes": 4
+        },
+        "follow-up": {
+          "cases": 4,
+          "hits": 2,
+          "gate_passes": 2
+        }
+      }
+    },
+    "hybrid": {
+      "cases": 32,
+      "answerable_hit_at_k": [
+        22,
+        22
+      ],
+      "gate_refusal_correctness": [
+        6,
+        10
+      ],
+      "gate_wrong_refusals": [
+        12,
+        22
+      ],
+      "generation_metrics": "PENDING (retrieval-only)",
+      "by_type": {
+        "arabic": {
+          "cases": 6,
+          "hits": 6,
+          "gate_passes": 0
+        },
+        "mixed": {
+          "cases": 4,
+          "hits": 4,
+          "gate_passes": 4
+        },
+        "unanswerable": {
+          "cases": 10,
+          "hits": 0,
+          "gate_passes": 4
+        },
+        "paraphrase": {
+          "cases": 8,
+          "hits": 8,
+          "gate_passes": 4
+        },
+        "follow-up": {
+          "cases": 4,
+          "hits": 4,
+          "gate_passes": 2
+        }
+      }
+    }
+  },
+  "threshold_proposal": {
+    "minimum_positive": 0.0,
+    "maximum_negative": 0.38575841145987555,
+    "proposed_cosine_floor": null,
+    "status": "overlap: owner must choose the refusal/recall tradeoff",
+    "automatically_applied": false
+  },
+  "synthetic_vectors": true,
+  "embedding_model_label": "synthetic lexical vectors; bge-m3 semantics UNVERIFIED"
+}

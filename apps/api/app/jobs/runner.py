@@ -17,12 +17,17 @@ from app.knowledge.storage import Storage
 
 def execute_claimed_job(db: OrmSession, job: Job, settings: Settings, storage: Storage) -> None:
     """Run ``job`` (already claimed and status=running) and release it."""
+    from app.embeddings.backfill import LeaseLost
+
     error: str | None
     try:
         error = _run(job, db, settings, storage)
         if job.cancel_requested:
             # Cancel wins even when the handler had already finished its work.
             error = None
+    except LeaseLost:
+        db.rollback()
+        return
     except JobFatal as fatal:
         # Permanent: the target tenant/bot is missing, archived or foreign.
         job.attempts = job.max_attempts
@@ -34,6 +39,10 @@ def execute_claimed_job(db: OrmSession, job: Job, settings: Settings, storage: S
 
 
 def _run(job: Job, db: OrmSession, settings: Settings, storage: Storage) -> str | None:
+    if job.type == "reembed_backfill":
+        from app.embeddings.backfill import run_backfill
+
+        return run_backfill(job, db, settings)
     if job.type == "ingest_batch":
         return run_ingest_batch(job, db, settings, storage)
     if job.type == "retention_purge":

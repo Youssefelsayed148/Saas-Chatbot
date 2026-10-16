@@ -165,6 +165,7 @@ def list_documents(
             text=document.text,
             total_chars=document.total_chars,
             chunk_count=count,
+            warnings=[] if count else ["No searchable chunks were produced."],
             created_at=document.created_at,
         )
         for document, count in rows

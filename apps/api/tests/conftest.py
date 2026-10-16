@@ -31,6 +31,8 @@ API_DIR = Path(__file__).resolve().parents[1]
 os.environ["ENVIRONMENT"] = "test"
 
 SESSION_SETTINGS = {
+    "environment": "test",
+    "embedding_test_stub": True,
     # Plain-HTTP test client: Secure cookie would be dropped by httpx.
     "cookie_secure": False,
     "session_lifetime_seconds": 14 * 24 * 3600,

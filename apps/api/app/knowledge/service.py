@@ -32,6 +32,7 @@ from app.knowledge.csv_qa import CsvStructureError, parse_qa_csv, qa_template_cs
 from app.knowledge.parsers import detect_and_validate
 from app.knowledge.storage import Storage, get_storage
 from app.quotas.service import lock_tenant, limits_for
+from app.quotas.rag import check_resources
 
 UPLOAD_CHUNK_SIZE = 256 * 1024
 
@@ -106,6 +107,8 @@ def upload_files(
             _reject_all_invalid_csv(data)
         checked.append((display, kind, data))
 
+    check_resources(context.db, context.tenant_id, bot_id, settings,
+                    additions={"storage_bytes": sum(len(data) for _, _, data in checked)})
     created: list[Source] = []
     saved_keys: list[str] = []
     try:

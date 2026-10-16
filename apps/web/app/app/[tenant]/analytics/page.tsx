@@ -6,6 +6,8 @@ import { useCallback, useEffect, useState } from "react";
 import * as api from "@/lib/api";
 import type { HandoffAnalytics } from "@/lib/api";
 import { Empty, Loading, Notice } from "@/lib/ui";
+import { useSession } from "@/lib/session";
+import RagOperatorPanel from "@/lib/rag-operator-panel";
 
 function duration(seconds: number | null): string {
   if (seconds === null) return "No replies recorded";
@@ -19,6 +21,7 @@ function duration(seconds: number | null): string {
 
 export default function HandoffAnalyticsPage() {
   const { tenant: tenantId } = useParams<{ tenant: string }>();
+  const { me } = useSession();
   const [data, setData] = useState<HandoffAnalytics | null>(null);
   const [error, setError] = useState<string | null>(null);
   const load = useCallback(async () => {
@@ -43,6 +46,7 @@ export default function HandoffAnalyticsPage() {
         Understand handoffs and your team’s response using measured activity.
       </p>
       <p>Measured from website conversations created in the last 30 days.</p>
+      {me?.is_platform_staff && <RagOperatorPanel tenantId={tenantId} />}
       {error && <Notice tone="error" message={error} />}
       {!data ? (
         error ? (
@@ -91,11 +95,13 @@ export default function HandoffAnalyticsPage() {
             <h2>Agent workload</h2>
             {Object.keys(data.agent_workload).length ? (
               <ul>
-                {Object.entries(data.agent_workload).map(([memberName, count]) => (
-                  <li key={memberName}>
-                    {memberName}: {count} open assignments
-                  </li>
-                ))}
+                {Object.entries(data.agent_workload).map(
+                  ([memberName, count]) => (
+                    <li key={memberName}>
+                      {memberName}: {count} open assignments
+                    </li>
+                  ),
+                )}
               </ul>
             ) : (
               <Empty>No active assignments recorded.</Empty>
