@@ -58,6 +58,22 @@ test("client admin requests a change and a separate operator triages it", async 
   expect((await limits.json()).effective_limits.monthly_tokens).toBe(12345);
   await aiPanel.getByRole("button", { name: "Reset to plan defaults" }).click();
   await expect(aiPanel.getByLabel(/AI tokens per month/)).toHaveValue("");
+  await page.goto(`/app/${tenantId}/bots/${bot.id}/settings`);
+  await expect(page.getByTestId("rag-tier-control")).toHaveCount(0);
+  await operator.goto(`/app/${tenantId}/bots/${bot.id}/settings`);
+  const tierPanel = operator.getByTestId("rag-tier-control");
+  await expect(tierPanel.getByTestId("rag-retrieval-mode")).toHaveText(
+    "hybrid",
+  );
+  await expect(tierPanel.getByTestId("rag-backfill-status")).toHaveText(
+    "never run",
+  );
+  await tierPanel.getByLabel("Tier").selectOption("premium");
+  await expect(tierPanel.getByText("AI tier saved.")).toBeVisible();
+  const premium = await operator.request.get(
+    `/api/v1/tenants/${tenantId}/bots/${bot.id}/rag`,
+  );
+  expect((await premium.json()).tier).toBe("premium");
   await operatorContext.close();
   expect(botName).toBeTruthy();
 });
@@ -137,6 +153,15 @@ test("all client roles cannot obtain snippets or enter bot-control surfaces", as
     ).json();
     expect(bot.widget_locator).toBeNull();
     expect(bot.config).toEqual({});
+    await member.goto(`/app/${tenantId}/bots/${botId}/settings`);
+    await expect(member.getByTestId("rag-tier-control")).toHaveCount(0);
+    expect(
+      (
+        await member.request.get(
+          `/api/v1/tenants/${tenantId}/bots/${botId}/rag`,
+        )
+      ).status(),
+    ).toBe(403);
     await member.goto(`/app/${tenantId}/bots/${botId}/install`);
     await expect(
       member.getByText("Platform staff access required."),
