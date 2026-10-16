@@ -158,6 +158,9 @@ def test_org_delete_name_mismatch_and_soft_delete(app: Any, db: Any, tmp_path: A
         assert a.call(role, "DELETE", path, json=body).status_code == 403
         assert a.call(role, "GET", f"{path}/deletion-preview").status_code == 403
     assert b.call("admin", "DELETE", path, json=body).status_code == 404
+    assert a.call("staff", "DELETE", path, json={"reason": body["reason"]}).status_code == 422
+    assert a.call("staff", "DELETE", path).status_code == 422
+    assert build_test_settings().org_deletion_grace_days == 30
     for name in ["wrong", " Org delete-a", "Org delete-a ", "org delete-a"]:
         mismatch = a.call("staff", "DELETE", path, json={**body, "confirm_name": name})
         assert mismatch.status_code == 422
