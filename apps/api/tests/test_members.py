@@ -47,9 +47,13 @@ def test_member_removal_by_admin(app: Any, db: OrmSession) -> None:
         audit = audit_actions(db, "member.removed", users.tenant_id)
         assert len(audit) == 1
         db.expire_all()
-        assert db.get(Membership, (users.tenant_id, UUID(editor_id))).status == "revoked"
-        assert db.get(Message, message.id).tenant_id == users.tenant_id
-        assert db.get(Conversation, conversation.id).assigned_user_id == UUID(editor_id)
+        membership = db.get(Membership, (users.tenant_id, UUID(editor_id)))
+        saved_message = db.get(Message, message.id)
+        saved_conversation = db.get(Conversation, conversation.id)
+        assert membership is not None and membership.status == "revoked"
+        assert saved_message is not None and saved_message.tenant_id == users.tenant_id
+        assert saved_conversation is not None
+        assert saved_conversation.assigned_user_id == UUID(editor_id)
         assert (
             users.call("editor", "GET", f"/api/v1/tenants/{users.tenant_id}/bots").status_code
             == 404

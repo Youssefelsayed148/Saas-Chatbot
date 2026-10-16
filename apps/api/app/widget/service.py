@@ -50,7 +50,8 @@ RETIRED_WINDOW = 60  # fixed-window width used by the public counters (seconds)
 def bot_by_locator(db: OrmSession, locator: str) -> Bot:
     """Resolve one bot from its public locator; unknown locators look like 404."""
     bot = db.execute(select(Bot).where(Bot.widget_locator == locator)).scalar_one_or_none()
-    if bot is None or bot.status == "archived" or db.get(Tenant, bot.tenant_id).status != "active":
+    tenant = db.get(Tenant, bot.tenant_id) if bot is not None else None
+    if bot is None or bot.status == "archived" or tenant is None or tenant.status != "active":
         raise ApiError(404, "NOT_FOUND", "Widget not found.")
     return bot
 
@@ -62,9 +63,11 @@ def bot_by_session(db: OrmSession, session_id: UUID, token: str) -> VisitorSessi
     visitor_session = db.get(VisitorSession, session_id)
     if visitor_session is None or visitor_session.token_hash != hash_session_token(token):
         raise ApiError(401, "SESSION_INVALID", "This chat session is no longer valid.")
+    tenant = db.get(Tenant, visitor_session.tenant_id)
     if (
         visitor_session.expires_at <= datetime.now(UTC)
-        or db.get(Tenant, visitor_session.tenant_id).status != "active"
+        or tenant is None
+        or tenant.status != "active"
     ):
         raise ApiError(401, "SESSION_EXPIRED", "This chat session expired.")
     return visitor_session

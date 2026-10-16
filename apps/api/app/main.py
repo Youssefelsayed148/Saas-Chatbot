@@ -65,7 +65,7 @@ def create_app() -> FastAPI:
         for route in source_router.routes:
             if not isinstance(route, APIRoute) or not route.path.startswith("/api/v1/tenants"):
                 continue
-            minimums = {TENANT_ROUTE_ROLES[(method, route.path)] for method in route.methods}
+            minimums = {TENANT_ROUTE_ROLES[(method, route.path)] for method in route.methods or ()}
             if len(minimums) != 1:
                 raise RuntimeError(f"Inconsistent route roles: {route.path}")
             route.openapi_extra = {**(route.openapi_extra or {}), "x-minimum-role": minimums.pop()}

@@ -58,11 +58,13 @@ def schedule_deletion(context: TenantContext, name: str, reason: str, settings: 
     for provision in db.scalars(
         select(ProvisioningRequest).where(ProvisioningRequest.tenant_id == tenant_id)
     ):
-        keys.extend(
-            item["storage_key"]
-            for item in provision.result.get("files", [])
-            if isinstance(item, dict) and "storage_key" in item
-        )
+        files = provision.result.get("files", [])
+        if isinstance(files, list):
+            keys.extend(
+                str(item["storage_key"])
+                for item in files
+                if isinstance(item, dict) and "storage_key" in item
+            )
     db.add(
         OrganizationDeletion(
             tenant_id=tenant_id,

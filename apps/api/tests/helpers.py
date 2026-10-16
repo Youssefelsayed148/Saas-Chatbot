@@ -119,6 +119,8 @@ def make_bot(users: TenantUsers, name: str = "Bot") -> dict[str, Any]:
     import secrets
     from uuid import uuid4
 
+    from sqlalchemy import insert
+
     from app.db.models import Bot
     from app.db.session import get_engine
 
@@ -132,7 +134,7 @@ def make_bot(users: TenantUsers, name: str = "Bot") -> dict[str, Any]:
     )
     with get_engine().begin() as connection:
         connection.execute(
-            Bot.__table__.insert().values(
+            insert(Bot).values(
                 id=bot.id,
                 tenant_id=bot.tenant_id,
                 name=bot.name,

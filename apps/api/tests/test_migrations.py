@@ -1,7 +1,7 @@
 """P1-02: Alembic migrations upgrade/downgrade on a disposable database."""
 
 import psycopg
-from sqlalchemy import create_engine, inspect, make_url
+from sqlalchemy import create_engine, insert, inspect, make_url
 from sqlalchemy.engine import Engine
 
 from app.db.session import sqlalchemy_url
@@ -109,25 +109,25 @@ def test_migrations_up_down_cycle(base_url: str) -> None:
             )
         with engine.begin() as conn:
             conn.execute(
-                Tenant.__table__.insert().values(
+                insert(Tenant).values(
                     id=demo_tid, name="Demo Dental Clinic", slug="demo-dental-clinic"
                 )
             )
             for user_id, role in [(legacy_demo_user, "owner"), (canonical_demo_user, "admin")]:
                 conn.execute(
-                    User.__table__.insert().values(
+                    insert(User).values(
                         id=user_id,
                         email=f"demo-{role}@example.com",
                         password_hash="test-legacy-hash",
                     )
                 )
                 conn.execute(
-                    Membership.__table__.insert().values(
+                    insert(Membership).values(
                         tenant_id=demo_tid, user_id=user_id, role=role
                     )
                 )
             conn.execute(
-                Session.__table__.insert().values(
+                insert(Session).values(
                     id=uuid4(),
                     token_hash="migration-demo-session",
                     user_id=legacy_demo_user,

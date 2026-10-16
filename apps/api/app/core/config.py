@@ -1,6 +1,7 @@
 import os
 from functools import lru_cache
 from pathlib import Path
+from typing import Any
 
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -91,7 +92,8 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     # Test and E2E processes never consult the repository dotenv file.
-    return Settings(_env_file=None if os.getenv("ENVIRONMENT") == "test" else ".env")
+    options: dict[str, Any] = {"_env_file": None if os.getenv("ENVIRONMENT") == "test" else ".env"}
+    return Settings(**options)
 
 
 def validate_startup_settings(settings: Settings) -> None:
