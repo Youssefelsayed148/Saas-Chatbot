@@ -31,7 +31,7 @@ def chunk(**kwargs: Any) -> RetrievedChunk:
 
 def test_gate_accepts_either_signal_and_ignores_rrf() -> None:
     vector = chunk(vector_similarity=0.50)
-    keyword = chunk(fts_match=0.01, matched_terms=1)
+    keyword = chunk(fts_match=0.01, matched_terms=1, query_terms=1)
     rejected = chunk(vector_similarity=0.49, fts_match=0.009, rrf_score=999)
     result = RetrievalResult(
         "ar", "en", True, evidence=[vector, keyword, rejected], embedding_model="ollama:bge-m3"
@@ -48,7 +48,7 @@ def test_uncalibrated_models_and_nonfinite_scores_fail_closed() -> None:
         False,
         evidence=[
             chunk(vector_similarity=1),
-            chunk(fts_match=0.1, matched_terms=1),
+            chunk(fts_match=0.1, matched_terms=1, query_terms=1),
             chunk(fts_match=float("nan")),
         ],
         embedding_model="unknown:uncalibrated",
@@ -216,7 +216,7 @@ def test_missing_model_row_never_passes_vector_or_empty_fts(identity: str | None
     evidence = [
         chunk(vector_similarity=1),
         chunk(fts_match=0),
-        chunk(fts_match=0.01, matched_terms=1),
+        chunk(fts_match=0.01, matched_terms=1, query_terms=1),
     ]
     result = RetrievalResult("en", "en", False, evidence=evidence, embedding_model=identity)
     decision = relevance_gate(result, build_test_settings())
@@ -234,3 +234,35 @@ def test_openai_untuned_floor_and_min_matched_terms_keep_or_semantics() -> None:
     )
     decision = relevance_gate(result, build_test_settings(retrieval_min_matched_terms=2))
     assert decision.passed == [evidence[0], evidence[2]]
+
+
+def test_keyword_leg_needs_two_matched_terms_unless_the_query_has_one() -> None:
+    one_of_three = chunk(fts_match=0.5, matched_terms=1, query_terms=3)
+    two_of_three = chunk(fts_match=0.5, matched_terms=2, query_terms=3)
+    one_word = chunk(fts_match=0.5, matched_terms=1, query_terms=1)
+    result = RetrievalResult(
+        "en", "en", False, evidence=[one_of_three, two_of_three, one_word], embedding_model=None
+    )
+    decision = relevance_gate(result, build_test_settings())
+    assert decision.passed == [two_of_three, one_word]
+
+
+def test_keyword_thresholds_are_configured_per_embedding_model() -> None:
+    from app.core.config import KeywordGate
+
+    weak = chunk(fts_match=0.05, matched_terms=2, query_terms=3)
+    strong = chunk(fts_match=0.30, matched_terms=3, query_terms=3)
+    gates = {
+        "openai:text-embedding-3-large": KeywordGate(min_fts_match=0.2, min_matched_terms=3),
+    }
+    settings = build_test_settings(retrieval_keyword_gates=gates)
+    openai = RetrievalResult(
+        "en", "en", False, evidence=[weak, strong], embedding_model="openai:text-embedding-3-large"
+    )
+    assert relevance_gate(openai, settings).passed == [strong]
+    # Another model (or keyword-only mode) keeps the deployment default.
+    other = RetrievalResult(
+        "en", "en", False, evidence=[weak, strong], embedding_model="ollama:bge-m3"
+    )
+    assert relevance_gate(other, settings).passed == [weak, strong]
+    assert relevance_gate(openai, settings).fts_minimum == 0.2

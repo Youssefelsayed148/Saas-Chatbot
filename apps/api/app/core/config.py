@@ -3,10 +3,17 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import Field, SecretStr
+from pydantic import BaseModel, ConfigDict, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.quotas.rag_contracts import RagLimits
+
+
+class KeywordGate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    min_fts_match: float = Field(gt=0)
+    min_matched_terms: int = Field(ge=1)
+
 
 # Default storage root: relative to the API directory (apps/api), not the
 # working directory, so host runs and container runs resolve the same place.
@@ -98,8 +105,14 @@ class Settings(BaseSettings):
     retrieval_vector_floors: dict[str, float] = Field(
         default_factory=lambda: {"openai:text-embedding-3-large": 0.50, "ollama:bge-m3": 0.50}
     )
+    # Keyword leg of the gate: a chunk needs `min_matched_terms` distinct content
+    # terms (never more than the query has) AND a ts_rank_cd of at least
+    # `min_fts_match`. The plain values are the default for every model; a model
+    # identity in `retrieval_keyword_gates` overrides them. UNTUNED, pending owner
+    # calibration.
     retrieval_min_fts_match: float = Field(default=0.01, gt=0)
-    retrieval_min_matched_terms: int = Field(default=1, ge=1)
+    retrieval_min_matched_terms: int = Field(default=2, ge=1)
+    retrieval_keyword_gates: dict[str, KeywordGate] = Field(default_factory=dict)
     chat_rewrite_enabled: bool = True
     chat_rewrite_plans: list[str] = Field(
         default_factory=lambda: ["free", "starter", "pro", "business"]

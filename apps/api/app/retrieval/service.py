@@ -60,6 +60,8 @@ class RetrievedChunk:
     fts_match: float = 0.0
     rrf_score: float = 0.0
     matched_terms: int = 0
+    # Distinct content terms in the query that produced matched_terms.
+    query_terms: int = 0
 
 
 @dataclass
@@ -136,8 +138,10 @@ def score_lexical(
         },
     ).mappings()
     scores = {row["id"]: (float(row["score"]), int(row["matched"])) for row in rows}
+    total = len(term_queries(question, language))
     for chunk in chunks:
         chunk.fts_match, chunk.matched_terms = scores.get(chunk.chunk_id, (0.0, 0))
+        chunk.query_terms = total
 
 
 def _best_chunk_per_document(
@@ -312,6 +316,45 @@ def _retrieve_one_pass(
             top_k=settings.retrieval_top_k,
         )
 
+    evidence = assemble_evidence(
+        db,
+        tenant_id=tenant_id,
+        bot_id=bot_id,
+        revision_id=revision_id,
+        language=language,
+        ranked=ranked,
+        settings=settings,
+        always_include_document_ids=always_include_document_ids,
+    )
+    score_lexical(
+        db,
+        [*ranked, *evidence],
+        tenant_id=tenant_id,
+        bot_id=bot_id,
+        revision_id=revision_id,
+        question=question,
+        language=language,
+    )
+    return ranked, evidence
+
+
+def assemble_evidence(
+    db: OrmSession,
+    *,
+    tenant_id: UUID,
+    bot_id: UUID,
+    revision_id: UUID,
+    language: str,
+    ranked: list[RetrievedChunk],
+    settings: Settings,
+    always_include_document_ids: set[str] | None,
+) -> list[RetrievedChunk]:
+    """Evidence rules shared by keyword and hybrid retrieval.
+
+    ``ranked`` holds one entry per document, best first. Reserved always-include
+    documents come first (whole), the best document is included whole, lower
+    ranked documents fit whole when small or contribute their best chunk.
+    """
     evidence: list[RetrievedChunk] = []
     seen_chunk_ids: set[UUID] = set()
 
@@ -375,16 +418,7 @@ def _retrieve_one_pass(
             remaining -= 1
             add([candidate])
     del evidence[settings.retrieval_max_evidence_chunks :]
-    score_lexical(
-        db,
-        [*ranked, *evidence],
-        tenant_id=tenant_id,
-        bot_id=bot_id,
-        revision_id=revision_id,
-        question=question,
-        language=language,
-    )
-    return ranked, evidence
+    return evidence
 
 
 def retrieve(

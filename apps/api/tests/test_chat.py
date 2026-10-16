@@ -149,7 +149,7 @@ def test_handoff_toggle_off_falls_through_to_model(
         db,
         corpus,
         model,
-        "where is my order return window?",
+        "where is my order return invoice?",
         config=bot_config(handoff_enabled=False),
     )
     assert reply.kind == "answer"

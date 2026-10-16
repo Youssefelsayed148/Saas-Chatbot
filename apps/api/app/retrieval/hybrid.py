@@ -23,6 +23,7 @@ from app.retrieval.service import (
     RetrievalResult,
     RetrievedChunk,
     TranslateQuery,
+    assemble_evidence,
     retrieve,
     score_lexical,
 )
@@ -263,9 +264,44 @@ def retrieve_hybrid(
         question=result.fallback_query or question,
         language=result.applied_language,
     )
+    # Same evidence rules as keyword mode (reserved always-include documents,
+    # best document whole, small documents whole), applied to the fused ranking.
+    by_document: dict[UUID, RetrievedChunk] = {}
+    for chunk in ranked:
+        by_document.setdefault(chunk.document_id, chunk)
+    evidence = assemble_evidence(
+        db,
+        tenant_id=tenant_id,
+        bot_id=bot_id,
+        revision_id=revision_id,
+        language=result.applied_language,
+        ranked=list(by_document.values()),
+        settings=settings,
+        always_include_document_ids=always_include_document_ids,
+    )
+    fused = {chunk.chunk_id: chunk for chunk in ranked}
+    for chunk in evidence:
+        hit = fused.get(chunk.chunk_id)
+        if hit is not None:
+            chunk.vector_similarity = hit.vector_similarity
+            chunk.rrf_score = hit.rrf_score
+    score_lexical(
+        db,
+        [chunk for chunk in evidence if chunk.chunk_id not in fused],
+        tenant_id=tenant_id,
+        bot_id=bot_id,
+        revision_id=revision_id,
+        question=result.fallback_query or question,
+        language=result.applied_language,
+    )
+    for chunk in evidence:
+        hit = fused.get(chunk.chunk_id)
+        if hit is not None:
+            chunk.fts_match, chunk.matched_terms = hit.fts_match, hit.matched_terms
+            chunk.query_terms = hit.query_terms
     result.mode = "hybrid"
     result.candidates = ranked
-    result.evidence = ranked[: settings.retrieval_final_k]
+    result.evidence = evidence
     result.embedding_model = identity
     result.embedding_tokens = batch.tokens
     result.embedding_cost_usd = batch.cost_usd

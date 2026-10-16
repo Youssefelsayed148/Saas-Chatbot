@@ -130,7 +130,7 @@ def test_real_fts_pipeline_checkpoints_and_never_replays(
         json.dumps(
             {
                 "id": "arabic",
-                "question": "كم تكلفة الكشف؟",
+                "question": "كم سعر الكشف؟",
                 "history": [],
                 "expected_source": "pricing-ar",
             }
