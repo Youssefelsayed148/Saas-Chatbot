@@ -4,7 +4,7 @@ WORKDIR /app
 COPY apps/api/requirements.lock ./requirements.lock
 RUN pip install --no-cache-dir -r requirements.lock
 COPY apps/api/app ./app
-# Migrations run on API start and the demo seed runs from this image, so both ship in it.
+# The one-shot migrator and demo seed use this same image, so both ship in it.
 COPY apps/api/alembic.ini ./alembic.ini
 COPY apps/api/alembic ./alembic
 COPY apps/api/scripts ./scripts

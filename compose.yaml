@@ -1,5 +1,148 @@
-# Root entrypoint so `docker compose up --build` works from the repo root.
-# The stack itself lives in infra/compose.yaml (still usable with -f infra/compose.yaml).
+# Development only. Disable implicit .env loading (see README) and supply keys
+# from the host environment or explicitly with --env-file .env.local.
 name: saas-chats-ai-dev
-include:
-  - path: infra/compose.yaml
+
+x-api-image: &api-image
+  image: saas-chats-ai-api:dev
+  build:
+    context: .
+    dockerfile: apps/api/Dockerfile
+    target: runtime
+
+x-database-environment: &database-environment
+  DATABASE_URL: postgresql://${POSTGRES_USER:-saas}:${POSTGRES_PASSWORD:-dev_only_not_a_secret}@db:5432/${POSTGRES_DB:-saas_dev}
+  ENVIRONMENT: development
+
+x-app-environment: &app-environment
+  <<: *database-environment
+  STORAGE_ROOT: /data/storage
+  COOKIE_SECURE: "false"
+  EMBEDDING_PROVIDER: openai
+  CHAT_OPENAI_API_KEY: ${CHAT_OPENAI_API_KEY:?Set CHAT_OPENAI_API_KEY in the host environment or .env.local (use --env-file .env.local)}
+  CHAT_OPENAI_MODEL: ${CHAT_OPENAI_MODEL:?Set CHAT_OPENAI_MODEL in the host environment or .env.local (use --env-file .env.local)}
+  CHAT_OPENROUTER_API_KEY: ${CHAT_OPENROUTER_API_KEY:-}
+  CHAT_FREE_MODEL_CHAIN: ${CHAT_FREE_MODEL_CHAIN:-[]}
+
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-saas_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-saas}
+      # Development credential, confined to the Compose network (no host DB port).
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev_only_not_a_secret}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    <<: *api-image
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+    environment: *database-environment
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    <<: *api-image
+    environment: *app-environment
+    volumes:
+      - app_data:/data
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=5)",
+        ]
+      interval: 10s
+      timeout: 6s
+      retries: 10
+      start_period: 30s
+
+  worker:
+    <<: *api-image
+    command: ["python", "-m", "app.worker"]
+    environment:
+      <<: *app-environment
+      WORKER_HEARTBEAT_FILE: /tmp/worker-heartbeat
+    volumes:
+      - app_data:/data
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import os, sys, time; path='/tmp/worker-heartbeat'; sys.exit(0 if os.path.exists(path) and time.time()-os.path.getmtime(path) < 30 else 1)",
+        ]
+      interval: 10s
+      timeout: 6s
+      retries: 5
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        # Next.js bakes the same-origin /api proxy into its build manifest.
+        API_PROXY_TARGET: http://api:8000
+    environment:
+      API_PROXY_TARGET: http://api:8000
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Explicit opt-in: docker compose --profile seed up seed
+  seed:
+    <<: *api-image
+    profiles: ["seed"]
+    command: ["python", "-m", "scripts.seed_dev_stack"]
+    restart: "no"
+    environment:
+      <<: *database-environment
+      STORAGE_ROOT: /data/storage
+      PLATFORM_STAFF_EMAIL: ${PLATFORM_STAFF_EMAIL:-staff@example.com}
+      # Validate in the seed CLI so ordinary startup does not require a password.
+      PLATFORM_STAFF_PASSWORD: ${PLATFORM_STAFF_PASSWORD:-}
+      DEMO_SEED_PASSWORD: ${DEMO_SEED_PASSWORD:-}
+    volumes:
+      - app_data:/data
+    depends_on:
+      api:
+        condition: service_healthy
+      worker:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  app_data:
