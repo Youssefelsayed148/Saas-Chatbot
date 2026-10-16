@@ -22,7 +22,7 @@ from app.embeddings.providers import DIMENSION, EmbeddingError, HTTPEmbedder, va
 from app.jobs.queue import claim_job
 from app.jobs.runner import execute_claimed_job
 from app.knowledge.storage import get_storage
-from scripts.seed_demo import FAKE_PASSWORD, seed_demo
+from scripts.seed_demo import FAKE_PASSWORD, FAQS, seed_demo
 from tests.conftest import build_test_settings
 from tests.helpers import make_bot, seeded_tenant
 
@@ -164,7 +164,7 @@ with session_factory(e)() as db:
                         .where(
                             Chunk.tenant_id == seed.tenant_id,
                             Chunk.bot_id == seed.bot_id,
-                            Chunk.embedding_model == "ollama:bge-m3",
+                            Chunk.embedding_model == "openai:text-embedding-3-large",
                         )
                     ).scalar_one()
                 )
@@ -172,7 +172,7 @@ with session_factory(e)() as db:
                 break
             assert process.poll() is None, "worker exited before checkpoint"
             time.sleep(0.02)
-        assert 0 < done < 4
+        assert 0 < done < len(FAQS)
         process.kill()
         process.wait(timeout=5)
     finally:
@@ -184,7 +184,7 @@ with session_factory(e)() as db:
     assert bot.embedding_ready is False
     checkpoint = dict(job.payload)
     assert isinstance(checkpoint["done"], int)
-    assert 0 < checkpoint["done"] < 4
+    assert 0 < checkpoint["done"] < len(FAQS)
     job.lease_expires_at = datetime.now(UTC) - timedelta(seconds=1)
     db.commit()
     resumed = claim_job(db, "resumed-worker", settings)
@@ -192,16 +192,16 @@ with session_factory(e)() as db:
     execute_claimed_job(db, resumed, settings, get_storage(settings))
     db.expire_all()
     assert job.status == "succeeded"
-    assert job.payload["done"] == job.payload["total"] == 4
+    assert job.payload["done"] == job.payload["total"] == len(FAQS)
     assert job.payload["failed"] == 0
-    assert bot.active_embedding_model == "ollama:bge-m3"
+    assert bot.active_embedding_model == "openai:text-embedding-3-large"
     assert bot.embedding_ready is True
     chunks = list(
         db.scalars(
             select(Chunk).where(Chunk.tenant_id == seed.tenant_id, Chunk.bot_id == seed.bot_id)
         )
     )
-    assert len(chunks) == 4
+    assert len(chunks) == len(FAQS)
     assert all(chunk.embedding_dim == 1024 for chunk in chunks)
     assert db.execute(
         text("SELECT extversion FROM pg_extension WHERE extname='vector'")
@@ -266,3 +266,17 @@ def test_rag_controls_are_staff_only_and_client_navigation_is_redacted(
     finally:
         users.cleanup()
         foreign.cleanup()
+
+
+def test_default_embedding_identity_and_optional_ollama(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.embeddings.providers import DIMENSION, configured_identity
+
+    monkeypatch.delenv("EMBEDDING_PROVIDER", raising=False)
+    monkeypatch.delenv("EMBEDDING_MODEL", raising=False)
+    settings = Settings.model_construct()
+    assert configured_identity(settings) == "openai:text-embedding-3-large"
+    assert settings.embedding_dimensions == DIMENSION == 1024
+    assert (
+        configured_identity(Settings.model_construct(embedding_provider="ollama"))
+        == "ollama:bge-m3"
+    )

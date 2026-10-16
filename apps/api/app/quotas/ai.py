@@ -1,15 +1,28 @@
 """Meter provider work without holding row locks across network calls."""
 
+import logging
 from collections.abc import Callable
 from decimal import Decimal
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy.orm import Session
 
 from app.chat.providers import ChatModel, ExtractiveStubModel, ProviderError
 from app.core.config import Settings
-from app.embeddings.providers import EmbeddingBatch
-from app.quotas.rag import reserve, settle
+from app.core.errors import ApiError
+from app.embeddings.providers import EmbeddingBatch, EmbeddingError
+from app.quotas.rag import release, reserve, settle
+
+logger = logging.getLogger(__name__)
+
+
+def _safe(action: Callable[..., None], *args: Any, **kwargs: Any) -> None:
+    """Never let ledger bookkeeping mask the provider result or its exception."""
+    try:
+        action(*args, **kwargs)
+    except ApiError:
+        logger.warning("AI usage ledger update skipped; the reservation is kept.")
 
 
 def label(model: ChatModel) -> str:
@@ -72,6 +85,7 @@ class MeteredChatModel(ChatModel):
         )
         before = dict(self.inner.usage_totals or {})
         before_requests = getattr(self.inner, "requests_used", 0)
+        before_ambiguous = getattr(self.inner, "ambiguous_attempts", 0)
         completed = False
         try:
             answer = self.inner.complete(messages, json_mode=json_mode, max_tokens=max_tokens)
@@ -82,6 +96,11 @@ class MeteredChatModel(ChatModel):
             measured = (self.usage_totals or {}).get("total_tokens")
             tokens = (
                 max(0, measured - before.get("total_tokens", 0)) if measured is not None else None
+            )
+            definite_failure = (
+                not completed
+                and getattr(self.inner, "ambiguous_attempts", 0) == before_ambiguous
+                and not tokens
             )
             if not completed:
                 tokens = None
@@ -98,16 +117,21 @@ class MeteredChatModel(ChatModel):
                 tokens = None
                 if not self.model_used.endswith(":free"):
                     self.last_cost_usd = None
-            settle(
-                self.db,
-                self.tenant_id,
-                self.bot_id,
-                event,
-                self.settings,
-                tokens=tokens,
-                cost_usd=self.last_cost_usd,
-                model=self.model_used,
-            )
+            if definite_failure:
+                # Nothing was produced or billed: return the reservation.
+                _safe(release, self.db, self.tenant_id, self.bot_id, event, self.settings)
+            else:
+                _safe(
+                    settle,
+                    self.db,
+                    self.tenant_id,
+                    self.bot_id,
+                    event,
+                    self.settings,
+                    tokens=tokens,
+                    cost_usd=self.last_cost_usd,
+                    model=self.model_used,
+                )
 
 
 def metered_embed(
@@ -136,13 +160,24 @@ def metered_embed(
     try:
         batch = embed(texts)
         return batch
+    except EmbeddingError as exc:
+        if not exc.ambiguous:
+            _safe(release, db, tenant_id, bot_id, event, settings)
+            raise
+        _safe(settle, db, tenant_id, bot_id, event, settings, tokens=None, cost_usd=None)
+        raise
+    except BaseException:
+        _safe(settle, db, tenant_id, bot_id, event, settings, tokens=None, cost_usd=None)
+        raise
     finally:
-        settle(
-            db,
-            tenant_id,
-            bot_id,
-            event,
-            settings,
-            tokens=batch.tokens if batch is not None and batch.tokens > 0 else None,
-            cost_usd=batch.cost_usd if batch is not None else None,
-        )
+        if batch is not None:
+            _safe(
+                settle,
+                db,
+                tenant_id,
+                bot_id,
+                event,
+                settings,
+                tokens=batch.tokens if batch.tokens > 0 else None,
+                cost_usd=batch.cost_usd,
+            )

@@ -15,6 +15,7 @@ from app.db.models.knowledge import Chunk, Document, KnowledgeRevision, Source, 
 from app.knowledge.storage import get_storage
 from scripts.seed_demo import (
     FAKE_PASSWORD,
+    FAQS,
     ROLES,
     demo_id,
     demo_password,
@@ -105,16 +106,16 @@ def test_seed_twice_has_expected_counts_and_keeps_other_tenant(
     assert not second.created
     assert (first.tenant_id, first.bot_id) == (second.tenant_id, second.bot_id)
     assert sorted(path.relative_to(tmp_path) for path in tmp_path.rglob("*.md")) == files_before
-    assert len(files_before) == 4
+    assert len(files_before) == len(FAQS)
     assert db.scalar(select(func.count()).select_from(Tenant)) == 2
     assert db.scalar(select(func.count()).select_from(User)) == 3
     for model, expected in (
         (Membership, 3),
         (Bot, 1),
-        (Source, 4),
-        (SourcePage, 4),
-        (Document, 4),
-        (Chunk, 4),
+        (Source, len(FAQS)),
+        (SourcePage, len(FAQS)),
+        (Document, len(FAQS)),
+        (Chunk, len(FAQS)),
         (KnowledgeRevision, 1),
         (Contact, 3),
         (ContactStage, 3),
@@ -222,7 +223,7 @@ def test_seed_wrong_password_preserves_existing_data(db: Session, tmp_path: Path
     admin = db.scalar(select(User).where(User.id == demo_id("user/admin")))
     assert admin is not None and verify_password(FAKE_PASSWORD, admin.password_hash)
     assert db.scalar(select(func.count()).select_from(Tenant)) == 1
-    assert len(list(tmp_path.rglob("*.md"))) == 4
+    assert len(list(tmp_path.rglob("*.md"))) == len(FAQS)
 
 
 def test_seed_storage_failure_rolls_back_and_cleans_files(

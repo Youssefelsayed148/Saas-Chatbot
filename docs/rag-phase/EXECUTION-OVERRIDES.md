@@ -41,9 +41,9 @@
   redaction with a regression test, then resuming Stage 7. New per-plan/bot caps
   are configurable; **unset remains uncapped**. No numeric defaults are invented.
 
-The plan's RAG ADR-008 identifier collides with the older register's deferred
-billing ADR-008. This document does not renumber or resolve that unrelated billing
-decision; the approved RAG plan controls this work.
+The RAG decision is now **ADR-019**, renumbered by explicit owner request on
+2026-10-16. Deferred billing keeps ADR-008. Historical stage reports retain the
+old label as evidence of the earlier collision.
 
 ## Local merge approval
 
@@ -53,3 +53,23 @@ local merge into `main` and safe deletion of the merged feature branch despite
 the remaining calibration and live-quality checks. It supersedes the earlier
 conditional merge restriction only. Pending criteria remain pending; no
 `phase-2-complete` tag until they pass. No push or real provider calls authorized.
+
+## Final fixes before owner calibration (2026-10-16)
+
+This owner request supersedes the earlier embedding-default and threshold text
+above. Default identity: `openai:text-embedding-3-large`, dimensions=1024. Ollama
+is optional and unavailable in this environment. Add OpenAI cosine 0.50 OR FTS
+0.01, labelled **UNTUNED, pending owner calibration**. A missing identity row
+uses FTS only. FTS additionally requires at least one matched content term by
+default; the calibration sweeps this minimum and the FTS floor.
+
+Client bot navigation exposes exactly `id`, `tenant_id`, `name`, `status`,
+`created_at`, `updated_at`, plus redacted placeholders `config: {}` and
+`widget_locator: null`. These eight fields are the serialized non-staff BotOut
+response for the tenant-scoped list/detail routes, for admin/editor/viewer.
+No new client fields were added by these final fixes.
+
+Use the expanded 44-chunk demo and 76-case evaluation. No real provider calls,
+merge, tag, push or deployment; run only affected tests. The previous merge
+approval records a completed historical operation and does not authorize a new
+merge for these fixes. Owner commands and paste-back artifact: FINAL-REPORT.md.

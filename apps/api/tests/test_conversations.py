@@ -83,7 +83,7 @@ def test_playground_turn_stores_turns_and_usage(
     tenant_id = str(users.tenant_id)
     bot_id = str(chat_ready_corpus["bot_main"])
 
-    first = playground_post(admin, tenant_id, bot_id, "What warranty do you offer?")
+    first = playground_post(admin, tenant_id, bot_id, "What does your warranty cover?")
     assert first.status_code == 201, first.text
     body = first.json()
     assert body["kind"] == "answer"
@@ -124,7 +124,7 @@ def test_second_turn_reuses_the_conversation(
     admin = users.as_user("staff")
     tenant_id = str(users.tenant_id)
     bot_id = str(chat_ready_corpus["bot_main"])
-    first = playground_post(admin, tenant_id, bot_id, "What warranty do you offer?")
+    first = playground_post(admin, tenant_id, bot_id, "What does your warranty cover?")
     second = playground_post(admin, tenant_id, bot_id, "parts and labour how long?")
     assert first.status_code == 201 and second.status_code == 201
     assert second.json()["conversation_id"] == first.json()["conversation_id"]
@@ -141,7 +141,7 @@ def test_playground_conversation_of_another_bot_is_not_shared(
     admin = users.as_user("staff")
     tenant_id = str(users.tenant_id)
     main_id = str(chat_ready_corpus["bot_main"])
-    playground_post(admin, tenant_id, main_id, "What warranty do you offer?")
+    playground_post(admin, tenant_id, main_id, "What does your warranty cover?")
     decoy = make_bot(users, "DecoyChat")
     listing = admin.get(f"/api/v1/tenants/{tenant_id}/bots/{decoy['id']}/playground/conversation")
     assert listing.json()["message_count"] == 0
@@ -214,7 +214,7 @@ def test_feedback_idempotent_per_rater_and_rating(
     tenant_id = str(users.tenant_id)
     bot_id = str(chat_ready_corpus["bot_main"])
     client_admin = admin
-    turn = playground_post(client_admin, tenant_id, bot_id, "What warranty do you offer?")
+    turn = playground_post(client_admin, tenant_id, bot_id, "What does your warranty cover?")
     assert turn.status_code == 201
     ai_message_id = turn.json()["ai_message"]["id"]
 
@@ -255,7 +255,7 @@ def test_feedback_hits_are_tenant_scoped(
     admin = users.as_user("staff")
     tenant_id = str(users.tenant_id)
     bot_id = str(chat_ready_corpus["bot_main"])
-    turn = playground_post(admin, tenant_id, bot_id, "What warranty do you offer?")
+    turn = playground_post(admin, tenant_id, bot_id, "What does your warranty cover?")
     ai_message_id = turn.json()["ai_message"]["id"]
     ghost = uuid4()
     for bad_message in (ghost, UUID(ai_message_id)):

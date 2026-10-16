@@ -215,3 +215,95 @@ def test_fts_and_embedding_run_in_parallel_on_separate_sessions(
     monkeypatch.setattr(hybrid, "vector_search", vector)
     result = run(db, corpus)
     assert result.mode == "hybrid" and result.evidence
+
+
+def test_hybrid_keeps_always_include_and_whole_document_rules(
+    db: Session, corpus: dict[str, Any], monkeypatch: Any
+) -> None:
+    ready(db, corpus)
+    revision = helpers.published_revision_id(db, corpus["users_a"].tenant_id, corpus["bot_main"])
+    reserved_id = db.execute(
+        text(
+            "SELECT id FROM documents WHERE revision_id = CAST(:r AS uuid) "
+            "AND title = 'Return policy'"
+        ),
+        {"r": revision},
+    ).scalar_one()
+    reserved_chunks = set(
+        db.execute(
+            text("SELECT id FROM chunks WHERE document_id = :d"), {"d": reserved_id}
+        ).scalars()
+    )
+    assert reserved_chunks
+
+    class Fake:
+        def embed(self, texts: list[str]) -> EmbeddingBatch:
+            return EmbeddingBatch([VECTOR])
+
+    monkeypatch.setattr(hybrid, "from_settings", lambda *args: Fake())
+    reserved = {str(reserved_id)}
+    keyword = run(db, corpus, mode_override="fts_only", always_include_document_ids=reserved)
+    fused = run(db, corpus, always_include_document_ids=reserved)
+    assert keyword.mode == "fts_only" and fused.mode == "hybrid"
+    for result in (keyword, fused):
+        evidence_ids = {chunk.chunk_id for chunk in result.evidence}
+        assert reserved_chunks <= evidence_ids, result.mode  # reserved, whole document
+        best = result.evidence[len(reserved_chunks)]  # first non-reserved evidence chunk
+        best_doc = {
+            row
+            for row in db.execute(
+                text("SELECT id FROM chunks WHERE document_id = :d"), {"d": best.document_id}
+            ).scalars()
+        }
+        assert best_doc <= evidence_ids, result.mode  # best document whole
+    assert keyword.evidence[: len(reserved_chunks)] == [
+        c for c in keyword.evidence if c.chunk_id in reserved_chunks
+    ]
+    # Same rules, same reserved slots first, in both modes.
+    assert [c.chunk_id for c in fused.evidence[: len(reserved_chunks)]] == [
+        c.chunk_id for c in keyword.evidence[: len(reserved_chunks)]
+    ]
+
+
+def test_embedding_budget_exhaustion_degrades_to_keyword_search(
+    db: Session, corpus: dict[str, Any], monkeypatch: Any
+) -> None:
+    bot = ready(db, corpus)
+    bot.rag_limits = {"monthly_embedding_tokens": 0}
+    db.commit()
+
+    class Fake:
+        def embed(self, texts: list[str]) -> EmbeddingBatch:
+            raise AssertionError("the provider must not be called past the cap")
+
+    monkeypatch.setattr(hybrid, "from_settings", lambda *args: Fake())
+    result = run(db, corpus)
+    assert result.mode == "fts_only" and result.evidence
+    assert result.degradation_reason == "embedding_budget_exhausted"
+
+
+def test_query_embedding_events_carry_the_real_channel(
+    db: Session, corpus: dict[str, Any], monkeypatch: Any
+) -> None:
+    from app.db.models import UsageEvent
+
+    ready(db, corpus)
+
+    class Fake:
+        def embed(self, texts: list[str]) -> EmbeddingBatch:
+            return EmbeddingBatch([VECTOR], tokens=3)
+
+    monkeypatch.setattr(hybrid, "from_settings", lambda *args: Fake())
+    run(db, corpus, channel="playground")
+    db.expire_all()
+    channels = {
+        row.payload["channel"]
+        for row in db.scalars(
+            select(UsageEvent).where(
+                UsageEvent.tenant_id == corpus["users_a"].tenant_id,
+                UsageEvent.kind == "ai_usage",
+            )
+        )
+        if row.payload["event_type"] == "embed_query"
+    }
+    assert channels == {"playground"}

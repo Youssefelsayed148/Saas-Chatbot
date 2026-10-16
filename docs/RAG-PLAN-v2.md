@@ -1,10 +1,10 @@
-# RAG Plan v2 and ADR-008: Hybrid Retrieval (Phase 2)
+# RAG Plan v2 and ADR-019: Hybrid Retrieval (Phase 2)
 
 Status: approved. Supersedes RAG-PLAN.md. Repo is local-only commits, never push. Never read or print .env or keys.
 Items marked UNVERIFIED must be checked before implementation.
 Baseline: Phase 1 merged on local main (tag `phase-1-complete`). Client roles are admin/editor/viewer; platform staff (the operator) alone controls bots and everything below.
 
-## ADR-008: Decisions
+## ADR-019: Decisions
 
 1. Every bot runs hybrid retrieval by default: Postgres FTS plus pgvector, merged with rank fusion (RRF). Every bot handles all supported data types.
 2. Three separate per-bot settings: `retrieval_mode` (`hybrid` default, `fts_only` operator kill switch), `generation_provider/model`, and one deployment-wide embedding model and dimension.

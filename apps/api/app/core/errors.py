@@ -49,9 +49,12 @@ def error_body(
 def install_error_handlers(application: FastAPI) -> None:
     @application.exception_handler(ApiError)
     async def handle_api_error(request: Request, exc: ApiError) -> JSONResponse:
+        # Visitors never see internal cap names (RAG limits are staff-only detail).
+        public = request.url.path.startswith("/api/public/")
+        details = None if public and exc.code == "QUOTA_EXCEEDED" else exc.details
         return JSONResponse(
             status_code=exc.status_code,
-            content=error_body(request, exc.code, exc.message, exc.details),
+            content=error_body(request, exc.code, exc.message, details),
         )
 
     @application.exception_handler(RequestValidationError)

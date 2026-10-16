@@ -16,10 +16,18 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session as OrmSession
 
 from app.core.config import Settings, get_settings
+from app.core.errors import ApiError
 from app.db.models import Bot, Job
 from app.embeddings.providers import EmbeddingBatch, EmbeddingError, from_settings, validate_vector
 from app.quotas.ai import metered_embed
-from app.retrieval.service import RetrievalResult, RetrievedChunk, TranslateQuery, retrieve
+from app.retrieval.service import (
+    RetrievalResult,
+    RetrievedChunk,
+    TranslateQuery,
+    assemble_evidence,
+    retrieve,
+    score_lexical,
+)
 
 logger = logging.getLogger(__name__)
 VECTOR_COLUMNS = """
@@ -141,6 +149,7 @@ def retrieve_hybrid(
     always_include_document_ids: set[str] | None = None,
     translate_query: TranslateQuery | None = None,
     mode_override: str | None = None,
+    channel: str = "website",
 ) -> RetrievalResult:
     settings = settings or get_settings()
     bot = db.scalar(
@@ -199,7 +208,7 @@ def retrieve_hybrid(
                 texts=[question],
                 embed=from_settings(settings, identity).embed,
                 event_type="embed_query",
-                channel="website",
+                channel=channel,
             )
             found = vector_search(
                 vector_db,
@@ -218,6 +227,16 @@ def retrieve_hybrid(
         result = keyword()
         try:
             vectors, batch = future.result()
+        except ApiError as error:
+            if error.code != "QUOTA_EXCEEDED":
+                raise
+            result.degradation_reason = "embedding_budget_exhausted"
+            logger.warning(
+                "rag.fts_only reason=embedding_budget_exhausted tenant=%s bot=%s",
+                tenant_id,
+                bot_id,
+            )
+            return result
         except (EmbeddingError, SQLAlchemyError):
             result.degradation_reason = "embedding_or_vector_failure"
             logger.warning(
@@ -248,9 +267,53 @@ def retrieve_hybrid(
         )
         return result
     ranked = fuse(result.candidates, vectors, settings.retrieval_top_k, settings.retrieval_rrf_k)
+    score_lexical(
+        db,
+        ranked,
+        tenant_id=tenant_id,
+        bot_id=bot_id,
+        revision_id=revision_id,
+        question=result.fallback_query or question,
+        language=result.applied_language,
+    )
+    # Same evidence rules as keyword mode (reserved always-include documents,
+    # best document whole, small documents whole), applied to the fused ranking.
+    by_document: dict[UUID, RetrievedChunk] = {}
+    for chunk in ranked:
+        by_document.setdefault(chunk.document_id, chunk)
+    evidence = assemble_evidence(
+        db,
+        tenant_id=tenant_id,
+        bot_id=bot_id,
+        revision_id=revision_id,
+        language=result.applied_language,
+        ranked=list(by_document.values()),
+        settings=settings,
+        always_include_document_ids=always_include_document_ids,
+    )
+    fused = {chunk.chunk_id: chunk for chunk in ranked}
+    for chunk in evidence:
+        hit = fused.get(chunk.chunk_id)
+        if hit is not None:
+            chunk.vector_similarity = hit.vector_similarity
+            chunk.rrf_score = hit.rrf_score
+    score_lexical(
+        db,
+        [chunk for chunk in evidence if chunk.chunk_id not in fused],
+        tenant_id=tenant_id,
+        bot_id=bot_id,
+        revision_id=revision_id,
+        question=result.fallback_query or question,
+        language=result.applied_language,
+    )
+    for chunk in evidence:
+        hit = fused.get(chunk.chunk_id)
+        if hit is not None:
+            chunk.fts_match, chunk.matched_terms = hit.fts_match, hit.matched_terms
+            chunk.query_terms = hit.query_terms
     result.mode = "hybrid"
     result.candidates = ranked
-    result.evidence = ranked[: settings.retrieval_final_k]
+    result.evidence = evidence
     result.embedding_model = identity
     result.embedding_tokens = batch.tokens
     result.embedding_cost_usd = batch.cost_usd

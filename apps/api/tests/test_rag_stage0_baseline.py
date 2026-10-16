@@ -130,9 +130,9 @@ def test_real_fts_pipeline_checkpoints_and_never_replays(
         json.dumps(
             {
                 "id": "arabic",
-                "question": "كم تكلفة الكشف؟",
+                "question": "كم سعر الكشف؟",
                 "history": [],
-                "expected_source": "pricing",
+                "expected_source": "pricing-ar",
             }
         )
         + "\n"
@@ -177,22 +177,24 @@ def test_real_fts_pipeline_checkpoints_and_never_replays(
     assert baseline.run(args) == 0
     rows = [json.loads(line) for line in (args.output / "results.jsonl").read_text().splitlines()]
     assert len(rows) == 2
-    assert rows[0]["kind"] == "cannot_confirm"
-    assert rows[0]["requests_used"] == 0
-    assert rows[0]["preprocessing_skipped"] == 1
+    assert rows[0]["kind"] == "answer"
+    assert rows[0]["hit_at_8"] is True
+    assert rows[0]["citations_valid"] is True
+    assert rows[0]["requests_used"] == 1
+    assert rows[0]["preprocessing_skipped"] == 0
     assert rows[1]["hit_at_8"] is True
     assert rows[1]["citations_valid"] is True
     assert rows[1]["requests_used"] == 1
-    assert len(calls) == 1
+    assert len(calls) == 2
     with pytest.raises(ValueError, match="replay"):
         baseline.run(args)
     args.resume = True
     assert baseline.run(args) == 0
-    assert len(calls) == 1
+    assert len(calls) == 2
     args.retrieval_only = True
     assert baseline.run(args) == 0
     assert len((args.output / "retrieval-results.jsonl").read_text().splitlines()) == 2
-    assert len(calls) == 1
+    assert len(calls) == 2
 
 
 def test_follow_up_history_goes_to_generation_without_rewrite() -> None:

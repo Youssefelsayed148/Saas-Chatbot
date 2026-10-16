@@ -30,7 +30,27 @@ def test_stub_model_with_development_allowed() -> None:
 
 
 def test_real_provider_with_production_allowed() -> None:
-    validate_startup_settings(_settings(chat_stub_model=False, environment="production"))
+    validate_startup_settings(
+        _settings(chat_stub_model=False, environment="production", embedding_provider="openai")
+    )
+
+
+def test_production_requires_an_explicit_embedding_provider() -> None:
+    with pytest.raises(RuntimeError, match="EMBEDDING_PROVIDER"):
+        validate_startup_settings(_settings(environment="production"))
+    validate_startup_settings(_settings(environment="production", embedding_provider="ollama"))
+    # Development and test keep the OpenAI default without configuration.
+    validate_startup_settings(_settings(environment="development"))
+    validate_startup_settings(_settings(environment="test"))
+
+
+def test_real_settings_object_tracks_explicit_provider(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("EMBEDDING_PROVIDER", raising=False)
+    unset = Settings(_env_file=None, environment="production")  # type: ignore[call-arg]
+    with pytest.raises(RuntimeError, match="EMBEDDING_PROVIDER"):
+        validate_startup_settings(unset)
+    monkeypatch.setenv("EMBEDDING_PROVIDER", "openai")
+    validate_startup_settings(Settings(_env_file=None, environment="production"))  # type: ignore[call-arg]
 
 
 def test_create_app_refuses_production_stub(monkeypatch: pytest.MonkeyPatch) -> None:

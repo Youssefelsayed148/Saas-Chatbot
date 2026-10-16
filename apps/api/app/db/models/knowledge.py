@@ -9,7 +9,7 @@ children use composite FKs ``(tenant_id, bot_id[, parent_id])`` against unique
 keys on their parents (ADR-010) — a row can never reference a parent of
 another tenant, and the ingest worker re-validates tenant + bot per job.
 RAG Phase 2 adds model-tagged vector(1024) embeddings alongside the original
-GIN-indexed ``fts_en`` / ``fts_simple`` columns.
+GIN-indexed ``fts_en`` / ``fts_simple`` / ``fts_ar`` columns.
 """
 
 from datetime import datetime
@@ -324,7 +324,7 @@ class Chunk(Base):
     title: Mapped[str] = mapped_column(Text, nullable=False)
     heading: Mapped[str | None] = mapped_column(Text)
     text: Mapped[str] = mapped_column(Text, nullable=False)
-    # Arabic-normalised (docs/14 §2); the fts_simple column is built from it.
+    # Arabic-normalised (docs/14 §2); fts_simple and fts_ar are built from it.
     text_norm: Mapped[str] = mapped_column(Text, nullable=False)
     language: Mapped[str] = mapped_column(Text, nullable=False)
     priority: Mapped[int] = mapped_column(default=0, server_default=sa_text("0"))
@@ -346,6 +346,11 @@ class Chunk(Base):
     fts_simple: Mapped[Any] = mapped_column(
         TSVECTOR,
         Computed("to_tsvector('simple', coalesce(text_norm, ''))", persisted=True),
+        nullable=False,
+    )
+    fts_ar: Mapped[Any] = mapped_column(
+        TSVECTOR,
+        Computed("to_tsvector('arabic', coalesce(text_norm, ''))", persisted=True),
         nullable=False,
     )
     created_at: Mapped[datetime] = mapped_column(
@@ -406,6 +411,7 @@ class Chunk(Base):
         Index("ix_chunks_tenant_bot_revision", "tenant_id", "bot_id", "revision_id"),
         Index("ix_chunks_fts_en", "fts_en", postgresql_using="gin"),
         Index("ix_chunks_fts_simple", "fts_simple", postgresql_using="gin"),
+        Index("ix_chunks_fts_ar", "fts_ar", postgresql_using="gin"),
         Index("ix_chunks_embedding_hnsw", "embedding", postgresql_using="hnsw",
               postgresql_ops={"embedding": "vector_cosine_ops"},
               postgresql_where=sa_text("embedding IS NOT NULL")),

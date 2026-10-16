@@ -1,6 +1,6 @@
 # P3-05 evaluation report (deterministic stub-model run)
 
-Date: 2026-10-15 00:17 · corpus: tests/eval/fixtures (EN + AR pages + Q&A CSV)
+Date: 2026-10-16 18:07 · corpus: tests/eval/fixtures (EN + AR pages + Q&A CSV)
 cases: tests/eval/eval.jsonl
 
 Model: `ExtractiveStubModel` — deterministic, offline, answers extractively
@@ -42,10 +42,10 @@ reply-language adequacy still needs the real-model rerun.
 | id | pipeline kind | passed |
 |---|---|---|
 | warranty | cannot_confirm | ✅ |
-| sunday | answer | ✅ |
+| sunday | cannot_confirm | ✅ |
 | delivery-country | cannot_confirm | ✅ |
 | warranty-ar | cannot_confirm | ✅ |
-| delivery-country-ar | answer | ✅ |
+| delivery-country-ar | cannot_confirm | ✅ |
 | screens-install | cannot_confirm | ✅ |
 | staff-vacations-ar | cannot_confirm | ✅ |
 | office-chairs | cannot_confirm | ✅ |
@@ -63,16 +63,16 @@ reply-language adequacy still needs the real-model rerun.
 
 | id | pipeline kind | passed |
 |---|---|---|
-| cross-invoice | cannot_confirm | ❌ |
-| cross-open-monday | answer | ❌ |
+| cross-invoice | answer | ❌ |
+| cross-open-monday | cannot_confirm | ❌ |
 | cross-gift-cost | answer | ✅ |
 | cross-gift-materials | answer | ✅ |
 | cross-gift-timing | answer | ✅ |
 
 ## Failures
 
-- cross-invoice (cross_language → cannot_confirm): لا أستطيع التأكد من ذلك من المعلومات المتوفرة لدي. يرجى التواصل مع support@eval.…
-- cross-open-monday (cross_language → answer): I cannot confirm that from the information I have.…
+- cross-invoice (cross_language → answer): الأسئلة الشائعة — سياسة الاسترجاع (https://eval.example.com/ar/faq) يمكن استرجاع…
+- cross-open-monday (cross_language → cannot_confirm): لا أملك هذه المعلومة. يمكنني تحويلك إلى فريقنا عبر صندوق الرسائل، أو يمكنك التوا…
 
 ## Real-model rerun
 

@@ -6,10 +6,10 @@ into a ``to_tsquery`` string:
 
 - English → ``to_tsquery('english', …)`` against the GIN-indexed ``fts_en``
   column (title+heading+text of the chunk).
-- Arabic → ``to_tsquery('simple', …)`` against the normalised column
-  ``fts_simple``; every Arabic term is matched with **and** without a leading
-  ``ال`` and with ``:*`` prefix matching. Terms are normalised with the same
-  rules as the stored ``text_norm``.
+- Arabic → ``to_tsquery('arabic', …)`` against the normalised column
+  ``fts_ar`` (Snowball stemming, migration 0016); every Arabic term is matched with
+  **and** without a leading ``ال`` and with ``:*`` prefix matching. Terms are
+  normalised with the same rules as the stored ``text_norm``.
 
 The tsvector columns are precomputed and indexed — queries never call
 ``to_tsvector`` on chunk text (docs/14 §5: no per-query recomputation).
@@ -220,3 +220,13 @@ def build_tsquery(question: str, language: str) -> str | None:
         return " | ".join(variants)
     # English: to_tsquery('english') lexemizes; plain tokens are safe (\w+ only).
     return " | ".join(dict.fromkeys(tokens))
+
+
+def term_queries(question: str, language: str) -> list[str]:
+    """One OR query per distinct content term; Arabic variants count only once."""
+    if language == "ar":
+        question = normalise_text(question)
+    return [
+        " | ".join(_arabic_variants(token)) if language == "ar" else token
+        for token in dict.fromkeys(_tokens(question))
+    ]

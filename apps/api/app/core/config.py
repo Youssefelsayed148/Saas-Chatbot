@@ -3,10 +3,17 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import Field, SecretStr
+from pydantic import BaseModel, ConfigDict, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.quotas.rag_contracts import RagLimits
+
+
+class KeywordGate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    min_fts_match: float = Field(gt=0)
+    min_matched_terms: int = Field(ge=1)
+
 
 # Default storage root: relative to the API directory (apps/api), not the
 # working directory, so host runs and container runs resolve the same place.
@@ -85,7 +92,7 @@ class Settings(BaseSettings):
     # Deterministic offline stub model for tests/E2E. NEVER in production config.
     chat_stub_model: bool = False
     # RAG deployment contract: all providers use one 1024-dimensional column.
-    embedding_provider: Literal["ollama", "openai", "openrouter"] = "ollama"
+    embedding_provider: Literal["ollama", "openai", "openrouter"] = "openai"
     embedding_model: str = ""
     embedding_dimensions: Literal[1024] = 1024
     embedding_ollama_base_url: str = "http://host.docker.internal:11434"
@@ -94,12 +101,18 @@ class Settings(BaseSettings):
     retrieval_rrf_k: int = Field(default=60, ge=1)
     retrieval_hnsw_max_scan_tuples: int = Field(default=20_000, ge=1)
     rag_plan_limits: dict[str, RagLimits] = Field(default_factory=dict)
-    # Owner-approved, untuned bge-m3 development values; no implicit transfer
-    # to other embedding models. Add calibrated identities explicitly via env.
+    # UNTUNED, pending owner calibration. No implicit transfer to other models.
     retrieval_vector_floors: dict[str, float] = Field(
-        default_factory=lambda: {"ollama:bge-m3": 0.50}
+        default_factory=lambda: {"openai:text-embedding-3-large": 0.50, "ollama:bge-m3": 0.50}
     )
+    # Keyword leg of the gate: a chunk needs `min_matched_terms` distinct content
+    # terms (never more than the query has) AND a ts_rank_cd of at least
+    # `min_fts_match`. The plain values are the default for every model; a model
+    # identity in `retrieval_keyword_gates` overrides them. UNTUNED, pending owner
+    # calibration.
     retrieval_min_fts_match: float = Field(default=0.01, gt=0)
+    retrieval_min_matched_terms: int = Field(default=2, ge=1)
+    retrieval_keyword_gates: dict[str, KeywordGate] = Field(default_factory=dict)
     chat_rewrite_enabled: bool = True
     chat_rewrite_plans: list[str] = Field(
         default_factory=lambda: ["free", "starter", "pro", "business"]
@@ -129,4 +142,14 @@ def validate_startup_settings(settings: Settings) -> None:
         raise RuntimeError(
             "CHAT_STUB_MODEL cannot be enabled with environment=production; "
             "the offline stub model is a development/test aid."
+        )
+    if (
+        settings.environment == "production"
+        and "embedding_provider" not in settings.model_fields_set
+    ):
+        # Never fall back silently to a default (or to an unreachable local Ollama):
+        # the embedding identity of a production deployment is an explicit choice.
+        raise RuntimeError(
+            "EMBEDDING_PROVIDER must be set explicitly when environment=production "
+            "(openai is the default model family; ollama is optional)."
         )

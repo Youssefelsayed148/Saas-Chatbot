@@ -1,4 +1,8 @@
-"""OWNER ONLY: OpenAI retrieval calibration. Codex must not execute this script."""
+"""Owner-run OpenAI calibration: expanded corpus, ranked metrics and threshold sweep.
+
+Prints cost before DB/provider I/O; paste back output/calibration-results.json.
+No chat calls. Provider execution requires the owner to run this entrypoint.
+"""
 
 import os
 import sys

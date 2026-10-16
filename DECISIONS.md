@@ -21,6 +21,7 @@ Change a decision only by adding a dated entry below with rationale, alternative
 | ADR-016 | Handoff and inbox: conversation `mode` (ai/human) and `status` (open/waiting_human/resolved); AI is silent in human mode; roles reuse ADR-009 (admin/editor reply, viewer reads; ADR-009 revised 2026-10-16); dashboard live updates by SSE that polls the DB cursor (works with several API processes); widget polls; in-app notifications only (no email provider, ADR-004). Voice/image messages deferred | Approved 2026-10-12 |
 | ADR-017 | ManyOsirisChat channel contract: HMAC-SHA256 signed JSON both ways, per-connection secret, timestamp window, idempotent event ids, async processing via jobs. Many owns Meta tokens, webhook verification, 24-hour window and templates; the SaaS owns bot, conversation, inbox and CRM for linked connections. Mapping (tenant+bot to Many channel) is explicit and staff-created. Many must run linked connections in "delegated" mode (no bot or takeover of its own). Spec in docs/14 §18 and docs/17 | Approved 2026-10-12 (delegated-mode assumption to confirm when Many's side is designed) |
 | ADR-018 | Two dashboards: (1) client dashboard per chatbot (overview, inbox, contacts, knowledge, playground, settings, install, channels, follow-ups, team) and (2) platform admin console for staff to manage all clients. A basic admin console (client list, client detail, staff onboarding through the shared ProvisioningService) is built in P4 so first clients can be onboarded; quotas, platform analytics, connection health and audit review follow in P7 | Approved 2026-10-12 |
+| ADR-019 | Hybrid RAG retrieval, embeddings and relevance gate; docs/RAG-PLAN-v2.md plus execution overrides | Approved RAG phase; renumbered 2026-10-16 by owner request |
 
 ## 2026-10-12 — ADR-003 approval
 Approver: product owner. Rationale: one standalone deployment with clear module boundaries and tenant isolation, minimal infrastructure. Alternatives: historical multi-service control plane and cross-product architecture rejected for MVP. Impact: `apps/web`, `apps/api`, local Compose PostgreSQL.
@@ -49,3 +50,17 @@ Approver: product owner (decision recorded in the current instruction). Rational
 
 ## 2026-10-16 ? ADR-009 revised: client roles and operator control
 Approver: product owner, explicit Phase 1 change note. Client roles are admin/editor/viewer; migrate owner to admin. Only is_platform_staff controls bots, knowledge and playground or deletes organizations, with no tenant-membership requirement for those operations. Admins manage client administration and submit change requests; editors operate inbox/CRM; viewers read inbox/insights. Last-admin checks retain tenant locking; ownership transfer is removed. Organization deletion is immediate disablement followed by configurable delayed purge (30 days default), with a tenant-independent deletion ledger and storage cleanup. Alternatives: client-controlled bots and immediate hard deletion rejected by owner. Current matrix and contracts: docs/06. This supersedes older role wording in historical phase reports and ADR-016/018 where inconsistent. Hosting/billing OPEN decisions remain unchanged.
+
+
+## 2026-10-16 - ADR-019: RAG identifier and calibration defaults
+Approver: product owner, explicit final-fixes request. The RAG decision previously
+labelled ADR-008 in the RAG plan is now ADR-019 (previously unused). Billing
+ADR-008 stays OPEN and unchanged. ADR-019 supersedes ADR-005's keyword-only
+restriction for this approved hybrid phase. Default embeddings are
+`openai:text-embedding-3-large`, 1024 dimensions; Ollama remains optional.
+The OpenAI cosine 0.50 OR FTS 0.01 row is **UNTUNED, pending owner calibration**.
+Unknown models accept only FTS evidence. Calibration sweeps cosine/FTS floors
+and minimum matched content terms, and never applies recommendations automatically.
+Alternatives: unavailable local Ollama as default and threshold inheritance across
+models rejected. Impact: runtime defaults, demo corpus and owner calibration tooling;
+no real calls, merge, tag, deployment or hosting/billing decision authorized.
