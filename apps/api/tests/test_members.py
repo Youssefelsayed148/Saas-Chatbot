@@ -2,6 +2,7 @@
 
 from typing import Any
 
+import pytest
 from sqlalchemy.orm import Session as OrmSession
 
 from tests.helpers import (
@@ -112,5 +113,75 @@ def test_owner_role_and_transfer_removed(app: Any, db: OrmSession) -> None:
         target = f"/api/v1/tenants/{users.tenant_id}/members/{users.users['editor']['id']}"
         assert users.call("admin", "PATCH", target, json={"role": "owner"}).status_code == 422
         assert users.call("admin", "POST", f"{target}/transfer-ownership").status_code == 404
+    finally:
+        users.cleanup()
+
+
+@pytest.mark.parametrize("methods", [("DELETE", "DELETE"), ("PATCH", "PATCH"), ("DELETE", "PATCH")])
+def test_concurrent_last_admin_changes_keep_one_admin(
+    app: Any, db: OrmSession, monkeypatch: Any, methods: tuple[str, str]
+) -> None:
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+    from uuid import UUID
+
+    from fastapi.testclient import TestClient
+    from sqlalchemy import func, select
+
+    from app.db.models import Membership
+    from app.quotas.service import lock_tenant
+    from tests.conftest import csrf_headers
+
+    users = seeded_tenant(app, db, prefix="concurrent-admin")
+    try:
+        base = f"/api/v1/tenants/{users.tenant_id}/members"
+        second_id = users.users["editor"]["id"]
+        assert (
+            users.call("admin", "PATCH", f"{base}/{second_id}", json={"role": "admin"}).status_code
+            == 200
+        )
+        barrier = Barrier(2)
+
+        def simultaneous_lock(session: Any, tenant_id: Any) -> Any:
+            barrier.wait(timeout=10)
+            return lock_tenant(session, tenant_id)
+
+        monkeypatch.setattr("app.tenants.service.lock_tenant", simultaneous_lock)
+
+        def request(method: str, user_id: str) -> Any:
+            with TestClient(app) as client:
+                client.cookies.update(users.as_user("staff").cookies)
+                return client.request(
+                    method,
+                    f"{base}/{user_id}",
+                    headers=csrf_headers(client),
+                    **({"json": {"role": "viewer"}} if method == "PATCH" else {}),
+                )
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            futures = [
+                executor.submit(request, method, user_id)
+                for method, user_id in zip(
+                    methods, [users.users["admin"]["id"], second_id], strict=True
+                )
+            ]
+            responses = [future.result(timeout=20) for future in futures]
+        assert sorted(response.status_code for response in responses) in ([200, 403], [204, 403])
+        denied = next(response for response in responses if response.status_code == 403)
+        assert denied.json()["error"]["code"] == "LAST_ADMIN"
+        db.expire_all()
+        assert (
+            db.scalar(
+                select(func.count())
+                .select_from(Membership)
+                .where(
+                    Membership.tenant_id == users.tenant_id,
+                    Membership.role == "admin",
+                    Membership.status == "active",
+                )
+            )
+            == 1
+        )
+        assert db.get(Membership, (users.tenant_id, UUID(second_id))) is not None
     finally:
         users.cleanup()
