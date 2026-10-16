@@ -1,6 +1,6 @@
 # PHASE 2 PROMPT v2: RAG implementation (hybrid retrieval)
 
-Read `RAG-PLAN-v2.md` first. It is the source of truth (ADR-008, runtime cycle, exit criteria). If this prompt and the plan conflict, THIS PROMPT WINS (it includes later decisions); report the conflict.
+Read `RAG-PLAN-v2.md` first. It is the source of truth (ADR-019, runtime cycle, exit criteria). If this prompt and the plan conflict, THIS PROMPT WINS (it includes later decisions); report the conflict.
 
 ## Hard rules
 - Local commits only. NEVER push. Never read or print .env or keys. Do not use `docker compose`; plain `docker` with explicit settings only.

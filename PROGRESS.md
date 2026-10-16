@@ -1378,3 +1378,112 @@ using `git branch -d`. Working tree was clean at `b4c8d05`; main `946f2cb` is an
 ancestor. No code changes or test reruns for this documentation/Git operation.
 Existing results remain 353 API / 40 Playwright passed. Calibration and live
 semantic/refusal quality remain PENDING; no completion tag, provider calls or push.
+
+
+## 2026-10-16 Final RAG fixes before owner calibration
+
+Owner scope: no real provider calls, merge or tag; affected checks only.
+Default identity is now openai:text-embedding-3-large at 1024 dimensions;
+OpenAI 0.50 OR FTS 0.01 is UNTUNED, pending owner calibration. Optional Ollama
+retains its own row. Missing identities use FTS only. Added configurable minimum
+matched content terms (default 1), computed per chunk against stored PostgreSQL
+indexes in tenant/bot/revision-scoped SQL, including expanded/hybrid candidates.
+
+Shared demo: 44 documents/chunks (36 EN, 8 AR), with close shop/workshop
+distractors; eval: 76 cases (62 answerable, 14 gaps), covering every source.
+Arabic FTS is simple on normalized fts_simple; English is english on fts_en.
+Calibration plans the exact corpus before DB/provider activity, prints cost first,
+rejects >2M tokens, caches embeddings, reports hit@3/MRR for both modes and
+90 cosine/FTS/minimum-term settings with leaks/refusals/wrong-evidence accepts.
+One calibration-results.json contains all paste-back evidence and recommendations.
+The generation check optionally loads that recommendation for its run only.
+Renumbered RAG ADR to unused ADR-019; deferred billing ADR-008 is unchanged.
+FINAL-REPORT.md lists the complete client BotOut exception and exact two owner
+commands. No schema/migration or client API contract changes.
+
+Affected test commands from the repository root (all HTTP mocked/synthetic;
+existing test container, only disposable local databases):
+
+```powershell
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_calibration_fixes_test -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_rag_evaluation.py tests/test_rag_gate.py tests/test_seed_demo.py tests/test_embedding_foundation.py tests/test_hybrid_retrieval.py tests/test_retrieval.py tests/test_cross_script.py tests/test_rag_traces.py tests/test_rag_stage0_baseline.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-calibration-fixes
+```
+
+Exit 1: **99 passed, 1 failed**, 1 existing Starlette/httpx deprecation warning,
+339.61s. Failure: test_real_fts_pipeline_checkpoints_and_never_replays expected
+Arabic cannot_confirm from the old English-only demo. Actual expanded demo
+correctly returns answer. Updated source label to pricing-ar, asserted Arabic
+hit/citations and one mocked generation call; replay assertions still count
+both mocked requests and forbid additional calls.
+
+While this ran, added an end-to-end synthetic calibration report test, a
+recommendation-loading test, and a direct PostgreSQL lexical isolation/stemming/
+Arabic term-group test. Follow-up command:
+
+```powershell
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_calibration_followup_test -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_rag_evaluation.py tests/test_retrieval.py::test_lexical_signal_count_uses_postgres_terms_and_tenant_scope tests/test_rag_stage0_baseline.py tests/test_chat.py tests/test_embedding_foundation.py::test_default_embedding_identity_and_optional_ollama --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-calibration-followup 2>&1 | Tee-Object -FilePath .test-storage/rag-owner-fixes/affected-followup.log; exit $LASTEXITCODE
+```
+
+Exit 1: **12 passed, 1 failed**, 1 existing warning, 38.57s. The new Arabic
+lexical assertion used question marks after PowerShell's ASCII native-pipeline
+encoding. Corrected its actual UTF-8 query plus two similarly affected new
+Arabic gap questions, and added an assertion checking Arabic content in every
+Arabic-labelled eval question. Existing Arabic data was preserved. Corrected run:
+
+```powershell
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_calibration_followup_test -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_rag_evaluation.py tests/test_retrieval.py::test_lexical_signal_count_uses_postgres_terms_and_tenant_scope tests/test_rag_stage0_baseline.py tests/test_chat.py tests/test_embedding_foundation.py::test_default_embedding_identity_and_optional_ollama --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-calibration-followup-corrected 2>&1 | Tee-Object -FilePath .test-storage/rag-owner-fixes/affected-followup-corrected.log; exit $LASTEXITCODE
+```
+
+Corrected run exit 0: **44 passed**, 1 existing Starlette/httpx deprecation
+warning, **260.74s**. Raw log:
+`.test-storage/rag-owner-fixes/affected-followup-corrected.log`.
+Together with the first run's unaffected passes, this covers **120 distinct
+affected tests** (99 + 44 passes, with 23 repeated passing cases). Both failed
+assertions were corrected and passed in the final run; no failures/skips remain
+in affected coverage. No full-suite/browser rerun.
+
+Type checks (exact container commands):
+
+```text
+docker exec rag-stage0-checks python -m mypy --no-incremental --follow-imports=silent app/core/config.py app/retrieval/evaluation.py app/retrieval/gate.py app/retrieval/hybrid.py app/retrieval/query.py app/retrieval/service.py scripts/demo_knowledge.py scripts/seed_demo.py scripts/rag_phase2_eval.py tests/test_rag_evaluation.py tests/test_rag_gate.py tests/test_seed_demo.py tests/test_embedding_foundation.py
+```
+
+Exit 1, mypy 2.4.0 INTERNAL ERROR with default cache. Used a writable temp cache:
+
+```text
+docker exec rag-stage0-checks python -m mypy --no-incremental --cache-dir /tmp/rag-calibration-mypy --show-traceback app/core/config.py app/retrieval/evaluation.py app/retrieval/gate.py app/retrieval/hybrid.py app/retrieval/query.py app/retrieval/service.py scripts/demo_knowledge.py scripts/seed_demo.py scripts/rag_phase2_eval.py tests/test_rag_evaluation.py tests/test_rag_gate.py tests/test_seed_demo.py tests/test_embedding_foundation.py
+```
+
+Exit 1: three errors (missing texts annotation; two direct _env_file test
+constructor arguments rejected by Settings' static signature). Corrected these;
+default-identity test now uses model_construct without reading dotenv.
+
+```text
+docker exec rag-stage0-checks python -m mypy --no-incremental --cache-dir /tmp/rag-calibration-mypy-final app/core/config.py app/retrieval/evaluation.py app/retrieval/gate.py app/retrieval/hybrid.py app/retrieval/query.py app/retrieval/service.py scripts/demo_knowledge.py scripts/seed_demo.py scripts/rag_phase2_eval.py tests/test_rag_evaluation.py tests/test_rag_gate.py tests/test_seed_demo.py tests/test_embedding_foundation.py tests/test_retrieval.py
+```
+
+Exit 0: **14 source files**.
+
+```text
+docker exec rag-stage0-checks python -m mypy --no-incremental --cache-dir /tmp/rag-calibration-mypy-last scripts/rag_phase2_eval.py tests/test_rag_evaluation.py tests/test_rag_stage0_baseline.py
+```
+
+Exit 0: **3 source files**, after runner/report/baseline updates.
+Initial affected Ruff checks caught long literals/import order/loop closure
+lint; all corrected. Final scoped Ruff/format and diff checks follow below.
+
+No .env read, real provider call, merge, tag, push, deployment, production DB
+mutation or new infrastructure. Existing active embedding identities remain
+unchanged until an explicit backfill. Real multilingual quality/calibration and
+phase completion remain pending the owner.
+
+
+Final lint/format commands (repository root):
+
+```powershell
+.venv/Scripts/ruff.exe check apps/api/app/core/config.py apps/api/app/retrieval apps/api/scripts/demo_knowledge.py apps/api/scripts/seed_demo.py apps/api/scripts/rag_phase2_eval.py apps/api/tests/test_rag_gate.py apps/api/tests/test_rag_evaluation.py apps/api/tests/test_seed_demo.py apps/api/tests/test_embedding_foundation.py apps/api/tests/test_retrieval.py apps/api/tests/test_rag_stage0_baseline.py scripts/rag_calibrate.py
+.venv/Scripts/ruff.exe format --check apps/api/app/core/config.py apps/api/app/retrieval apps/api/scripts/demo_knowledge.py apps/api/scripts/seed_demo.py apps/api/scripts/rag_phase2_eval.py apps/api/tests/test_rag_gate.py apps/api/tests/test_rag_evaluation.py apps/api/tests/test_seed_demo.py apps/api/tests/test_embedding_foundation.py apps/api/tests/test_retrieval.py apps/api/tests/test_rag_stage0_baseline.py scripts/rag_calibrate.py
+git diff --check
+```
+
+All exit 0: Ruff clean, **17 files already formatted**, no diff whitespace errors.
+Git printed only existing LF/CRLF conversion notices for .env.example and query.py.

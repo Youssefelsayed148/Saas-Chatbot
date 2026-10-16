@@ -1,209 +1,138 @@
-# Phase 2 final exit report
+# RAG final fixes before owner calibration
 
-2026-10-16. Branch `feat/rag-phase-2`. Implementation through Stage 7 is
-committed. Both final suites completed once; evidence below was copied from
-the saved checkpoints without rerunning tests.
+2026-10-16. Implemented the owner's final fixes. Real provider calibration and
+language/groundedness validation remain **PENDING**. No real provider calls,
+merge, tag, push or deployment were performed for these fixes.
 
-Stages 0–7 implement hybrid retrieval, resumable embedding backfill, relevance
-gating, follow-up rewrite, grounded generation, private traces, bounded parsing,
-offline evaluation and staff-only metering/configurable limits. Unknown usage
-and cost remain explicitly unknown; configured token caps reserve conservatively
-before provider calls. Unset caps remain uncapped, as approved.
+## Defaults and safe gating
 
-## Instruction conflicts and setup
+Default embedding identity is **`openai:text-embedding-3-large`**, dimensions
+**1024**. Ollama remains an optional backend; it is unavailable here.
+The OpenAI threshold row is cosine **0.50 OR FTS 0.01**, labelled
+**UNTUNED, pending owner calibration**. Each identity requires its own row.
+A missing/invalid vector floor disables cosine acceptance; the gate then uses
+FTS only. FTS must have a positive finite score meeting the floor and at least
+`RETRIEVAL_MIN_MATCHED_TERMS` distinct content terms (default 1). RRF never
+passes the relevance gate. See THRESHOLDS.md and `.env.example`.
 
-- The whole-phase attachment supersedes approval pauses: STOP gates became
-  checkpoints. The actual plan filename is `RAG-PLAN-v2.md`; the prompt reference
-  was corrected. The RAG ADR-008 identifier collides with the older deferred
-  billing ADR-008; no unrelated billing decision was changed.
-- The latest request overrides paid Standard/OpenAI-default language: live chat
-  uses only the free OpenRouter chain; development embeddings default to local
-  Ollama bge-m3, 1024 dimensions. OpenAI and OpenRouter embedding backends are
-  implemented and mock-tested. No real OpenAI calls were made.
-- The owner approved minimal client bot navigation fields, cosine **OR** FTS
-  acceptance, provisional thresholds, the export privacy correction, and optional
-  caps whose unset values remain uncapped. See `EXECUTION-OVERRIDES.md`.
-- Original main was `946f2cb`; `phase-1-complete` is an ancestor, with only docs
-  above the tag at setup. The plan files were the first feature-branch commit.
-- At continuation setup, process key: **not set**; chain: **not set**, length
-  **0**. No dotenv/key reads in this continuation. Historical explicitly approved
-  scoped dotenv loading/chain repair belongs to the earlier baseline run.
-- `CHAT_FREE_MODEL_CHAIN` is a typed `list[str]` decoded as a **JSON array** by
-  Pydantic Settings, not split on commas. JSON whitespace is accepted; model
-  strings are not automatically trimmed. Free-only validation requires `:free`.
+Scores and term counts now come from each selected chunk's own stored index,
+including expanded documents and hybrid candidates. The SQL retains tenant,
+bot and revision scope; a different chunk's document score is not copied.
 
-The embedding column is fixed at 1024 dimensions. Default identity is
-`ollama:bge-m3`; local execution has no provider token charge (host compute is
-not measured). The OpenAI large adapter's configured accounting rate is
-USD 0.13 per million measured input tokens; this is the implementation rate,
-not a measured bill. OpenRouter embedding cost remains unknown in this adapter.
-All production-model behavior remains UNVERIFIED here.
+## Corpus and calibration
 
-## Commits and requests
+The shared demo now seeds **44 chunks** across 44 documents: **36 English and
+8 Arabic**. Eight English shop/workshop distractors and two Arabic shop chunks
+share close hours/pricing/booking/address wording with the clinic facts.
+The **76 cases** comprise 62 answerable and 14 unanswerable questions, label
+every source, retain paraphrases/mixed/follow-ups, and add near-topic gaps.
+The seeder remains idempotent and preserves an existing demo. Calibration
+rejects a stale four-chunk database before provider requests; use the fresh v2
+disposable database in the commands below.
 
-| Work | Local commit | Real completion requests |
-|---|---|---:|
-| Plan files first | `0c70c5b` | 0 |
-| Stage 0 | `ba7ffa0` | 5 historical; 0 additional |
-| Stage 1 | `39e3888` | 0 |
-| Stage 2 | `8f163e9` | 0 |
-| Stage 3 | `555ffc7` | 0 |
-| Stage 4 | `85dbe92` | 0 |
-| Stage 5 | `75ee690` | 0 |
-| Stage 6 | `fa1baff` | 0 |
-| Stage 7 | `e1d1c23` | 0 |
+Arabic FTS uses PostgreSQL **`simple`** on normalized **`fts_simple`**;
+English uses **`english`** on **`fts_en`**. Arabic article/prefix variants for
+one query term count as one content-term group. No Arabic stemming dictionary
+is configured. Mixed queries follow the existing language/fallback routing;
+raw evaluation disables translation and rewrite.
 
-Historical usage also includes **one catalog lookup**. Of five completion
-requests, four returned HTTP 200 and the fifth returned the first HTTP 429.
-Nine of 32 baseline questions completed (some required no generation). The
-partial journal was preserved; no completed question was replayed. The other
-23 generation-dependent cases remain PENDING. No live embedding requests were
-made. Both owner scripts were built but never executed, including `--help`.
+`scripts/rag_calibrate.py` delegates to the tested owner runner, which plans
+the exact expanded seed before I/O, prints its estimated cost first, aborts
+above **2,000,000 tokens**, and embeds/caches OpenAI 1024-dimensional vectors.
+It reports raw answerable **hit@3** and **MRR over top-8 candidates** for
+`fts_only` and `hybrid`, alongside gate refusal metrics. It sweeps FTS floors
+0.005/0.01/0.05/0.10/0.20 and minimum matched terms 1/2/3; hybrid also sweeps
+cosine disabled/0.40/0.50/0.60/0.70. The **90 settings** each show unanswerable
+gate leaks, wrong refusals and wrong-evidence accepts. The recommendation
+minimizes leaks, then refusals, then wrong-evidence accepts. These are sample
+recommendations for owner review, never automatic runtime changes.
 
-At final review, missing embedding usage was found to produce an invented zero
-OpenAI cost. The final correction preserves null cost for missing/invalid usage
-and adds five mocked cases in `test_embedding_foundation.py`. It was applied
-before that file's first execution in the final gate. No full-suite restart.
+One paste-back file, **`calibration-results.json`**, includes raw rankings,
+mode metrics, estimates, measured embedding usage, configs, every sweep setting
+and the recommended threshold set. Cache and crash journals remain local.
+Real scores, actual cost and semantic improvement are unmeasured until the
+owner runs calibration. Synthetic test results cannot establish model quality.
 
-## Exit evidence
+## ADR and exact client navigation override
 
-| Criterion | Status | Evidence and limitation |
-|---|---|---|
-| Hybrid beats FTS on paraphrase and Arabic | **PENDING; not established** | Raw expected-source hit@8: FTS 9/22, synthetic hybrid 22/22. All four demo chunks fit k=8, so this is coverage, not semantic improvement. Paraphrase candidate hits 3/8 vs 8/8; Arabic 0/6 vs 6/6, but accepted Arabic evidence remains 0/6 in both modes. Real multilingual validation is pending. |
-| Unanswerable refusal, valid citations, safe errors | **PARTIAL** | Both raw gates refuse 6/10 unanswerable cases; four keyword matches pass the gate. Both wrongly refuse 12/22 answerable cases. Historical live sample: six Arabic wrong refusals, three mixed answers with valid citations, no internals observed in nine completed rows. Mocked citation/error contracts pass; full live groundedness/language/refusal quality is pending. |
-| Vector isolation | **PASS** | Same-SQL tenant/bot/revision/model filters, tiny tenant with 300+ foreign decoys, full eligible k and zero foreign hits. Iterative HNSW plus exact scoped repair; EXPLAIN in `STAGE-2-EXPLAIN.json`. |
-| Model-specific thresholds | **PASS documentation/configuration; calibration PENDING** | `bge-m3 (Ollama), provisional`: cosine 0.50 OR FTS 0.01, explicitly untuned. OpenAI vector floor absent pending owner calibration; no automatic transfer across models. See `THRESHOLDS.md`. |
-| New routes staff-only; clients see no new operator data | **PASS** | Exact matrix 82=82, client roles denied, visitors citation-redacted, staff panels hidden from clients. Stage 7 fixes the export trace leak after an owner-authorized stop; regression covers client redaction and staff retention. Full browser gate passed. |
+The RAG decision is now **ADR-019**, previously unused. References in the plan,
+prompt and decision register agree. Billing retains ADR-008 unchanged;
+historical stage reports retain their original collision note.
 
-No meaningful semantic improvement has been demonstrated, so the completion
-gate remains open. After reviewing this limitation, the owner explicitly
-approved the local merge on 2026-10-16 ("merge approved do it"), overriding the
-earlier instruction to leave the branch unmerged. Calibration and real-call
-criteria remain PENDING. Do not create `phase-2-complete` until they pass.
+Non-staff admin/editor/viewer bot list/detail responses expose exactly these
+eight serialized fields:
 
-## Full verification, run once
+| Field | Client value |
+|---|---|
+| `id` | Bot UUID |
+| `tenant_id` | Authorized tenant UUID |
+| `name` | Bot display name |
+| `status` | Bot lifecycle status |
+| `created_at` | Creation timestamp |
+| `updated_at` | Last update timestamp |
+| `config` | Always `{}` |
+| `widget_locator` | Always `null` |
 
-API: **353 passed across all 44 files**, no failures, errors, skips or deselections. Every file exited 0. The single file-by-file run used separate disposable pgvector databases and no live providers. Exact commands, exit codes, counts and timings: `FINAL-TEST-RESULTS.json`. Raw logs remain in `.test-storage/rag-phase2-final/`.
+The six navigation values and two redacted placeholders are the complete
+exception. No retrieval, model, knowledge, traces, costs or citation fields
+are exposed by this override. Implementation: `app/bots/router.py` and
+`app/bots/schemas.py`; this fix does not change the response contract.
 
-| API test file | Passed |
-|---|---:|
-| `tests/eval/test_eval.py` | 2 |
-| `tests/test_analytics.py` | 6 |
-| `tests/test_auth.py` | 15 |
-| `tests/test_bot_status.py` | 5 |
-| `tests/test_bots.py` | 4 |
-| `tests/test_change_requests.py` | 1 |
-| `tests/test_chat.py` | 16 |
-| `tests/test_contacts.py` | 1 |
-| `tests/test_conversations.py` | 13 |
-| `tests/test_conversations_view.py` | 5 |
-| `tests/test_cross_script.py` | 3 |
-| `tests/test_database_guard.py` | 5 |
-| `tests/test_embedding_foundation.py` | 16 |
-| `tests/test_followups_analytics.py` | 2 |
-| `tests/test_handoff.py` | 5 |
-| `tests/test_health.py` | 6 |
-| `tests/test_hybrid_retrieval.py` | 6 |
-| `tests/test_inbox_list.py` | 5 |
-| `tests/test_invitations.py` | 6 |
-| `tests/test_jobs.py` | 8 |
-| `tests/test_knowledge_parsers.py` | 29 |
-| `tests/test_knowledge_pipeline.py` | 9 |
-| `tests/test_knowledge_uploads.py` | 19 |
-| `tests/test_members.py` | 8 |
-| `tests/test_migrations.py` | 1 |
-| `tests/test_models_constraints.py` | 13 |
-| `tests/test_platform.py` | 9 |
-| `tests/test_platform_ops.py` | 4 |
-| `tests/test_quotas.py` | 10 |
-| `tests/test_rag_evaluation.py` | 7 |
-| `tests/test_rag_gate.py` | 14 |
-| `tests/test_rag_limits.py` | 8 |
-| `tests/test_rag_stage0_baseline.py` | 14 |
-| `tests/test_rag_traces.py` | 3 |
-| `tests/test_retrieval.py` | 9 |
-| `tests/test_seed_demo.py` | 21 |
-| `tests/test_self_service_signup.py` | 4 |
-| `tests/test_startup_guard.py` | 5 |
-| `tests/test_tenant_data.py` | 2 |
-| `tests/test_tenant_route_matrix.py` | 6 |
-| `tests/test_tenants.py` | 6 |
-| `tests/test_widget_appearance.py` | 3 |
-| `tests/test_widget_leads.py` | 5 |
-| `tests/test_widget_public.py` | 14 |
+## Exact two owner commands
 
-Playwright: **40 passed (3.5m), exit 0**, one full unscoped run. Log scan:
-**0 ECONNRESET, 0 Failed to proxy, 0 Python tracebacks**; affected spec: none.
-The 65-second keep-alive is retained. The original socket reset's root cause
-remains UNVERIFIED. Stage 0's three historical affected runs were 10 passed;
-9 passed/1 synchronization failure, corrected; 10 passed, all with zero resets.
-
-Full browser command, from `apps/web`:
+From the repository root, with disposable pgvector PostgreSQL listening at
+127.0.0.1:55462. Process environment only: `CHAT_OPENAI_API_KEY` for the first
+command; `CHAT_OPENROUTER_API_KEY` and JSON `CHAT_FREE_MODEL_CHAIN` of `:free`
+models for the second. Credentials are never printed. The estimate assumes
+the adapter's existing USD 0.13/million input-token accounting rate.
 
 ```powershell
-$env:ENVIRONMENT='test'
-$env:DATABASE_URL='postgresql://postgres@127.0.0.1:55462/rag_final_browser_test'
-$env:E2E_API_PORT='18162'
-$env:API_PROXY_TARGET='http://127.0.0.1:18162'
-$env:STORAGE_ROOT='D:/Projects/Work Projects/The Osiris Labs/SAAS-chats-ai/.test-storage/rag-phase2-final/browser-storage'
-npm.cmd test -- --reporter=line 2>&1 | Tee-Object -FilePath '../../.test-storage/rag-phase2-final/playwright-full.log'
+.venv/Scripts/python.exe scripts/rag_calibrate.py --database-url postgresql://postgres@127.0.0.1:55462/rag_owner_calibration_v2_test --output .test-storage/rag-owner-calibration-v2
 ```
 
-Final corrected mypy passed **176 source files**. Web lint and typecheck passed
-at Stage 7; final correction touches only Python. Affected Python Ruff/format
-checks passed. Broad Ruff still reports exactly the nine pre-existing findings,
-left untouched: `chat.py:428 E501`; `knowledge.py:87 E501`;
-`knowledge/service.py:9 I001`; `platform/router.py:10 I001, :259/:328 E501`;
-`quotas/sentiment.py:121 E501`; `quotas/service.py:194 E501`;
-`tests/conftest.py:9 I001`. Broad Ruff is not claimed clean.
-
-Stage-specific affected tests, initial failures and corrections, exact commands,
-changed-file groups and checkpoints are recorded in `STAGE-0-REPORT.md` through
-`STAGE-7-REPORT.md` and `PROGRESS.md`.
-
-## Owner checks, not executed by Codex
-
-Use process environment keys only; do not print values. Start the disposable
-loopback pgvector database first. From the repository root:
+Paste back `.test-storage/rag-owner-calibration-v2/calibration-results.json`.
+Inspect the recommendation before the second command, which explicitly loads
+it for that check. This does not save settings to the app.
 
 ```powershell
-.venv/Scripts/python.exe scripts/rag_calibrate.py --database-url postgresql://postgres@127.0.0.1:55462/rag_owner_calibration_test --output .test-storage/rag-owner-calibration
+.venv/Scripts/python.exe scripts/rag_generation_check.py --database-url postgresql://postgres@127.0.0.1:55462/rag_owner_calibration_v2_test --mode hybrid --embedding-cache .test-storage/rag-owner-calibration-v2/embedding-cache.jsonl --calibration-results .test-storage/rag-owner-calibration-v2/calibration-results.json --baseline-results .test-storage/rag-stage-0/baseline/results.jsonl --output .test-storage/rag-owner-generation-v2
 ```
 
-This uses OpenAI `text-embedding-3-large`, dimensions=1024, prints a conservative
-token/cost bound before I/O, aborts above 2M tokens and caches vectors. Review
-proposed thresholds and explicitly configure the OpenAI model floor first.
-Then, within available free OpenRouter quota:
+The second command uses cached embeddings, skips completed historical baseline
+IDs and has a durable 40-request cap including fallbacks; it stops at the first
+quota/auth error. Do not restart with new output paths to evade the cap.
+See OWNER-CHECKS.md for crash/resume details and prerequisites.
 
-```powershell
-.venv/Scripts/python.exe scripts/rag_generation_check.py --database-url postgresql://postgres@127.0.0.1:55462/rag_owner_calibration_test --mode hybrid --embedding-cache .test-storage/rag-owner-calibration/embedding-cache.jsonl --baseline-results .test-storage/rag-stage-0/baseline/results.jsonl --output .test-storage/rag-owner-generation
-```
+## Verification and limitations
 
-Durable cap: 40 requests including fallback attempts. It skips historical
-completed questions, prioritizes Arabic/mixed/unanswerable, writes each raw result,
-and stops at the first quota/auth error. Do not create new outputs to evade quota.
-See `OWNER-CHECKS.md` for prerequisites and crash/resume behavior.
+**120 distinct affected tests passed across scoped runs.** The first run had
+99 passes and one stale English-only-demo Arabic-refusal assertion; it was
+updated for the new Arabic source. A follow-up caught ASCII pipeline corruption
+in a new Arabic test input and two fixture questions; those were corrected and
+an Arabic-content regression assertion added. Final follow-up: **44 passed,
+exit 0, 260.74s**, covering all changed/new tests plus affected chat behavior.
+The 99 and 44 totals overlap by 23 cases. No remaining affected failure or skip;
+one existing Starlette/httpx deprecation warning. No real HTTP providers.
 
-## Remaining limitations and scope
+Scoped Ruff passed; format check passed **17 files**. Scoped mypy passed
+**14 files**, then **3 files** for the last runner/test updates. An initial mypy
+internal cache error and three typing errors were corrected as recorded in
+PROGRESS.md. `git diff --check` passed. Exact commands, intermediate failures
+and outcomes: PROGRESS.md; final follow-up log:
+`.test-storage/rag-owner-fixes/affected-followup-corrected.log`.
+No full-suite or browser rerun for these changes.
 
-UNVERIFIED: actual Ollama connectivity/semantics (unavailable from API container),
-real OpenAI/OpenRouter embedding behavior, real rewrite/generation language and
-groundedness, provider usage accuracy, real-score threshold calibration,
-production vector/ledger load, production extension privileges, Windows parser
-descendant termination, and PDF visual-table fidelity. POSIX descendant kill,
-worker kill/resume, stale-owner fencing and additive migrations were tested.
-Synthetic vectors are test-only, guarded against production startup.
+Historical pre-fix verification remains **353 API tests / 40 Playwright tests**
+from the previous final gate, with exact evidence in FINAL-TEST-RESULTS.json.
+Those totals do not validate these newer edits. Earlier four-chunk hit@8 numbers
+are obsolete for this corpus and never established semantic improvement.
+The existing nine unrelated broad Ruff findings remain outside this scope.
 
-OCR is deferred because no OCR path exists; scanned PDFs fail safely. OCR caps
-are ready for a future implementation. LLM judge, channel integrations, RLS,
-restore drill and independent security review remain deferred/outside this work.
-Per-channel AI accounting was implemented as requested; channel connections were
-not implemented. Unknown usage retains conservative reservations and can reject
-early; no currency-spend ceiling was invented.
-
-No push, deployment, Compose execution, production database mutation, destructive
-cleanup or completion tag. The owner subsequently authorized local merge and
-safe deletion of the merged feature branch. All database work used local
-disposable tests.
-
-Changed-file inventory and all exact final API commands are in `FINAL-TEST-RESULTS.json`. No further implementation changes followed the covered accounting correction. Final report/evidence changes did not trigger suite reruns.
+Changed files: `.env.example`; API config and retrieval gate/query/service/hybrid/
+evaluation modules; `scripts/demo_knowledge.py`, `scripts/seed_demo.py`,
+`scripts/rag_phase2_eval.py`; affected RAG/embedding/seed/retrieval tests and
+`rag-phase2-eval.jsonl`; root calibration entrypoint; DECISIONS.md, RAG plan/prompt,
+and this phase's thresholds/owner-checks/overrides/report plus PROGRESS.md.
+No migration or production database change is needed. Existing active embedding
+indexes require the already implemented scoped backfill to change identity;
+changing the deployment default does not rewrite an active pointer.
