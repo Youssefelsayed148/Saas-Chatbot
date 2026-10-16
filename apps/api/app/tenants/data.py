@@ -349,6 +349,13 @@ def export_tenant_data(
             bot.pop("config", None)
         for message in export_data["messages"]:
             message["citations"] = []
+        # Usage payloads are private operator instrumentation, including traces,
+        # provider usage and cost reservations. Keep only operational counters.
+        export_data["usage_events"] = [
+            {**event, "payload": {}}
+            for event in export_data["usage_events"]
+            if event["kind"] != "ai_usage"
+        ]
     record_audit(
         db,
         action="tenant.data.exported",

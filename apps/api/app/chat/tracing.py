@@ -36,7 +36,11 @@ class TracedModel(ChatModel):
             if isinstance(self.inner, ExtractiveStubModel):
                 model = "test:extractive-stub"
             cost = getattr(self.inner, "last_cost_usd", None)
-            if isinstance(model, str) and (model.endswith(":free") or model.startswith("test:")):
+            if (
+                not isinstance(cost, Decimal)
+                and isinstance(model, str)
+                and (model.endswith(":free") or model.startswith("test:"))
+            ):
                 cost = Decimal(0)
             self.events.append(
                 {

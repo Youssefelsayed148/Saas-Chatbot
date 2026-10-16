@@ -25,6 +25,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as OrmSession
 
 from app.core.config import Settings
+from app.core.errors import ApiError
 from app.db.models import (
     Bot,
     Chunk,
@@ -41,6 +42,7 @@ from app.knowledge.language import content_hash, detect_language, normalise_text
 from app.knowledge.parsers import ParseLimits, parse_docx, parse_pdf, parse_text
 from app.knowledge.parsing import ParsedPage, ParsedSection, ParseError
 from app.knowledge.storage import Storage
+from app.quotas.rag import check_resources
 from app.quotas.service import limits_for, lock_tenant
 
 
@@ -650,6 +652,34 @@ def process_source(
         source.error = None
         db.commit()
         return None
+
+    new_totals = {}
+    for name, model in (("documents", Document), ("chunks", Chunk)):
+        existing = int(
+            db.scalar(
+                select(func.count())
+                .select_from(model)
+                .where(
+                    model.tenant_id == source.tenant_id,
+                    model.bot_id == source.bot_id,
+                    model.revision_id == revision.id,
+                    model.source_id != source.id,
+                )
+            )
+            or 0
+        )
+        added = (
+            len(document_plans)
+            if name == "documents"
+            else sum(len(plan.chunks) for plan in document_plans)
+        )
+        new_totals[name] = existing + added
+    try:
+        check_resources(db, source.tenant_id, source.bot_id, settings, absolute=new_totals)
+    except ApiError as error:
+        source.status, source.error = "failed", f"{error.code}: {error.message}"
+        db.commit()
+        return source.error
 
     db.execute(delete(Chunk).where(Chunk.revision_id == revision.id, Chunk.source_id == source.id))
     db.execute(

@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session as OrmSession
 from app.core.config import Settings, get_settings
 from app.db.models import Bot, Job
 from app.embeddings.providers import EmbeddingBatch, EmbeddingError, from_settings, validate_vector
+from app.quotas.ai import metered_embed
 from app.retrieval.service import RetrievalResult, RetrievedChunk, TranslateQuery, retrieve
 
 logger = logging.getLogger(__name__)
@@ -188,8 +189,18 @@ def retrieve_hybrid(
     engine = bind if isinstance(bind, Engine) else bind.engine
 
     def semantic() -> tuple[list[RetrievedChunk], EmbeddingBatch]:
-        batch = from_settings(settings, identity).embed([question])
         with OrmSession(engine) as vector_db:
+            batch = metered_embed(
+                vector_db,
+                tenant_id,
+                bot_id,
+                settings,
+                identity=identity,
+                texts=[question],
+                embed=from_settings(settings, identity).embed,
+                event_type="embed_query",
+                channel="website",
+            )
             found = vector_search(
                 vector_db,
                 tenant_id=tenant_id,

@@ -155,6 +155,7 @@ class Bot(Base):
     )
     generation_model: Mapped[str | None] = mapped_column(Text)
     tier: Mapped[str] = mapped_column(Text, default="standard", server_default="standard")
+    rag_limits: Mapped[dict[str, int | None] | None] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utcnow
     )

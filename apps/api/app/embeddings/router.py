@@ -14,6 +14,8 @@ from app.core.errors import ApiError
 from app.core.tenancy import TenantContextDep
 from app.db.models import Job, UsageEvent
 from app.embeddings.backfill import queue_backfill, scoped_bot
+from app.quotas.rag import cost_summary, monthly_usage, resource_usage, scope
+from app.quotas.rag_contracts import RagLimits
 
 BASE = "/api/v1/tenants/{tenant_id}/bots/{bot_id}/rag"
 router = APIRouter(tags=["staff-rag"])
@@ -27,6 +29,7 @@ class RagPatch(BaseModel):
     tier: Literal["standard", "premium"] | None = None
     generation_provider: Literal["openrouter", "openai"] | None = None
     generation_model: str | None = Field(default=None, min_length=1, max_length=200)
+    limits: RagLimits | None = None
 
 
 class BackfillRequest(BaseModel):
@@ -62,9 +65,10 @@ def get_traces(bot_id: UUID, context: TenantContextDep) -> dict[str, object]:
 
 
 @router.get(BASE)
-def get_rag(bot_id: UUID, context: TenantContextDep) -> dict[str, object]:
+def get_rag(bot_id: UUID, context: TenantContextDep, settings: SettingsDep) -> dict[str, object]:
     context.require_operator()
     bot = scoped_bot(context.db, context.tenant_id, bot_id)
+    _, effective = scope(context.db, context.tenant_id, bot_id, settings)
     job = context.db.scalar(
         select(Job)
         .where(
@@ -83,17 +87,27 @@ def get_rag(bot_id: UUID, context: TenantContextDep) -> dict[str, object]:
         "active_embedding_model": bot.active_embedding_model,
         "embedding_dim": 1024,
         "embedding_ready": bot.embedding_ready,
+        "limits": bot.rag_limits or {},
+        "effective_limits": effective.model_dump(),
+        "usage": {
+            **resource_usage(context.db, context.tenant_id, bot_id),
+            **monthly_usage(context.db, context.tenant_id, bot_id),
+        },
         "backfill": {"id": str(job.id), "status": job.status, **job.payload} if job else None,
     }
 
 
 @router.patch(BASE)
 def patch_rag(
-    bot_id: UUID, body: RagPatch, context: TenantContextDep, _: CsrfOk
+    bot_id: UUID, body: RagPatch, context: TenantContextDep, _: CsrfOk, settings: SettingsDep
 ) -> dict[str, object]:
     context.require_operator()
     bot = scoped_bot(context.db, context.tenant_id, bot_id, lock=True)
-    values = body.model_dump(exclude_none=True)
+    values = body.model_dump(exclude_none=True, exclude={"limits"})
+    if "limits" in body.model_fields_set:
+        bot.rag_limits = (
+            body.limits.model_dump(exclude_unset=True) if body.limits is not None else None
+        )
     if body.tier is not None:
         bot.tier = body.tier
         bot.generation_provider = "openai" if body.tier == "premium" else "openrouter"
@@ -113,10 +127,20 @@ def patch_rag(
         actor_user_id=context.user.id,
         target_type="bot",
         target_id=str(bot.id),
-        metadata={"fields": sorted(values)},
+        metadata={"fields": sorted(body.model_fields_set)},
     )
     context.db.commit()
-    return get_rag(bot_id, context)
+    return get_rag(bot_id, context, settings)
+
+
+@router.get(BASE + "/costs")
+def get_costs(bot_id: UUID, context: TenantContextDep) -> dict[str, object]:
+    context.require_operator()
+    scoped_bot(context.db, context.tenant_id, bot_id)
+    return {
+        "period": "current_calendar_month_utc",
+        "costs": cost_summary(context.db, context.tenant_id, bot_id),
+    }
 
 
 @router.post(BASE + "/backfill", status_code=202)

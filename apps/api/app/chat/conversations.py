@@ -27,6 +27,8 @@ from app.db.models import Bot, Conversation, Message, UsageEvent
 from app.inbox.events import add_inbox_event
 from app.inbox.handoff import decide_handoff, start_handoff, visitor_handoff_reply
 from app.knowledge.language import detect_language
+from app.quotas.ai import MeteredChatModel
+from app.quotas.rag import reserve, settle
 
 
 def get_or_create_playground_conversation(
@@ -303,6 +305,16 @@ def visitor_chat_turn(
     history = history_messages(
         db, conversation, settings=settings, exclude_message_id=visitor_message.id
     )
+    message_reservation = reserve(
+        db,
+        tenant_id,
+        bot.id,
+        settings,
+        event_type="message",
+        model=None,
+        channel=conversation.channel,
+    )
+    model = MeteredChatModel(model, db, tenant_id, bot.id, settings, conversation.channel)
     started = datetime.now(UTC)
     reply = chat_answer(
         db,
@@ -334,7 +346,14 @@ def visitor_chat_turn(
         external_key=f"message:{ai_message.id}",
         message_id=ai_message.id,
         conversation_id=conversation.id,
-        payload={"provider_usage": model.usage_totals, "rag_trace": reply.trace},
+        payload={
+            "provider_usage": model.usage_totals,
+            "rag_trace": reply.trace,
+            "ai_metered": True,
+        },
+    )
+    settle(
+        db, tenant_id, bot.id, message_reservation, settings, tokens=0, cost_usd=None, commit=False
     )
     decision = decide_handoff(
         db,

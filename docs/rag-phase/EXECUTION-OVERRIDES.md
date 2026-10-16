@@ -37,6 +37,9 @@
   and Playwright suites run once at the final gate, never again for reporting.
 - No push, production deployment, destructive database operations or Compose.
   Local merge/tag only under the final conditional verification rule in the request.
+- After the export privacy stop, the owner explicitly approved fixing export
+  redaction with a regression test, then resuming Stage 7. New per-plan/bot caps
+  are configurable; **unset remains uncapped**. No numeric defaults are invented.
 
 The plan's RAG ADR-008 identifier collides with the older register's deferred
 billing ADR-008. This document does not renumber or resolve that unrelated billing

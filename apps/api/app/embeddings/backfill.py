@@ -11,6 +11,7 @@ from app.core.errors import ApiError
 from app.db.models import Bot, Chunk, Job, Tenant
 from app.embeddings.providers import DIMENSION, EmbeddingError, configured_identity, from_settings
 from app.jobs.queue import enqueue_job
+from app.quotas.ai import metered_embed
 
 
 class LeaseLost(Exception):
@@ -137,7 +138,20 @@ def run_backfill(job: Job, db: OrmSession, settings: Settings) -> str | None:
         text = " ".join(part for part in (chunk.title, chunk.heading, chunk.text) if part)
         db.commit()  # provider I/O holds no row locks; the lease fences the write below
         try:
-            batch = from_settings(settings, target).embed([text])
+            batch = metered_embed(
+                db,
+                job.tenant_id,
+                job.bot_id,
+                settings,
+                identity=target,
+                texts=[text],
+                embed=from_settings(settings, target).embed,
+                event_type="embed_ingest",
+                channel="ingestion",
+            )
+        except ApiError as error:
+            db.rollback()
+            return error.message
         except EmbeddingError:
             current = _current_job(db, job, owner)
             current.payload = {**current.payload, "failed": 1}

@@ -6,6 +6,8 @@ from typing import Any, Literal
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.quotas.rag_contracts import RagLimits
+
 # Default storage root: relative to the API directory (apps/api), not the
 # working directory, so host runs and container runs resolve the same place.
 _DEFAULT_STORAGE_ROOT = Path(__file__).resolve().parents[2] / ".data" / "storage"
@@ -91,6 +93,7 @@ class Settings(BaseSettings):
     embedding_test_stub: bool = False
     retrieval_rrf_k: int = Field(default=60, ge=1)
     retrieval_hnsw_max_scan_tuples: int = Field(default=20_000, ge=1)
+    rag_plan_limits: dict[str, RagLimits] = Field(default_factory=dict)
     # Owner-approved, untuned bge-m3 development values; no implicit transfer
     # to other embedding models. Add calibrated identities explicitly via env.
     retrieval_vector_floors: dict[str, float] = Field(

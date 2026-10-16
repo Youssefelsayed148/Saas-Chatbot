@@ -1281,3 +1281,48 @@ counter contract, and records actual reserved requests rather than a blocked
 attempt at cap40. Calibration batch usage logged once per batch. Safe error
 boundaries prevent configuration/provider values in CLI diagnostics. Exact owner
 commands in docs/rag-phase/OWNER-CHECKS.md. No dotenv reads, merge,push,deploy.
+
+
+## 2026-10-16 RAG Stage 7 ? privacy fix, metering and caps
+
+Owner approved export redaction first, then continued Stage7, and configurable
+caps with unset values uncapped. Stage6 commit `fa1baff`. New fields/units/defaults
+and conservative reservation behavior: docs/rag-phase/LIMITS-AND-METERING.md.
+No real provider calls. All work on disposable local databases.
+
+Exact affected API commands:
+
+```text
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage7_privacy -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_tenant_data.py -k export_contains --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage7-privacy
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage7_limits -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_rag_limits.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage7-limits
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage7_matrix -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_tenant_route_matrix.py tests/test_migrations.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage7-matrix
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage7_embedding -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_embedding_foundation.py tests/test_hybrid_retrieval.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage7-embedding
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage7_pipeline -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_knowledge_pipeline.py tests/test_tenant_data.py tests/test_rag_traces.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage7-pipeline
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage7_limits -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_rag_limits.py -k measured_events --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage7-cost
+```
+
+Outcomes in order: export1passed(1deselected),3.06s; limits8passed,10.21s;
+matrix6+migrations1=7passed,30.87s; embedding11+hybrid6=17passed,87.54s;
+pipeline9+export2+traces3=14passed,44.12s; final explicit-cost-precedence check
+1passed(7deselected),2.61s. **46 unique affected tests**, all passed. Existing
+Starlette warning only; isolation/backfill/privacy/migration checks passed.
+
+Initial mypy found two new JSON integer narrowing issues; corrected. Intermediate
+mypy174filespassed. Final
+`docker exec rag-stage0-checks python -m mypy --no-incremental --cache-dir /tmp/rag-stage7-final-mypy app tests alembic scripts/rag_phase2_eval.py scripts/rag_stage0_baseline.py`:
+exit0,**176 files**. Affected Ruff checks passed. Broad inventory
+`.venv/Scripts/python.exe -m ruff check --no-cache apps/api/app apps/api/tests --output-format concise`:
+exit1, exactly9existingfindings. A broad formatting invocation touched unrelated
+sentiment formatting; restored only that agent-created formatting from HEAD
+before final checks/commit, preserving all9oldfindings. No user edits discarded.
+Web `npm.cmd run lint` and `npm.cmd run typecheck`:exit0.
+
+Affected browser command from apps/web:
+
+```powershell
+$env:ENVIRONMENT='test'; $env:DATABASE_URL='postgresql://postgres@127.0.0.1:55462/rag_stage7_browser_test'; $env:E2E_API_PORT='18162'; $env:API_PROXY_TARGET='http://127.0.0.1:18162'; $env:STORAGE_ROOT='D:/Projects/Work Projects/The Osiris Labs/SAAS-chats-ai/.test-storage/rag-stage-0/stage7-browser-storage'; npm.cmd test -- tests/roles-control.spec.ts tests/playground.spec.ts --reporter=line 2>&1 | Tee-Object -FilePath '../../.test-storage/rag-stage-0/stage7-browser.log'; exit $LASTEXITCODE
+```
+
+Exit0,**5passed(1.3m)**. Includes staff cap save/reset, all client-role panel hiding,
+and playground tracing. No full suites before final gate. No real APIs, dotenv,
+Compose,push,merge,deploy or destructive cleanup.

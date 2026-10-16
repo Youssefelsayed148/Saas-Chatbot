@@ -1,6 +1,6 @@
 # Stage 6 — eval harness and model-specific calibration
 
-2026-10-16. Parent `75ee690`; implementation hash follows next checkpoint.
+2026-10-16. Implementation `fa1baff`, parent `75ee690`.
 Chat requests **0**; real embedding/OpenAI requests **0**.
 
 - Added a two-mode retrieval-only eval with bound expected document/chunk IDs,
