@@ -63,9 +63,15 @@ def bot_quota_status(bot_id: UUID, context: TenantContextDep) -> dict[str, objec
 
 @router.post("/api/v1/tenants", response_model=TenantOut, status_code=201)
 def create_tenant(
-    body: TenantCreateRequest, db: DbSession, user: CurrentUserDep, _: CsrfOk
+    body: TenantCreateRequest,
+    db: DbSession,
+    user: CurrentUserDep,
+    settings: CurrentSettingsDep,
+    _: CsrfOk,
 ) -> TenantOut:
     """Create an organization; the creator becomes its owner (docs/06)."""
+    if not settings.self_serve_signup:
+        raise ApiError(403, "FORBIDDEN", "Self-service signup is disabled.")
     service = TenantService(db)
     tenant = service.create_tenant(user, body.name, body.slug)
     return TenantOut.model_validate(tenant)
@@ -131,6 +137,14 @@ def change_member_role(
 def remove_member(user_id: UUID, context: TenantContextDep, _: CsrfOk) -> Response:
     context.require_role("admin")
     TenantService(context.db).remove_member(context, user_id)
+    return Response(status_code=204)
+
+
+@router.post("/api/v1/tenants/{tenant_id}/members/{user_id}/transfer-ownership", status_code=204)
+def transfer_ownership(
+    user_id: UUID, context: TenantContextDep, _: CsrfOk
+) -> Response:
+    TenantService(context.db).transfer_ownership(context, user_id)
     return Response(status_code=204)
 
 

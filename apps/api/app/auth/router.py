@@ -28,6 +28,11 @@ CurrentUser = Annotated[User, Depends(cookies.get_current_user)]
 CsrfOk = Annotated[None, Depends(cookies.require_csrf)]
 
 
+@router.get("/config")
+def auth_config(settings: CurrentSettings) -> dict[str, bool]:
+    return {"self_serve_signup": settings.self_serve_signup}
+
+
 def _login_rate_limited(db: OrmSession, request: Request, settings: Settings) -> None:
     """Fixed-window login limiter (P1 carry-over, now Postgres-backed so it
     survives restarts and works across processes — P4-01, docs/14 §7).

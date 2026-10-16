@@ -33,9 +33,12 @@ COUNTERS = (
 
 def limits_for(tenant: Tenant) -> PlanLimits:
     base = PLACEHOLDER_PLAN_LIMITS.get(tenant.plan_label.lower())
+    unknown_plan = base is None
     if base is None:
         base = PLACEHOLDER_PLAN_LIMITS["starter"]
     values = {name: getattr(base, name) for name in COUNTERS}
+    if unknown_plan:
+        values["bots"] = 1
     for name, value in (tenant.quota_overrides or {}).items():
         if name in values and isinstance(value, int) and value >= 0:
             values[name] = value
@@ -185,7 +188,11 @@ def require_capacity(
         raise ApiError(
             429,
             "QUOTA_EXCEEDED",
-            f"The {counter.replace('_', ' ')} limit for the {tenant.plan_label} plan is {limit}.",
+            (
+                f"Your plan allows {limit} bot(s). Contact us to add another bot."
+                if counter == "bots"
+                else f"The {counter.replace('_', ' ')} limit for the {tenant.plan_label} plan is {limit}."
+            ),
             details={
                 "counter": counter,
                 "limit": limit,

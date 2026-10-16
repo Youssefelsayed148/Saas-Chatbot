@@ -1,5 +1,10 @@
+import inspect
+import re
+from typing import Any
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.routing import APIRoute
 
 from app.analytics.handoff import router as handoff_analytics_router
 from app.analytics.router import router as analytics_router
@@ -11,6 +16,7 @@ from app.contacts.router import router as contacts_router
 from app.conversations.router import router as conversations_router
 from app.core.config import get_settings, validate_startup_settings
 from app.core.errors import REQUEST_ID_HEADER, RequestIdMiddleware, install_error_handlers
+from app.core.tenancy import get_tenant_context
 from app.followups.router import router as followups_router
 from app.inbox.listing import router as inbox_listing_router
 from app.inbox.router import router as inbox_router
@@ -40,6 +46,34 @@ def create_app() -> FastAPI:
         allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=[REQUEST_ID_HEADER, "Content-Type", "X-CSRF-Token"],
     )
+    tenant_routers = (tenants_router, tenant_data_router, bots_router, knowledge_router,
+                      chat_router, conversations_router, followups_router, contacts_router,
+                      inbox_router, inbox_listing_router, analytics_router,
+                      handoff_analytics_router, widget_router)
+    def has_tenant_context(dependant: Any) -> bool:
+        return dependant.call is get_tenant_context or any(
+            has_tenant_context(child) for child in dependant.dependencies
+        )
+
+    # FastAPI's current lazy include_router implementation exposes included
+    # routers as wrappers on application.routes. Annotate source routes first.
+    for source_router in tenant_routers:
+        for route in source_router.routes:
+            if not isinstance(route, APIRoute) or not route.path.startswith("/api/v1/tenants"):
+                continue
+            source = inspect.getsource(route.endpoint)
+            role_check = re.search(r'require_role\("(owner|admin|editor|viewer)"\)', source)
+            minimum = role_check.group(1) if role_check else "viewer"
+            if route.endpoint.__name__ in {"create_bot", "archive_bot"}:
+                minimum = "platform_staff_only"
+            elif route.endpoint.__name__ == "transfer_ownership":
+                minimum = "owner"
+            elif route.path == "/api/v1/tenants":
+                minimum = "authenticated"
+            elif not has_tenant_context(route.dependant):
+                minimum = "UNCLASSIFIED"
+            route.openapi_extra = {**(route.openapi_extra or {}), "x-minimum-role": minimum}
+
     application.include_router(health_router)
     application.include_router(auth_router)
     application.include_router(tenants_router)

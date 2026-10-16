@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session as OrmSession
 from app.chat import prompts
 from app.chat.providers import ChatModel, ProviderError
 from app.chat.routing import route
-from app.core.config import Settings
+from app.core.config import Settings, get_settings
 from app.db.models import Bot
 from app.knowledge.language import detect_language
 from app.retrieval.service import RetrievalResult, RetrievedChunk, retrieve
@@ -183,7 +183,7 @@ def chat_answer(
     model: ChatModel,
     settings: Settings | None = None,
 ) -> ChatReply:
-    settings = settings or Settings()
+    settings = settings or get_settings()
     history = [message for message in (history or []) if message.strip()][-6:]
 
     language = (

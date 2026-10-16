@@ -204,6 +204,6 @@ def publish_revision(
     context: TenantContextDep,
     _: CsrfOk,
 ) -> dict[str, object]:
-    """Publish the revision (admin+); publishing an archived one rolls back."""
-    context.require_role("admin")
+    """Publish the revision (editor+); publishing an archived one rolls back."""
+    context.require_role("editor")
     return service.publish_revision(context, bot_id, revision_id)

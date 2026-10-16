@@ -111,12 +111,28 @@ def seeded_tenant(
 
 
 def make_bot(users: TenantUsers, name: str = "Bot") -> dict[str, Any]:
-    response = users.call(
-        "owner", "POST", f"/api/v1/tenants/{users.tenant_id}/bots", json={"name": name}
+    """Insert fixture bots directly; tenant members cannot create bots anymore."""
+    import secrets
+    from uuid import uuid4
+
+    from app.db.models import Bot
+    from app.db.session import get_engine
+
+    bot = Bot(
+        id=uuid4(), tenant_id=users.tenant_id, name=name, status="draft", config={},
+        widget_locator="w" + secrets.token_hex(16),
     )
-    assert response.status_code == 201, response.text
-    payload: dict[str, Any] = response.json()
-    return payload
+    with get_engine().begin() as connection:
+        connection.execute(
+            Bot.__table__.insert().values(
+                id=bot.id, tenant_id=bot.tenant_id, name=bot.name, status=bot.status,
+                config=bot.config, widget_locator=bot.widget_locator,
+            )
+        )
+    return {
+        "id": str(bot.id), "tenant_id": str(bot.tenant_id), "name": bot.name,
+        "status": bot.status, "config": bot.config, "widget_locator": bot.widget_locator,
+    }
 
 
 def make_invitation(

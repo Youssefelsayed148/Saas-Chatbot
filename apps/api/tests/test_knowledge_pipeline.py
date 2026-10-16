@@ -310,7 +310,7 @@ def test_publish_rollback_and_failed_job_isolation(
     run_one_ingest_job(_engine_of(), tmp_path)
     db.expire_all()
     draft_one = revision_of(db, str(users.tenant_id), "draft")
-    publish = users.call("admin", "POST", f"{base}/revisions/{draft_one}/publish")
+    publish = users.call("editor", "POST", f"{base}/revisions/{draft_one}/publish")
     assert publish.status_code == 200, publish.text
     db.expire_all()
     published_now = revision_of(db, str(users.tenant_id), "published")

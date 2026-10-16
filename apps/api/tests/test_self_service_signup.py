@@ -6,9 +6,11 @@ from uuid import UUID
 
 from fastapi.testclient import TestClient
 from sqlalchemy import select
+from app.core.config import get_settings
 
 from app.db.models import Bot, Membership, ProvisioningRequest, Tenant
 from tests.helpers import PASSWORD, csrf_headers, logged_in
+from tests.conftest import build_test_settings
 
 
 def test_self_service_signup_retries_create_one_tenant_and_bot(app: Any, db: Any) -> None:
@@ -82,3 +84,25 @@ def test_self_service_bot_has_widget_locator_and_public_config_is_reachable(
     public = TestClient(app).get(f"/api/public/v1/widgets/{locator}/config")
     assert public.status_code == 200, public.text
     client.close()
+
+
+def test_signup_disabled_blocks_org_and_provisioning_without_creating_data(app: Any, db: Any) -> None:
+    client, user = logged_in(app, "signup-disabled@example.com")
+    app.dependency_overrides[get_settings] = lambda: build_test_settings(self_serve_signup=False)
+    try:
+        assert client.get("/api/v1/auth/config").json() == {"self_serve_signup": False}
+        org = client.post(
+            "/api/v1/tenants", json={"name": "Forbidden"}, headers=csrf_headers(client)
+        )
+        provision = client.post(
+            "/api/v1/provisioning/self-service",
+            json={"client_name": "Forbidden", "bot_name": "Forbidden"},
+            headers=csrf_headers(client),
+        )
+        assert org.status_code == 403
+        assert provision.status_code == 403
+        assert db.execute(select(Tenant)).scalars().all() == []
+        assert db.execute(select(Bot)).scalars().all() == []
+        assert user["memberships"] == []
+    finally:
+        client.close()

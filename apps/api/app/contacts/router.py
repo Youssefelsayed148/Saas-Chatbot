@@ -155,7 +155,7 @@ def rename_stage(body: StageRename, context: TenantContextDep, _: CsrfOk) -> dic
 
 @router.get("/export.csv")
 def export_contacts(context: TenantContextDep) -> Response:
-    context.require_role("viewer")
+    context.require_role("admin")
     rows = (
         context.db.execute(
             select(Contact).where(Contact.tenant_id == context.tenant_id).order_by(Contact.id)

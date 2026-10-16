@@ -2,6 +2,7 @@
 
 from typing import Any
 from uuid import uuid4
+from concurrent.futures import ThreadPoolExecutor
 
 from sqlalchemy.orm import Session as OrmSession
 
@@ -31,17 +32,19 @@ def test_full_role_matrix(app: Any, db: OrmSession) -> None:
             ("viewer", "GET", f"/api/v1/tenants/{tenant_id}", 200),
             ("owner", "GET", f"/api/v1/tenants/{tenant_id}/bots", 200),
             ("viewer", "GET", f"/api/v1/tenants/{tenant_id}/bots", 200),
-            ("owner", "POST", f"/api/v1/tenants/{tenant_id}/bots", 201),
-            ("admin", "POST", f"/api/v1/tenants/{tenant_id}/bots", 201),
-            ("editor", "POST", f"/api/v1/tenants/{tenant_id}/bots", 201),
+            ("owner", "POST", f"/api/v1/tenants/{tenant_id}/bots", 403),
+            ("admin", "POST", f"/api/v1/tenants/{tenant_id}/bots", 403),
+            ("editor", "POST", f"/api/v1/tenants/{tenant_id}/bots", 403),
             ("viewer", "POST", f"/api/v1/tenants/{tenant_id}/bots", 403),
             ("owner", "GET", bot_url, 200),
             ("viewer", "GET", bot_url, 200),
             ("owner", "PATCH", bot_url, 200),
-            ("editor", "PATCH", bot_url, 200),
+            ("editor", "PATCH", bot_url, 403),
+            ("admin", "PATCH", bot_url, 200),
             ("viewer", "PATCH", bot_url, 403),
-            ("owner", "DELETE", ghost_bot, 404),  # archive requires an existing bot; ghost 404
-            ("editor", "DELETE", ghost_bot, 404),
+            ("owner", "DELETE", bot_url, 403),
+            ("admin", "DELETE", bot_url, 403),
+            ("editor", "DELETE", bot_url, 403),
             ("viewer", "DELETE", bot_url, 403),
             ("owner", "GET", invitations_url, 200),
             ("admin", "GET", invitations_url, 200),
@@ -160,6 +163,54 @@ def test_owner_transfer_allowed_with_second_owner(app: Any, db: OrmSession) -> N
 
         audit = audit_actions(db, "member.role_changed", users.tenant_id)
         assert len(audit) == 2
+    finally:
+        users.cleanup()
+
+
+def test_dedicated_ownership_transfer_changes_both_roles(app: Any, db: OrmSession) -> None:
+    users = seeded_tenant(app, db, prefix="dedicated-transfer")
+    try:
+        admin_id = users.users["admin"]["id"]
+        transfer = users.call(
+            "owner", "POST",
+            f"/api/v1/tenants/{users.tenant_id}/members/{admin_id}/transfer-ownership",
+        )
+        assert transfer.status_code == 204
+        members = users.call("owner", "GET", f"/api/v1/tenants/{users.tenant_id}/members").json()
+        by_id = {row["user_id"]: row["role"] for row in members}
+        assert by_id[users.users["owner"]["id"]] == "admin"
+        assert by_id[admin_id] == "owner"
+        assert users.call(
+            "viewer", "POST",
+            f"/api/v1/tenants/{users.tenant_id}/members/{users.users['editor']['id']}/transfer-ownership",
+        ).status_code == 403
+    finally:
+        users.cleanup()
+
+
+def test_concurrent_last_owner_demotions_leave_one_owner(app: Any, db: OrmSession) -> None:
+    users = seeded_tenant(app, db, prefix="last-owner-race")
+    try:
+        second_owner = users.users["admin"]["id"]
+        grant = users.call(
+            "owner", "PATCH", f"/api/v1/tenants/{users.tenant_id}/members/{second_owner}",
+            json={"role": "owner"},
+        )
+        assert grant.status_code == 200
+
+        def demote(role: str) -> int:
+            member_id = users.users[role]["id"]
+            return users.call(
+                role, "PATCH", f"/api/v1/tenants/{users.tenant_id}/members/{member_id}",
+                json={"role": "admin"},
+            ).status_code
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            futures = [pool.submit(demote, "owner"), pool.submit(demote, "admin")]
+            statuses = sorted(future.result() for future in futures)
+        assert statuses == [200, 403]
+        owners = users.call("owner", "GET", f"/api/v1/tenants/{users.tenant_id}/members").json()
+        assert sum(row["role"] == "owner" for row in owners) == 1
     finally:
         users.cleanup()
 

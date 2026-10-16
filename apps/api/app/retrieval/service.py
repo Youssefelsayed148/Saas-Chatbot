@@ -25,7 +25,7 @@ from uuid import UUID
 from sqlalchemy import text
 from sqlalchemy.orm import Session as OrmSession
 
-from app.core.config import Settings
+from app.core.config import Settings, get_settings
 from app.retrieval.query import build_tsquery
 
 SUPPORTED_LANGUAGES = ("en", "ar")
@@ -332,7 +332,7 @@ def retrieve(
     language differs from the bot's primary language, the fallback pass runs
     on the translated query (one ChatModel call); a failed translation keeps
     the raw question."""
-    settings = settings or Settings()
+    settings = settings or get_settings()
     if question_language not in SUPPORTED_LANGUAGES:
         question_language = "en"
 

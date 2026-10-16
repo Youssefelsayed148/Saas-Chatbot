@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session as OrmSession
 
 import tests.retrieval_helpers as _rh  # noqa: F401
 from app.db.models import AuditEvent, ContactIdentity, Conversation, Message
+from tests.helpers import make_bot
 
 corpus = _rh.corpus
 
@@ -61,20 +62,14 @@ def test_contacts_crud_merge_export_and_erasure_are_tenant_scoped(
     )
     assert created.status_code == 201, created.text
     contact_id = created.json()["id"]
-    bot = users.call(
-        "owner",
-        "POST",
-        f"/api/v1/tenants/{users.tenant_id}/bots",
-        json={"name": "CRM timeline bot"},
-    )
-    assert bot.status_code == 201, bot.text
+    bot = make_bot(users, "CRM timeline bot")
     now = datetime.now(UTC)
     conversation_id = uuid4()
     db.add(
         Conversation(
             id=conversation_id,
             tenant_id=users.tenant_id,
-            bot_id=bot.json()["id"],
+            bot_id=bot["id"],
             contact_id=contact_id,
             channel="website",
             mode="human",
@@ -88,7 +83,7 @@ def test_contacts_crud_merge_export_and_erasure_are_tenant_scoped(
         Message(
             id=uuid4(),
             tenant_id=users.tenant_id,
-            bot_id=bot.json()["id"],
+            bot_id=bot["id"],
             conversation_id=conversation_id,
             sender_type="system",
             text="Internal note: review consent",
@@ -144,6 +139,8 @@ def test_contacts_crud_merge_export_and_erasure_are_tenant_scoped(
         == 404
     )
     assert other.call("owner", "GET", f"{foreign_base}/export.csv").status_code == 200
+    assert other.call("admin", "GET", f"{foreign_base}/export.csv").status_code == 200
+    assert other.call("viewer", "GET", f"{foreign_base}/export.csv").status_code == 403
     assert other.call("owner", "GET", f"{foreign_base}/stages").status_code == 200
     assert (
         other.call(
@@ -168,7 +165,8 @@ def test_contacts_crud_merge_export_and_erasure_are_tenant_scoped(
         json={"display_name": "Ada Lovelace", "consent": {"website": {"granted": True}}},
     )
     assert updated.status_code == 200
-    assert "Ada Lovelace" in users.call("viewer", "GET", f"{base}/export.csv").text
+    assert users.call("viewer", "GET", f"{base}/export.csv").status_code == 403
+    assert "Ada Lovelace" in users.call("admin", "GET", f"{base}/export.csv").text
 
     target = users.call(
         "owner", "POST", base, json={"display_name": "Merged", "phone": "+15550000001"}

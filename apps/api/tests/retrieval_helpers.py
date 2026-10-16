@@ -7,6 +7,7 @@ retrieval filter has a decoy that fails the assertions if removed.
 """
 
 from pathlib import Path
+from tempfile import gettempdir
 from typing import Any
 from uuid import UUID
 
@@ -24,7 +25,7 @@ from tests.knowledge_helpers import (
     upload_sources,
 )
 
-TMP = Path("/tmp/ret-tests")  # upload storage; refreshed between test runs
+TMP = Path(gettempdir()) / "saas-chats-ai-ret-tests"  # isolated upload storage
 
 MD_HOURS = (
     "---\ntitle: Opening hours\nsource_url: https://hours.example.com/hours\n"

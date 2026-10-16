@@ -179,12 +179,14 @@ def test_bot_scoping_and_csv_exports(app: Any, db: Any, corpus: dict[str, Any]) 
     assert summary_b.status_code == 200
     assert summary_b.json()["messages"] == 0 and summary_b.json()["leads"] == 0
 
-    csv_conversations = client_a.get(f"{base_a}/conversations.csv")
+    assert users_a.as_user("viewer").get(f"{base_a}/conversations.csv").status_code == 403
+    assert users_a.as_user("editor").get(f"{base_a}/leads.csv").status_code == 403
+    csv_conversations = users_a.as_user("admin").get(f"{base_a}/conversations.csv")
     assert csv_conversations.status_code == 200
     assert csv_conversations.headers["content-type"].startswith("text/csv")
     body = csv_conversations.text
     assert "conversation_id" in body and body.count("\n") >= 3
-    csv_leads = client_a.get(f"{base_a}/leads.csv")
+    csv_leads = users_a.as_user("admin").get(f"{base_a}/leads.csv")
     assert csv_leads.status_code == 200
     assert "display_name" in csv_leads.text and "Lead One" in csv_leads.text
 

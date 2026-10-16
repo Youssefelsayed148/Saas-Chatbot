@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from pydantic import SecretStr
 from alembic.config import Config
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -26,12 +27,18 @@ from app.db.session import create_db_engine, session_factory, set_engine, sqlalc
 
 API_DIR = Path(__file__).resolve().parents[1]
 
+# Force dotenv loading off before test modules import the application factory.
+os.environ["ENVIRONMENT"] = "test"
+
 SESSION_SETTINGS = {
     # Plain-HTTP test client: Secure cookie would be dropped by httpx.
     "cookie_secure": False,
     "session_lifetime_seconds": 14 * 24 * 3600,
     "login_rate_limit_attempts": 5,
     "login_rate_limit_window_seconds": 300,
+    # The API suite exercises existing tenant creation flows; feature-gate
+    # behavior has explicit tests with the flag disabled.
+    "self_serve_signup": True,
 }
 
 
@@ -88,8 +95,12 @@ def truncate_all(engine: Engine) -> None:
         conn.execute(text(f"TRUNCATE TABLE {tables} CASCADE"))
 
 
-def test_settings(database_url: str | None = None) -> Settings:
-    values: dict[str, Any] = {"database_url": database_url, **SESSION_SETTINGS}
+def build_test_settings(database_url: str | None = None, **overrides: Any) -> Settings:
+    values: dict[str, Any] = {
+        "database_url": SecretStr(database_url) if database_url else None,
+        **SESSION_SETTINGS,
+    }
+    values.update(overrides)
     return Settings.model_construct(**values)
 
 
@@ -105,8 +116,9 @@ def engine() -> Iterator[Engine]:
     main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
     create_database(base_url, str(make_url(main_url).database))
     os.environ["DATABASE_URL"] = main_url
+    os.environ["ENVIRONMENT"] = "test"
     get_settings.cache_clear()
-    engine = create_db_engine(get_settings())
+    engine = create_db_engine(build_test_settings(main_url))
     set_engine(engine)
     run_migrations(main_url)
     yield engine
@@ -135,7 +147,7 @@ def app(engine: Engine) -> Iterator[FastAPI]:
     from app.main import create_app
 
     application = create_app()
-    application.dependency_overrides[get_settings] = lambda: test_settings()
+    application.dependency_overrides[get_settings] = lambda: build_test_settings()
     yield application
 
 
@@ -160,6 +172,6 @@ __all__ = [
     "csrf_headers",
     "disposable_url",
     "run_migrations",
-    "test_settings",
+    "build_test_settings",
     "truncate_all",
 ]

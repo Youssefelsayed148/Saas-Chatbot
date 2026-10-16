@@ -84,7 +84,8 @@ def test_export_contains_contacts_conversations_and_identities_scoped_to_tenant(
     base = f"/api/v1/tenants/{tenant_a.tenant_id}/data"
     assert tenant_a.call("viewer", "GET", f"{base}/export").status_code == 403
     assert tenant_b.call("owner", "GET", f"{base}/export").status_code == 404
-    response = tenant_a.call("owner", "GET", f"{base}/export")
+    assert tenant_a.call("editor", "GET", f"{base}/export").status_code == 403
+    response = tenant_a.call("admin", "GET", f"{base}/export")
     assert response.status_code == 200, response.text
     exported = response.json()
     assert [row["display_name"] for row in exported["contacts"]] == ["Export A"]

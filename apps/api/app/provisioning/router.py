@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session as OrmSession
 
 from app.auth import cookies
 from app.core.config import Settings, get_settings
+from app.core.errors import ApiError
 from app.core.tenancy import CurrentUserDep
 from app.db.session import get_session
 from app.provisioning.service import ProvisioningPayload, ProvisioningService
@@ -31,6 +32,8 @@ def self_service_signup(
     settings: CurrentSettings,
     _: CsrfOk,
 ) -> dict[str, Any]:
+    if not settings.self_serve_signup:
+        raise ApiError(403, "FORBIDDEN", "Self-service signup is disabled.")
     payload = ProvisioningPayload(
         client_name=body.client_name,
         owner_email=actor.email,

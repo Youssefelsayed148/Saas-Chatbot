@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session as OrmSession
 from app.chat.models import default_model
 from app.chat.providers import ChatModel
 from app.chat.service import chat_answer
-from app.core.config import Settings
+from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
 from app.core.ratelimit import purge_expired_windows
 from app.db.models import Bot, Conversation, Message, UsageEvent
@@ -246,7 +246,7 @@ def visitor_chat_turn(
     settings: Settings | None = None,
 ) -> dict[str, Any]:
     """Persist a visitor turn and run the pipeline only in AI mode."""
-    settings = settings or Settings()
+    settings = settings or get_settings()
     if not question.strip():
         raise ApiError(422, "VALIDATION_ERROR", "The message is empty.")
     if len(question) > 1000:

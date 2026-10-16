@@ -9,6 +9,7 @@ from app.auth import cookies
 from app.bots.schemas import BotCreateRequest, BotOut, BotUpdateRequest
 from app.bots.service import BotService
 from app.core.tenancy import TenantContextDep
+from app.core.errors import ApiError
 
 router = APIRouter(tags=["bots"])
 
@@ -17,10 +18,9 @@ CsrfOk = Annotated[None, Depends(cookies.require_csrf)]
 
 @router.post("/api/v1/tenants/{tenant_id}/bots", response_model=BotOut, status_code=201)
 def create_bot(bot: BotCreateRequest, context: TenantContextDep, _: CsrfOk) -> BotOut:
-    """Editor+ creates a bot in draft status."""
-    context.require_role("editor")
-    bot_row = BotService(context.db).create_bot(context, bot)
-    return BotOut.model_validate(bot_row)
+    """Tenant members cannot create bots; use platform onboarding."""
+    del bot, context, _
+    raise ApiError(403, "FORBIDDEN", "Only platform staff can create bots.")
 
 
 @router.get("/api/v1/tenants/{tenant_id}/bots", response_model=list[BotOut])
@@ -39,7 +39,7 @@ def get_bot(bot_id: UUID, context: TenantContextDep) -> BotOut:
 def update_bot(
     bot_id: UUID, body: BotUpdateRequest, context: TenantContextDep, _: CsrfOk
 ) -> BotOut:
-    context.require_role("editor")
+    context.require_role("admin")
     bot = BotService(context.db).update_bot(context, bot_id, body)
     return BotOut.model_validate(bot)
 
@@ -51,6 +51,5 @@ def update_bot(
 )
 def archive_bot(bot_id: UUID, context: TenantContextDep, _: CsrfOk) -> BotOut:
     """Soft archive: the bot stays, its config stays; the default list hides it."""
-    context.require_role("editor")
-    bot = BotService(context.db).archive_bot(context, bot_id)
-    return BotOut.model_validate(bot)
+    del bot_id, context, _
+    raise ApiError(403, "FORBIDDEN", "Only platform staff can archive bots.")

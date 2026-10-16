@@ -155,7 +155,7 @@ def test_tenant_analytics_match_conversations_messages_and_assignments(
     assert data["conversations_by_channel"] == {"website": 1}
     assert data["resolved_vs_open"] == {"resolved": 0, "open": 1}
     assert data["sentiment_distribution"] == {"negative": 1}
-    assert data["agent_workload"] == {str(conversation.assigned_user_id): 1}
+    assert data["agent_workload"] == {users.users["editor"]["email"]: 1}
     assert (
         other.call("viewer", "GET", f"/api/v1/tenants/{other.tenant_id}/analytics").json()[
             "total_conversations"

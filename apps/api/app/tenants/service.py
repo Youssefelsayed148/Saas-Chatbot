@@ -37,7 +37,9 @@ class TenantService:
 
     def create_tenant(self, user: User, name: str, slug: str | None) -> Tenant:
         slug = self._unique_slug(slug or name)
-        tenant = Tenant(id=uuid4(), name=name.strip(), slug=slug, status="active")
+        tenant = Tenant(
+            id=uuid4(), name=name.strip(), slug=slug, status="active", quota_overrides={"bots": 1}
+        )
         owner = Membership(tenant_id=tenant.id, user_id=user.id, role="owner", status="active")
         self.db.add_all([tenant, owner])
         self.db.flush()  # tenants row must exist before its audit event
@@ -295,6 +297,7 @@ class TenantService:
     # --- members -----------------------------------------------------------
 
     def change_role(self, context: TenantContext, user_id: UUID, new_role: str) -> Membership:
+        lock_tenant(self.db, context.tenant_id)
         if new_role not in ROLE_LEVELS:
             raise ApiError(422, "VALIDATION_ERROR", f"Unknown role: {new_role}.")
         if new_role == "owner" and context.role != "owner":
@@ -333,6 +336,7 @@ class TenantService:
         return membership
 
     def remove_member(self, context: TenantContext, user_id: UUID) -> None:
+        lock_tenant(self.db, context.tenant_id)
         membership = self._get_membership(context.tenant_id, user_id)
         if membership.role == "owner" and context.role != "owner":
             raise ApiError(403, "FORBIDDEN", "Non-owners cannot remove an owner.")
@@ -348,6 +352,28 @@ class TenantService:
             metadata={"was_role": membership.role},
         )
         self.db.delete(membership)
+        self.db.commit()
+
+    def transfer_ownership(self, context: TenantContext, new_owner_id: UUID) -> None:
+        lock_tenant(self.db, context.tenant_id)
+        if context.role != "owner":
+            raise ApiError(403, "FORBIDDEN", "Only an owner can transfer ownership.")
+        if new_owner_id == context.user.id:
+            raise ApiError(422, "VALIDATION_ERROR", "Choose another active member.")
+        current_owner = self._get_membership(context.tenant_id, context.user.id)
+        next_owner = self._get_membership(context.tenant_id, new_owner_id)
+        next_owner.role = "owner"
+        current_owner.role = "admin"
+        self.db.add_all([current_owner, next_owner])
+        record_audit(
+            self.db,
+            action="member.ownership_transferred",
+            tenant_id=context.tenant_id,
+            actor_user_id=context.user.id,
+            target_type="membership",
+            target_id=str(new_owner_id),
+            metadata={"previous_owner_id": str(context.user.id)},
+        )
         self.db.commit()
 
     def _get_membership(self, tenant_id: UUID, user_id: UUID) -> Membership:

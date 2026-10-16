@@ -1,4 +1,5 @@
 from functools import lru_cache
+import os
 from pathlib import Path
 
 from pydantic import Field, SecretStr
@@ -17,6 +18,7 @@ class Settings(BaseSettings):
     # validate_startup_settings): the offline stub model and other dev-only
     # affordances must never run there.
     environment: str = Field(default="development", pattern="^(development|production|test)$")
+    self_serve_signup: bool = False
 
     # Sessions (ADR-004): opaque server-side tokens; only a SHA-256 hash is stored.
     session_cookie_name: str = "chatbot_session"
@@ -87,7 +89,8 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    # Test and E2E processes never consult the repository dotenv file.
+    return Settings(_env_file=None if os.getenv("ENVIRONMENT") == "test" else ".env")
 
 
 def validate_startup_settings(settings: Settings) -> None:

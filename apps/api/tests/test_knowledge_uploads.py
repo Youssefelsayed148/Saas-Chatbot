@@ -44,11 +44,7 @@ def raw_db(app: FastAPI) -> Iterator[OrmSession]:
 
 
 def bot_of_users_response(users: Any) -> str:
-    response = users.call(
-        "owner", "POST", f"/api/v1/tenants/{users.tenant_id}/bots", json={"name": "K"}
-    )
-    assert response.status_code == 201
-    return str(response.json()["id"])
+    return str(make_bot(users, "K")["id"])
 
 
 def sources_of(users: Any, bot_id: str) -> list[dict[str, Any]]:
@@ -396,7 +392,7 @@ def test_viewer_write_denied_on_every_new_write_endpoint(
         users.cleanup()
 
 
-def test_editor_cannot_publish(
+def test_editor_can_attempt_publish_and_hidden_revision_is_404(
     storage_rooted_app: FastAPI, raw_db: OrmSession, tmp_path: Any
 ) -> None:
     users = seeded_tenant(storage_rooted_app, raw_db, prefix="up-role2")
@@ -408,7 +404,7 @@ def test_editor_cannot_publish(
             "POST",
             f"/api/v1/tenants/{users.tenant_id}/bots/{bot_id}/revisions/{ghost}/publish",
         )
-        assert response.status_code == 403
+        assert response.status_code == 404
     finally:
         users.cleanup()
 
@@ -418,7 +414,19 @@ def test_upload_on_archived_bot_conflict(
 ) -> None:
     users = seeded_tenant(storage_rooted_app, raw_db, prefix="up-arch")
     bot = make_bot(users, "Archivable")
-    users.call("owner", "DELETE", f"/api/v1/tenants/{users.tenant_id}/bots/{bot['id']}")
+    from uuid import UUID
+
+    from sqlalchemy import update
+
+    from app.db.models import User
+
+    raw_db.execute(
+        update(User)
+        .where(User.id == UUID(users.users["owner"]["id"]))
+        .values(is_platform_staff=True)
+    )
+    raw_db.commit()
+    users.call("owner", "DELETE", f"/api/v1/platform/tenants/{users.tenant_id}/bots/{bot['id']}")
     try:
         response = upload_sources(users, bot["id"], [("x.md", MD_EN.read_bytes())], tmp_path)
         assert response.status_code == 409

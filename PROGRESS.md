@@ -568,3 +568,31 @@ Skipped because existing API supplies no reliable data: installation detection/s
 Final scope review: no backend source, migrations, infra, API contract, dependency manifest/lockfile, CSP/proxy, README or protected docs edits. Only requested MANUAL-TEST changes under existing implementation docs. Sandbox/origin/postMessage arguments match baseline AST; loader copies identical. No .env/key read, push, merge, deploy, paid API calls or cloud resources. Test API/worker/web processes stopped by harness; dedicated local PostgreSQL stopped via pg_ctl, data retained only in its temporary test cluster. Generated next-env.d.ts is restored to the pre-task tracked version.
 
 Limits: Chromium/local fixtures and automated keyboard/contrast/RTL/layout verification; manual screen-reader, other browsers and real customer-host embedding were not exercised. No production deployment approval implied. All authorized implementation and required verification are complete; no known blocking failure remains.
+# 2026-10-16 — Product cycle 1
+
+Branch: `feat/product-cycle-1`, based on local `main`; local commits only.
+No `.env` or credential files were read. API tests used `ENVIRONMENT=test` and a disposable local PostgreSQL cluster (`postgres_test`, `postgres_e2e_test`).
+
+Changed API specs, run one file at a time with `python -m pytest -q tests/<file>.py --tb=short -p no:cacheprovider`:
+
+- `test_self_service_signup.py`: 3 passed, 1 Starlette `httpx` deprecation warning (1.41s).
+- `test_bots.py`: 4 passed, 1 warning (1.99s).
+- `test_members.py`: 8 passed, 1 warning (3.37s).
+- `test_quotas.py`: 10 passed, 1 warning (4.39s).
+- `test_analytics.py`: 6 passed, 1 warning (49.04s).
+- `test_contacts.py`: 1 passed, 1 warning (7.43s); updated fixture to use a directly seeded test bot and owner/admin export assertions.
+- `test_knowledge_pipeline.py`: 9 passed, 1 warning (34.93s).
+- `test_knowledge_uploads.py`: 19 passed, 1 warning (38.43s); test fixture seeds bots without calling the now-forbidden tenant bot endpoint.
+- `test_tenant_data.py`: 2 passed, 1 warning (1.70s).
+- `test_followups_analytics.py`: 2 passed, 1 warning (24.43s).
+- `test_tenant_route_matrix.py`: 1 passed, 1 warning (5.14s); enumerates OpenAPI tenant routes, calls as viewer/editor/admin/owner, and probes foreign tenant IDs. The open-ended SSE route is exercised through its foreign-tenant authorization check.
+
+Web verification:
+
+- `npm run build`: passed; TypeScript and Next production build completed.
+- First `npm test -- --reporter=line`: 37 passed, 1 failed because `ui-redesign.spec.ts` expected the removed TBD wording. Updated the assertion to the current provisional plan copy.
+- Final `npm test -- --reporter=line`: 38 passed (4.1m), exit 0.
+- After removing the remaining Archive control from the bot Settings UI, reran `npm test -- --reporter=line`: 37 passed, 1 failed (5.8m). `knowledge.spec.ts` timed out while the web proxy logged `ECONNRESET` to the local API; it failed filling `Organization name` during owner registration. This was a test infrastructure failure; the full suite result for the preceding source revision was 38/38.
+- After removing remaining visible PLACEHOLDER copy and updating the accessible quota label assertion, focused `npm test -- --grep 'platform client mutations preserve plan' --reporter=line`: 1 passed (59.1s). Final `npm run typecheck`: exit 0.
+
+One ordinary in-sandbox pytest attempt hit restricted Windows temp-directory access; the same affected API specs were rerun successfully outside the sandbox against the disposable database. A test run interrupted while exercising the endless SSE stream; the route matrix was updated to verify its foreign-tenant rejection before streaming, then passed.
