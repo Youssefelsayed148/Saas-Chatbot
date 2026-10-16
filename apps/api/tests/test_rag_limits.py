@@ -11,12 +11,13 @@ from fastapi import FastAPI
 from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session
 
-from app.chat.providers import FakeChatModel
+from app.chat.conversations import get_or_create_playground_conversation, visitor_chat_turn
+from app.chat.providers import FakeChatModel, ProviderError
 from app.core.config import get_settings
 from app.core.errors import ApiError
 from app.db.models import Bot, Document, Source, UsageEvent
 from app.db.session import session_factory
-from app.embeddings.providers import EmbeddingBatch
+from app.embeddings.providers import EmbeddingBatch, EmbeddingError
 from app.quotas.ai import MeteredChatModel, metered_embed
 from app.quotas.rag import monthly_usage, reserve, settle
 from app.quotas.rag_contracts import RagLimits
@@ -231,3 +232,204 @@ def test_measured_events_cost_view_and_exports_are_private(app: FastAPI, db: Ses
     assert all(row["kind"] != "ai_usage" for row in exported["usage_events"])
     assert "reserved_tokens" not in str(exported)
     users.cleanup()
+
+
+def _event_status(db: Session, tenant_id: UUID, bot_id: UUID) -> list[tuple[str, int]]:
+    db.expire_all()
+    rows = db.scalars(
+        select(UsageEvent).where(
+            UsageEvent.tenant_id == tenant_id,
+            UsageEvent.bot_id == bot_id,
+            UsageEvent.kind == "ai_usage",
+        )
+    ).all()
+    return sorted((str(r.payload["status"]), int(r.payload["accounted_tokens"])) for r in rows)
+
+
+def test_definite_provider_failures_release_reservations(app: FastAPI, db: Session) -> None:
+    users = seeded_tenant(app, db, "rag-release")
+    bid = UUID(make_bot(users)["id"])
+    settings = build_test_settings()
+    try:
+        failing = MeteredChatModel(
+            FakeChatModel(raises=True), db, users.tenant_id, bid, settings, "website"
+        )
+        with pytest.raises(ProviderError):
+            failing.complete([{"role": "user", "content": "question"}], json_mode=True, max_tokens=50)
+
+        def unavailable(texts: list[str]) -> EmbeddingBatch:
+            raise EmbeddingError("Embedding provider is unavailable.")
+
+        with pytest.raises(EmbeddingError):
+            metered_embed(
+                db,
+                users.tenant_id,
+                bid,
+                settings,
+                identity="openai:text-embedding-3-large",
+                texts=["question"],
+                embed=unavailable,
+                event_type="embed_query",
+                channel="website",
+            )
+        assert _event_status(db, users.tenant_id, bid) == [("released", 0), ("released", 0)]
+        usage = monthly_usage(db, users.tenant_id, bid)
+        assert usage["monthly_tokens"] == 0 and usage["monthly_embedding_tokens"] == 0
+    finally:
+        users.cleanup()
+
+
+def test_ambiguous_provider_failures_keep_the_conservative_hold(app: FastAPI, db: Session) -> None:
+    users = seeded_tenant(app, db, "rag-ambiguous")
+    bid = UUID(make_bot(users)["id"])
+    settings = build_test_settings()
+    try:
+
+        def unprocessable(texts: list[str]) -> EmbeddingBatch:
+            raise EmbeddingError("Embedding response could not be processed.", ambiguous=True)
+
+        with pytest.raises(EmbeddingError):
+            metered_embed(
+                db,
+                users.tenant_id,
+                bid,
+                settings,
+                identity="openai:text-embedding-3-large",
+                texts=["question"],
+                embed=unprocessable,
+                event_type="embed_query",
+                channel="website",
+            )
+        ((status, held),) = _event_status(db, users.tenant_id, bid)
+        assert status == "usage_unreported" and held > 0
+        assert monthly_usage(db, users.tenant_id, bid)["monthly_embedding_tokens"] == held
+    finally:
+        users.cleanup()
+
+
+def test_provider_outage_loop_does_not_exhaust_caps(app: FastAPI, db: Session) -> None:
+    users = seeded_tenant(app, db, "rag-outage")
+    bid = UUID(make_bot(users)["id"])
+    bot = db.scalar(select(Bot).where(Bot.tenant_id == users.tenant_id, Bot.id == bid))
+    assert bot is not None
+    bot.rag_limits = {"monthly_tokens": 1000, "monthly_embedding_tokens": 1000}
+    db.commit()
+    settings = build_test_settings()
+    try:
+
+        def unavailable(texts: list[str]) -> EmbeddingBatch:
+            raise EmbeddingError("Embedding provider is unavailable.")
+
+        for _ in range(25):  # would exceed both caps if failures kept their holds
+            with pytest.raises(EmbeddingError):
+                metered_embed(
+                    db,
+                    users.tenant_id,
+                    bid,
+                    settings,
+                    identity="openai:text-embedding-3-large",
+                    texts=["question " * 20],
+                    embed=unavailable,
+                    event_type="embed_query",
+                    channel="website",
+                )
+        assert monthly_usage(db, users.tenant_id, bid)["monthly_embedding_tokens"] == 0
+    finally:
+        users.cleanup()
+
+
+class _Boom(FakeChatModel):
+    def complete(self, messages: list[dict[str, str]], *, json_mode: bool, max_tokens: int) -> str:
+        raise RuntimeError("unexpected failure inside the turn")
+
+
+def test_aborted_turn_releases_the_message_reservation(app: FastAPI, db: Session) -> None:
+    users = seeded_tenant(app, db, "rag-abort")
+    bid = UUID(make_bot(users)["id"])
+    bot = db.scalar(select(Bot).where(Bot.tenant_id == users.tenant_id, Bot.id == bid))
+    assert bot is not None
+    bot.rag_limits = {"monthly_messages": 1}
+    db.commit()
+    settings = build_test_settings()
+    try:
+        conversation = get_or_create_playground_conversation(
+            db, tenant_id=users.tenant_id, bot_id=bid, user_id=UUID(users.users["staff"]["id"])
+        )
+        monkey_chat = pytest.MonkeyPatch()
+        monkey_chat.setattr(
+            "app.chat.conversations.chat_answer",
+            lambda *a, **k: (_ for _ in ()).throw(RuntimeError("aborted")),
+        )
+        try:
+            with pytest.raises(RuntimeError):
+                visitor_chat_turn(
+                    db,
+                    tenant_id=users.tenant_id,
+                    bot=bot,
+                    conversation=conversation,
+                    question="Anything?",
+                    model=_Boom(),
+                    settings=settings,
+                )
+        finally:
+            monkey_chat.undo()
+        assert _event_status(db, users.tenant_id, bid) == [("released", 0)]
+        assert monthly_usage(db, users.tenant_id, bid)["monthly_messages"] == 0
+        # The single allowed message is still available after the failure.
+        reply = visitor_chat_turn(
+            db,
+            tenant_id=users.tenant_id,
+            bot=bot,
+            conversation=conversation,
+            question="Unsupported factual question?",
+            model=FakeChatModel(),
+            settings=settings,
+        )
+        assert reply["ai_message"] is not None
+    finally:
+        users.cleanup()
+
+
+def test_http_failure_kinds_decide_release_or_hold(app: FastAPI, db: Session) -> None:
+    import httpx
+
+    from app.chat.providers import OpenAICompatibleModel
+
+    users = seeded_tenant(app, db, "rag-http-kinds")
+    bid = UUID(make_bot(users)["id"])
+    settings = build_test_settings()
+
+    def run(handler: object) -> None:
+        inner = OpenAICompatibleModel(
+            base_url="https://provider.invalid/v1",
+            api_key="synthetic-key",
+            model="fixture:free",
+            transport=httpx.MockTransport(handler),  # type: ignore[arg-type]
+        )
+        wrapped = MeteredChatModel(inner, db, users.tenant_id, bid, settings, "website")
+        with pytest.raises(ProviderError):
+            wrapped.complete([{"role": "user", "content": "q"}], json_mode=True, max_tokens=50)
+
+    def server_error(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(503)
+
+    def connect_error(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("refused", request=request)
+
+    def read_timeout(request: httpx.Request) -> httpx.Response:
+        raise httpx.ReadTimeout("slow", request=request)
+
+    def empty_200(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"choices": [{"message": {"content": ""}}]})
+
+    try:
+        run(server_error)
+        run(connect_error)
+        assert _event_status(db, users.tenant_id, bid) == [("released", 0), ("released", 0)]
+        run(read_timeout)
+        run(empty_200)
+        statuses = _event_status(db, users.tenant_id, bid)
+        assert [s for s, _ in statuses].count("usage_unreported") == 2
+        assert all(held > 0 for status, held in statuses if status == "usage_unreported")
+    finally:
+        users.cleanup()

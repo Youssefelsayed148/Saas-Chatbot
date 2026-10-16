@@ -21,7 +21,14 @@ OPENAI_LARGE_USD_PER_MILLION = Decimal("0.13")
 
 
 class EmbeddingError(Exception):
-    """Safe failure; never includes provider bodies or credentials."""
+    """Safe failure; never includes provider bodies or credentials.
+
+    ambiguous=True means the provider may have processed (and billed) the request.
+    """
+
+    def __init__(self, message: str = "", *, ambiguous: bool = False) -> None:
+        super().__init__(message)
+        self.ambiguous = ambiguous
 
 
 @dataclass
@@ -88,6 +95,7 @@ class HTTPEmbedder:
             endpoint = "/embeddings"
             body.update(dimensions=DIMENSION, encoding_format="float")
         headers = {"Authorization": f"Bearer {self._api_key}"} if self._api_key else {}
+        received = False
         try:
             with httpx.Client(
                 timeout=self.timeout, transport=self.transport, follow_redirects=False
@@ -95,6 +103,7 @@ class HTTPEmbedder:
                 response = client.post(self.base_url + endpoint, headers=headers, json=body)
             if response.status_code != 200:
                 raise EmbeddingError("Embedding provider is unavailable.")
+            received = True
             payload = response.json()
             if self.provider == "ollama":
                 raw_vectors = payload["embeddings"]
@@ -115,8 +124,17 @@ class HTTPEmbedder:
             if self.identity == "openai:text-embedding-3-large" and measured:
                 cost = Decimal(tokens) * OPENAI_LARGE_USD_PER_MILLION / 1_000_000
             return EmbeddingBatch(vectors, tokens, cost)
+        except EmbeddingError as exc:
+            if received:
+                exc.ambiguous = True
+            raise
+        except (httpx.ConnectError, httpx.ConnectTimeout):
+            raise EmbeddingError("Embedding provider is unavailable.") from None
         except (httpx.HTTPError, ValueError, KeyError, TypeError, IndexError):
-            raise EmbeddingError("Embedding response could not be processed.") from None
+            # A response (or a mid-flight timeout) may already have been billed.
+            raise EmbeddingError(
+                "Embedding response could not be processed.", ambiguous=True
+            ) from None
 
 
 class TestHashEmbedder:

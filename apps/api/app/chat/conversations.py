@@ -28,7 +28,7 @@ from app.inbox.events import add_inbox_event
 from app.inbox.handoff import decide_handoff, start_handoff, visitor_handoff_reply
 from app.knowledge.language import detect_language
 from app.quotas.ai import MeteredChatModel
-from app.quotas.rag import reserve, settle
+from app.quotas.rag import release, reserve, settle
 
 
 def get_or_create_playground_conversation(
@@ -316,16 +316,22 @@ def visitor_chat_turn(
     )
     model = MeteredChatModel(model, db, tenant_id, bot.id, settings, conversation.channel)
     started = datetime.now(UTC)
-    reply = chat_answer(
-        db,
-        tenant_id=tenant_id,
-        bot=bot,
-        question=question,
-        history=history,
-        language_hint=language_hint,
-        model=model,
-        settings=settings,
-    )
+    try:
+        reply = chat_answer(
+            db,
+            tenant_id=tenant_id,
+            bot=bot,
+            question=question,
+            history=history,
+            language_hint=language_hint,
+            model=model,
+            settings=settings,
+        )
+    except BaseException:
+        # Aborted turn: no answer was stored, so the message must not count.
+        db.rollback()
+        release(db, tenant_id, bot.id, message_reservation, settings)
+        raise
     response_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
     reply.trace["channel"] = conversation.channel
     ai_message = append_message(

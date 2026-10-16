@@ -268,6 +268,46 @@ def settle(
         db.commit()
 
 
+def release(
+    db: Session,
+    tenant_id: UUID,
+    bot_id: UUID,
+    event_id: UUID,
+    settings: Settings,
+    *,
+    commit: bool = True,
+) -> None:
+    """Return a reservation when no provider output was produced (definite failure).
+
+    Ambiguous outcomes (timeout after send, 200 with unusable body) must use
+    settle(tokens=None) so the conservative hold stays.
+    """
+    scope(db, tenant_id, bot_id, settings, lock=True)
+    event = db.scalar(
+        select(UsageEvent)
+        .where(
+            UsageEvent.tenant_id == tenant_id,
+            UsageEvent.bot_id == bot_id,
+            UsageEvent.id == event_id,
+            UsageEvent.kind == "ai_usage",
+        )
+        .with_for_update()
+    )
+    if event is None or event.payload.get("status") != "reserved":
+        return
+    event.payload = {
+        **event.payload,
+        "status": "released",
+        "measured_tokens": 0,
+        "accounted_tokens": 0,
+        "embedding_tokens": 0,
+        "ocr_pages": 0,
+        "cost_usd": "0",
+    }
+    if commit:
+        db.commit()
+
+
 def cost_summary(db: Session, tenant_id: UUID, bot_id: UUID) -> list[dict[str, Any]]:
     rows = db.scalars(
         select(UsageEvent).where(

@@ -76,6 +76,8 @@ class OpenAICompatibleModel(ChatModel):
         self.transport = transport
         self.blocked = False
         self.requests_used = 0
+        # Attempts that may have been processed and billed without usable output.
+        self.ambiguous_attempts = 0
         self.model_used: str | None = None
         self.last_cost_usd: Decimal | None = None
         self.temperature = temperature
@@ -107,7 +109,10 @@ class OpenAICompatibleModel(ChatModel):
                 self.requests_used += 1
                 try:
                     response = client.post("chat/completions", json=body)
+                except (httpx.ConnectError, httpx.ConnectTimeout):
+                    continue
                 except httpx.HTTPError:
+                    self.ambiguous_attempts += 1
                     continue
                 if response.status_code in (401, 402, 403, 429):
                     self.blocked = True
@@ -118,8 +123,10 @@ class OpenAICompatibleModel(ChatModel):
                     payload = response.json()
                     content = payload["choices"][0]["message"]["content"]
                 except (KeyError, IndexError, ValueError, TypeError):
+                    self.ambiguous_attempts += 1
                     continue
                 if not isinstance(content, str) or not content.strip():
+                    self.ambiguous_attempts += 1
                     continue
                 usage = payload.get("usage")
                 if isinstance(usage, dict):
