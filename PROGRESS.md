@@ -1506,3 +1506,134 @@ cd apps/web; npx playwright test    (DATABASE_URL=.../rag_final_pw)
 ```
 Result: 40 passed (3.6m), exit 0, ECONNRESET 0.
 No real provider call, push, tag or compose. Recall (Arabic and semantic) UNVERIFIED.
+
+## 2026-10-16 - Development Compose stack (feat/compose-stack)
+
+Owner authorized a branch from main, local commits, a `--no-ff` merge into main,
+and deletion of the feature branch. No Docker command (including Compose config),
+provider call, `.env` read, push, deployment, or database operation was performed.
+ADR-007/008 remain unchanged and outside this local-development task.
+
+Discovery: root `compose.yaml` included `infra/compose.yaml`. That definition covered
+pgvector/Postgres 17, database health/persistence, API, worker, web, shared uploads,
+and an optional demo-only seed. API startup owned migrations; the worker waited
+for API readiness. Provider keys were optional and the seed did not create staff,
+set premium, or request backfill. The PowerShell runners independently managed
+plain Docker containers rather than using that Compose stack.
+
+Changes:
+- Replaced the include with one root development definition; removed
+  `infra/compose.yaml`. Added a one-shot migration service and success dependencies
+  for both API and worker. Web bakes `API_PROXY_TARGET=http://api:8000` into its build.
+- API/web bind only `127.0.0.1:8000` / `127.0.0.1:3000`. PostgreSQL stays internal;
+  `postgres_data` and shared `app_data` persist across `down`.
+- Required OpenAI key/model interpolation names missing variables clearly. Keys
+  are supplied only at runtime to API/worker. Explicit OpenAI embeddings and HTTP
+  development cookies; optional OpenRouter/free chain remain supported.
+- Added `apps/api/scripts/seed_dev_stack.py`: guarded existing demo/staff helpers,
+  password from `PLATFORM_STAFF_PASSWORD`, authenticated CSRF-protected premium
+  and backfill requests, logout, safe errors, staff email/web URL output. Backfill
+  is queued asynchronously; no embedding-completion claim is made. Demo queries
+  reuse the existing tenant-scoped helpers and returned tenant/bot IDs.
+- Replaced `scripts/dev_up.ps1` / `scripts/dev_down.ps1` with Compose wrappers and
+  added their shared `scripts/dev_compose.ps1` runner. It disables implicit `.env`
+  loading and inherited `COMPOSE_ENV_FILES`, optionally selects user-created
+  `.env.local`, propagates exit codes, and restores the caller's environment.
+- `.gitignore` already ignored `.env`; explicitly added `.env.local`. Existing
+  `.dockerignore` excludes dotenv files. No credential file was created or changed.
+- Updated README startup commands, marked the old local guide as historical,
+  corrected the API Dockerfile comment and npm formatter's Compose file path.
+  Added seven static configuration contract tests in `scripts/test_dev_compose.py`.
+
+Validation commands and outcomes (static only):
+
+```powershell
+# Repository root: YAML parse/contract assertions and Python AST syntax only.
+.venv/Scripts/python.exe scripts/test_dev_compose.py -v
+.venv/Scripts/ruff.exe check --config apps/api/pyproject.toml scripts/test_dev_compose.py
+.venv/Scripts/ruff.exe format --check --config apps/api/pyproject.toml scripts/test_dev_compose.py
+node node_modules/prettier/bin/prettier.cjs --check compose.yaml package.json
+git diff --check
+git check-ignore .env .env.local
+
+# From apps/api:
+../../.venv/Scripts/ruff.exe check scripts/seed_dev_stack.py
+../../.venv/Scripts/ruff.exe format --check scripts/seed_dev_stack.py
+../../.venv/Scripts/mypy.exe --follow-imports=silent scripts/seed_dev_stack.py
+```
+
+All final commands above exited 0: **7 static tests passed**, Ruff lint/format clean,
+Prettier clean, mypy found no issues in the one new seed source file, no diff
+whitespace errors, and both dotenv paths were confirmed ignored (names only).
+
+PowerShell AST parsing (no wrapper execution), repository root:
+
+```powershell
+$parseFailed = $false
+foreach ($scriptPath in @('scripts/dev_compose.ps1', 'scripts/dev_up.ps1', 'scripts/dev_down.ps1')) {
+  $parseTokens = $null
+  $parseErrors = $null
+  [void][System.Management.Automation.Language.Parser]::ParseFile((Join-Path (Get-Location) $scriptPath), [ref]$parseTokens, [ref]$parseErrors)
+  if ($parseErrors.Count -gt 0) {
+    $parseFailed = $true
+    $parseErrors | ForEach-Object { Write-Output $_.Message }
+  } else {
+    Write-Output "$scriptPath syntax OK"
+  }
+}
+if ($parseFailed) { exit 1 }
+```
+
+Exit 0; all three scripts parsed without syntax errors.
+
+Earlier validation iterations, subsequently corrected:
+- Root `.venv/Scripts/ruff.exe check apps/api/scripts/seed_dev_stack.py scripts/test_dev_compose.py`
+  found two E501 lines (exit 1). The corresponding `ruff.exe format --check` found
+  both files unformatted (exit 1). Explicit API-config formatting corrected them:
+  `.venv/Scripts/ruff.exe format --config apps/api/pyproject.toml apps/api/scripts/seed_dev_stack.py scripts/test_dev_compose.py` (exit 0).
+- `node node_modules/prettier/bin/prettier.cjs --check compose.yaml package.json`
+  initially reported package.json formatting (exit 1); the same paths with `--write`
+  fixed it (exit 0).
+- Root `.venv/Scripts/ruff.exe check --config apps/api/pyproject.toml apps/api/scripts/seed_dev_stack.py scripts/test_dev_compose.py`
+  reported I001 for API import classification (exit 1). The final API check uses
+  its established `apps/api` working directory and passes without an import rewrite.
+- From apps/api, `../../.venv/Scripts/mypy.exe --follow-imports=silent scripts/seed_dev_stack.py`
+  initially rejected `Settings(_env_file=None)` (exit 1). Reused the existing seed's
+  explicit-env `Settings.model_construct` pattern, then rechecked successfully.
+
+Owner commands (NOT EXECUTED), repository root. Set `CHAT_OPENAI_API_KEY`,
+`CHAT_OPENAI_MODEL`, and `PLATFORM_STAFF_PASSWORD` in the host environment or create
+`.env.local` yourself first; the wrappers choose that file when present:
+
+```powershell
+.\scripts\dev_up.ps1
+.\scripts\dev_compose.ps1 --profile seed up seed
+# Later: stop containers/network, retain database and uploads.
+.\scripts\dev_down.ps1
+```
+
+Equivalent direct commands for host-environment values:
+
+```powershell
+$env:COMPOSE_DISABLE_ENV_FILE = '1'
+Remove-Item Env:COMPOSE_ENV_FILES -ErrorAction SilentlyContinue
+docker compose up --build -d --wait
+docker compose --profile seed up seed
+docker compose down
+```
+
+For user-created `.env.local`, after the same two environment setup lines:
+
+```powershell
+docker compose --env-file .env.local up --build -d --wait
+docker compose --env-file .env.local --profile seed up seed
+docker compose --env-file .env.local down
+```
+
+Web: `http://localhost:3000`; API: `http://127.0.0.1:8000`; default staff:
+`staff@example.com`. Seed may incur OpenAI embedding costs when the owner runs it.
+Old plain-Docker runner resources are not adopted/removed. Existing Compose database
+volumes require matching original POSTGRES_* values; URL passwords must be URL-safe.
+No volumes were deleted. **All runtime behaviour is UNVERIFIED**: builds, startup,
+migrations, healthchecks, authentication, seeding, premium routing, queue execution,
+embeddings, persistence, and shutdown require owner validation. No phase gate was signed off.

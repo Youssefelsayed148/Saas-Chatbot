@@ -1,5 +1,10 @@
 # Local development — P1-02
 
+> Historical P1/P2 host-development guide. The current container stack is the single
+> root `compose.yaml`; `infra/compose.yaml` was retired. Use [README: Start locally](../README.md#start-locally)
+> for current commands, host-environment/`.env.local` configuration and persistent volumes.
+> The Compose commands and exposed database port described below are superseded.
+
 ## Environment and dependencies
 
 Use Node 24/npm, Python 3.12 and Docker Desktop Linux containers. Direct dependency versions are exact in package.json and pyproject.toml; transitive versions are recorded in package-lock.json and the two Python requirements lockfiles. Install from locks in CI and local development. When upgrading Python dependencies, deliberately update both direct pins and transitive lockfiles, then validate Windows and Linux. Python lockfiles contain version pins, not wheel hashes.
