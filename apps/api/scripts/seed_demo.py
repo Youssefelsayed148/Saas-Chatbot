@@ -21,6 +21,7 @@ from app.db.session import create_db_engine, session_factory
 from app.knowledge.ingest import plan_source
 from app.knowledge.parsers import parse_text
 from app.knowledge.storage import Storage, get_storage
+from scripts.demo_knowledge import EXTRA_FAQS
 
 SLUG = "demo-dental-clinic"
 FAKE_PASSWORD = "FakeDemoOnly!123"
@@ -34,7 +35,15 @@ FAQS = (
     ),
     ("booking", "Booking", "Request a booking in this chat. A demo agent will confirm a time."),
     ("location", "Location", "Find our fictional clinic at 42 Example Lane, Demo City."),
-)
+) + tuple((key, title, body) for key, title, body, _ in EXTRA_FAQS)
+
+
+def demo_source_data(key: str, title: str, body: str) -> bytes:
+    language = "ar" if key.endswith("-ar") else "en"
+    return (
+        f"---\ntitle: {title}\nsource_url: https://demo.example.com/{key}\n"
+        f"language: {language}\n---\n\n# {title}\n\n{body}\n"
+    ).encode()
 
 
 def demo_id(key: str) -> UUID:
@@ -147,10 +156,7 @@ def seed_demo(db: Session, storage: Storage, settings: Settings, password: str) 
         citation: dict[str, object] = {}
         for key, title, body in FAQS:
             url = f"https://demo.example.com/{key}"
-            data = (
-                f"---\ntitle: {title}\nsource_url: {url}\nlanguage: en\n---\n"
-                f"\n# {title}\n\n{body}\n"
-            ).encode()
+            data = demo_source_data(key, title, body)
             storage_key = storage.save(tenant_id, bot_id, "md", data)
             saved_keys.append(storage_key)
             source = Source(
