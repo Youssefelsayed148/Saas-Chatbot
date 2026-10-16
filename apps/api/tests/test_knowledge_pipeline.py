@@ -166,6 +166,8 @@ def test_pdf_pages_become_documents(
     assert len(documents) == 2
     assert documents[0]["title"] == "two-pages.pdf — Page 1"
     assert documents[0]["page_ref"] == "Page 1"
+    assert documents[0]["status"] == "parsed" and documents[0]["chunk_count"] > 0
+    assert documents[0]["warnings"] == []
     assert documents[1]["page_ref"] == "Page 2"
 
 
@@ -188,7 +190,7 @@ def test_docx_sections_tables_and_headings(
     ).json()
     assert len(documents) == 1
     assert documents[0]["heading"] == "Return policy"
-    assert "Shoes — 14 days" in documents[0]["text"]
+    assert "Item: Shoes — Window: 14 days" in documents[0]["text"]
 
 
 def test_qa_csv_one_chunk_per_row(

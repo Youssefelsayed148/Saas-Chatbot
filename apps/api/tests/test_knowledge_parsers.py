@@ -3,6 +3,9 @@
 Covers docs/14 §2 (languages), §3 (parsing rules + limits), §4 (chunking).
 """
 
+import os
+import subprocess
+import sys
 import time
 from pathlib import Path
 from uuid import uuid4
@@ -35,6 +38,48 @@ def _slow_parse_for_timeout_test(
     del kind, original_name, data, parser_limits
     time.sleep(5)
     return []
+
+
+def _parser_with_child(
+    kind: str, original_name: str, data: bytes, parser_limits: ParseLimits
+) -> list[ParsedPage]:
+    child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
+    Path(original_name).write_text(str(child.pid))
+    time.sleep(60)
+    return []
+
+
+@pytest.mark.skipif(
+    os.name != "posix", reason="POSIX process group integration; Windows unverified"
+)
+def test_parse_timeout_kills_descendant_process(tmp_path: Path) -> None:
+    marker = tmp_path / "child.pid"
+    source = Source(kind="txt", original_name=str(marker))
+    started = time.monotonic()
+    with pytest.raises(ParseError, match="Parsing timed out"):
+        parse_source(
+            source,
+            b"fixture",
+            parse_limits_settings(parse_timeout_seconds=2),
+            parser=_parser_with_child,
+        )
+    assert time.monotonic() - started < 5
+    assert marker.exists(), "nested helper must actually have started"
+    pid = int(marker.read_text())
+    # A dead zombie may await adoption/reaping in a minimal container; it cannot
+    # run or retain parser handles. Accept only absent or dead, never sleeping.
+    stat = Path(f"/proc/{pid}/stat")
+    deadline = time.monotonic() + 2
+    while stat.exists() and stat.read_text().split()[2] != "Z" and time.monotonic() < deadline:
+        time.sleep(0.02)
+    assert not stat.exists() or stat.read_text().split()[2] == "Z"
+
+
+def test_parse_source_enforces_byte_cap_before_starting_child() -> None:
+    source = Source(kind="txt", original_name="large.txt")
+    settings = Settings.model_construct(max_upload_file_bytes=3)
+    with pytest.raises(ParseError, match="parsing size"):
+        parse_source(source, b"1234", settings)
 
 
 def parse_limits_settings(**overrides: int) -> Settings:
@@ -111,10 +156,13 @@ def test_pdf_nul_bytes_stripped() -> None:
 
 
 def test_docx_heading_sections_and_tables() -> None:
-    data = make_docx_with_table("Return policy", [["Item", "Window"], ["Shoes", "14 days"]])
+    data = make_docx_with_table(
+        "Return policy", [["Item", "Window"], ["Shoes", "14 days"], ["Boots", "30 days"]]
+    )
     page = parse_docx(data, "policy.docx", limits(parse_limits_settings()))[0]
     assert any(section.heading == "Return policy" for section in page.sections)
-    assert any("Shoes — 14 days" in section.text for section in page.sections)
+    assert any("Item: Shoes — Window: 14 days" in section.text for section in page.sections)
+    assert any("Item: Boots — Window: 30 days" in section.text for section in page.sections)
 
 
 def test_docx_arabic_content() -> None:

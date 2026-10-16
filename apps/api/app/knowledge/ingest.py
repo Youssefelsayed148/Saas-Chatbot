@@ -10,8 +10,12 @@ as-is). The job re-validates tenant + bot before doing anything; a bot of
 another tenant (or any missing resource) fails the job permanently.
 """
 
+import os
+import signal
+import subprocess
 from collections.abc import Callable
 from multiprocessing import get_context
+from multiprocessing.process import BaseProcess
 from queue import Empty
 from typing import Any, cast
 from uuid import UUID
@@ -101,12 +105,38 @@ def _parse_process_entry(
 ) -> None:
     """Spawn target. It receives bytes only; it has no database or storage handles."""
     try:
+        if os.name == "posix":
+            # All helpers spawned by untrusted parsers stay in this owned group.
+            os.setsid()
         result = parser(kind, original_name, data, limits)
         output.put(("ok", result))
     except ParseError as error:
         output.put(("parse_error", error.message))
     except Exception:
         output.put(("unexpected", None))
+
+
+def _kill_parser_tree(process: BaseProcess) -> None:
+    pid = process.pid
+    if pid is None:
+        return
+    if os.name == "posix":
+        try:
+            os.killpg(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            if process.is_alive():
+                process.kill()
+    elif process.is_alive():
+        # Argument vector, no shell: only the parser child and its descendants.
+        subprocess.run(
+            ["taskkill", "/PID", str(pid), "/T", "/F"],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        if process.is_alive():
+            process.kill()
+    process.join(timeout=2)
 
 
 def parse_source(
@@ -117,6 +147,8 @@ def parse_source(
     parser: Callable[[str, str, bytes, ParseLimits], list[ParsedPage]] = _parse_payload,
 ) -> list[ParsedPage]:
     """Parse in an isolated subprocess that is killed at the wall-clock limit."""
+    if len(data) > settings.max_upload_file_bytes:
+        raise ParseError("The file exceeds the allowed parsing size.")
     context = get_context("spawn")
     output = context.Queue(maxsize=1)
     process = context.Process(
@@ -129,26 +161,15 @@ def parse_source(
         try:
             status, result = output.get(timeout=settings.parse_timeout_seconds)
         except Empty as error:
-            if process.is_alive():
-                process.terminate()
-                process.join(timeout=1)
-            if process.is_alive():
-                process.kill()
-                process.join()
             raise ParseError("Parsing timed out; the file is too complex to process.") from error
-        process.join(timeout=1)
-        if process.is_alive():
-            process.terminate()
-            process.join()
         if status == "parse_error":
             raise ParseError(str(result))
         if status != "ok":
             raise ParseError("The file could not be processed.")
         return cast(list[ParsedPage], result)
     finally:
-        if process.is_alive():
-            process.terminate()
-            process.join(timeout=1)
+        # Also remove surviving helpers after a parser exits successfully.
+        _kill_parser_tree(process)
         output.cancel_join_thread()
         output.close()
 
@@ -567,7 +588,19 @@ def process_source(
         db.commit()
         return "The stored file could not be found."
     try:
-        pages = parse_source(source, data, settings)
+        tenant_for_limits = db.scalar(
+            select(Tenant)
+            .join(Bot, Bot.tenant_id == Tenant.id)
+            .where(Tenant.id == source.tenant_id, Bot.id == source.bot_id, Bot.id == bot.id)
+        )
+        if tenant_for_limits is None:
+            raise ParseError("The file could not be processed.")
+        parser_settings = settings.model_copy(
+            update={
+                "max_upload_file_bytes": limits_for(tenant_for_limits).upload_file_mb * 1024 * 1024
+            }
+        )
+        pages = parse_source(source, data, parser_settings)
     except ParseError as error:
         source.status = "failed"
         source.error = error.message

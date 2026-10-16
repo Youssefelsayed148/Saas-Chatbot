@@ -1160,6 +1160,8 @@ export interface KnowledgeDocument {
   text: string;
   total_chars: number;
   chunk_count: number;
+  status: string;
+  warnings: string[];
   created_at: string;
 }
 

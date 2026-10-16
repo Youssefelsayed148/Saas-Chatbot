@@ -1,6 +1,6 @@
 # Stage 4 — grounded generation, citations and private traces
 
-2026-10-16. Parent `555ffc7`; implementation hash follows in the next checkpoint.
+2026-10-16. Implementation `85dbe92`, parent `555ffc7`.
 Chat/real embedding/OpenAI requests: **0**.
 
 - Per-bot Standard/OpenRouter-free and Premium/OpenAI provider/model selection

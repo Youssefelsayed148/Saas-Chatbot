@@ -1200,3 +1200,44 @@ Exit0,**3 passed(1.1m)**,including trace panel and viewer restriction. No full
 suites or new migration. No dotenv reads, real provider calls, merge,push,deploy.
 
 - Widget public: exit0, **14 passed**,216.30s. Selected citation/error: exit0, **4 passed**,12 deselected,58.71s. Stage4 total **41 affected API tests**. Browser log checked as UTF-16: ECONNRESET0.
+
+
+## 2026-10-16 RAG Stage 5 ? parsing and staff status
+
+Stage4 commit `85dbe92`. DOCX table first row is retained as header and repeated
+as labels for each subsequent row. Existing CSV records remain whole. Parser
+subprocess owns a POSIX session/process group; cleanup kills the complete group
+on timeout and after output, including helpers. Windows uses argument-vector
+taskkill /T /F; Windows descendant behavior remains UNVERIFIED. Parser input
+bytes are checked against the same existing per-plan upload cap. Existing PDF
+page, DOCX expansion, source/page quotas and timeout remain enforced.
+No OCR path found (`rg -n 'OCR|ocr' apps/api/app -g '*.py'`); scanned PDF rejection
+retained, OCR deferred per prompt. Derived document parsed status/chunk count/
+warnings are returned/rendered only on existing staff knowledge surfaces.
+
+```text
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage5_parsers -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_knowledge_parsers.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage5-parsers
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage5_pipeline -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_knowledge_pipeline.py tests/test_knowledge_uploads.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage5-pipeline
+docker exec -e DATABASE_URL=postgresql://postgres@host.docker.internal:55462/rag_stage5_pipeline -e ENVIRONMENT=test rag-stage0-checks python -m pytest -q tests/test_knowledge_pipeline.py --tb=short -x -p no:cacheprovider --basetemp=/tmp/rag-stage5-plan-cap
+```
+
+Parser **29 passed**,6.88s, including actual nested helper PID and bounded timeout;
+pipeline/upload **28 passed** (9+19),36.19s. Final pipeline check follows below:
+review found the initial global10MB guard would reject previously allowed
+business/pro uploads, so parser settings now use the scoped tenant plan cap,
+matching upload behavior. No failing test was hidden; this was found in review.
+
+`docker exec rag-stage0-checks python -m mypy --no-incremental --cache-dir /tmp/rag-stage5-mypy`:exit0,**167 source files**.
+Affected Ruff check and six-file format check passed after initial new-line/import
+formatting fixes. `npm.cmd run lint` and `npm.cmd run typecheck`:exit0.
+
+Affected browser command from apps/web:
+
+```powershell
+$env:ENVIRONMENT='test'; $env:DATABASE_URL='postgresql://postgres@127.0.0.1:55462/rag_stage5_browser_test'; $env:E2E_API_PORT='18162'; $env:API_PROXY_TARGET='http://127.0.0.1:18162'; $env:STORAGE_ROOT='D:/Projects/Work Projects/The Osiris Labs/SAAS-chats-ai/.test-storage/rag-stage-0/stage5-browser-storage'; npm.cmd test -- tests/knowledge.spec.ts --reporter=line 2>&1 | Tee-Object -FilePath '../../.test-storage/rag-stage-0/stage5-browser.log'; exit $LASTEXITCODE
+```
+
+Exit0:**4 passed(1.1m)**. Client knowledge denial retained. Provider requests0.
+No full suites, OCR implementation, new schema, dotenv reads, merge,push,deploy.
+
+- Final pipeline recheck:exit0,**9 passed**,31.45s. Final mypy `/tmp/rag-stage5-final-mypy`:exit0,167files. Final six-file Ruff/format checks:exit0. Browser ECONNRESET0.

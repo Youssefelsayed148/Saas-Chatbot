@@ -417,13 +417,16 @@ export default function KnowledgePage() {
                   {document.heading ? ` — ${document.heading}` : ""}
                 </button>
                 <p className="muted">
-                  {document.page_ref}
+                  {document.status} · {document.page_ref}
                   {document.source_url
                     ? ` · ${document.source_url}`
                     : ""} · {document.language} · {document.chunk_count} chunk
                   {document.chunk_count === 1 ? "" : "s"} ·{" "}
                   {document.total_chars} chars
                 </p>
+                {document.warnings?.map((warning) => (
+                  <Notice key={warning} message={warning} />
+                ))}
                 <code>{document.text.slice(0, 240)}</code>
                 {expandedDoc === document.id && (
                   <ul data-testid="chunk-list">
