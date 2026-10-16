@@ -86,6 +86,23 @@ def test_embedding_failure_has_no_retry_or_provider_body() -> None:
     assert len(calls) == 1
 
 
+@pytest.mark.parametrize(
+    "usage", ["absent", None, {}, {"total_tokens": "unreported"}, {"total_tokens": True}]
+)
+def test_missing_embedding_usage_is_unknown_cost(usage: object) -> None:
+    payload: dict[str, object] = {"data": [{"index": 0, "embedding": [1.0] + [0.0] * 1023}]}
+    if usage != "absent":
+        payload["usage"] = usage
+    embedder = HTTPEmbedder(
+        identity="openai:text-embedding-3-large",
+        base_url="https://fixture.invalid/v1",
+        api_key="synthetic-key",
+        transport=httpx.MockTransport(lambda request: httpx.Response(200, json=payload)),
+    )
+    batch = embedder.embed(["fixture"])
+    assert batch.tokens == 0 and batch.cost_usd is None
+
+
 def test_embedding_test_vectors_cannot_be_used_in_production() -> None:
     settings = Settings.model_construct(environment="production", embedding_test_stub=True)
     with pytest.raises(RuntimeError, match="test environment"):

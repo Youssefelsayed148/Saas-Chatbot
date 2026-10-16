@@ -1326,3 +1326,44 @@ $env:ENVIRONMENT='test'; $env:DATABASE_URL='postgresql://postgres@127.0.0.1:5546
 Exit0,**5passed(1.3m)**. Includes staff cap save/reset, all client-role panel hiding,
 and playground tracing. No full suites before final gate. No real APIs, dotenv,
 Compose,push,merge,deploy or destructive cleanup.
+
+## 2026-10-16 RAG final exit gate (single run)
+
+Stage 7 implementation commit: `e1d1c23`. Full API gate launched once with
+`.venv/Scripts/python.exe .test-storage/rag-phase2-final/run_api.py`.
+The runner enumerates all 44 test files, executes each separately in
+`rag-stage0-checks` against its own disposable pgvector database, and saves exact
+commands, counts and logs after each file to
+`.test-storage/rag-phase2-final/api-results.json`. It refuses automatic replay.
+No API gate failure observed at this checkpoint; final counts follow when done.
+
+Single unscoped Playwright command from apps/web:
+
+```powershell
+$env:ENVIRONMENT='test'
+$env:DATABASE_URL='postgresql://postgres@127.0.0.1:55462/rag_final_browser_test'
+$env:E2E_API_PORT='18162'
+$env:API_PROXY_TARGET='http://127.0.0.1:18162'
+$env:STORAGE_ROOT='D:/Projects/Work Projects/The Osiris Labs/SAAS-chats-ai/.test-storage/rag-phase2-final/browser-storage'
+npm.cmd test -- --reporter=line 2>&1 | Tee-Object -FilePath '../../.test-storage/rag-phase2-final/playwright-full.log'
+```
+
+Exit 0: **40 passed (3.5m)**. UTF-16 log scanned: ECONNRESET 0,
+Failed to proxy 0, Python tracebacks 0. No browser rerun. Existing Next/Node
+warnings do not fail the suite. API/worker stopped normally by the harness.
+
+Final review corrected embedding accounting: missing/invalid usage must retain
+unknown cost rather than compute OpenAI USD 0. Added five mocked cases before
+`test_embedding_foundation.py` was first executed by the API gate. No real call
+or suite restart. Initial mypy found one new test payload inference error;
+explicit `dict[str, object]` corrected it. Final command:
+
+```text
+docker exec rag-stage0-checks python -m mypy --no-incremental --cache-dir /tmp/rag-final-cost-mypy2 app tests alembic scripts/rag_phase2_eval.py scripts/rag_stage0_baseline.py
+```
+
+Exit 0, **176 source files**. Host Ruff check/format of
+`apps/api/app/embeddings/providers.py` and
+`apps/api/tests/test_embedding_foundation.py` passed. No unrelated Ruff fixes.
+
+Final API gate completed: **353 passed, 44/44 files**, all exit 0, counts {'failed': 0, 'skipped': 0, 'deselected': 0, 'error': 0}. Exact command per file, counts and timings copied without rerun to docs/rag-phase/FINAL-TEST-RESULTS.json. Embedding foundation16 includes all five final accounting regressions. Full Playwright40passed, ECONNRESET0. No new provider requests. Semantic multilingual improvement and complete live refusal quality remain unestablished; leave feature branch unmerged and untagged.

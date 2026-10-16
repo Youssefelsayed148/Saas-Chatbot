@@ -98,23 +98,21 @@ class HTTPEmbedder:
             payload = response.json()
             if self.provider == "ollama":
                 raw_vectors = payload["embeddings"]
-                tokens = payload.get("prompt_eval_count", 0)
+                tokens = payload.get("prompt_eval_count")
             else:
                 rows = sorted(payload["data"], key=lambda row: row["index"])
                 if [row["index"] for row in rows] != list(range(len(texts))):
                     raise EmbeddingError("Embedding response indexes are invalid.")
                 raw_vectors = [row["embedding"] for row in rows]
-                tokens = payload.get("usage", {}).get("total_tokens", 0)
+                usage = payload.get("usage")
+                tokens = usage.get("total_tokens") if isinstance(usage, dict) else None
             if not isinstance(raw_vectors, list) or len(raw_vectors) != len(texts):
                 raise EmbeddingError("Embedding batch size mismatch.")
             vectors = [validate_vector(raw) for raw in raw_vectors]
-            tokens = (
-                tokens
-                if isinstance(tokens, int) and not isinstance(tokens, bool) and tokens >= 0
-                else 0
-            )
+            measured = isinstance(tokens, int) and not isinstance(tokens, bool) and tokens >= 0
+            tokens = tokens if measured else 0
             cost = Decimal(0) if self.provider == "ollama" else None
-            if self.identity == "openai:text-embedding-3-large":
+            if self.identity == "openai:text-embedding-3-large" and measured:
                 cost = Decimal(tokens) * OPENAI_LARGE_USD_PER_MILLION / 1_000_000
             return EmbeddingBatch(vectors, tokens, cost)
         except (httpx.HTTPError, ValueError, KeyError, TypeError, IndexError):

@@ -35,3 +35,9 @@ playground page/spec; sample/report docs and PROGRESS.
 UNVERIFIED: real provider behavior, live groundedness/rewrite/language quality,
 unreported provider token/cost usage. No LLM judge, full suites, dotenv reads,
 real calls, merge, push, deploy or Compose.
+
+Later regression review found that existing client exports still serialized
+private usage payloads containing these traces. The Stage 4 route/UI checks
+above did not cover that export path. Work stopped; the owner approved the
+redaction fix and regression test, committed in Stage 7 (`e1d1c23`). Client
+exports now omit AI ledger rows and strip operational usage payloads.

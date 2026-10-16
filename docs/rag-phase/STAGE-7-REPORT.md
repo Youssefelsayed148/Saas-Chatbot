@@ -1,6 +1,6 @@
 # Stage 7 — private metering and configurable limits
 
-2026-10-16. Parent `fa1baff`; implementation hash recorded at final gate.
+2026-10-16. Parent `fa1baff`; implementation `e1d1c23`.
 Provider requests: **0**. Owner explicitly authorized the export privacy fix and
 configurable caps with unset values uncapped.
 
