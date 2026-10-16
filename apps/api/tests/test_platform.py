@@ -3,7 +3,7 @@
 - /platform API paths guarded SERVER-SIDE by users.is_platform_staff
   (non-staff 403, hidden tenants 404);
 - the staff flag is separate from tenant roles (a staff user without any
-  membership reaches the console; a tenant owner without the flag does not);
+  membership reaches the console; a tenant admin without the flag does not);
 - staff onboarding through the SHARED ProvisioningService with a required
   Idempotency-Key: DOUBLE SUBMISSION creates exactly ONE tenant;
 - actor attribution in audit; tenant A/B isolation unaffected."""
@@ -20,7 +20,7 @@ corpus = _rh.corpus
 
 ONBOARD_FORM = {
     "client_name": "Provisioned Org",
-    "owner_email": "new-owner@example.com",
+    "owner_email": "new-admin@example.com",
     "bot_name": "First Bot",
 }
 
@@ -48,12 +48,12 @@ def platform_call(client: TestClient, method: str, path: str, **kwargs: Any) -> 
 
 
 def test_non_staff_get_403_everywhere(corpus: dict[str, Any], app: Any, db: Any) -> None:
-    owner_client, _payload = logged_in(app, "just-owner@example.com")
+    admin_client, _payload = logged_in(app, "just-admin@example.com")
     tenant_id = None
-    create = owner_client.post(
+    create = admin_client.post(
         "/api/v1/tenants",
         json={"name": "Own.org"},
-        headers={"X-CSRF-Token": owner_client.cookies.get("chatbot_csrf")},
+        headers={"X-CSRF-Token": admin_client.cookies.get("chatbot_csrf")},
     )
     assert create.status_code == 201
     tenant_id = create.json()["id"]
@@ -67,7 +67,7 @@ def test_non_staff_get_403_everywhere(corpus: dict[str, Any], app: Any, db: Any)
         ("GET", "/quotas"),
         ("POST", "/onboarding"),
     ):
-        response = owner_client.request(method, f"/api/v1/platform{path}")
+        response = admin_client.request(method, f"/api/v1/platform{path}")
         assert response.status_code == 403, (method, path, response.text)
         assert response.json()["error"]["code"] == "FORBIDDEN"
     del tenant_id
@@ -82,14 +82,14 @@ def test_staff_flag_is_separate_from_tenant_roles(
     # The staff user has NO tenant membership and still reaches the console:
     listing = platform_call(staff_client, "GET", "/tenants")
     assert listing.status_code == 200
-    # ...and a tenant OWNER without the flag is refused (role is not enough).
-    owner_client, _payload = logged_in(app, "plain-owner2@example.com")
-    owner_client.post(
+    # ...and a tenant ADMIN without the flag is refused (role is not enough).
+    admin_client, _payload = logged_in(app, "plain-owner2@example.com")
+    admin_client.post(
         "/api/v1/tenants",
         json={"name": "Plain"},
-        headers={"X-CSRF-Token": owner_client.cookies.get("chatbot_csrf")},
+        headers={"X-CSRF-Token": admin_client.cookies.get("chatbot_csrf")},
     )
-    assert platform_call(owner_client, "GET", "/tenants").status_code == 403
+    assert platform_call(admin_client, "GET", "/tenants").status_code == 403
 
 
 # --- onboarding -------------------------------------------------------------
@@ -114,7 +114,7 @@ def test_staff_onboarding_creates_tenant_bot_and_owner_invite(
     assert result["bot_id"]
     invite = result["owner_invite"]
     assert invite["link_path"].startswith("/accept-invite?token=")
-    # the invitation exists as an OWNER row (single-use token hashed)
+    # the invitation exists as an ADMIN row (single-use token hashed)
     invitations = db.execute(
         text("SELECT email, role FROM invitations WHERE tenant_id = :t"),
         {"t": tenant_id},
@@ -131,7 +131,7 @@ def test_staff_onboarding_creates_tenant_bot_and_owner_invite(
     actions = {row[0] for row in audit}
     assert "platform.onboarding.tenant_created" in actions
     assert all(row[1] for row in audit)
-    # tenant is a REAL tenant (no owner membership yet — invite-pending)
+    # tenant is a REAL tenant (no admin membership yet — invite-pending)
     members = db.execute(
         text("SELECT count(*) FROM memberships WHERE tenant_id = :t"),
         {"t": tenant_id},
@@ -233,14 +233,14 @@ def test_client_list_and_detail_are_reachable_by_staff_only(
     unknown = platform_call(staff_client, "GET", "/tenants/00000000-0000-0000-0000-00000000aaa1")
     assert unknown.status_code == 404
     # Tenant A vs B: nothing leaks between them through staff-only paths
-    owner_a = users.as_user("admin")
+    admin_a = users.as_user("admin")
     bot_a = make_bot(users, "Another")
     outsider = (
         platform_call(users.as_user("viewer"), "GET", f"/platform-derived/{bot_a['id']}")
         if False
         else None
     )
-    del outsider, bot_a, owner_a
+    del outsider, bot_a, admin_a
 
 
 def test_staff_onboarded_bot_has_widget_locator_and_public_config_is_reachable(

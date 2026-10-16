@@ -136,7 +136,7 @@ test("workspace shell + measured overview with per-bot scoping and CSV", async (
   const contextB = await browser.newContext();
   const pageB = await contextB.newPage();
   const b = await registerAndPrepare(pageB, "Beta", "11:00");
-  // context B stays open until the scoping assertions made below; the owner
+  // context B stays open until the scoping assertions made below; the admin
   // session in tenant B is required to read bot B's OWN summary.
 
   // real visitor activity in tenant A only

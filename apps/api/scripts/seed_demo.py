@@ -96,12 +96,12 @@ def seed_demo(db: Session, storage: Storage, settings: Settings, password: str) 
         db.execute(text("SELECT pg_advisory_xact_lock(74180314)"))
         tenant = db.scalar(select(Tenant).where(Tenant.slug == SLUG))
         if tenant is not None:
-            owner = db.scalar(select(User).where(User.id == demo_id("user/admin")))
+            admin = db.scalar(select(User).where(User.id == demo_id("user/admin")))
             bot = db.scalar(select(Bot).where(Bot.tenant_id == tenant.id, Bot.id == bot_id))
             if (
                 tenant.id != tenant_id
-                or owner is None
-                or not verify_password(password, owner.password_hash)
+                or admin is None
+                or not verify_password(password, admin.password_hash)
                 or bot is None
             ):
                 raise ValueError("Demo identity conflict or password mismatch; no data changed.")

@@ -1,7 +1,7 @@
 """Shared ProvisioningService (docs/12): one path for staff onboarding (P4-06)
 and, later, self-service signup (P7-03 uses the SAME service).
 
-Creates: tenant (unique slug) → owner one-time invitation (docs/14 §19: staff
+Creates: tenant (unique slug) → admin one-time invitation (docs/14 §19: staff
 copy the link; there is no email provider) → optional bot → optional
 website-to-knowledge skill output, stored under generated tenant keys
 (uploaded into a bot later through the ordinary Knowledge flow). Durable
@@ -292,8 +292,8 @@ class ProvisioningService:
             metadata={"request_id": str(row.id), "plan_label": tenant.plan_label},
         )
 
-        # Owner one-time invitation (docs/14 §19): raw token is shown ONCE in
-        # the response; only its SHA-256 hash is stored. Ownership arrives
+        # Admin one-time invitation (docs/14 §19): raw token is shown ONCE in
+        # the response; only its SHA-256 hash is stored. Admin access arrives
         # when the invited user accepts (no email provider).
         raw_token: str | None = None
         invitation: Invitation | None = None

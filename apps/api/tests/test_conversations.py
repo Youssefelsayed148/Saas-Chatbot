@@ -79,11 +79,11 @@ def test_playground_turn_stores_turns_and_usage(
     stub_enabled_app: FastAPI, chat_ready_corpus: dict[str, Any]
 ) -> None:
     users = chat_ready_corpus["users_a"]
-    owner = users.as_user("staff")
+    admin = users.as_user("staff")
     tenant_id = str(users.tenant_id)
     bot_id = str(chat_ready_corpus["bot_main"])
 
-    first = playground_post(owner, tenant_id, bot_id, "What warranty do you offer?")
+    first = playground_post(admin, tenant_id, bot_id, "What warranty do you offer?")
     assert first.status_code == 201, first.text
     body = first.json()
     assert body["kind"] == "answer"
@@ -93,7 +93,7 @@ def test_playground_turn_stores_turns_and_usage(
     assert citations[0]["source_url"] == "https://cited.example.com/page"
     assert citations[0]["title"] == "Cited page"
 
-    listing = owner.get(f"/api/v1/tenants/{tenant_id}/bots/{bot_id}/playground/conversation")
+    listing = admin.get(f"/api/v1/tenants/{tenant_id}/bots/{bot_id}/playground/conversation")
     assert listing.status_code == 200
     thread = listing.json()
     senders = [message["sender_type"] for message in thread["messages"]]
@@ -121,14 +121,14 @@ def test_second_turn_reuses_the_conversation(
     stub_enabled_app: FastAPI, chat_ready_corpus: dict[str, Any]
 ) -> None:
     users = chat_ready_corpus["users_a"]
-    owner = users.as_user("staff")
+    admin = users.as_user("staff")
     tenant_id = str(users.tenant_id)
     bot_id = str(chat_ready_corpus["bot_main"])
-    first = playground_post(owner, tenant_id, bot_id, "What warranty do you offer?")
-    second = playground_post(owner, tenant_id, bot_id, "parts and labour how long?")
+    first = playground_post(admin, tenant_id, bot_id, "What warranty do you offer?")
+    second = playground_post(admin, tenant_id, bot_id, "parts and labour how long?")
     assert first.status_code == 201 and second.status_code == 201
     assert second.json()["conversation_id"] == first.json()["conversation_id"]
-    listing = owner.get(f"/api/v1/tenants/{tenant_id}/bots/{bot_id}/playground/conversation").json()
+    listing = admin.get(f"/api/v1/tenants/{tenant_id}/bots/{bot_id}/playground/conversation").json()
     assert listing["message_count"] == 4  # two turns
 
 
@@ -138,12 +138,12 @@ def test_playground_conversation_of_another_bot_is_not_shared(
     from tests.helpers import make_bot
 
     users = chat_ready_corpus["users_a"]
-    owner = users.as_user("staff")
+    admin = users.as_user("staff")
     tenant_id = str(users.tenant_id)
     main_id = str(chat_ready_corpus["bot_main"])
-    playground_post(owner, tenant_id, main_id, "What warranty do you offer?")
+    playground_post(admin, tenant_id, main_id, "What warranty do you offer?")
     decoy = make_bot(users, "DecoyChat")
-    listing = owner.get(f"/api/v1/tenants/{tenant_id}/bots/{decoy['id']}/playground/conversation")
+    listing = admin.get(f"/api/v1/tenants/{tenant_id}/bots/{decoy['id']}/playground/conversation")
     assert listing.json()["message_count"] == 0
 
 
@@ -154,7 +154,7 @@ def test_chat_turn_requires_ai_mode(
     stub_enabled_app: FastAPI, chat_ready_corpus: dict[str, Any]
 ) -> None:
     users = chat_ready_corpus["users_a"]
-    owner = users.as_user("staff")
+    admin = users.as_user("staff")
     tenant_id = str(users.tenant_id)
     bot_id = str(chat_ready_corpus["bot_main"])
     from app.chat.conversations import get_or_create_playground_conversation
@@ -166,7 +166,7 @@ def test_chat_turn_requires_ai_mode(
     conversation.mode = "human"
     session.commit()
     session.close()  # the mutation must be committed in the SAME session
-    response = playground_post(owner, tenant_id, bot_id, "hello?")
+    response = playground_post(admin, tenant_id, bot_id, "hello?")
     assert response.status_code == 409
     assert response.json()["error"]["code"] == "CONVERSATION_IN_HUMAN_MODE"
 
@@ -185,10 +185,10 @@ def test_thread_excludes_messages_older_than_retention(
 ) -> None:
 
     users = chat_ready_corpus["users_a"]
-    owner = users.as_user("staff")
+    admin = users.as_user("staff")
     tenant_id = str(users.tenant_id)
     bot_id = str(chat_ready_corpus["bot_main"])
-    playground_post(owner, tenant_id, bot_id, "current turn")
+    playground_post(admin, tenant_id, bot_id, "current turn")
     engine = _engine()
     with engine.begin() as conn:
         old = conn.execute(
@@ -198,7 +198,7 @@ def test_thread_excludes_messages_older_than_retention(
             )
         )
         assert old.rowcount > 0
-    listing = owner.get(f"/api/v1/tenants/{tenant_id}/bots/{bot_id}/playground/conversation").json()
+    listing = admin.get(f"/api/v1/tenants/{tenant_id}/bots/{bot_id}/playground/conversation").json()
     texts = [message["text"] for message in listing["messages"]]
     assert "current turn" not in texts  # expired messages drop out immediately
 
@@ -210,17 +210,17 @@ def test_feedback_idempotent_per_rater_and_rating(
     stub_enabled_app: FastAPI, chat_ready_corpus: dict[str, Any]
 ) -> None:
     users = chat_ready_corpus["users_a"]
-    owner = users.as_user("staff")
+    admin = users.as_user("staff")
     tenant_id = str(users.tenant_id)
     bot_id = str(chat_ready_corpus["bot_main"])
-    client_owner = owner
-    turn = playground_post(client_owner, tenant_id, bot_id, "What warranty do you offer?")
+    client_admin = admin
+    turn = playground_post(client_admin, tenant_id, bot_id, "What warranty do you offer?")
     assert turn.status_code == 201
     ai_message_id = turn.json()["ai_message"]["id"]
 
     url = f"/api/v1/tenants/{tenant_id}/bots/{bot_id}/messages/{ai_message_id}/feedback"
-    first = owner.post(url, json={"rating": "up"}, headers=csrf_headers(client_owner))
-    duplicate = owner.post(url, json={"rating": "up"}, headers=csrf_headers(client_owner))
+    first = admin.post(url, json={"rating": "up"}, headers=csrf_headers(client_admin))
+    duplicate = admin.post(url, json={"rating": "up"}, headers=csrf_headers(client_admin))
     assert first.status_code == 200 and duplicate.status_code == 200
     engine = _engine()
     with engine.connect() as conn:
@@ -235,7 +235,7 @@ def test_feedback_idempotent_per_rater_and_rating(
     by_kind: dict[str, int] = {row[0]: int(row[1]) for row in rows}
     assert by_kind.get("feedback_up") == 1  # duplicate cannot double count
 
-    down = owner.post(url, json={"rating": "down"}, headers=csrf_headers(client_owner))
+    down = admin.post(url, json={"rating": "down"}, headers=csrf_headers(client_admin))
     assert down.status_code == 200
     with engine.connect() as conn:
         downs = conn.execute(
@@ -252,20 +252,20 @@ def test_feedback_hits_are_tenant_scoped(
     stub_enabled_app: FastAPI, chat_ready_corpus: dict[str, Any]
 ) -> None:
     users = chat_ready_corpus["users_a"]
-    owner = users.as_user("staff")
+    admin = users.as_user("staff")
     tenant_id = str(users.tenant_id)
     bot_id = str(chat_ready_corpus["bot_main"])
-    turn = playground_post(owner, tenant_id, bot_id, "What warranty do you offer?")
+    turn = playground_post(admin, tenant_id, bot_id, "What warranty do you offer?")
     ai_message_id = turn.json()["ai_message"]["id"]
     ghost = uuid4()
     for bad_message in (ghost, UUID(ai_message_id)):
         url = f"/api/v1/tenants/{tenant_id}/bots/{bot_id}/messages/{bad_message}/feedback"
-        response = owner.post(url, json={"rating": "up"}, headers=csrf_headers(owner))
+        response = admin.post(url, json={"rating": "up"}, headers=csrf_headers(admin))
         if bad_message == ghost:
             assert response.status_code == 404
     # A message id from another tenant's bot would be unfindable for this scope.
     other_game = playground_post(
-        owner,
+        admin,
         tenant_id,
         bot_id,
         "different",
@@ -356,7 +356,7 @@ def test_retention_purge_via_the_queue(
 
 def test_playground_roles(stub_enabled_app: FastAPI, chat_ready_corpus: dict[str, Any]) -> None:
     users = chat_ready_corpus["users_a"]
-    owner = users.as_user("staff")
+    admin = users.as_user("staff")
     tenant_id = str(users.tenant_id)
     bot_id = str(chat_ready_corpus["bot_main"])
 
@@ -368,7 +368,7 @@ def test_playground_roles(stub_enabled_app: FastAPI, chat_ready_corpus: dict[str
     )
     assert listing.status_code == 403  # playground reads are operator-only
 
-    reply = playground_post(owner, tenant_id, bot_id, "hello")
+    reply = playground_post(admin, tenant_id, bot_id, "hello")
     assert reply.status_code == 201
     ai_message_id = reply.json()["ai_message"]["id"]
     viewer_feedback = users.as_user("viewer").post(
@@ -406,10 +406,10 @@ def test_tenant_b_cannot_reach_or_write_tenant_a_playground(
 
 def test_model_missing_returns_503(app: FastAPI, chat_ready_corpus: dict[str, Any]) -> None:
     users = chat_ready_corpus["users_a"]
-    owner = users.as_user("staff")
+    admin = users.as_user("staff")
     tenant_id = str(users.tenant_id)
     bot_id = str(chat_ready_corpus["bot_main"])
-    response = playground_post(owner, tenant_id, bot_id, "hello?")
+    response = playground_post(admin, tenant_id, bot_id, "hello?")
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "MODEL_NOT_CONFIGURED"
 

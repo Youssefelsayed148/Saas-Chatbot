@@ -9,8 +9,8 @@ from tests.conftest import csrf_headers
 from tests.helpers import audit_actions, create_tenant, logged_in, make_bot
 
 
-def test_create_tenant_makes_creator_owner(app: Any, db: OrmSession) -> None:
-    client, payload = logged_in(app, "owner-acme@example.com")
+def test_create_tenant_makes_creator_admin(app: Any, db: OrmSession) -> None:
+    client, payload = logged_in(app, "admin-acme@example.com")
     try:
         response = client.post(
             "/api/v1/tenants", json={"name": "Acme Ltd"}, headers=csrf_headers(client)
@@ -26,7 +26,7 @@ def test_create_tenant_makes_creator_owner(app: Any, db: OrmSession) -> None:
         roles = {m["tenant_id"]: m["role"] for m in me["memberships"]}
         assert roles[tenant_id] == "admin"
 
-        # Exactly one membership row for this user and it is the owner.
+        # Exactly one membership row for this user and it is the admin.
         rows = (
             db.execute(
                 __import__("sqlalchemy").text(

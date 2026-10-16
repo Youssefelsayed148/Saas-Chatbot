@@ -4,7 +4,7 @@ import { promoteToStaff } from "./staff-helpers";
 
 /**
  * P4-06 E2E (docs/11): /platform gated SERVER-SIDE (non-staff redirected);
- * staff view the client list, onboard a client end to end (tenant + owner
+ * staff view the client list, onboard a client end to end (tenant + admin
  * one-time invite + bot), and open the client detail (bots, members, audit).
  * The staff flag is not a tenant role and has no self-service path, so the
  * E2E sets it the way the pytest suite does — a direct UPDATE on the SAME
@@ -56,7 +56,7 @@ test("staff list, onboard a client end to end, and open the client detail", asyn
   await page.getByTestId("ob-client-name").fill(clientName);
   await page
     .getByTestId("ob-owner-email")
-    .fill(`owner.${Date.now()}@client.example`);
+    .fill(`admin.${Date.now()}@client.example`);
   await page.getByTestId("ob-bot-name").fill("First Bot");
   await page.getByTestId("ob-submit").click();
   const invite = page.getByTestId("ob-invite-link");

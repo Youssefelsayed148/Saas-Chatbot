@@ -219,8 +219,8 @@ def test_seed_wrong_password_preserves_existing_data(db: Session, tmp_path: Path
     seed_demo(db, storage, settings, FAKE_PASSWORD)
     with pytest.raises(ValueError, match="password mismatch"):
         seed_demo(db, storage, settings, "OtherFake!123")
-    owner = db.scalar(select(User).where(User.id == demo_id("user/admin")))
-    assert owner is not None and verify_password(FAKE_PASSWORD, owner.password_hash)
+    admin = db.scalar(select(User).where(User.id == demo_id("user/admin")))
+    assert admin is not None and verify_password(FAKE_PASSWORD, admin.password_hash)
     assert db.scalar(select(func.count()).select_from(Tenant)) == 1
     assert len(list(tmp_path.rglob("*.md"))) == 4
 

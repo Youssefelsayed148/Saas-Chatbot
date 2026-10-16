@@ -7,9 +7,9 @@ A business signs up, creates an organization and a bot, gives it its data (uploa
 ## What you should be able to do at the end of each phase
 ### After P1 — Foundation
 - Open the web app, register, log in, log out. Wrong password → clear error; expired session → sent back to login.
-- Create an organization; you are its owner. Create a second org and switch between them.
+- Create an organization; you are its admin. Create a second org and switch between them.
 - Create, rename, edit settings of, and archive a bot. Archived bots disappear from the default list but are not deleted.
-- Owners/admins invite teammates with a one-time link (copy and send it yourself; there is no email). The invitee opens it, registers or logs in and joins with the chosen role. Links expire, work once and can be revoked. A viewer sees bots but has no create/edit buttons and the API rejects their writes.
+- Admins invite teammates with a one-time link (copy and send it yourself; there is no email). The invitee opens it, registers or logs in and joins with the chosen role. Links expire, work once and can be revoked. A viewer sees bots but has no create/edit buttons and the API rejects their writes.
 - A user from org B who guesses an org-A bot ID gets "not found" — never the data.
 - Nothing on screen is fake: all lists come from the API.
 ### After P2 — Knowledge
@@ -32,10 +32,10 @@ A business signs up, creates an organization and a bot, gives it its data (uploa
 - Dashboard shows conversations (with citations), leads captured with consent (they become contacts), and analytics: volume, top questions, unanswered questions, usage — real numbers only.
 - Widget appearance settings (colour, name, greeting, language/RTL) change what visitors see.
 - Each bot has its own workspace with a bot switcher: Overview (measured numbers with date range), Knowledge, Playground, Conversations, Settings, Install. Numbers for one bot never include another's.
-- Admin console (/platform, staff only): you see every client with plan, status, bots, usage and last activity; open a client to see its bots, job status, members and audit trail; and onboard a new client in one form (tenant + owner invite link + bot + data upload). Non-staff cannot reach it; no impersonation.
+- Admin console (/platform, staff only): you see every client with plan, status, bots, usage and last activity; open a client to see its bots, job status, members and audit trail; and onboard a new client in one form (tenant + admin invite link + bot + data upload). Non-staff cannot reach it; no impersonation.
 ### After P5 — Inbox, handoff and light CRM (first sellable cut)
 - A visitor asks something the bot cannot answer, or asks for a person: the bot says so politely, gives the support contact, and the conversation appears in the Inbox as "waiting for a person" with a notification badge.
-- An owner/admin/editor opens it, clicks Take over (the AI goes silent), types a reply; the visitor sees it in the widget within a few seconds, as plain text. The agent adds a note and a tag, then either Resolves it or Returns it to the bot. A viewer can read but cannot reply. If two agents click Take over, the second is told who has it.
+- An admin/editor opens it, clicks Take over (the AI goes silent), types a reply; the visitor sees it in the widget within a few seconds, as plain text. The agent adds a note and a tag, then either Resolves it or Returns it to the bot. A viewer can read but cannot reply. If two agents click Take over, the second is told who has it.
 - The Inbox lists every conversation with filters (status, mode, channel, assignee, tag, unread) and search; it updates live without refreshing.
 - Contacts: a lead who filled the widget form appears with their details and consent; you can set a stage (new/qualified/customer/lost), add tags and custom fields, see their conversation timeline, merge duplicates, export CSV, and erase a contact.
 - Follow-ups: schedule a message for a lead; on the website the visitor sees it the next time they open the widget.

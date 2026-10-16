@@ -1,4 +1,4 @@
-"""P1-03: members — role matrix, last-owner protection, escalation, audit."""
+"""P1-03: members — role matrix, last-admin protection, escalation, audit."""
 
 from typing import Any
 

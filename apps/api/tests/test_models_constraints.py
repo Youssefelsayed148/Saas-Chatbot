@@ -45,8 +45,8 @@ def _bot(db: OrmSession, tenant: Tenant, name: str = "Bot") -> Bot:
 
 
 def test_duplicate_email_case_insensitive(db: OrmSession) -> None:
-    _user(db, "owner@example.com")
-    duplicate = User(id=uuid4(), email="OWNER@example.com", password_hash="argon2id$x")
+    _user(db, "admin@example.com")
+    duplicate = User(id=uuid4(), email="ADMIN@example.com", password_hash="argon2id$x")
     db.add(duplicate)
     with pytest.raises(IntegrityError):
         db.flush()

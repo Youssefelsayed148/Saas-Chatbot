@@ -59,7 +59,7 @@ def test_invalid_transitions_are_rejected(corpus: dict[str, Any]) -> None:
     assert revive.json()["error"]["code"] == "BOT_ARCHIVED"
 
 
-def test_viewer_cannot_transition_and_editor_admin_owner_can(corpus: dict[str, Any]) -> None:
+def test_client_roles_cannot_transition_bot(corpus: dict[str, Any]) -> None:
     users = corpus["users_a"]
     bot = make_bot(users, "Role Gated")
     bot_id = str(bot["id"])

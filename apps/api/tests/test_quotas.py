@@ -28,7 +28,7 @@ def test_quota_snapshot_is_tenant_scoped_and_readable_by_viewers(app: Any, db: A
     hidden = tenant_b.call("viewer", "GET", path_a)
     assert hidden.status_code == 404
 
-    # The owner can see usage and the viewer sees the same tenant-scoped data.
+    # The admin can see usage and the viewer sees the same tenant-scoped data.
     assert tenant_a.call("admin", "GET", path_a).json() == own.json()
     bot_path = f"/api/v1/tenants/{tenant_a.tenant_id}/bots/{bot_a['id']}/quota"
     assert tenant_a.call("viewer", "GET", bot_path).status_code == 200
@@ -112,11 +112,11 @@ def test_new_org_and_unknown_plan_default_to_one_bot(app: Any, db: Any) -> None:
 
 def test_platform_quota_override_requires_staff_reason_and_audits(app: Any, db: Any) -> None:
     tenant = seeded_tenant(app, db, prefix="quota-override")
-    owner = tenant.as_user("admin")
-    assert platform_call(owner, "GET", "/quotas").status_code == 403
+    admin = tenant.as_user("admin")
+    assert platform_call(admin, "GET", "/quotas").status_code == 403
     path = f"/api/v1/platform/tenants/{tenant.tenant_id}/quota-overrides"
     denied = platform_call(
-        owner,
+        admin,
         "PATCH",
         f"/tenants/{tenant.tenant_id}/quota-overrides",
         json={"limits": {"bots": 8}, "reason": "Approved exception"},

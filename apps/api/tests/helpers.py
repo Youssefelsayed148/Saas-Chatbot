@@ -81,15 +81,15 @@ def seeded_tenant(
     app: FastAPI, db: Any, prefix: str = "seed", plan_label: str = "business"
 ) -> TenantUsers:
     """Create an admin-led tenant, editor/viewer members, and independent staff."""
-    owner_client, owner_payload = logged_in(app, f"{prefix}-owner@example.com")
+    admin_client, admin_payload = logged_in(app, f"{prefix}-admin@example.com")
     try:
-        tenant_id = create_tenant(owner_client, name=f"Org {prefix}")
+        tenant_id = create_tenant(admin_client, name=f"Org {prefix}")
     except Exception:
-        owner_client.close()
+        admin_client.close()
         raise
     roles = {"admin": "admin", "editor": "editor", "viewer": "viewer", "staff": "platform_staff"}
     members = TenantUsers(
-        app, tenant_id, roles, prefix, existing={"admin": (owner_client, owner_payload)}
+        app, tenant_id, roles, prefix, existing={"admin": (admin_client, admin_payload)}
     )
     from sqlalchemy import text
 

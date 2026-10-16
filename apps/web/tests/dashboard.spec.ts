@@ -45,7 +45,7 @@ test("self-service disabled hides public registration and organization creation"
   ).toHaveCount(0);
 });
 
-test("owner signup provisions first bot and bot lifecycle stays with platform staff", async ({
+test("admin signup provisions first bot and bot lifecycle stays with platform staff", async ({
   page,
 }) => {
   const orgName = `E2E Org ${Date.now()}`;
@@ -108,25 +108,25 @@ test("a second user cannot reach the first user's organization", async ({
   await second.close();
 });
 
-test("team management: owner invites, invitee accepts, viewer sees read-only bots", async ({
+test("team management: admin invites, invitee accepts, viewer sees read-only bots", async ({
   browser,
 }) => {
-  const ownerEmail = uniqueEmail("admin");
+  const adminEmail = uniqueEmail("admin");
   const first = await browser.newContext();
-  const owner = await first.newPage();
-  const { tenantId } = await registerAdmin(owner, "Team", {
-    email: ownerEmail,
+  const admin = await first.newPage();
+  const { tenantId } = await registerAdmin(admin, "Team", {
+    email: adminEmail,
   });
-  // Staff plan assignment remains available to prepare owner/editor permission checks.
-  promoteToStaff(ownerEmail);
-  const csrf = await owner.evaluate(
+  // Staff plan assignment remains available to prepare admin/editor permission checks.
+  promoteToStaff(adminEmail);
+  const csrf = await admin.evaluate(
     () =>
       document.cookie
         .split("; ")
         .find((part) => part.startsWith("chatbot_csrf="))
         ?.split("=")[1] ?? "",
   );
-  const plan = await owner.request.patch(
+  const plan = await admin.request.patch(
     `/api/v1/platform/tenants/${tenantId}/plan`,
     {
       headers: { "X-CSRF-Token": csrf },
@@ -139,20 +139,20 @@ test("team management: owner invites, invitee accepts, viewer sees read-only bot
   expect(plan.status()).toBe(200);
 
   // Invite an editor and a viewer.
-  await owner.goto(
-    new URL(owner.url()).pathname.replace(/\/bots$/, "/settings/members"),
+  await admin.goto(
+    new URL(admin.url()).pathname.replace(/\/bots$/, "/settings/members"),
   );
   const editorEmail = uniqueEmail("editor");
-  await owner.getByLabel("Email", { exact: true }).fill(editorEmail);
-  await owner.getByRole("combobox", { name: "Role" }).selectOption("editor");
-  await owner.getByRole("button", { name: "Create invite link" }).click();
-  const inviteCode = (await owner.locator("code").textContent()) ?? "";
+  await admin.getByLabel("Email", { exact: true }).fill(editorEmail);
+  await admin.getByRole("combobox", { name: "Role" }).selectOption("editor");
+  await admin.getByRole("button", { name: "Create invite link" }).click();
+  const inviteCode = (await admin.locator("code").textContent()) ?? "";
   expect(inviteCode).toContain("/accept-invite?token=");
 
   const viewerEmail = uniqueEmail("viewer");
-  await owner.getByLabel("Email", { exact: true }).fill(viewerEmail);
-  await owner.getByRole("combobox", { name: "Role" }).selectOption("viewer");
-  await owner.getByRole("button", { name: "Create invite link" }).click();
+  await admin.getByLabel("Email", { exact: true }).fill(viewerEmail);
+  await admin.getByRole("combobox", { name: "Role" }).selectOption("viewer");
+  await admin.getByRole("button", { name: "Create invite link" }).click();
 
   // The editor registers with the invited address, lands back on the link, accepts.
   const second = await browser.newContext();

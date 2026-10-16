@@ -38,7 +38,7 @@ test("fresh signup shows the knowledge upload controls without a reload", async 
   page,
 }) => {
   // Regression: the session was not refreshed after self-service provisioning,
-  // so the new owner looked like a viewer until a manual reload.
+  // so the new admin looked like a viewer until a manual reload.
   await openKnowledgeAsOperator(page);
   await expect(page.locator("#knowledge-file-input")).toBeVisible();
   await expect(page.locator("#knowledge-file-input")).toBeEnabled();
@@ -135,21 +135,21 @@ test("oversize uploads are rejected through the same-origin proxy with 413", asy
 test("viewer is read-only on knowledge", async ({ browser }) => {
   test.setTimeout(90_000);
   const first = await browser.newContext();
-  const owner = await first.newPage();
-  await openKnowledgeAsOperator(owner);
+  const admin = await first.newPage();
+  await openKnowledgeAsOperator(admin);
 
   // Invite a viewer through the members page.
-  await owner.goto(
-    new URL(owner.url()).pathname.replace(
+  await admin.goto(
+    new URL(admin.url()).pathname.replace(
       /\/bots\/[0-9a-f-]+\/knowledge$/,
       "/settings/members",
     ),
   );
   const viewerEmail = uniqueEmail("viewer");
-  await owner.getByLabel("Email", { exact: true }).fill(viewerEmail);
-  await owner.getByRole("combobox", { name: "Role" }).selectOption("viewer");
-  await owner.getByRole("button", { name: "Create invite link" }).click();
-  const inviteCode = (await owner.locator("code").last().textContent()) ?? "";
+  await admin.getByLabel("Email", { exact: true }).fill(viewerEmail);
+  await admin.getByRole("combobox", { name: "Role" }).selectOption("viewer");
+  await admin.getByRole("button", { name: "Create invite link" }).click();
+  const inviteCode = (await admin.locator("code").last().textContent()) ?? "";
   expect(inviteCode).toContain("/accept-invite?token=");
 
   const second = await browser.newContext();

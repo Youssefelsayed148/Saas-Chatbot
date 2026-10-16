@@ -125,13 +125,13 @@ def test_upload_accepts_chunked_multipart_without_content_length(
         yield f"\r\n--{boundary}--\r\n".encode()
 
     try:
-        owner_client = users.as_user("staff")
-        response = owner_client.request(
+        admin_client = users.as_user("staff")
+        response = admin_client.request(
             "POST",
             f"/api/v1/tenants/{users.tenant_id}/bots/{bot_id}/sources/files",
             content=multipart_chunks(),
             headers={
-                **csrf_headers(owner_client),
+                **csrf_headers(admin_client),
                 "Content-Type": f"multipart/form-data; boundary={boundary}",
             },
         )
@@ -345,13 +345,13 @@ def test_upload_requires_csrf(
 def test_tenant_b_cannot_reach_tenant_a_bot_sources_or_upload(
     app: FastAPI, db: OrmSession, tmp_path: Any
 ) -> None:
-    a_owner = seeded_tenant(app, db, prefix="iso-a")
-    b_owner = seeded_tenant(app, db, prefix="iso-b")
-    a_bot = make_bot(a_owner, "Bot A")
+    a_admin = seeded_tenant(app, db, prefix="iso-a")
+    b_admin = seeded_tenant(app, db, prefix="iso-b")
+    a_bot = make_bot(a_admin, "Bot A")
     ghost_bot = str(uuid4())
     try:
         # Guessed bot id → 404 on every knowledge route.
-        base_b = f"/api/v1/tenants/{b_owner.tenant_id}/bots"
+        base_b = f"/api/v1/tenants/{b_admin.tenant_id}/bots"
         for path, method in [
             (f"{base_b}/{a_bot['id']}/sources", "GET"),
             (f"{base_b}/{ghost_bot}/sources", "GET"),
@@ -359,13 +359,13 @@ def test_tenant_b_cannot_reach_tenant_a_bot_sources_or_upload(
             (f"{base_b}/{a_bot['id']}/documents", "GET"),
             (f"{base_b}/{a_bot['id']}/revisions", "GET"),
         ]:
-            assert b_owner.call("admin", method, path).status_code == 404, path
+            assert b_admin.call("admin", method, path).status_code == 404, path
 
-        # Upload to A's bot via B's owner → 404 (bot hidden), nothing stored.
-        upload = upload_sources(b_owner, a_bot["id"], [("x.md", MD_EN.read_bytes())], tmp_path)
+        # Upload to A's bot via B's admin → 404 (bot hidden), nothing stored.
+        upload = upload_sources(b_admin, a_bot["id"], [("x.md", MD_EN.read_bytes())], tmp_path)
         assert upload.status_code == 404
     finally:
-        cleanup = [a_owner, b_owner]
+        cleanup = [a_admin, b_admin]
         for group in cleanup:
             group.cleanup()
 

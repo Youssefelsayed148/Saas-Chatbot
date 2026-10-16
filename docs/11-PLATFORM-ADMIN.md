@@ -3,7 +3,7 @@ Separate route group `/platform`, protected by the server-validated `users.is_pl
 ## Basics — P4-06 (so first clients can be onboarded)
 - **Clients list:** every tenant with plan label, status, bot count, seat count, message usage this month, last activity; search and filter.
 - **Client detail:** bots and their status, knowledge/revision and failed-job summary, members and roles, recent audit events, usage so far.
-- **Staff onboarding:** one form calling the shared `ProvisioningService` — tenant + owner one-time invite link (no email provider, ADR-004) + bot + optional upload of the website-to-knowledge skill output. Idempotency-Key; durable request record with progress and retry; actor recorded in audit.
+- **Staff onboarding:** one form calling the shared `ProvisioningService` — tenant + admin one-time invite link (no email provider, ADR-004) + bot + optional upload of the website-to-knowledge skill output. Idempotency-Key; durable request record with progress and retry; actor recorded in audit.
 ## Advanced — P7 (all P7 tickets complete before P6)
 - **Operations:** job queue health, retry/cancel job, failed SaaS jobs, stuck conversations, pause bot (reason required); channel delivery and Many connection health/secret rotation are implemented with the Many contract in P6.
 - **Plans and quotas:** assign a plan label, see who is near a limit (bots, seats, messages, contacts, connections); P7-02 enforces quotas and runs sentiment within its quota/cost cap.

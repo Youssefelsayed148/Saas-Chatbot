@@ -84,7 +84,7 @@ A Claude skill run by staff (browser-capable session). It is a delivery tool, no
 
 ## 15. Handoff rules and agent takeover (ADR-016)
 - Automatic switch to `status = waiting_human` (mode stays ai until an agent takes over; the visitor gets the localized handoff message with the support contact) when: the bot returns `can_answer=false` twice in a row (**default**, configurable 1–3); the visitor asks for a person (rule-based keyword lists EN/AR); order/account routing from §6; the provider chain fails; a staff-configured keyword (e.g. "complaint"). Negative sentiment is only a flag (P5-05), never an automatic switch.
-- **Take over** (owner/admin/editor): `mode = human`, assigned to that user, AI silent. **Return to AI**: `mode = ai`, assignment cleared. **Resolve**: `status = resolved`. A new visitor message on a resolved conversation reopens it with `mode = ai`.
+- **Take over** (admin/editor): `mode = human`, assigned to that user, AI silent. **Return to AI**: `mode = ai`, assignment cleared. **Resolve**: `status = resolved`. A new visitor message on a resolved conversation reopens it with `mode = ai`.
 - An agent reply is a `messages` row (`sender_type = agent`); on the website the widget shows it within ~3 s (polling), on Many channels it is sent through the contract (§18). Viewer role is read-only. Concurrent takeover by two agents: first write wins, the second gets a 409 and the current owner.
 - Every handoff, takeover, return and resolve writes an audit row and a system message in the thread.
 - Live updates: dashboard uses Server-Sent Events backed by a DB cursor poll (every ~2 s) so it works with several API processes; reconnect resumes from `Last-Event-ID`. In-app notification badge for conversations in `waiting_human` or assigned to you; no email in v1.
@@ -104,7 +104,7 @@ A Claude skill run by staff (browser-capable session). It is a delivery tool, no
 Authoritative detail is in `docs/17-MANYOSIRISCHAT-CHANNEL-INTEGRATION.md`. Summary: HMAC-SHA256 signed JSON (`connection id + timestamp + body`), 5-minute skew, `event_id` dedupe, 202-then-job processing; inbound `message.received` / `message.status`; outbound `POST {many}/api/saas/messages` keyed by our `message_id`; Many enforces Meta rules (window, templates); the SaaS stores no Meta tokens; text only in v1; connections are created explicitly by staff.
 
 ## 19. Team invitations (no email provider, ADR-004)
-- Owner/admin creates an invitation (email label, role, expiry default 7 days); the app shows a one-time link containing a random token (only its hash is stored). The inviter copies and sends it by any channel.
-- Accepting: the invitee opens the link, registers or logs in with that email, and a membership is created; the token is single-use and expires. Revoke, resend (new token) and list pending invitations are available. Roles can be changed and members removed (owner cannot be removed or demoted by others; last owner is protected).
-- The same mechanism creates the first owner when staff onboard a client (P4-06): staff get the owner invite link.
+- Admin creates an invitation (email label, role, expiry default 7 days); the app shows a one-time link containing a random token (only its hash is stored). The inviter copies and sends it by any channel.
+- Accepting: the invitee opens the link, registers or logs in with that email, and a membership is created; the token is single-use and expires. Revoke, resend (new token) and list pending invitations are available. Roles can be changed and members removed (the last active admin cannot be removed or demoted).
+- The same mechanism creates the first admin when staff onboard a client (P4-06): staff get the admin invite link.
 - Tables: `invitations(id, tenant_id, email, role, token_hash, expires_at, accepted_at, revoked_at, created_by)`. Inbox agents (editors) join this way. Every action is audited; tokens are never logged.

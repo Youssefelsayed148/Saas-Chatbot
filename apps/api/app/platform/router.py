@@ -3,7 +3,7 @@
 Guarded server-side by users.is_platform_staff (never a tenant role); no
 impersonation, actor attribution on every staff action. Client list and
 detail are read views; onboarding goes through the SHARED ProvisioningService
-with a REQUIRED Idempotency-Key and returns the owner one-time invite link
+with a REQUIRED Idempotency-Key and returns the admin one-time invite link
 (shown once). Non-staff calls reach 403 FORBIDDEN.
 """
 
@@ -594,7 +594,7 @@ async def platform_onboarding(
 ) -> dict[str, Any]:
     """Staff onboarding through the SHARED ProvisioningService. Idempotency-Key
     REQUIRED (a replay re-reads the durable row and returns it). The actor is
-    the staff user; the owner one-time invite link is returned once."""
+    the staff user; the admin one-time invite link is returned once."""
     if not idempotency_key or not idempotency_key.strip():
         raise ApiError(400, "VALIDATION_ERROR", "Idempotency-Key header is required.")
     payload = ProvisioningPayload(

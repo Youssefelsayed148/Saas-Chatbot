@@ -101,7 +101,7 @@ def _engine() -> Any:
 
 
 def _set_bot_status(db: OrmSession, users: Any, *, bot_id: str, status: str) -> None:
-    """draft→active is an owner action whose UI/API arrives in later tickets;
+    """draft→active is an admin action whose UI/API arrives in later tickets;
     scoped to the tenant (the UPDATE never touches other tenants' rows)."""
     db.execute(
         text(

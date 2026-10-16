@@ -28,7 +28,7 @@ async function createOrgAndBot(
   return { tenantId, botId };
 }
 
-/** Upload + ingest + publish through the owner's request context (cookies shared). */
+/** Upload + ingest + publish through the admin's request context (cookies shared). */
 async function publishKnowledge(
   page: Page,
   tenantId: string,
@@ -145,22 +145,22 @@ test("an expired session pushes the playground back to login", async ({
 });
 
 test("viewer is read-only in the playground", async ({ browser }) => {
-  const ownerContext = await browser.newContext();
-  const owner = await ownerContext.newPage();
-  await createOrgAndBot(owner);
+  const adminContext = await browser.newContext();
+  const admin = await adminContext.newPage();
+  await createOrgAndBot(admin);
 
   // Invite a viewer through the members page.
-  await owner.goto(
-    new URL(owner.url()).pathname.replace(
+  await admin.goto(
+    new URL(admin.url()).pathname.replace(
       /\/bots\/[0-9a-f-]+\/settings$/,
       "/settings/members",
     ),
   );
   const viewerEmail = uniqueEmail("pg-viewer");
-  await owner.getByLabel("Email", { exact: true }).fill(viewerEmail);
-  await owner.getByRole("combobox", { name: "Role" }).selectOption("viewer");
-  await owner.getByRole("button", { name: "Create invite link" }).click();
-  const inviteCode = (await owner.locator("code").last().textContent()) ?? "";
+  await admin.getByLabel("Email", { exact: true }).fill(viewerEmail);
+  await admin.getByRole("combobox", { name: "Role" }).selectOption("viewer");
+  await admin.getByRole("button", { name: "Create invite link" }).click();
+  const inviteCode = (await admin.locator("code").last().textContent()) ?? "";
   expect(inviteCode).toContain("/accept-invite?token=");
 
   const viewerContext = await browser.newContext();
@@ -198,6 +198,6 @@ test("viewer is read-only in the playground", async ({ browser }) => {
     ).status(),
   ).toBe(403);
 
-  await ownerContext.close();
+  await adminContext.close();
   await viewerContext.close();
 });
