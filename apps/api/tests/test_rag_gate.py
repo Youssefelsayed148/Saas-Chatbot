@@ -266,3 +266,29 @@ def test_keyword_thresholds_are_configured_per_embedding_model() -> None:
     )
     assert relevance_gate(other, settings).passed == [weak, strong]
     assert relevance_gate(openai, settings).fts_minimum == 0.2
+
+
+def test_refusal_copy_offers_handoff_in_both_languages() -> None:
+    from app.chat.prompts import CANNED
+
+    assert "inbox" in CANNED["en"]["cannot_confirm"]
+    assert "صندوق" in CANNED["ar"]["cannot_confirm"]
+    assert "{support_contact}" in CANNED["ar"]["cannot_confirm"]
+
+
+def test_optional_steps_skip_when_the_token_cap_is_spent() -> None:
+    from app.core.errors import ApiError
+
+    class CapSpent(FakeChatModel):
+        def complete(
+            self, messages: list[dict[str, str]], *, json_mode: bool, max_tokens: int
+        ) -> str:
+            raise ApiError(429, "QUOTA_EXCEEDED", "The bot's usage limit has been reached.")
+
+    assert service.translate_query(CapSpent(), question="كم السعر؟", target_language="en") is None
+    assert (
+        service.condense(
+            CapSpent(), history=["What are your hours?"], question="and Friday?", language="en"
+        )
+        is None
+    )

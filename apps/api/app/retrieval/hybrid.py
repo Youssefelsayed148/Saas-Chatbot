@@ -16,6 +16,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session as OrmSession
 
 from app.core.config import Settings, get_settings
+from app.core.errors import ApiError
 from app.db.models import Bot, Job
 from app.embeddings.providers import EmbeddingBatch, EmbeddingError, from_settings, validate_vector
 from app.quotas.ai import metered_embed
@@ -148,6 +149,7 @@ def retrieve_hybrid(
     always_include_document_ids: set[str] | None = None,
     translate_query: TranslateQuery | None = None,
     mode_override: str | None = None,
+    channel: str = "website",
 ) -> RetrievalResult:
     settings = settings or get_settings()
     bot = db.scalar(
@@ -206,7 +208,7 @@ def retrieve_hybrid(
                 texts=[question],
                 embed=from_settings(settings, identity).embed,
                 event_type="embed_query",
-                channel="website",
+                channel=channel,
             )
             found = vector_search(
                 vector_db,
@@ -225,6 +227,16 @@ def retrieve_hybrid(
         result = keyword()
         try:
             vectors, batch = future.result()
+        except ApiError as error:
+            if error.code != "QUOTA_EXCEEDED":
+                raise
+            result.degradation_reason = "embedding_budget_exhausted"
+            logger.warning(
+                "rag.fts_only reason=embedding_budget_exhausted tenant=%s bot=%s",
+                tenant_id,
+                bot_id,
+            )
+            return result
         except (EmbeddingError, SQLAlchemyError):
             result.degradation_reason = "embedding_or_vector_failure"
             logger.warning(

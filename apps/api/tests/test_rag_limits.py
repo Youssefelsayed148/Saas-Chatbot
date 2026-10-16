@@ -433,3 +433,26 @@ def test_http_failure_kinds_decide_release_or_hold(app: FastAPI, db: Session) ->
         assert all(held > 0 for status, held in statuses if status == "usage_unreported")
     finally:
         users.cleanup()
+
+
+def test_quota_details_are_hidden_from_public_visitors() -> None:
+    from fastapi.testclient import TestClient
+
+    from app.core.errors import install_error_handlers
+    from app.quotas.rag import quota
+
+    tiny = FastAPI()
+    install_error_handlers(tiny)
+
+    @tiny.get("/api/public/v1/x")
+    def public() -> None:
+        raise quota("monthly_tokens")
+
+    @tiny.get("/api/v1/x")
+    def staff() -> None:
+        raise quota("monthly_tokens")
+
+    client = TestClient(tiny)
+    visitor = client.get("/api/public/v1/x").json()["error"]
+    assert visitor["code"] == "QUOTA_EXCEEDED" and "details" not in visitor
+    assert client.get("/api/v1/x").json()["error"]["details"] == {"counter": "monthly_tokens"}

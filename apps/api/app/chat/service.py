@@ -27,6 +27,7 @@ from app.chat.providers import ChatModel, ProviderError
 from app.chat.routing import route
 from app.chat.tracing import TracedModel
 from app.core.config import Settings, get_settings
+from app.core.errors import ApiError
 from app.db.models import Bot, Tenant
 from app.knowledge.language import detect_language
 from app.retrieval.gate import relevance_gate
@@ -129,6 +130,10 @@ def condense(
         condensed = model.complete(messages, json_mode=False, max_tokens=120).strip()
     except ProviderError:
         return None
+    except ApiError as error:  # optional step: a spent token cap skips it
+        if error.code != "QUOTA_EXCEEDED":
+            raise
+        return None
     if not condensed or "\n" in condensed or len(condensed) > 500:
         return None
     return condensed
@@ -157,6 +162,10 @@ def translate_query(
     try:
         translated = model.complete(messages, json_mode=False, max_tokens=120).strip()
     except ProviderError:
+        return None
+    except ApiError as error:  # optional step: a spent token cap skips it
+        if error.code != "QUOTA_EXCEEDED":
+            raise
         return None
     if not translated or "\n" in translated or len(translated) > 500:
         return None
@@ -278,6 +287,7 @@ def chat_answer(
             bot_primary_language=_default_answer_language(bot),
             settings=settings,
             always_include_document_ids={str(value) for value in always_include},
+            channel=str(getattr(model, "channel", "website")),
             # Cross-script bridge (P4-00): translate with ONE model call only
             # when the language pass is empty and the languages differ.
             translate_query=lambda raw, target: translate_query(
