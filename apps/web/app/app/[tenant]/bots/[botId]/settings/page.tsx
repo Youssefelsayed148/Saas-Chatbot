@@ -10,6 +10,7 @@ import type { Bot } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { Loading, Notice } from "@/lib/ui";
 import BotWorkspaceNav from "@/lib/bot-workspace-nav";
+import RagTierControl from "@/lib/rag-tier-control";
 
 export default function BotSettingsPage() {
   const params = useParams<{ tenant: string; botId: string }>();
@@ -388,6 +389,7 @@ export default function BotSettingsPage() {
           </button>
         )}
       </form>
+      {canEdit && <RagTierControl tenantId={tenantId} botId={botId} />}
       {bot.status === "archived" && <Notice message="This bot is archived." />}
     </main>
   );

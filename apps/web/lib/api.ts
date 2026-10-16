@@ -1454,6 +1454,44 @@ export async function patchRagLimits(
     body: { limits },
   });
 }
+export type RagTier = "standard" | "premium";
+export interface RagStatus {
+  retrieval_mode: string;
+  tier: RagTier;
+  active_embedding_model: string | null;
+  embedding_ready: boolean;
+  backfill: {
+    id: string;
+    status: string;
+    done?: number;
+    total?: number;
+  } | null;
+}
+export async function ragStatus(
+  tenantId: string,
+  botId: string,
+): Promise<RagStatus> {
+  return api(`tenants/${tenantId}/bots/${botId}/rag`);
+}
+export async function patchRagTier(
+  tenantId: string,
+  botId: string,
+  tier: RagTier,
+): Promise<void> {
+  await api(`tenants/${tenantId}/bots/${botId}/rag`, {
+    method: "PATCH",
+    body: { tier },
+  });
+}
+export async function startRagBackfill(
+  tenantId: string,
+  botId: string,
+): Promise<void> {
+  await api(`tenants/${tenantId}/bots/${botId}/rag/backfill`, {
+    method: "POST",
+    body: {},
+  });
+}
 export async function ragCosts(
   tenantId: string,
   botId: string,

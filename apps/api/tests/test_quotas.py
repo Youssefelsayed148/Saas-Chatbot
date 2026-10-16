@@ -279,6 +279,82 @@ def test_sentiment_worker_records_one_measured_classification(db: Any, monkeypat
     )
 
 
+def _resolved_sentiment_job(db: Any, slug: str) -> tuple[Any, Any]:
+    tenant = Tenant(id=uuid4(), name="Sentiment", slug=slug, plan_label="starter")
+    db.add(tenant)
+    db.flush()
+    bot = Bot(id=uuid4(), tenant_id=tenant.id, name="Sentiment bot", status="active", config={})
+    db.add(bot)
+    db.flush()
+    conversation = Conversation(
+        tenant_id=tenant.id, bot_id=bot.id, status="resolved", channel="website", source="website"
+    )
+    db.add(conversation)
+    db.flush()
+    db.add(
+        Message(
+            tenant_id=tenant.id,
+            bot_id=bot.id,
+            conversation_id=conversation.id,
+            sender_type="visitor",
+            text="Thank you, this was helpful.",
+        )
+    )
+    job = Job(
+        tenant_id=tenant.id,
+        bot_id=bot.id,
+        type="sentiment_classify",
+        status="running",
+        payload={"conversation_id": str(conversation.id)},
+    )
+    db.add(job)
+    db.commit()
+    return conversation, job
+
+
+def test_sentiment_is_skipped_and_logged_without_a_key(db: Any, caplog: Any) -> None:
+    from app.quotas.sentiment import run_sentiment_job
+
+    conversation, job = _resolved_sentiment_job(db, "sentiment-nokey")
+    settings = Settings.model_construct(
+        chat_stub_model=False, chat_openrouter_api_key=None, chat_free_model_chain=[]
+    )
+    with caplog.at_level("WARNING"):
+        assert run_sentiment_job(db, job, settings) is None
+    assert "sentiment skipped" in caplog.text
+    db.expire_all()
+    assert db.get(Conversation, conversation.id).sentiment is None
+
+
+def test_sentiment_model_failure_is_logged_and_skipped(
+    db: Any, monkeypatch: Any, caplog: Any
+) -> None:
+    import app.chat.providers as providers
+    from app.quotas.sentiment import run_sentiment_job
+
+    class Exploding:
+        def complete(self, *_args: Any, **_kwargs: Any) -> str:
+            raise RuntimeError("provider down sk-secret-value")
+
+    conversation, job = _resolved_sentiment_job(db, "sentiment-fail")
+    monkeypatch.setattr(providers, "OpenAICompatibleModel", lambda **_kwargs: Exploding())
+    settings = Settings.model_construct(
+        chat_stub_model=False,
+        chat_openrouter_api_key=SecretStr("test-key"),
+        chat_free_model_chain=["test-model:free"],
+        chat_openrouter_base_url="https://example.invalid",
+    )
+    with caplog.at_level("WARNING"):
+        assert run_sentiment_job(db, job, settings) is None
+    assert "sentiment skipped" in caplog.text
+    assert "sk-secret-value" not in caplog.text  # only the exception type is logged
+    db.expire_all()
+    assert db.get(Conversation, conversation.id).sentiment is None
+    assert (
+        not db.execute(select(UsageEvent).where(UsageEvent.kind == "sentiment_run")).scalars().all()
+    )
+
+
 def test_accepting_invitation_at_seat_limit_succeeds_but_new_invite_is_refused(
     app: Any, db: Any
 ) -> None:
