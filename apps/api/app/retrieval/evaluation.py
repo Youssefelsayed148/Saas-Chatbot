@@ -19,7 +19,7 @@ def text_key(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
 
 
-def estimate_calibration(texts: list[str]) -> dict[str, Any]:
+def estimate_calibration(texts: list[str], *, enforce: bool = True) -> dict[str, Any]:
     # UTF-8 bytes form a conservative token upper bound, without another model
     # or tokenizer dependency. Report the deliberately conservative assumption.
     lengths = [len(value.encode("utf-8")) for value in dict.fromkeys(texts)]
@@ -30,12 +30,12 @@ def estimate_calibration(texts: list[str]) -> dict[str, Any]:
         "estimate_method": "UTF-8 byte upper bound, $0.13 per million input tokens",
         "within_budget": tokens <= MAX_CALIBRATION_TOKENS,
     }
-    if tokens > MAX_CALIBRATION_TOKENS:
+    if enforce and tokens > MAX_CALIBRATION_TOKENS:
         raise ValueError(
             f"Calibration estimate {tokens} tokens / ${estimate['estimated_cost_usd_upper_bound']} "
             "exceeds the 2M-token cap; no embedding requests allowed."
         )
-    if any(length > 8192 for length in lengths):
+    if enforce and any(length > 8192 for length in lengths):
         raise ValueError("An input may exceed the embedding per-input token cap; split it first.")
     return estimate
 
@@ -74,6 +74,13 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
     gaps = [row for row in rows if row["unanswerable"]]
     return {
         "cases": len(rows),
+        "hit_at_3": sum(row.get("hit_at_3", False) for row in answerable) / len(answerable)
+        if answerable
+        else None,
+        "mrr": sum(row.get("reciprocal_rank", 0.0) for row in answerable) / len(answerable)
+        if answerable
+        else None,
+        "mrr_cutoff": "all retrieved candidates (top_k), answerable cases only",
         "answerable_hit_at_k": [sum(row["hit_at_k"] for row in answerable), len(answerable)],
         "gate_refusal_correctness": [sum(not row["gate_passed"] for row in gaps), len(gaps)],
         "gate_wrong_refusals": [sum(not row["gate_passed"] for row in answerable), len(answerable)],
@@ -112,6 +119,68 @@ def threshold_proposal(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "status": "separable sample only; owner validation required"
         if positive_floor > negative_ceiling
         else "overlap: owner must choose the refusal/recall tradeoff",
+        "automatically_applied": False,
+    }
+
+
+def threshold_sweep(rows: list[dict[str, Any]], mode: str) -> dict[str, Any]:
+    """Choose a conservative labelled-sample tradeoff, never apply it implicitly."""
+    settings = []
+    positives = sum(not row["unanswerable"] for row in rows)
+    negatives = len(rows) - positives
+    for cosine in [None] if mode == "fts_only" else [None, 0.4, 0.5, 0.6, 0.7]:
+        for fts in (0.005, 0.01, 0.05, 0.1, 0.2):
+            for terms in (1, 2, 3):
+                leaks = refusals = wrong_accepts = 0
+                for row in rows:
+                    accepted = [
+                        c
+                        for c in row["evidence"]
+                        if (
+                            cosine is not None
+                            and c["vector_similarity"] is not None
+                            and c["vector_similarity"] >= cosine
+                        )
+                        or (c["fts_match"] >= fts and c["matched_terms"] >= terms)
+                    ]
+                    correct = any(
+                        c["chunk_id"] in row["expected_chunk_ids"]
+                        or c["document_id"] in row["expected_document_ids"]
+                        for c in accepted
+                    )
+                    if row["unanswerable"]:
+                        leaks += bool(accepted)
+                    else:
+                        refusals += not accepted
+                        wrong_accepts += bool(accepted) and not correct
+                settings.append(
+                    {
+                        "cosine_floor": cosine,
+                        "fts_floor": fts,
+                        "min_matched_terms": terms,
+                        "unanswerable_leaks": leaks,
+                        "unanswerable_cases": negatives,
+                        "wrong_refusals": refusals,
+                        "answerable_cases": positives,
+                        "wrong_evidence_accepts": wrong_accepts,
+                    }
+                )
+    recommended = min(
+        settings,
+        key=lambda s: (
+            s["unanswerable_leaks"],
+            s["wrong_refusals"],
+            s["wrong_evidence_accepts"],
+            s["min_matched_terms"],
+            s["fts_floor"],
+            s["cosine_floor"] or 2,
+        ),
+    )
+    return {
+        "settings": settings,
+        "recommended": recommended,
+        "selection_rule": "fewest leaks, then wrong refusals, then wrong-evidence accepts",
+        "status": "sample recommendation only; pending owner calibration review",
         "automatically_applied": False,
     }
 
