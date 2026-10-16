@@ -34,7 +34,7 @@ services:
       [
         "sh",
         "-c",
-        "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000",
+        "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --timeout-keep-alive 65",
       ]
     volumes:
       # Uploaded source files are written by the API and parsed by the worker.

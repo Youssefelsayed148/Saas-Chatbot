@@ -89,6 +89,8 @@ export async function startServer(): Promise<ServerHandle> {
       "127.0.0.1",
       "--port",
       process.env.E2E_API_PORT ?? "8000",
+      "--timeout-keep-alive",
+      "65",
     ],
     {
       cwd: API_DIR,
