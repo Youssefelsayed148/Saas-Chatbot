@@ -1,6 +1,9 @@
 """P1-02: Alembic migrations upgrade/downgrade on a disposable database."""
 
+import logging
+
 import psycopg
+import pytest
 from sqlalchemy import create_engine, insert, inspect, make_url
 from sqlalchemy.engine import Engine
 
@@ -20,7 +23,7 @@ EXPECTED_TABLES = {
 }
 
 
-def test_migrations_up_down_cycle(base_url: str) -> None:
+def test_migrations_up_down_cycle(base_url: str, monkeypatch: pytest.MonkeyPatch) -> None:
     url = disposable_url(base_url, MIGRATION_DB)
     with psycopg.connect(
         make_url(url).set(database="postgres").render_as_string(hide_password=False),
@@ -31,8 +34,11 @@ def test_migrations_up_down_cycle(base_url: str) -> None:
     engine: Engine = create_engine(sqlalchemy_url(url))
 
     try:
+        application_logger = logging.getLogger("app.quotas.sentiment")
+        monkeypatch.setattr(application_logger, "disabled", False)
         # --- upgrade head from an empty database ---
         run_migrations(url)
+        assert not application_logger.disabled
         tables = set(inspect(engine).get_table_names())
         assert EXPECTED_TABLES <= tables, f"missing tables: {EXPECTED_TABLES - tables}"
 
@@ -122,9 +128,7 @@ def test_migrations_up_down_cycle(base_url: str) -> None:
                     )
                 )
                 conn.execute(
-                    insert(Membership).values(
-                        tenant_id=demo_tid, user_id=user_id, role=role
-                    )
+                    insert(Membership).values(tenant_id=demo_tid, user_id=user_id, role=role)
                 )
             conn.execute(
                 insert(Session).values(
