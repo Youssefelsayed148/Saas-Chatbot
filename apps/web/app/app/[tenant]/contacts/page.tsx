@@ -14,6 +14,7 @@ export default function ContactsPage() {
   const { tenant: tenantId } = useParams<{ tenant: string }>();
   const { roleIn } = useSession();
   const canEdit = roleSatisfies(roleIn(tenantId), "editor");
+  const canExport = roleSatisfies(roleIn(tenantId), "admin");
   const [contacts, setContacts] = useState<Contact[] | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -106,11 +107,13 @@ export default function ContactsPage() {
       ) : (
         <>
           <p>{contacts.length} contacts</p>
-          <p>
-            <a href={`/api/v1/tenants/${tenantId}/contacts/export.csv`}>
-              Export CSV
-            </a>
-          </p>
+          {canExport && (
+            <p>
+              <a href={`/api/v1/tenants/${tenantId}/contacts/export.csv`}>
+                Export CSV
+              </a>
+            </p>
+          )}
           <table>
             <thead>
               <tr>

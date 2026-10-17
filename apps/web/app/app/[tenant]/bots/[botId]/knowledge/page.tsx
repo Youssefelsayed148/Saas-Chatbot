@@ -224,13 +224,7 @@ export default function KnowledgePage() {
     (source) => source.status === "stored",
   );
 
-  if (!canRead)
-    return (
-      <main>
-        <h1>Knowledge</h1>
-        <Notice message="Platform staff access required." />
-      </main>
-    );
+  if (!canRead) return null;
 
   return (
     <main>

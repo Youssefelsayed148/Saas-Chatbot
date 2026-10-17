@@ -180,21 +180,14 @@ test("viewer is read-only in the playground", async ({ browser }) => {
   await viewer.getByRole("link", { name: /Go to your dashboard/i }).click();
   await viewer.waitForURL("/app");
   await viewer.getByRole("link", { name: /Chat Org/ }).click();
-  await viewer.waitForURL(/\/app\/[0-9a-f-]{36}\/bots$/);
-  await viewer
-    .getByRole("row", { name: /Chat Bot/ })
-    .getByRole("link")
-    .first()
-    .click();
-  await expect(
-    viewer.getByRole("link", { name: "Playground", exact: true }),
-  ).toHaveCount(0);
-  const botId = new URL(viewer.url()).pathname.split("/")[4];
+  await viewer.waitForURL(/\/app\/[0-9a-f-]{36}$/);
   const tenantId = new URL(viewer.url()).pathname.split("/")[2];
+  const bots = await (
+    await viewer.request.get(`/api/v1/tenants/${tenantId}/bots`)
+  ).json();
+  const botId = bots[0].id;
   await viewer.goto(`/app/${tenantId}/bots/${botId}/playground`);
-  await expect(
-    viewer.getByText("Platform staff access required."),
-  ).toBeVisible();
+  await expect(viewer).toHaveURL(`/app/${tenantId}`);
   await expect(viewer.getByTestId("playground-input")).toHaveCount(0);
   expect(
     (

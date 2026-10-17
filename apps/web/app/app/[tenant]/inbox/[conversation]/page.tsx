@@ -319,7 +319,7 @@ export default function InboxConversationPage() {
                   )}
                   {message.can_answer === true &&
                     message.sender_type === "ai" && (
-                      <small>Answered from knowledge</small>
+                      <small>Assistant reply</small>
                     )}
                   {(message.feedback?.length ?? 0) > 0 && (
                     <p aria-label="Visitor feedback">

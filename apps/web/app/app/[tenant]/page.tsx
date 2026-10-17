@@ -95,8 +95,8 @@ export default function TenantOverview() {
               </div>
               {!data.recent.conversations.length ? (
                 <Empty>
-                  No conversations yet. Ask your operator to verify your website
-                  widget.
+                  No conversations yet. New visitor conversations will appear
+                  here.
                 </Empty>
               ) : (
                 <ul className="recent-list">
@@ -118,33 +118,39 @@ export default function TenantOverview() {
                 </ul>
               )}
             </section>
-            <section className="panel">
-              <p className="eyebrow">GET STARTED</p>
-              <h2>Your first assistant</h2>
-              <ol className="checklist">
-                <li>
-                  <span aria-hidden="true">{data.bots.length ? "✓" : "○"}</span>
-                  <Link href={`${base}/bots`}>
-                    {data.bots.length
-                      ? "First bot created"
-                      : "Create your first bot"}
-                  </Link>
-                </li>
-                {data.bots[0] && canReadKnowledge && (
+            {canReadKnowledge && (
+              <section className="panel">
+                <p className="eyebrow">GET STARTED</p>
+                <h2>Your first assistant</h2>
+                <ol className="checklist">
                   <li>
-                    <span aria-hidden="true">{data.published ? "✓" : "○"}</span>
-                    <Link href={`${base}/bots/${data.bots[0].id}/knowledge`}>
-                      {data.published
-                        ? "Knowledge published"
-                        : me?.is_platform_staff
-                          ? "Publish knowledge"
-                          : "Review knowledge"}
-                      <small dir="auto">{data.bots[0].name}</small>
+                    <span aria-hidden="true">
+                      {data.bots.length ? "✓" : "○"}
+                    </span>
+                    <Link href={`${base}/bots`}>
+                      {data.bots.length
+                        ? "First bot created"
+                        : "Create your first bot"}
                     </Link>
                   </li>
-                )}
-              </ol>
-            </section>
+                  {data.bots[0] && canReadKnowledge && (
+                    <li>
+                      <span aria-hidden="true">
+                        {data.published ? "✓" : "○"}
+                      </span>
+                      <Link href={`${base}/bots/${data.bots[0].id}/knowledge`}>
+                        {data.published
+                          ? "Knowledge published"
+                          : me?.is_platform_staff
+                            ? "Publish knowledge"
+                            : "Review knowledge"}
+                        <small dir="auto">{data.bots[0].name}</small>
+                      </Link>
+                    </li>
+                  )}
+                </ol>
+              </section>
+            )}
           </div>
           <section aria-label="Plan usage">
             <div className="section-heading">
@@ -153,16 +159,20 @@ export default function TenantOverview() {
             </div>
             <div className="usage-grid">
               {Object.entries(data.quota.usage)
-                .filter(([key]) => Number.isFinite(data.quota.limits[key]))
+                .filter(
+                  ([key]) =>
+                    Number.isFinite(data.quota.limits[key]) &&
+                    (canReadKnowledge || key !== "bots"),
+                )
                 .map(([key, value]) => (
                   <label key={key}>
-                    {key.replaceAll("_", " ")}
+                    {humanLabel(key)}
                     <span>
                       {value} / {data.quota.limits[key]}
                     </span>
                     {data.quota.limits[key] > 0 && (
                       <progress
-                        aria-label={key.replaceAll("_", " ")}
+                        aria-label={humanLabel(key)}
                         value={Math.min(value, data.quota.limits[key])}
                         max={data.quota.limits[key]}
                       />
@@ -170,16 +180,24 @@ export default function TenantOverview() {
                   </label>
                 ))}
             </div>
-            {data.quota.warnings.length > 0 && (
+            {data.quota.warnings.filter(
+              (key) => canReadKnowledge || key !== "bots",
+            ).length > 0 && (
               <p role="status">
                 Approaching the plan limit for{" "}
-                {data.quota.warnings.map(humanLabel).join(", ")}.
+                {data.quota.warnings
+                  .filter((key) => canReadKnowledge || key !== "bots")
+                  .map(humanLabel)
+                  .join(", ")}
+                .
               </p>
             )}
-            <p className="muted">
-              Plan limits are provisional. Measured provider tokens this month:{" "}
-              {data.quota.measured_tokens_this_month}.
-            </p>
+            {canReadKnowledge && (
+              <p className="muted">
+                Plan limits are provisional. Measured provider tokens this
+                month: {data.quota.measured_tokens_this_month}.
+              </p>
+            )}
           </section>
         </>
       )}

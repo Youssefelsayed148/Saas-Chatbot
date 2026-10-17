@@ -63,11 +63,11 @@ test("Arabic inbox rows preserve unread markers and removable filter requests", 
   await cleared;
 });
 
-test("tenant Overview reads existing data and keeps Bots as the signup destination", async ({
+test("tenant Overview reads existing data and is the client signup destination", async ({
   page,
 }) => {
   const { tenantId } = await registerAdmin(page, "Overview route");
-  await expect(page).toHaveURL(`/app/${tenantId}/bots`);
+  await expect(page).toHaveURL(`/app/${tenantId}`);
   const writes: string[] = [];
   page.on("request", (request) => {
     if (["POST", "PATCH", "DELETE"].includes(request.method()))
@@ -79,8 +79,9 @@ test("tenant Overview reads existing data and keeps Bots as the signup destinati
   ).toBeVisible();
   await expect(
     page.getByText("First bot created", { exact: true }),
-  ).toBeVisible();
-  await expect(page.getByText(/Plan limits are provisional/)).toBeVisible();
+  ).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Plan usage" })).toBeVisible();
+  await expect(page.getByText(/Plan limits are provisional/)).toHaveCount(0);
   expect(writes).toEqual([]);
 });
 

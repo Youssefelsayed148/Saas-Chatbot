@@ -1,5 +1,13 @@
 import type { ReactNode } from "react";
 const LABELS: Record<string, string> = {
+  bots: "Assistants",
+  seats: "Team members",
+  pages_per_bot: "Content pages",
+  upload_file_mb: "Maximum file size (MB)",
+  monthly_messages: "Messages this month",
+  contacts: "Contacts",
+  channel_connections: "Connected channels",
+  sentiment_runs: "Sentiment analyses this month",
   waiting_human: "Waiting for human",
   manual_takeover: "Manual takeover",
   visitor_requested: "Visitor requested a person",

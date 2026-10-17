@@ -43,7 +43,7 @@ export function ChangeRequests({ tenantId }: { tenantId?: string }) {
       <h1>{tenantId ? "Request a change" : "Operator change queue"}</h1>
       <p className="page-purpose">
         {tenantId
-          ? "Ask your operator to update knowledge, text or domains, or review an organization deletion request."
+          ? "Request content or website updates, or an organization deletion review."
           : "Review and triage client requests."}
       </p>
       {error && <Notice message={error} tone="error" />}
@@ -79,9 +79,9 @@ export function ChangeRequests({ tenantId }: { tenantId?: string }) {
                 setType(event.target.value as api.ChangeRequest["type"])
               }
             >
-              <option value="knowledge">Knowledge</option>
+              <option value="knowledge">Content update</option>
               <option value="text_change">Text change</option>
-              <option value="domain">Domain</option>
+              <option value="domain">Website update</option>
               <option value="delete_org">Delete organization</option>
               <option value="other">Other</option>
             </select>
@@ -118,7 +118,17 @@ export function ChangeRequests({ tenantId }: { tenantId?: string }) {
         <ul>
           {rows.map((row) => (
             <li key={row.id}>
-              <h2>{row.type.replaceAll("_", " ")}</h2>
+              <h2>
+                {tenantId
+                  ? {
+                      knowledge: "Content update",
+                      text_change: "Text change",
+                      domain: "Website update",
+                      delete_org: "Delete organization",
+                      other: "Other",
+                    }[row.type]
+                  : row.type.replaceAll("_", " ")}
+              </h2>
               <p>{row.text}</p>
               <p>
                 Status: {row.status} · {row.created_at.slice(0, 10)}

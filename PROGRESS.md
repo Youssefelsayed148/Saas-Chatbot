@@ -1799,3 +1799,124 @@ excluded by the owner). SSE long-lived behavior is covered by the existing
 reconnection test, while the new role/data HTTP sweep checks its initial event.
 Commit the fix/verification record, then perform the authorized local `--no-ff`
 merge into main and delete the fix branch. No deployment/phase gate is implied.
+
+## 2026-10-17 - Group B client visibility and role matrix
+
+Owner scope: `fix/group-b-client-visibility` from merged, clean `main`; small
+local commits, full checks once at the end, then authorized `--no-ff` merge and
+branch deletion if green. No push, tags, Docker, paid calls or credential-file
+reads. Hosting/billing OPEN decisions are outside this UI fix scope.
+
+Step 0: owner rebuilt the stack and personally verified demo-admin and
+demo-editor Overview and Inbox in the browser without errors; explicitly
+instructed this agent to accept that evidence and skip another live M1 check.
+No agent-run live/demo login check is claimed.
+
+Changes: `implementation/ROLE-MATRIX.md`; client Overview landing and organization
+links; direct default-bot Conversations sidebar destination with an empty/error
+fallback; role-specific sidebar and command palette; pre-shell client redirects
+for legacy Bots and operator-only bot routes; no client bot status/settings or
+bot tabs; admin-only CSV links; read-only organization plan/usage with readable
+labels and no client bot count, provisional notice or provider-token details.
+Removed operator-only copy from client requests, Tenant data, and conversations.
+Staff controls and Group A read-only staff Inbox behavior remain unchanged;
+no API guard, schema, plan entitlement or backend source was modified.
+
+Coverage: new four-role UI fixtures exercise sidebar/palette, hidden DOM text,
+exports, contacts/follow-ups/merge/erase, conversation delete/retention, Inbox
+controls, operator routes and settings; extra empty-list and unresolved-session
+checks. Existing real-API role journeys now expect client Overview/redirects;
+operator helpers explicitly enter the staff Bots list after fixture promotion.
+
+Validation in progress (PowerShell; never writing DB connection values to files):
+- Initial `npm.cmd run lint` and `npm.cmd run typecheck` launch attempts stopped
+  before either check ran because NODE_OPTIONS parsed a backslash Windows path
+  incorrectly (`MODULE_NOT_FOUND`). Corrected the preload path to forward slashes.
+- `npm.cmd run lint` from root: exit 0. Log:
+  `.test-storage-group-b/frontend-lint-final.log` (ignored).
+- `npm.cmd run typecheck` from root: first actual check reported TS18047 for the
+  nullable default-conversation sidebar state. Added an explicit non-null guard.
+  Repeated the required check after that fix: exit 0, route types and TypeScript
+  passed. Log: `.test-storage-group-b/frontend-typecheck-green.log` (ignored).
+- Both Next commands use an ignored NODE_OPTIONS preload that replaces only
+  `@next/env.loadEnvConfig` with the existing process environment, preventing
+  automatic dotenv reads. No product configuration was changed for this.
+- In `apps/api`: `../../.venv/Scripts/python.exe -u -m pytest -q --tb=short -p no:cacheprovider --basetemp=../../.test-storage-group-b/backend-tmp`
+  is the single final full backend run. `ENVIRONMENT=test`, `PYTHONUTF8=1`;
+  process-only TEST_DATABASE_URL/DATABASE_URL use the supplied throwaway account,
+  normalized to plain postgresql for the harness's psycopg maintenance connection.
+  Only `127.0.0.1:55462`, isolated `group_b_backend_test`; global stub flags and
+  provider credential variables cleared in this child process, fixtures control
+  offline providers. Log: `.test-storage-group-b/backend-full.log` (ignored).
+- In `apps/web`: `npm.cmd run test -- --reporter=line` is the single final full
+  browser run (51 tests), using its normal production build/API/worker harness,
+  separate `group_b_browser_test` on port 55462, `E2E_API_PORT=18138`,
+  `API_PROXY_TARGET=http://127.0.0.1:18138`, isolated ignored browser storage,
+  `ENVIRONMENT=test`, `PYTHONUTF8=1`, the same dotenv-blocking Node preload and
+  process-only database connection. Providers are stubbed by the existing browser
+  harness. Log: `.test-storage-group-b/frontend-full.log` (ignored).
+- Prettier formatted changed web files; `git diff --check` passed. Full suite
+  outcomes will be appended after completion. No passing outcome is assumed.
+
+Frontend verification completed:
+- The single full browser command finished exit 1: **45 passed, 6 failed**, 5.2m.
+  All 45 pre-existing cases passed. Five new cases had a DOM assertion that
+  incorrectly treated the shared application theme button's "Appearance" label
+  as a staff-only widget control. The sixth new case used an invalid mock cost
+  response (`[]` instead of `{costs: []}`), causing the fixture-only staff page
+  to error. Corrected only the new spec: match widget appearance/settings rather
+  than the ordinary app theme button, and return the actual typed cost envelope.
+  No product source was changed after the full browser run.
+- In `apps/web`: `npm.cmd run test -- tests/group-b-client-visibility.spec.ts --config ../../.test-storage-group-b/visibility.config.ts --reporter=line`
+  exited **0: 6 passed**, 32.4s. This is the only targeted follow-up, covering
+  every new admin/editor/viewer/staff, empty-list and unresolved-session case.
+  The ignored config reuses the existing production build and normal browser
+  project but disables API setup/teardown because all six tests use API fixtures.
+  Same dotenv-blocking Node preload; no database connection is needed for this
+  targeted run. Log: `.test-storage-group-b/frontend-visibility.log` (ignored).
+  Thus all **51 browser cases** have passing coverage on the final product;
+  a second full-suite run was deliberately not performed, per owner instruction.
+- In `apps/web`: `npm.cmd exec -- eslint lib/app-header.tsx tests/group-b-client-visibility.spec.ts --max-warnings 0`
+  and `npm.cmd exec -- tsc --noEmit --incremental false`: both exit 0 after the
+  final test-only corrections. Earlier full frontend lint and typecheck passed.
+- The backend full suite is still running; no backend rerun has been started.
+
+Files touched (paths below relative to `apps/web`, plus the two root records):
+- Records: `implementation/ROLE-MATRIX.md`, `PROGRESS.md`.
+- Navigation/entry: `app/app/layout.tsx`, `app/app/page.tsx`,
+  `app/register/page.tsx`, `lib/app-header.tsx`, `lib/bot-workspace-nav.tsx`,
+  `app/app/[tenant]/conversations/page.tsx`.
+- Tenant views: `app/app/[tenant]/page.tsx`, `contacts/page.tsx`,
+  `settings/data/page.tsx`, `settings/members/page.tsx`,
+  `inbox/[conversation]/page.tsx` (last four relative to that tenant directory).
+- Bot views under `app/app/[tenant]/bots/[botId]`: `settings/page.tsx`,
+  `knowledge/page.tsx`, `install/page.tsx`, `playground/page.tsx`,
+  `overview/page.tsx`, `conversations/[conversationId]/page.tsx`.
+- Shared copy: `lib/labels.tsx`, `lib/change-requests.tsx`.
+- Tests: `tests/group-b-client-visibility.spec.ts`, `tests/e2e-helpers.ts`,
+  `tests/dashboard.spec.ts`, `tests/knowledge.spec.ts`,
+  `tests/playground.spec.ts`, `tests/roles-control.spec.ts`,
+  `tests/ui-redesign.spec.ts`.
+
+Final backend and integration readiness:
+- The single full backend command recorded above exited **0: 407 passed,
+  1 skipped, 1 existing Starlette deprecation warning**, 1582.93s (26m22s).
+  Skip: `tests/test_knowledge_parsers.py:52`, POSIX process-group integration;
+  Windows behavior remains unverified. All API guard, tenant-isolation and
+  Group 0 regression tests passed. No backend suite rerun was performed.
+- Final frontend evidence: **45 existing browser cases passed** in the single
+  full run, and **all 6 new Group B cases passed** after the documented test-only
+  corrections in one isolated follow-up. Lint, TypeScript, changed-file Prettier
+  check and `git diff --check` passed. No product source changed after the full
+  browser production build/run; the isolated follow-up used that same build.
+- Confirmed the generated evaluation report differs only by its run timestamp;
+  restore that line to avoid unrelated changes. Final scope: 28 tracked files
+  (26 web files plus ROLE-MATRIX and PROGRESS), no API/schema/migration changes.
+- No Docker commands, credential-file reads, persisted connection values, paid
+  API calls, push, tags or deployment. All DB runtime checks used only disposable
+  databases on `127.0.0.1:55462`. Browser/API/worker harnesses stopped their owned
+  processes. The OS-specific skip is the only remaining test limitation.
+- All required Group B work is complete. Perform the owner's authorized local
+  `git merge --no-ff fix/group-b-client-visibility` into `main`, then
+  `git branch -d fix/group-b-client-visibility`; leave main clean. This does not
+  imply production deployment or unrelated roadmap/hosting/billing sign-off.

@@ -127,13 +127,7 @@ export default function PlaygroundPage() {
     }
   }
 
-  if (!me?.is_platform_staff)
-    return (
-      <main>
-        <h1>Playground</h1>
-        <Notice message="Platform staff access required." />
-      </main>
-    );
+  if (!me?.is_platform_staff) return null;
 
   return (
     <main>
