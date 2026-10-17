@@ -307,7 +307,7 @@ export default function ContactPage() {
                         )
                         .map((item) => (
                           <option key={item.id} value={item.id}>
-                            {item.channel} Â· {item.status} Â·{" "}
+                            {item.channel} · {item.status} ·{" "}
                             {new Date(item.created_at).toLocaleDateString()}
                           </option>
                         ))}
@@ -340,8 +340,8 @@ export default function ContactPage() {
               <ul>
                 {followUps.map((followUp) => (
                   <li key={followUp.id}>
-                    {followUp.status} Â·{" "}
-                    {new Date(followUp.send_at).toLocaleString()} Â·{" "}
+                    {followUp.status} ·{" "}
+                    {new Date(followUp.send_at).toLocaleString()} ·{" "}
                     {followUp.text}{" "}
                     {canEdit &&
                       ["scheduled", "ready"].includes(followUp.status) && (

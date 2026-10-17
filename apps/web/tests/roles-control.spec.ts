@@ -57,6 +57,10 @@ test("client admin requests a change and a separate operator triages it", async 
   );
   expect((await limits.json()).effective_limits.monthly_tokens).toBe(12345);
   await aiPanel.getByRole("button", { name: "Reset to plan defaults" }).click();
+  await operator
+    .getByRole("dialog", { name: "Reset to plan defaults?" })
+    .getByRole("button", { name: "Confirm", exact: true })
+    .click();
   await expect(aiPanel.getByLabel(/AI tokens per month/)).toHaveValue("");
   await page.goto(`/app/${tenantId}/bots/${bot.id}/settings`);
   await expect(page.getByTestId("rag-tier-control")).toHaveCount(0);

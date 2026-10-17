@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import * as api from "@/lib/api";
 import type { Conversation } from "@/lib/api";
 import { roleSatisfies, useSession } from "@/lib/session";
-import { Empty, Loading, Notice } from "@/lib/ui";
+import { ConfirmAction, Empty, Loading, Notice } from "@/lib/ui";
 import BotWorkspaceNav from "@/lib/bot-workspace-nav";
 
 /** P4-04: read-only conversations view (docs/10 Conversations tab) with the
@@ -156,13 +156,16 @@ export default function ConversationsPage() {
                   <td>{row.message_count}</td>
                   <td>
                     {canDelete && (
-                      <button
-                        type="button"
-                        data-testid={`delete-${row.id}`}
-                        onClick={() => void removeThread(row.id)}
+                      <ConfirmAction
+                        title="Delete conversation?"
+                        description={
+                          "This conversation and its messages will be permanently deleted."
+                        }
+                        testId={`delete-${row.id}`}
+                        onConfirm={() => void removeThread(row.id)}
                       >
                         Delete
-                      </button>
+                      </ConfirmAction>
                     )}
                   </td>
                 </tr>

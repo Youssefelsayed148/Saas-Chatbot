@@ -3,8 +3,9 @@
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { auditActionLabel } from "@/lib/labels";
 import * as api from "@/lib/api";
-import { Loading, Notice } from "@/lib/ui";
+import { ConfirmAction, Loading, Notice } from "@/lib/ui";
 
 /** Client detail (P4-06, docs/11): bots + status, failed jobs, members and
  * roles, recent audit rows, usage. Read-only staff view (no impersonation). */
@@ -134,13 +135,16 @@ export default function PlatformClientPage() {
                     {bot.status !== "paused" && bot.status !== "archived" && (
                       <>
                         {" "}
-                        <button
-                          type="button"
+                        <ConfirmAction
+                          title="Pause bot?"
+                          description={
+                            "The website widget will become unavailable and this bot will stop answering visitors until activated again."
+                          }
                           disabled={reason.trim().length < 3}
-                          onClick={() => void pauseBot(bot.id)}
+                          onConfirm={() => void pauseBot(bot.id)}
                         >
                           Pause bot
-                        </button>
+                        </ConfirmAction>
                       </>
                     )}
                   </li>
@@ -235,7 +239,7 @@ export default function PlatformClientPage() {
               <ul>
                 {detail.recent_audit.map((row, index) => (
                   <li key={`${row.at}-${index}`}>
-                    {row.at.slice(0, 19)} — {row.action}
+                    {row.at.slice(0, 19)} — {auditActionLabel(row.action)}
                     {row.target ? ` (${row.target})` : ""}
                   </li>
                 ))}

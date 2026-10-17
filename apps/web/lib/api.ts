@@ -448,7 +448,7 @@ export interface PlatformOnboardingResult {
     tenant_id?: string;
     tenant_slug?: string;
     bot_id?: string | null;
-    owner_invite?: { link_path?: string };
+    admin_invite?: { link_path?: string };
     files?: Array<{ display?: string; bot_id?: string }>;
   };
   replayed?: boolean;
@@ -1022,7 +1022,7 @@ export async function allPlatformTenants(): Promise<PlatformTenantRow[]> {
 export async function platformOnboard(
   payload: {
     client_name: string;
-    owner_email: string;
+    admin_email: string;
     bot_name: string | null;
   },
   idempotencyKey: string,
@@ -1030,7 +1030,7 @@ export async function platformOnboard(
 ): Promise<PlatformOnboardingResult> {
   const form = new FormData();
   form.set("client_name", payload.client_name);
-  form.set("owner_email", payload.owner_email);
+  form.set("admin_email", payload.admin_email);
   if (payload.bot_name) form.set("bot_name", payload.bot_name);
   if (files) Array.from(files).forEach((file) => form.append("files", file));
   const headerValue = readCookie(CSRF_COOKIE) ?? csrfToken;

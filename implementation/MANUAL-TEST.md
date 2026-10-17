@@ -125,7 +125,7 @@ Use the seeded demo tenant for steps 7–8 if you want data already there; other
 
 ## Phase 1 roles and operator control ? 2026-10-16
 
-Apply migration 0013 before testing. The client demo logins are demo-admin, demo-editor and demo-viewer; demo-owner is retired. Use a separate staff account for operator actions. The client admin never becomes platform staff by changing a tenant role. Existing onboarding payload fields `owner_email`/`owner_invite` are retained for compatibility; they now invite an admin.
+Apply migration 0013 before testing. The client demo logins are demo-admin, demo-editor and demo-viewer; demo-owner is retired. Use a separate staff account for operator actions. The client admin never becomes platform staff by changing a tenant role. Onboarding uses `admin_email`/`admin_invite` and grants the client admin role, never platform staff. Historical owner audit actions remain readable.
 
 1. With signup disabled, POST registration without an invite, with a forged/expired/revoked/used token, or with a token for another email: 403 and no new user. A valid matching token registers, then accepts once.
 2. Admin can manage members/invitations and audit/exports/CSVs. Promote another admin before demoting/removing the current admin. Demoting/removing the sole admin returns LAST_ADMIN. No ownership-transfer UI or endpoint exists.
@@ -137,3 +137,12 @@ Apply migration 0013 before testing. The client demo logins are demo-admin, demo
 8. Keep tenant A/B guessed-ID checks. Channel connections and per-channel analytics filtering are deferred to Phase 3 per this change note. If Playwright sees ECONNRESET, record the spec name and failure; do not change the flake handling in this scope.
 
 - Verify client inbox/conversation views and visitor widget turn/history show no citations or source links. Client exports retain operational data but exclude knowledge, bot configuration and citations. Staff retain knowledge and install access.
+
+
+## Group C safety and polish
+- On an active bot, change widget colour/position and click **Save settings**. Reload the public widget config: the changes apply live, without a draft/publish step.
+- Cancel each member Remove, conversation Delete, Pause bot (both pages), embedding backfill and Reset to plan defaults dialog; verify no write occurs. Confirm each and verify the intended write.
+- Audit review displays historical owner and new admin invitation/assignment actions; search either vocabulary and verify tenant isolation.
+- Failed jobs show Retry only; queued/running jobs show Cancel only; succeeded/cancelled jobs show neither action in both lists.
+- Check page titles, change-request icons, favicon and the contact Conversation dropdown middle dots.
+- `/widget/sample` renders only for authenticated platform staff; anonymous and client roles receive a server redirect without the sample body.

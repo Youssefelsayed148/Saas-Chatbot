@@ -206,6 +206,10 @@ test("platform client mutations preserve plan, quota and pause reason payloads",
   await page.getByRole("button", { name: "Save override with reason" }).click();
   await expect.poll(() => actions.length).toBe(2);
   await page.getByRole("button", { name: "Pause bot" }).click();
+  await page
+    .getByRole("dialog", { name: "Pause bot?" })
+    .getByRole("button", { name: "Confirm", exact: true })
+    .click();
   await expect.poll(() => actions.length).toBe(3);
   expect(actions).toEqual([
     {

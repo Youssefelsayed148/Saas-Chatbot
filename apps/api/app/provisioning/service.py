@@ -29,13 +29,13 @@ from app.core.errors import ApiError
 from app.db.models import Invitation, Membership, ProvisioningRequest, Tenant, User
 from app.quotas.plans import PLAN_LABELS
 
-OWNER_INVITATION_EXPIRY_DAYS = 7  # docs/14 §19 default
+ADMIN_INVITATION_EXPIRY_DAYS = 7  # docs/14 §19 default
 _MAX_FILES = 20
 
 
 class ProvisioningPayload(BaseModel):
     client_name: str = Field(min_length=1, max_length=200)
-    owner_email: EmailStr
+    admin_email: EmailStr
     bot_name: str | None = Field(default=None, min_length=1, max_length=100)
     plan_label: str = "starter"  # PLACEHOLDER plan from quotas.plans
     notes: str | None = Field(default=None, max_length=500)
@@ -51,11 +51,23 @@ class ProvisioningPayload(BaseModel):
 
 def _hash_payload(payload: ProvisioningPayload, files: Sequence[tuple[str, bytes]]) -> str:
     digest = hashlib.sha256()
-    digest.update(payload.model_dump_json(exclude_none=True).encode("utf-8"))
+    # Keep stored idempotency fingerprints stable across the API field rename.
+    canonical = payload.model_dump_json(exclude_none=True).replace(
+        '"admin_email":', '"owner_email":', 1
+    )
+    digest.update(canonical.encode("utf-8"))
     for name, data in files:
         digest.update(name.encode("utf-8"))
         digest.update(data)
     return digest.hexdigest()
+
+
+def _public_result(result: dict[str, Any]) -> dict[str, Any]:
+    """Read pre-rename provisioning results without rewriting stored records."""
+    public = dict(result)
+    if "owner_invite" in public:
+        public.setdefault("admin_invite", public.pop("owner_invite"))
+    return public
 
 
 def generate_request_id() -> UUID:
@@ -136,7 +148,7 @@ class ProvisioningService:
                 "request_id": str(prior.id),
                 "status": prior.status,
                 "tenant_id": str(prior.tenant_id) if prior.tenant_id else None,
-                "result": dict(prior.result),
+                "result": _public_result(prior.result),
                 "replayed": True,
             }
 
@@ -204,7 +216,7 @@ class ProvisioningService:
                 "request_id": str(prior.id),
                 "status": prior.status,
                 "tenant_id": str(prior.tenant_id) if prior.tenant_id else None,
-                "result": dict(prior.result),
+                "result": _public_result(prior.result),
                 "replayed": True,
             }
         already_member = self.db.execute(
@@ -247,7 +259,7 @@ class ProvisioningService:
                     "request_id": str(prior.id),
                     "status": prior.status,
                     "tenant_id": str(prior.tenant_id) if prior.tenant_id else None,
-                    "result": dict(prior.result),
+                    "result": _public_result(prior.result),
                     "replayed": True,
                 }
             raise ApiError(
@@ -302,7 +314,7 @@ class ProvisioningService:
             self.db.add(membership)
             record_audit(
                 self.db,
-                action="self_service.owner_assigned",
+                action="self_service.admin_assigned",
                 tenant_id=tenant.id,
                 actor_user_id=actor.id,
                 target_type="membership",
@@ -314,17 +326,17 @@ class ProvisioningService:
             invitation = Invitation(
                 id=uuid4(),
                 tenant_id=tenant.id,
-                email=payload.owner_email,
+                email=payload.admin_email,
                 role="admin",
                 token_hash=self._token_hash(raw_token),
-                expires_at=datetime.now(UTC) + timedelta(days=OWNER_INVITATION_EXPIRY_DAYS),
+                expires_at=datetime.now(UTC) + timedelta(days=ADMIN_INVITATION_EXPIRY_DAYS),
                 created_by=actor.id,
             )
             self.db.add(invitation)
             self.db.flush()
             record_audit(
                 self.db,
-                action="platform.onboarding.owner_invited",
+                action="platform.onboarding.admin_invited",
                 tenant_id=tenant.id,
                 actor_user_id=actor.id,
                 target_type="invitation",
@@ -347,10 +359,10 @@ class ProvisioningService:
             "tenant_id": str(tenant.id),
             "tenant_slug": slug,
             "bot_id": bot_id,
-            "owner_invite": None
+            "admin_invite": None
             if self_service
             else {
-                "email": str(payload.owner_email),
+                "email": str(payload.admin_email),
                 "link_path": f"/accept-invite?token={raw_token}",
                 "expires_at": invitation.expires_at.isoformat() if invitation else None,
             },

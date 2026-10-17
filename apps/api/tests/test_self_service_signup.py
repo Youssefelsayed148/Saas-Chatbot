@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from app.core.config import get_settings
-from app.db.models import Bot, Membership, ProvisioningRequest, Tenant
+from app.db.models import AuditEvent, Bot, Membership, ProvisioningRequest, Tenant
 from tests.conftest import build_test_settings
 from tests.helpers import PASSWORD, csrf_headers, logged_in
 
@@ -34,7 +34,7 @@ def test_self_service_signup_retries_create_one_tenant_and_bot(app: Any, db: Any
     results = [response.json()["result"] for response in responses]
     assert results[0]["tenant_id"] == results[1]["tenant_id"]
     assert results[0]["bot_id"] == results[1]["bot_id"]
-    assert results[0]["owner_invite"] is None
+    assert results[0]["admin_invite"] is None
     db.expire_all()
     tenant_id = results[0]["tenant_id"]
     parsed_tenant_id = UUID(tenant_id)
@@ -69,6 +69,12 @@ def test_self_service_signup_retries_create_one_tenant_and_bot(app: Any, db: Any
         .role
         == "admin"
     )
+
+    actions = db.scalars(
+        select(AuditEvent.action).where(AuditEvent.tenant_id == parsed_tenant_id)
+    ).all()
+    assert "self_service.admin_assigned" in actions
+    assert "self_service.owner_assigned" not in actions
 
     mismatch = client_a.post(
         "/api/v1/provisioning/self-service",

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { auditActionLabel } from "@/lib/labels";
 import * as api from "@/lib/api";
 import { roleSatisfies, useSession } from "@/lib/session";
 import { Loading, Notice } from "@/lib/ui";
@@ -164,7 +165,8 @@ export default function TenantDataPage() {
             <ul className="audit-list">
               {audit.map((event) => (
                 <li key={event.id}>
-                  {event.created_at.slice(0, 19)} · {event.action} ·{" "}
+                  {event.created_at.slice(0, 19)} ·{" "}
+                  {auditActionLabel(event.action)} ·{" "}
                   {event.target_type ?? "tenant"}:{event.target_id ?? ""}
                 </li>
               ))}

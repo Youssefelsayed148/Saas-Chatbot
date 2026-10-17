@@ -53,6 +53,7 @@ export function ConfirmAction({
   onConfirm,
   disabled,
   confirmLabel = "Confirm",
+  testId,
 }: {
   children: ReactNode;
   title: string;
@@ -60,12 +61,14 @@ export function ConfirmAction({
   onConfirm: () => void;
   disabled?: boolean;
   confirmLabel?: string;
+  testId?: string;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   return (
     <>
       <button
         type="button"
+        data-testid={testId}
         disabled={disabled}
         className="danger-button"
         onClick={() => dialog.current?.showModal()}
@@ -87,6 +90,7 @@ export function ConfirmAction({
           <button
             type="button"
             className="danger-button"
+            disabled={disabled}
             onClick={() => {
               dialog.current?.close();
               onConfirm();

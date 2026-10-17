@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import * as api from "@/lib/api";
-import { Notice } from "@/lib/ui";
+import { ConfirmAction, Notice } from "@/lib/ui";
 
 const LABELS: Record<api.RagLimitName, string> = {
   documents: "Documents per revision",
@@ -158,13 +158,16 @@ export default function RagOperatorPanel({ tenantId }: { tenantId: string }) {
             <button disabled={busy} type="submit">
               Save AI limits
             </button>
-            <button
+            <ConfirmAction
               disabled={busy}
-              type="button"
-              onClick={() => void save(true)}
+              title="Reset to plan defaults?"
+              description={
+                "Custom AI limit overrides for this bot will be removed and the current plan defaults will apply. Existing data is retained."
+              }
+              onConfirm={() => void save(true)}
             >
               Reset to plan defaults
-            </button>
+            </ConfirmAction>
           </form>
         </>
       )}

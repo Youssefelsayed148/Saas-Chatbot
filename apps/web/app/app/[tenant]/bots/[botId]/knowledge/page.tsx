@@ -363,13 +363,11 @@ export default function KnowledgePage() {
                       Cancel
                     </button>
                   )}
-                {canEdit &&
-                  job.status !== "pending" &&
-                  job.status !== "running" && (
-                    <button type="button" onClick={() => void onRetry(job)}>
-                      Retry
-                    </button>
-                  )}
+                {canEdit && job.status === "failed" && (
+                  <button type="button" onClick={() => void onRetry(job)}>
+                    Retry
+                  </button>
+                )}
               </li>
             ))}
           </ul>

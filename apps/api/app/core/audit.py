@@ -7,6 +7,7 @@ service. Tenant id or actor may be None for platform-level events.
 from typing import Any
 from uuid import UUID, uuid4
 
+from sqlalchemy import ColumnElement, or_
 from sqlalchemy.orm import Session as OrmSession
 
 from app.db.models import AuditEvent
@@ -33,3 +34,10 @@ def record_audit(
             metadata_json=metadata or {},
         )
     )
+
+
+def audit_action_matches(query: str) -> ColumnElement[bool]:
+    """Search both onboarding vocabularies while preserving immutable history."""
+    query = query.strip().lower()
+    variants = {query, query.replace("admin", "owner"), query.replace("owner", "admin")}
+    return or_(*(AuditEvent.action.ilike(f"%{value}%") for value in sorted(variants)))

@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import PageTitle from "@/lib/page-title";
 import { ThemeProvider } from "@/lib/theme";
 import { SessionProvider } from "@/lib/session";
 
 export const metadata: Metadata = {
-  title: "Website Chatbot SaaS",
   description: "Standalone website chatbot application foundation",
 };
 
@@ -14,6 +14,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <PageTitle />
         <SessionProvider>
           <ThemeProvider>{children}</ThemeProvider>
         </SessionProvider>

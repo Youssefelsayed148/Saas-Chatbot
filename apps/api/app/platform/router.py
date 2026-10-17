@@ -31,7 +31,7 @@ from sqlalchemy.orm import Session as OrmSession
 
 from app.auth import cookies
 from app.bots.schemas import BotOut
-from app.core.audit import record_audit
+from app.core.audit import audit_action_matches, record_audit
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
 from app.db.models import (
@@ -428,7 +428,7 @@ def platform_audit_review(
     if q:
         pattern = f"%{q.strip()}%"
         statement = statement.where(
-            or_(AuditEvent.action.ilike(pattern), AuditEvent.target_type.ilike(pattern))
+            or_(audit_action_matches(q), AuditEvent.target_type.ilike(pattern))
         )
     rows = list(db.execute(statement.limit(limit)).scalars())
     return {
@@ -606,7 +606,7 @@ async def platform_onboarding(
     db: DbSession,
     settings: CurrentSettings,
     client_name: Annotated[str, Form(min_length=1, max_length=200)],
-    owner_email: Annotated[str, Form()],
+    admin_email: Annotated[str, Form()],
     bot_name: Annotated[str, Form(min_length=1, max_length=100)] = "Website assistant",
     plan_label: Annotated[str, Form(max_length=40)] = "starter",
     notes: Annotated[str | None, Form(max_length=500)] = None,
@@ -620,7 +620,7 @@ async def platform_onboarding(
         raise ApiError(400, "VALIDATION_ERROR", "Idempotency-Key header is required.")
     payload = ProvisioningPayload(
         client_name=client_name,
-        owner_email=owner_email,
+        admin_email=admin_email,
         bot_name=bot_name,
         plan_label=plan_label or "starter",
         notes=notes,

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import * as api from "@/lib/api";
-import { Notice } from "@/lib/ui";
+import { ConfirmAction, Notice } from "@/lib/ui";
 
 // Rendered only for platform staff; the API enforces the same rule.
 export default function RagTierControl({
@@ -90,10 +90,13 @@ export default function RagTierControl({
                 : "never run"}
             </dd>
           </dl>
-          <button
-            type="button"
+          <ConfirmAction
+            title="Start embedding backfill?"
+            description={
+              "A background job will generate embeddings for published knowledge. This can use embedding tokens and incur provider costs within configured limits."
+            }
             disabled={busy}
-            onClick={() =>
+            onConfirm={() =>
               void run(
                 () => api.startRagBackfill(tenantId, botId),
                 "Backfill requested.",
@@ -101,7 +104,7 @@ export default function RagTierControl({
             }
           >
             Start embedding backfill
-          </button>
+          </ConfirmAction>
         </>
       )}
     </section>

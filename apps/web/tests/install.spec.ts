@@ -72,6 +72,11 @@ test("activate a draft bot on Settings, then Install shows snippet + sample help
   await expect(page.getByText("Settings saved.")).toBeVisible({
     timeout: 10_000,
   });
+  const liveConfig = await page.request.get(
+    `/api/public/v1/widgets/${locator}/config`,
+  );
+  expect(liveConfig.status()).toBe(200);
+  expect((await liveConfig.json()).config.colour).toBe("#123456");
   await page.reload();
   await expect(
     page.getByLabel("Widget colour (hex, e.g. #1a2b3c)"),
