@@ -2017,3 +2017,20 @@ Additional static checks (not part of the owner's required backend test command)
 - `git diff --quiet main --` all eight files named by those two checks: exit 0,
   proving these findings are in untouched main content. They are recorded here
   without expanding this maintenance task into unrelated backend refactors.
+
+
+Initial frontend full run completed: exit 1, **55 passed, 7 failed**, 9.2m.
+Failures: the non-staff sample handoff test (1), stale question-mark titles in
+foundation/new title/sample cases (3), reset fixture endpoint typo (1), and two
+existing tests that needed to click Confirm after Reset/Pause (2). All have
+explicit corrections now. Both job lists, all audit views, five of the six new
+complete confirmation cases, and appearance-save coverage passed in that run.
+A transient closed-connection traceback appeared in API SSE cleanup; its test
+passed. The final run will establish whether it recurs or affects verification.
+No backend product changes followed except the documented audit-query case fix.
+
+Updated existing `roles-control.spec.ts` and `ui-characterization.spec.ts` to
+confirm the new dialogs while retaining their real payload and effective-limit
+assertions. The next full browser command is again `npm.cmd run test --
+--reporter=line` in apps/web with the same isolated process environment; output
+is `.test-storage-group-c/frontend-final.log`. It rebuilds the final product.
