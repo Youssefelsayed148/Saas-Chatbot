@@ -131,3 +131,14 @@ export async function registerAndPrepareBot(
   const bot = (await botResponse.json()) as { widget_locator: string };
   return { tenantId, botId, locator: bot.widget_locator };
 }
+
+/** Establish a disposable staff session over the API without a browser login. */
+export async function registerStaffSession(page: Page, prefix: string) {
+  const email = uniqueEmail(prefix);
+  const response = await page.request.post("/api/v1/auth/register", {
+    data: { email, password: PASSWORD },
+  });
+  expect(response.status()).toBe(201);
+  promoteToStaff(email);
+  return email;
+}

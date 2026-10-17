@@ -28,7 +28,7 @@ Baseline: Phase 1 merged on local main (tag `phase-1-complete`). Client roles ar
 ## Bot lifecycle
 
 1. Create (operator): org and bot with hybrid retrieval, tier preset and plan limits.
-2. Configure (operator): persona, tone, language, handoff rules, appearance, allowed domains. Appearance saves as draft, then publish.
+2. Configure (operator): persona, tone, language, handoff rules, appearance, allowed domains. Save settings applies appearance changes live; appearance has no draft/publish step.
 3. Ingest (operator): files parsed, chunked and embedded as background jobs. Per-document status (parsed, chunk count, warnings) is visible to the operator only. OCR is async, page-capped, metered.
 4. Test (operator): playground with trace view (chunks, scores, gate decision). Operator installs the snippet on the client site and verifies on the real domain before enabling.
 5. Go live: widget on the client site. Later channels (app, Meta) attach to the same bot and knowledge.

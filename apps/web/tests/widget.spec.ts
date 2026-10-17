@@ -1,9 +1,10 @@
 import { expect, type Page, test } from "@playwright/test";
-import { registerOperator } from "./e2e-helpers";
+import { registerOperator, registerStaffSession } from "./e2e-helpers";
 
 test("mobile embedded widget stays within the viewport for both configured placements", async ({
   page,
 }) => {
+  await registerStaffSession(page, "widget-placement");
   await page.setViewportSize({ width: 360, height: 800 });
   for (const position of ["left", "right"]) {
     await page.route("**/api/public/v1/widgets/placement/config", (route) =>
@@ -240,7 +241,7 @@ test("two static sites, two tenants: each widget answers only from its own knowl
   const b = await createOrgAndBot(page, "Site B bot");
   await activateBot(page, b.tenantId, b.botId);
   await publishKnowledge(page, b.tenantId, b.botId, mdFor("Store B", "9:00"));
-  await page.context().clearCookies();
+  // Keep the second operator session: the sample helper is staff-only.
 
   await openTestSite(page, a.locator, "store-a");
   const bubble = page.getByTestId("widget-bubble");

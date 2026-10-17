@@ -30,7 +30,7 @@ A business signs up, creates an organization and a bot, gives it its data (uploa
 - Only the domains you allow can load the widget; a paused bot shows a controlled "unavailable" message.
 - Rate limits stop a spammer; an expired visitor session is recovered gracefully.
 - Dashboard shows conversations (with citations), leads captured with consent (they become contacts), and analytics: volume, top questions, unanswered questions, usage — real numbers only.
-- Widget appearance settings (colour, name, greeting, language/RTL) change what visitors see.
+- Widget appearance settings (colour, name, greeting, language/RTL) change what visitors see. Save settings applies changes live; appearance has no draft/publish step.
 - Each bot has its own workspace with a bot switcher: Overview (measured numbers with date range), Knowledge, Playground, Conversations, Settings, Install. Numbers for one bot never include another's.
 - Admin console (/platform, staff only): you see every client with plan, status, bots, usage and last activity; open a client to see its bots, job status, members and audit trail; and onboard a new client in one form (tenant + admin invite link + bot + data upload). Non-staff cannot reach it; no impersonation.
 ### After P5 — Inbox, handoff and light CRM (first sellable cut)

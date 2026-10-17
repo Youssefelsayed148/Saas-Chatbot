@@ -6,7 +6,7 @@ import * as api from "./api";
 import { roleSatisfies, useSession } from "./session";
 import { ThemeToggle } from "./theme";
 
-type Destination = { label: string; href: string; symbol: string };
+type Destination = { label: string; href: string; symbol: React.ReactNode };
 export function AppShell({
   tenantId,
   platform = false,
@@ -69,7 +69,7 @@ export function AppShell({
         {
           label: "Change requests",
           href: "/platform/change-requests",
-          symbol: "?",
+          symbol: <ChangeRequestIcon />,
         },
         { label: "Operations", href: "/platform/operations", symbol: "▥" },
         { label: "Client workspaces", href: "/app", symbol: "↗" },
@@ -94,7 +94,7 @@ export function AppShell({
                 {
                   label: "Request a change",
                   href: `${base}/settings/requests`,
-                  symbol: "?",
+                  symbol: <ChangeRequestIcon />,
                 },
                 {
                   label: "Team",
@@ -397,5 +397,24 @@ export function AppShell({
         </p>
       </dialog>
     </div>
+  );
+}
+
+function ChangeRequestIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9H13" />
+      <path d="m16 3 5 5m-9 4 1-4 6-6 3 3-6 6-4 1Z" />
+    </svg>
   );
 }

@@ -72,18 +72,12 @@ test("inbox agent takes over an unanswered widget thread, replies, then returns 
   test.setTimeout(180_000);
   const { tenantId, locator } = await registerAndPrepareBot(page);
   // Setup needs operator privileges; replies exercise the actual client admin.
+  // Use the public widget frame for visitor turns; the sample helper is staff-only.
   const account = await (await page.request.get("/api/v1/auth/me")).json();
   setPlatformStaff(account.email, false);
 
-  await page.goto(
-    `/widget/sample?locator=${encodeURIComponent(locator)}&site=inbox-e2e`,
-  );
-  await page.getByTestId("widget-bubble").first().click({ force: true });
-  const frame = page
-    .locator("[data-testid='widget-frame']")
-    .first()
-    .contentFrame()
-    .locator("[data-testid='widget-frame-body']");
+  await page.goto(`/widget/frame?locator=${encodeURIComponent(locator)}`);
+  const frame = page.getByTestId("widget-frame-body");
   const input = frame.getByTestId("widget-input");
   await expect(input).toBeVisible();
 
@@ -125,15 +119,8 @@ test("inbox agent takes over an unanswered widget thread, replies, then returns 
     "Follow up about product availability.",
   );
 
-  await page.goto(
-    `/widget/sample?locator=${encodeURIComponent(locator)}&site=inbox-e2e`,
-  );
-  await page.getByTestId("widget-bubble").first().click({ force: true });
-  const visitorFrame = page
-    .locator("[data-testid='widget-frame']")
-    .first()
-    .contentFrame()
-    .locator("[data-testid='widget-frame-body']");
+  await page.goto(`/widget/frame?locator=${encodeURIComponent(locator)}`);
+  const visitorFrame = page.getByTestId("widget-frame-body");
   await expect(
     visitorFrame
       .getByTestId("widget-ai-msg")
@@ -143,15 +130,8 @@ test("inbox agent takes over an unanswered widget thread, replies, then returns 
   await page.goto(`/app/${tenantId}/inbox/${conversationId}`);
   await page.getByRole("button", { name: "Return to AI", exact: true }).click();
   await expect(page.getByTestId("inbox-mode")).toHaveText("AI mode");
-  await page.goto(
-    `/widget/sample?locator=${encodeURIComponent(locator)}&site=inbox-e2e`,
-  );
-  await page.getByTestId("widget-bubble").first().click({ force: true });
-  const reopenedFrame = page
-    .locator("[data-testid='widget-frame']")
-    .first()
-    .contentFrame()
-    .locator("[data-testid='widget-frame-body']");
+  await page.goto(`/widget/frame?locator=${encodeURIComponent(locator)}`);
+  const reopenedFrame = page.getByTestId("widget-frame-body");
   const reopenedReplies = reopenedFrame.getByTestId("widget-ai-msg");
   // count() does not wait: let the restored history (incl. the agent reply) render first.
   await expect(

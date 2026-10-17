@@ -1978,3 +1978,42 @@ Validation so far (PowerShell, repository root unless noted):
 
 No live manual browser login verification was performed, per owner request.
 Exact completed outcomes and final integration will be appended below.
+
+
+Group C implementation and review notes:
+- Reused the existing native-dialog ConfirmAction for all six requested action
+  placements, retaining Cancel autofocus, Escape dismissal and focus restoration.
+  Contact erase and organization-delete confirmations are unchanged.
+- Retry is rendered only for failed jobs; Cancel only for pending (displayed as
+  Queued) or running jobs, in both operations and knowledge lists.
+- Appearance specs, checklist and UI now say Save settings applies changes live.
+  The real install journey also checks the public widget config after saving.
+- Added a shared React title component, SVG change-request icon, valid 32px ICO,
+  and a server-side staff guard shared by platform and /widget/sample. Existing
+  client-admin handoff coverage now uses the public widget frame for visitor
+  turns; authenticated operator install/sample coverage remains.
+- Encoding diagnosis: UTF-8 source in the contact detail page contained the
+  actual U+00C2 U+00B7 sequence in the Conversation option and follow-up rows.
+  Replaced it with U+00B7. No customer/production DB inspection or data rewrite
+  was needed: the separator is a literal JSX string, not seed or DB content.
+- The first browser build captured an initial Windows-script '?' in the newly
+  added title strings. Source is corrected to literal UTF-8 middle dots; a final
+  rebuild/run is required. Initial run also exposed the old non-staff sample
+  handoff test and a new reset-test endpoint typo (/rag/limits vs actual /rag).
+  Corrected the tests; no API endpoint behavior changed for these failures.
+- Final review made legacy-name audit matching case-insensitive, with uppercase
+  query coverage. This small follow-up requires a targeted backend run after
+  the full suite (which had already imported the earlier helper/test version).
+
+Additional static checks (not part of the owner's required backend test command):
+- In apps/api, `../../.venv/Scripts/python.exe -m mypy`: exit 1, four pre-existing
+  errors: knowledge/ingest.py POSIX-only os.setsid/os.killpg/signal.SIGKILL on
+  Windows (3) and tests/test_rag_limits.py:246 int(object) (1). No changed file
+  produced a mypy diagnostic. Log: backend-mypy.log.
+- In apps/api, `../../.venv/Scripts/python.exe -m ruff check app tests`: exit 1,
+  six pre-existing findings: db/models/chat.py and knowledge.py long strings,
+  knowledge/service.py import order, quotas/sentiment.py and service.py long
+  strings, tests/conftest.py import order. Log: backend-ruff.log.
+- `git diff --quiet main --` all eight files named by those two checks: exit 0,
+  proving these findings are in untouched main content. They are recorded here
+  without expanding this maintenance task into unrelated backend refactors.
