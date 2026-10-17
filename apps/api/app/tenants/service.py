@@ -14,7 +14,7 @@ from datetime import UTC, datetime, timedelta
 from typing import cast
 from uuid import UUID, uuid4
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session as OrmSession
 
 from app.auth.security import generate_session_token, hash_token
@@ -222,12 +222,21 @@ class TenantService:
         return invitation
 
     def accept_invitation(self, db: OrmSession, user: User, token: str) -> Membership:
+        token_hash = hash_token(token.strip())
+        tenant_id = db.scalar(
+            select(Invitation.tenant_id).where(Invitation.token_hash == token_hash)
+        )
+        if tenant_id is None:
+            raise ApiError(404, "NOT_FOUND", "Invitation not found or no longer valid.")
+        # Removal revokes outstanding invites while holding this tenant lock.
+        # Both paths must lock tenant -> invitation to avoid a lock inversion.
+        tenant = lock_tenant(db, tenant_id)
         # Lock the invitation row: two concurrent accepts of one token must
         # serialize, so exactly one performs the accept and the other sees
         # `accepted_at` set (409) instead of creating a duplicate membership.
         invitation = db.execute(
             select(Invitation)
-            .where(Invitation.token_hash == hash_token(token.strip()))
+            .where(Invitation.tenant_id == tenant_id, Invitation.token_hash == token_hash)
             .with_for_update()
         ).scalar_one_or_none()
         now = datetime.now(UTC)
@@ -246,7 +255,6 @@ class TenantService:
                 "Register or log in with the address the invitation was sent to.",
             )
 
-        tenant = lock_tenant(db, invitation.tenant_id)
         existing_membership = db.execute(
             select(Membership).where(
                 Membership.tenant_id == invitation.tenant_id,
@@ -351,6 +359,19 @@ class TenantService:
         # Authorization and seat counts only include active memberships.
         membership.status = "revoked"
         self.db.add(membership)
+        # An older outstanding invite must not restore the access just removed.
+        member = self.db.get(User, user_id)
+        assert member is not None  # membership FK guarantees presence
+        self.db.execute(
+            update(Invitation)
+            .where(
+                Invitation.tenant_id == context.tenant_id,
+                Invitation.email == member.email,
+                Invitation.accepted_at.is_(None),
+                Invitation.revoked_at.is_(None),
+            )
+            .values(revoked_at=datetime.now(UTC))
+        )
         self.db.commit()
 
     def _get_membership(self, tenant_id: UUID, user_id: UUID) -> Membership:

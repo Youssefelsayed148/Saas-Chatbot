@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { registerAndPrepareBot, uniqueEmail } from "./e2e-helpers";
+import { setPlatformStaff } from "./staff-helpers";
 
 /**
  * P4-04 E2E: visitor chat → consent-based lead → the dashboard conversations
@@ -70,6 +71,9 @@ test("inbox agent takes over an unanswered widget thread, replies, then returns 
 }) => {
   test.setTimeout(180_000);
   const { tenantId, locator } = await registerAndPrepareBot(page);
+  // Setup needs operator privileges; replies exercise the actual client admin.
+  const account = await (await page.request.get("/api/v1/auth/me")).json();
+  setPlatformStaff(account.email, false);
 
   await page.goto(
     `/widget/sample?locator=${encodeURIComponent(locator)}&site=inbox-e2e`,

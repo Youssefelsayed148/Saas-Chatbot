@@ -9,7 +9,14 @@ import { useSession } from "@/lib/session";
 import { Empty, Loading, Notice } from "@/lib/ui";
 
 export default function OrgSelectorPage() {
-  const { me, loading, error, refresh } = useSession();
+  const {
+    me,
+    loading,
+    error,
+    refresh,
+    staffOrganizations,
+    staffOrganizationsError,
+  } = useSession();
   const router = useRouter();
   const [name, setName] = useState("");
   const [creating, setCreating] = useState(false);
@@ -18,12 +25,17 @@ export default function OrgSelectorPage() {
 
   useEffect(() => {
     let mounted = true;
-    void api.authConfig().then((features) => {
-      if (mounted) setSelfServeSignup(features.self_serve_signup);
-    }).catch(() => {
-      if (mounted) setSelfServeSignup(false);
-    });
-    return () => { mounted = false; };
+    void api
+      .authConfig()
+      .then((features) => {
+        if (mounted) setSelfServeSignup(features.self_serve_signup);
+      })
+      .catch(() => {
+        if (mounted) setSelfServeSignup(false);
+      });
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -53,6 +65,80 @@ export default function OrgSelectorPage() {
     }
   }
 
+  if (!loading && !error && me?.is_platform_staff) {
+    return (
+      <main>
+        <h1>All organizations</h1>
+        <p className="page-purpose">
+          Open a client workspace or onboard a new organization.
+        </p>
+        <p>
+          <Link href="/platform#onboard-client">
+            Create / Onboard organization
+          </Link>
+          {" · "}
+          <Link href="/platform">Platform admin</Link>
+        </p>
+        {staffOrganizationsError && (
+          <Notice
+            message={staffOrganizationsError}
+            tone="error"
+            onRetry={() => void refresh()}
+          />
+        )}
+        {!staffOrganizations && !staffOrganizationsError && (
+          <Loading label="Loading organizations…" />
+        )}
+        {staffOrganizations?.length === 0 && (
+          <Empty>
+            No organizations yet. Onboard your first client to get started.
+          </Empty>
+        )}
+        {!!staffOrganizations?.length && (
+          <table aria-label="All organizations">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Plan</th>
+                <th>Status</th>
+                <th>Bots</th>
+                <th>Last activity</th>
+                <th>Workspace</th>
+              </tr>
+            </thead>
+            <tbody>
+              {staffOrganizations.map((org) => (
+                <tr key={org.id}>
+                  <td>{org.name}</td>
+                  <td>{org.plan_label}</td>
+                  <td>{org.status}</td>
+                  <td>{org.bots}</td>
+                  <td>
+                    {org.last_activity
+                      ? new Date(org.last_activity).toLocaleString()
+                      : "No activity yet"}
+                  </td>
+                  <td>
+                    <Link
+                      href={
+                        org.status === "archived"
+                          ? `/platform/clients/${org.id}`
+                          : `/app/${org.id}`
+                      }
+                      aria-label={`Open ${org.name}`}
+                    >
+                      Open
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </main>
+    );
+  }
+
   return (
     <main>
       <h1>Your organizations</h1>
@@ -61,11 +147,16 @@ export default function OrgSelectorPage() {
       </p>
       {loading && <Loading label="Loading organizations…" />}
       {!loading && error && <Notice message={error} tone="error" />}
-      {!loading && !error && me && me.memberships.length === 0 && selfServeSignup && (
-        <Empty>
-          You do not belong to an organization yet. Create your first one below.
-        </Empty>
-      )}
+      {!loading &&
+        !error &&
+        me &&
+        me.memberships.length === 0 &&
+        selfServeSignup && (
+          <Empty>
+            You do not belong to an organization yet. Create your first one
+            below.
+          </Empty>
+        )}
       {!loading && !error && me && me.memberships.length > 0 && (
         <ul className="org-list">
           {me.memberships.map((membership) => (
@@ -78,28 +169,39 @@ export default function OrgSelectorPage() {
           ))}
         </ul>
       )}
-      {!loading && !error && me && selfServeSignup && <section aria-label="Create organization">
-        <h2>Create organization</h2>
-        <form onSubmit={onCreate}>
-          <label>
-            Name
-            <input
-              name="name"
-              required
-              maxLength={100}
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-            />
-          </label>
-          <button type="submit" disabled={creating || name.trim().length === 0}>
-            {creating ? "Creating…" : "Create"}
-          </button>
-        </form>
-        {createError && <Notice message={createError} tone="error" />}
-      </section>}
-      {!loading && !error && me && me.memberships.length === 0 && !selfServeSignup && (
-        <Empty>Your account needs an invitation to join an organization.</Empty>
+      {!loading && !error && me && selfServeSignup && (
+        <section aria-label="Create organization">
+          <h2>Create organization</h2>
+          <form onSubmit={onCreate}>
+            <label>
+              Name
+              <input
+                name="name"
+                required
+                maxLength={100}
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+              />
+            </label>
+            <button
+              type="submit"
+              disabled={creating || name.trim().length === 0}
+            >
+              {creating ? "Creating…" : "Create"}
+            </button>
+          </form>
+          {createError && <Notice message={createError} tone="error" />}
+        </section>
       )}
+      {!loading &&
+        !error &&
+        me &&
+        me.memberships.length === 0 &&
+        !selfServeSignup && (
+          <Empty>
+            Your account needs an invitation to join an organization.
+          </Empty>
+        )}
     </main>
   );
 }

@@ -16,7 +16,8 @@ export function AppShell({
   platform?: boolean;
   children: ReactNode;
 }) {
-  const { me, refresh, roleIn } = useSession();
+  const { me, refresh, roleIn, staffOrganizations, staffOrganizationsError } =
+    useSession();
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
@@ -26,6 +27,15 @@ export function AppShell({
   const drawer = useRef<HTMLDialogElement>(null);
   const trigger = useRef<HTMLElement | null>(null);
   const membership = me?.memberships.find((m) => m.tenant_id === tenantId);
+  const organizations = me?.is_platform_staff
+    ? (staffOrganizations ?? []).map((org) => ({
+        tenant_id: org.id,
+        tenant_name: org.name,
+      }))
+    : (me?.memberships ?? []);
+  const organizationName =
+    organizations.find((org) => org.tenant_id === tenantId)?.tenant_name ??
+    membership?.tenant_name;
   const role = tenantId ? roleIn(tenantId) : null;
   const base = `/app/${tenantId}`;
   const links: Destination[] = platform
@@ -184,7 +194,7 @@ export function AppShell({
             {platform
               ? "Platform admin"
               : tenantId
-                ? `Client workspace · ${membership?.tenant_name ?? "Workspace"} · ${role ?? "Checking access"}`
+                ? `Client workspace · ${organizationName ?? "Workspace"} · ${role ?? "Checking access"}`
                 : "Your organizations"}
           </span>
           <button
@@ -204,17 +214,28 @@ export function AppShell({
                 id="org-selector"
                 aria-label="Organization selector"
                 value={tenantId ?? ""}
-                onChange={(event) =>
-                  router.push(`/app/${event.target.value}/bots`)
-                }
+                onChange={(event) => {
+                  const id = event.target.value;
+                  const archived =
+                    me.is_platform_staff &&
+                    staffOrganizations?.some(
+                      (org) => org.id === id && org.status === "archived",
+                    );
+                  router.push(
+                    archived ? `/platform/clients/${id}` : `/app/${id}/bots`,
+                  );
+                }}
               >
                 {!tenantId && <option value="">Switch organization</option>}
-                {me.memberships.map((m) => (
+                {organizations.map((m) => (
                   <option key={m.tenant_id} value={m.tenant_id}>
                     {m.tenant_name}
                   </option>
                 ))}
               </select>
+              {me.is_platform_staff && staffOrganizationsError && (
+                <span role="alert">{staffOrganizationsError}</span>
+              )}
               <button
                 className="quiet-button"
                 type="button"
@@ -235,7 +256,7 @@ export function AppShell({
             <span>
               {platform
                 ? "Administration"
-                : (membership?.tenant_name ?? "Organizations")}
+                : (organizationName ?? "Organizations")}
             </span>
             {tenantId && (
               <>

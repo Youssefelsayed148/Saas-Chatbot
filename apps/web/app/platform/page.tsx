@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import * as api from "@/lib/api";
+import { useSession } from "@/lib/session";
 import { Loading, Notice } from "@/lib/ui";
 
 /** Staff onboarding form (P4-06, docs/11): one form → ProvisioningService
@@ -11,6 +12,7 @@ import { Loading, Notice } from "@/lib/ui";
  * durable record cannot be duplicated. The invite link is shown ONCE. */
 
 export default function PlatformHomePage() {
+  const { refresh } = useSession();
   const [rows, setRows] = useState<api.PlatformTenantRow[] | null>(null);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("");
@@ -71,7 +73,7 @@ export default function PlatformHomePage() {
       );
       setInviteLink(result.result?.owner_invite?.link_path ?? null);
       setRequestId(result.request_id);
-      await load();
+      await Promise.all([load(), refresh()]);
     } catch (caught) {
       setFormError(
         caught instanceof Error ? caught.message : "Onboarding failed.",
@@ -172,7 +174,7 @@ export default function PlatformHomePage() {
       </section>
 
       <section aria-label="Onboard a new client" data-testid="onboarding-form">
-        <h2>Onboard a new client</h2>
+        <h2 id="onboard-client">Onboard a new client</h2>
         <form onSubmit={(event) => void submit(event)}>
           <label>
             Client name
