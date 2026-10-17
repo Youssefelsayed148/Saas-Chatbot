@@ -118,7 +118,7 @@
         "Search pages"
       ],
       "tabs": [],
-      "screenshot": "screens/viewer/app_eb26cfc5_67ea_53d7_850a_879b5d18a732_bots.png"
+      "screenshot": "screens/viewer/app_T_bots.png"
     },
     {
       "requested": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
@@ -202,7 +202,7 @@
         "Search pages"
       ],
       "tabs": [],
-      "screenshot": "screens/viewer/app_eb26cfc5_67ea_53d7_850a_879b5d18a732.png"
+      "screenshot": "screens/viewer/app_T.png"
     },
     {
       "requested": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
@@ -280,7 +280,7 @@
         "Search pages"
       ],
       "tabs": [],
-      "screenshot": "screens/viewer/app_eb26cfc5_67ea_53d7_850a_879b5d18a732_inbox.png"
+      "screenshot": "screens/viewer/app_T_inbox.png"
     },
     {
       "requested": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
@@ -349,7 +349,7 @@
         "Search pages"
       ],
       "tabs": [],
-      "screenshot": "screens/viewer/app_eb26cfc5_67ea_53d7_850a_879b5d18a732_contacts.png"
+      "screenshot": "screens/viewer/app_T_contacts.png"
     },
     {
       "requested": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics",
@@ -418,7 +418,7 @@
         "Search pages"
       ],
       "tabs": [],
-      "screenshot": "screens/viewer/app_eb26cfc5_67ea_53d7_850a_879b5d18a732_analytics.png"
+      "screenshot": "screens/viewer/app_T_analytics.png"
     },
     {
       "requested": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/settings",
@@ -489,7 +489,7 @@
         "Search pages"
       ],
       "tabs": [],
-      "screenshot": "screens/viewer/app_eb26cfc5_67ea_53d7_850a_879b5d18a732_bots_70417b12_544b_5480_b945_b5cfcecb4332_settings.png"
+      "screenshot": "screens/viewer/app_T_bots_BOT_settings.png"
     },
     {
       "requested": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox/3724a0fa-1799-5eb7-96ed-42e13bfb3601",
@@ -568,7 +568,7 @@
         "Search pages"
       ],
       "tabs": [],
-      "screenshot": "screens/viewer/app_eb26cfc5_67ea_53d7_850a_879b5d18a732_inbox_3724a0fa_1799_5eb7_96ed_42e13bfb3601.png"
+      "screenshot": "screens/viewer/app_T_inbox_3724a0fa.png"
     },
     {
       "requested": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox/6e7b130a-db4d-5e18-8de1-a4e0efbc6795",
@@ -647,7 +647,7 @@
         "Search pages"
       ],
       "tabs": [],
-      "screenshot": "screens/viewer/app_eb26cfc5_67ea_53d7_850a_879b5d18a732_inbox_6e7b130a_db4d_5e18_8de1_a4e0efbc6795.png"
+      "screenshot": "screens/viewer/app_T_inbox_6e7b130a.png"
     },
     {
       "requested": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts/858a15c8-e06e-5dc8-8259-8238c97decff",
@@ -725,7 +725,7 @@
         "Search pages"
       ],
       "tabs": [],
-      "screenshot": "screens/viewer/app_eb26cfc5_67ea_53d7_850a_879b5d18a732_contacts_858a15c8_e06e_5dc8_8259_8238c97decff.png"
+      "screenshot": "screens/viewer/app_T_contacts_858a15c8.png"
     },
     {
       "requested": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts/db74f719-f5e0-5952-850e-9022e0986bcb",
@@ -803,7 +803,7 @@
         "Search pages"
       ],
       "tabs": [],
-      "screenshot": "screens/viewer/app_eb26cfc5_67ea_53d7_850a_879b5d18a732_contacts_db74f719_f5e0_5952_850e_9022e0986bcb.png"
+      "screenshot": "screens/viewer/app_T_contacts_db74f719.png"
     },
     {
       "requested": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/overview",
@@ -884,7 +884,7 @@
         "Search pages"
       ],
       "tabs": [],
-      "screenshot": "screens/viewer/app_eb26cfc5_67ea_53d7_850a_879b5d18a732_bots_70417b12_544b_5480_b945_b5cfcecb4332_overview.png"
+      "screenshot": "screens/viewer/app_T_bots_BOT_overview.png"
     },
     {
       "requested": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations",
@@ -961,7 +961,7 @@
         "Search pages"
       ],
       "tabs": [],
-      "screenshot": "screens/viewer/app_eb26cfc5_67ea_53d7_850a_879b5d18a732_bots_70417b12_544b_5480_b945_b5cfcecb4332_conversations.png"
+      "screenshot": "screens/viewer/app_T_bots_BOT_conversations.png"
     },
     {
       "requested": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations/3724a0fa-1799-5eb7-96ed-42e13bfb3601",
@@ -1027,7 +1027,7 @@
         "Search pages"
       ],
       "tabs": [],
-      "screenshot": "screens/viewer/app_eb26cfc5_67ea_53d7_850a_879b5d18a732_bots_70417b12_544b_5480_b945_b5cfcecb4332_conversations_3724a0fa_1799_5eb7_96ed_42e13bfb3601.png"
+      "screenshot": "screens/viewer/app_T_bots_BOT_conversations_3724a0fa.png"
     },
     {
       "requested": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations/6e7b130a-db4d-5e18-8de1-a4e0efbc6795",
@@ -1093,7 +1093,7 @@
         "Search pages"
       ],
       "tabs": [],
-      "screenshot": "screens/viewer/app_eb26cfc5_67ea_53d7_850a_879b5d18a732_bots_70417b12_544b_5480_b945_b5cfcecb4332_conversations_6e7b130a_db4d_5e18_8de1_a4e0efbc6795.png"
+      "screenshot": "screens/viewer/app_T_bots_BOT_conversations_6e7b130a.png"
     }
   ],
   "skipped": [
@@ -1211,7 +1211,7 @@
         "☾Appearance",
         "Close"
       ],
-      "screenshot": "screens/viewer/direct_app_eb26cfc5_67ea_53d7_850a_879b5d18a732_bots_70417b12_544b_5480_b945_b5cfcecb4332_knowledge.png"
+      "screenshot": "screens/viewer/direct_app_T_bots_BOT_knowledge.png"
     },
     {
       "body_excerpt": "‹ Bots Overview Conversations Bot status active Contact your operator to request settings changes.",
@@ -1233,7 +1233,7 @@
         "☾Appearance",
         "Close"
       ],
-      "screenshot": "screens/viewer/direct_app_eb26cfc5_67ea_53d7_850a_879b5d18a732_bots_70417b12_544b_5480_b945_b5cfcecb4332_settings.png"
+      "screenshot": "screens/viewer/direct_app_T_bots_BOT_settings.png"
     },
     {
       "body_excerpt": "Install Platform staff access required.",
@@ -1255,7 +1255,7 @@
         "☾Appearance",
         "Close"
       ],
-      "screenshot": "screens/viewer/direct_app_eb26cfc5_67ea_53d7_850a_879b5d18a732_bots_70417b12_544b_5480_b945_b5cfcecb4332_install.png"
+      "screenshot": "screens/viewer/direct_app_T_bots_BOT_install.png"
     },
     {
       "body_excerpt": "Playground Platform staff access required.",
@@ -1277,7 +1277,7 @@
         "☾Appearance",
         "Close"
       ],
-      "screenshot": "screens/viewer/direct_app_eb26cfc5_67ea_53d7_850a_879b5d18a732_bots_70417b12_544b_5480_b945_b5cfcecb4332_playground.png"
+      "screenshot": "screens/viewer/direct_app_T_bots_BOT_playground.png"
     }
   ]
 }
