@@ -38,6 +38,31 @@ export function AppShell({
     membership?.tenant_name;
   const role = tenantId ? roleIn(tenantId) : null;
   const base = `/app/${tenantId}`;
+  const [conversationBot, setConversationBot] = useState<{
+    tenant: string;
+    id: string | null;
+  } | null>(null);
+  useEffect(() => {
+    if (!tenantId || !me || platform || me.is_platform_staff) return;
+    let cancelled = false;
+    void api.listBots(tenantId, false).then(
+      (bots) => {
+        if (!cancelled)
+          setConversationBot({ tenant: tenantId, id: bots[0]?.id ?? null });
+      },
+      () => {
+        // The conversations landing page provides the retry/error state.
+        if (!cancelled) setConversationBot({ tenant: tenantId, id: null });
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [tenantId, me, platform]);
+  const conversationsHref =
+    conversationBot?.tenant === tenantId && conversationBot.id
+      ? `${base}/bots/${conversationBot.id}/conversations`
+      : `${base}/conversations`;
   const links: Destination[] = platform
     ? [
         { label: "Clients", href: "/platform", symbol: "◈" },
@@ -52,9 +77,18 @@ export function AppShell({
     : tenantId
       ? [
           { label: "Overview", href: base, symbol: "◈" },
-          { label: "Bots", href: `${base}/bots`, symbol: "✧" },
+          ...(me?.is_platform_staff
+            ? [{ label: "Bots", href: `${base}/bots`, symbol: "✧" }]
+            : [
+                {
+                  label: "Conversations",
+                  href: conversationsHref,
+                  symbol: "▤",
+                },
+              ]),
           { label: "Inbox", href: `${base}/inbox`, symbol: "▤" },
           { label: "Contacts", href: `${base}/contacts`, symbol: "◎" },
+          { label: "Insights", href: `${base}/analytics`, symbol: "▥" },
           ...(roleSatisfies(role, "admin")
             ? [
                 {
@@ -74,11 +108,6 @@ export function AppShell({
                 },
               ]
             : []),
-          {
-            label: "Handoff analytics",
-            href: `${base}/analytics`,
-            symbol: "▥",
-          },
         ]
       : [{ label: "Organizations", href: "/app", symbol: "↗" }];
   const destinations = [
@@ -155,7 +184,7 @@ export function AppShell({
         <p className="muted">
           {platform
             ? "Staff tools · audited actions"
-            : "Grounded in your knowledge."}
+            : "Your conversations, connected."}
         </p>
         <ThemeToggle />
       </div>
@@ -222,7 +251,11 @@ export function AppShell({
                       (org) => org.id === id && org.status === "archived",
                     );
                   router.push(
-                    archived ? `/platform/clients/${id}` : `/app/${id}/bots`,
+                    archived
+                      ? `/platform/clients/${id}`
+                      : me.is_platform_staff
+                        ? `/app/${id}/bots`
+                        : `/app/${id}`,
                   );
                 }}
               >
@@ -263,7 +296,7 @@ export function AppShell({
                 <span aria-hidden="true">/</span>
                 <span>
                   {links.find((link) => active(link.href))?.label ??
-                    "Bot workspace"}
+                    (me?.is_platform_staff ? "Bot workspace" : "Conversations")}
                 </span>
               </>
             )}

@@ -52,7 +52,7 @@ export default function OrgSelectorPage() {
     try {
       const tenant = await api.createTenant(name);
       await refresh();
-      router.push(`/app/${tenant.id}/bots`);
+      router.push(`/app/${tenant.id}`);
     } catch (caught) {
       setCreateError(
         caught instanceof Error
@@ -161,7 +161,7 @@ export default function OrgSelectorPage() {
         <ul className="org-list">
           {me.memberships.map((membership) => (
             <li key={membership.tenant_id}>
-              <Link href={`/app/${membership.tenant_id}/bots`}>
+              <Link href={`/app/${membership.tenant_id}`}>
                 {membership.tenant_name}
               </Link>
               <span className="muted"> — your role: {membership.role}</span>

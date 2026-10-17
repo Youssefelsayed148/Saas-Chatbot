@@ -29,6 +29,7 @@ export default function BotWorkspaceNav({
   const pathname = usePathname();
   const { me } = useSession();
   const base = `/app/${tenantId}/bots/${botId}`;
+  if (!me?.is_platform_staff) return null;
   return (
     <nav
       className="bot-workspace-nav"
@@ -40,13 +41,7 @@ export default function BotWorkspaceNav({
         {botName && <strong> {botName}</strong>}
       </span>
       <span className="bot-nav-tabs">
-        {TABS.filter(
-          (tab) =>
-            me?.is_platform_staff ||
-            !["settings", "playground", "knowledge", "install"].includes(
-              tab.key,
-            ),
-        ).map((tab) => {
+        {TABS.map((tab) => {
           const href =
             tab.key === "overview"
               ? `${base}/overview`

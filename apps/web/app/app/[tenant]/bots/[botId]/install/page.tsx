@@ -56,13 +56,7 @@ export default function InstallPage() {
     return () => clearTimeout(timer);
   }, [tenantId, botId, me?.is_platform_staff]);
 
-  if (!me?.is_platform_staff)
-    return (
-      <main>
-        <h1>Install</h1>
-        <Notice message="Platform staff access required." />
-      </main>
-    );
+  if (!me?.is_platform_staff) return null;
 
   if (loadError) {
     return (

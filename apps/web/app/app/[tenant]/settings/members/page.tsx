@@ -265,7 +265,7 @@ export default function MembersPage() {
                               );
                               if (isSelf && newRole !== "admin") {
                                 await refresh();
-                                router.replace(`/app/${tenantId}/bots`);
+                                router.replace(`/app/${tenantId}`);
                               } else await load();
                             } catch (caught) {
                               setActionError(

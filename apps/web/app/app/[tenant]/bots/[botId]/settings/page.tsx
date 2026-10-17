@@ -70,12 +70,13 @@ export default function BotSettingsPage() {
   }, [tenantId, botId]);
 
   useEffect(() => {
+    if (!canEdit) return;
     // Loaders run deferred so no state updates synchronously in the effect.
     const timer = setTimeout(() => {
       void load();
     }, 0);
     return () => clearTimeout(timer);
-  }, [load]);
+  }, [load, canEdit]);
 
   async function onSave(event: React.FormEvent) {
     event.preventDefault();
@@ -147,15 +148,7 @@ export default function BotSettingsPage() {
     }
   }
 
-  if (me && !me.is_platform_staff)
-    return (
-      <main>
-        <BotWorkspaceNav tenantId={tenantId} botId={botId} />
-        <h1>Bot status</h1>
-        <p>{bot?.status ?? "Loading status?"}</p>
-        <p>Contact your operator to request settings changes.</p>
-      </main>
-    );
+  if (!me?.is_platform_staff) return null;
 
   if (loadError) {
     return (
