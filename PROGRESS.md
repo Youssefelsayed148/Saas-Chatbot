@@ -1638,7 +1638,7 @@ No volumes were deleted. **All runtime behaviour is UNVERIFIED**: builds, startu
 migrations, healthchecks, authentication, seeding, premium routing, queue execution,
 embeddings, persistence, and shutdown require owner validation. No phase gate was signed off.
 
-## 2026-10-17 — Group A operator fixes (in progress)
+## 2026-10-17 — Group A operator fixes
 
 Owner scope: `fix/group-a-operator` from main; small local commits; merge with
 `--no-ff` and delete the branch only after checks pass. No push, tags, Docker,
@@ -1699,3 +1699,20 @@ Full-suite diagnostics and minimal logging fix:
 - With those command corrections, `../../.venv/Scripts/python.exe -m pytest tests/test_startup_guard.py -q --tb=short -p no:cacheprovider --basetemp=../../.test-storage-group-a/startup-tmp` — **7 passed**, 1.08s, exit 0.
 - Final full backend rerun: `../../.venv/Scripts/python.exe -u -m pytest -q --tb=short -p no:cacheprovider --basetemp=../../.test-storage-group-a/green-tmp`, with the owner-supplied test-only connection on port 55462, base `group_a_backend_final`, `ENVIRONMENT=test`, `PYTHONUTF8=1`, no global stub flags/provider credentials. Log: `.test-storage-group-a/backend-full-green.log` (ignored).
 - Changed backend Ruff lint/format and Linux-target mypy checks pass, including `alembic/env.py` and `tests/test_migrations.py` (6 source files, exit 0). The newly appended progress notes are normalized to UTF-8, preserving the historical file prefix.
+
+The superseded full backend run was stopped at 92% after three observed failures
+and one skip, once the causes were diagnosed. It was not recorded as a passing
+run. The corrected full rerun uses the complete final source, including the
+invitation race regression and logger-preservation assertion.
+
+Files changed for Group A:
+- API: `apps/api/app/auth/service.py`, `apps/api/app/platform/router.py`, `apps/api/app/tenants/service.py`, `apps/api/alembic/env.py`, `apps/api/tests/test_group_a_operator.py`, `apps/api/tests/test_migrations.py`.
+- Web: `apps/web/app/app/page.tsx`, `apps/web/app/app/[tenant]/inbox/[conversation]/page.tsx`, `apps/web/app/platform/page.tsx`, `apps/web/app/platform/clients/[clientId]/page.tsx`, `apps/web/lib/api.ts`, `apps/web/lib/app-header.tsx`, `apps/web/lib/session.tsx`, `apps/web/tests/group-a-operator.spec.ts`, `apps/web/tests/group-a-members.spec.ts`, `apps/web/tests/conversations.spec.ts`.
+- Evidence/record: `implementation/FEATURE-INVENTORY.md` (pre-existing user evidence, separately committed with approval), `PROGRESS.md`.
+
+Final result and local integration readiness:
+- Final full backend command recorded above exited **0**: **391 passed, 1 skipped, 1 existing Starlette deprecation warning**, 1579.98s (26m19s). Skip: `tests/test_knowledge_parsers.py:52`, POSIX process-group integration; Windows unverified. No Group A regression was skipped.
+- Final full frontend: **45 passed**, exit 0; lint, typecheck and changed-file formatting checks passed. Changed backend Ruff lint/format and Linux-target mypy checks passed. Relevant final invitation/member, migration/logging and startup follow-ups also passed (21, 3 and 7 tests respectively).
+- All runtime verification used disposable test databases. After the owner supplied the connection, only port 55462 was used. Model/provider behavior was mocked or fixture-controlled; no paid API calls, credential-file reads, Docker commands, push, tags or production deployment.
+- No schema migration is required. Remaining verification limitation: the existing POSIX-only parser descendant-process cleanup test cannot execute on this Windows host.
+- Restore the evaluation report's generated timestamp, commit this exact validation record, then perform the owner's authorized local `git merge --no-ff fix/group-a-operator` into `main` and `git branch -d fix/group-a-operator`. The merge commit records final integration; no phase/release or deployment sign-off is implied.
