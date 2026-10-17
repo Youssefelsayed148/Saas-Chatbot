@@ -53,7 +53,7 @@ export default function ConversationDetailPage() {
       </p>
       <h1 data-testid="conversation-detail-title">Conversation</h1>
       <p className="page-purpose">
-        Read this visitor’s conversation and the sources behind its answers.
+        Read this visitor’s conversation and replies.
       </p>
       {error && <Notice message={error} tone="error" />}
       {detail ? (
@@ -93,7 +93,7 @@ export default function ConversationDetailPage() {
                   </ul>
                 )}
                 {message.needs_human && (
-                  <Notice message="The assistant could not answer this from the knowledge." />
+                  <Notice message="The assistant could not confirm an answer." />
                 )}
               </li>
             ))}

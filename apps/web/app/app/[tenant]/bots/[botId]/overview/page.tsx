@@ -106,8 +106,7 @@ export default function OverviewPage() {
       <BotWorkspaceNav tenantId={tenantId} botId={botId} />
       <h1 data-testid="overview-title">Overview</h1>
       <p className="page-purpose">
-        Measure conversations, answers and leads for this bot using stored
-        activity.
+        Measure conversations, answers and leads using stored activity.
       </p>
       <form
         aria-label="Date range"
@@ -140,18 +139,22 @@ export default function OverviewPage() {
         <button type="submit" data-testid="range-apply">
           Apply
         </button>
-        <a
-          href={`/api/v1/tenants/${tenantId}/bots/${botId}/analytics/conversations.csv${csvSuffix}`}
-          data-testid="export-conversations"
-        >
-          Export conversations CSV
-        </a>
-        <a
-          href={`/api/v1/tenants/${tenantId}/bots/${botId}/analytics/leads.csv${csvSuffix}`}
-          data-testid="export-leads"
-        >
-          Export leads CSV
-        </a>
+        {roleSatisfies(role, "admin") && (
+          <>
+            <a
+              href={`/api/v1/tenants/${tenantId}/bots/${botId}/analytics/conversations.csv${csvSuffix}`}
+              data-testid="export-conversations"
+            >
+              Export conversations CSV
+            </a>
+            <a
+              href={`/api/v1/tenants/${tenantId}/bots/${botId}/analytics/leads.csv${csvSuffix}`}
+              data-testid="export-leads"
+            >
+              Export leads CSV
+            </a>
+          </>
+        )}
       </form>
       {error && <Notice message={error} tone="error" />}
       {loading && <Loading label="Loading measured numbers…" />}
@@ -240,7 +243,7 @@ export default function OverviewPage() {
           </section>
 
           <section aria-label="Unanswered questions" data-testid="unanswered">
-            <h2>Unanswered questions (the bot could not confirm)</h2>
+            <h2>Unanswered questions</h2>
             {(unanswered?.questions.length ?? 0) === 0 ? (
               <Empty>Nothing went unanswered in this range.</Empty>
             ) : (

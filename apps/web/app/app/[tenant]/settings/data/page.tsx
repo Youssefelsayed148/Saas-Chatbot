@@ -104,11 +104,10 @@ export default function TenantDataPage() {
       <main className="tenant-data-page">
         <h1>Tenant data and audit</h1>
         <p className="page-purpose">
-          Export workspace data, review activity and manage organization
-          deletion.
+          Export workspace data and review activity.
         </p>
         <p>Administrator access is required.</p>
-        <Link href={`/app/${tenantId}/bots`}>Back to bots</Link>
+        <Link href={`/app/${tenantId}`}>Back to overview</Link>
       </main>
     );
   }
@@ -116,11 +115,9 @@ export default function TenantDataPage() {
   return (
     <main className="tenant-data-page">
       <h1>Tenant data and audit</h1>
-      <p className="page-purpose">
-        Export workspace data, review activity and manage organization deletion.
-      </p>
+      <p className="page-purpose">Export workspace data and review activity.</p>
       <p>
-        <Link href={`/app/${tenantId}/bots`}>Back to bots</Link>
+        <Link href={`/app/${tenantId}`}>Back to overview</Link>
       </p>
       {error && <Notice message={error} tone="error" />}
       {!tenant ? (
@@ -131,8 +128,9 @@ export default function TenantDataPage() {
             <h2>Export tenant data</h2>
             <p>
               Downloads contacts, identities, conversations, messages, usage,
-              and audit history as JSON. Platform staff exports also include
-              knowledge, jobs and bot configuration.
+              and audit history as JSON.
+              {isOperator &&
+                " Platform staff exports also include knowledge, jobs and bot configuration."}
             </p>
             <button
               type="button"
