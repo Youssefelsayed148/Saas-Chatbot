@@ -56,3 +56,14 @@ export function LabelBadge({
     </span>
   );
 }
+
+// Historical audit rows retain their original action; display both vocabularies.
+export function auditActionLabel(action: string): string {
+  const labels: Record<string, string> = {
+    "platform.onboarding.owner_invited": "Admin invited",
+    "platform.onboarding.admin_invited": "Admin invited",
+    "self_service.owner_assigned": "Admin assigned",
+    "self_service.admin_assigned": "Admin assigned",
+  };
+  return labels[action] ?? action;
+}

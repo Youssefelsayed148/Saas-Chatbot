@@ -1920,3 +1920,61 @@ Final backend and integration readiness:
   `git merge --no-ff fix/group-b-client-visibility` into `main`, then
   `git branch -d fix/group-b-client-visibility`; leave main clean. This does not
   imply production deployment or unrelated roadmap/hosting/billing sign-off.
+
+
+## 2026-10-17 - Group C safety and polish
+
+Authorization: Group B is merged at `4f0d01f`; work branch is
+`fix/group-c-polish`, created from clean main. Owner explicitly authorizes
+small local commits, a final `--no-ff` merge and branch deletion after checks.
+No push, tags, Docker, production changes or paid provider calls authorized.
+Hosting/billing OPEN decisions do not block this requested maintenance scope.
+
+Verified before renaming: `ProvisioningService._provision` creates the onboarding
+invitation with `role="admin"`; self-service membership also uses `admin`.
+Acceptance is covered by the updated platform backend test, including refusal
+of platform staff access for the invited admin.
+
+Implemented admin API/frontend identifiers and new admin audit actions. Existing
+audit rows stay untouched; both tenant/platform search and all three audit views
+handle historical owner names. Historical provisioning fingerprints and replayed
+result JSON remain compatible without a database column rename or migration.
+GET data/export keeps its intentional audit write, with an explanatory comment.
+
+Validation so far (PowerShell, repository root unless noted):
+- `git status --short`, `git branch --show-current`, `git log -8 --oneline`:
+  clean main with Group B merged. Initial sandbox `git switch -c
+  fix/group-c-polish` could not write .git; the identical elevated command passed.
+- First Node preload invocation failed before checks ran: path with spaces was
+  not quoted. Corrected NODE_OPTIONS to a quoted absolute forward-slash path.
+  The ignored `.test-storage-group-c/no-dotenv.cjs` disables only Next dotenv
+  loading; no credential files were opened or configuration files changed.
+- `npm.cmd run lint`, `npm.cmd run typecheck`: exit 0 (including route generation).
+  Repeated after adding Group C fixtures: exit 0; logs in ignored
+  `.test-storage-group-c/frontend-{lint,typecheck}.log`.
+- `.venv/Scripts/python.exe -m ruff check --fix apps/api/tests/test_group_c_polish.py`:
+  fixed import order; initially reported long lines. `ruff format` corrected them.
+  Final changed-file Ruff check: exit 0.
+- In apps/api, `../../.venv/Scripts/python.exe -u -m pytest -q --tb=short
+  -p no:cacheprovider tests/test_group_c_polish.py tests/test_platform.py
+  tests/test_self_service_signup.py tests/test_tenant_data.py
+  tests/test_widget_appearance.py
+  --basetemp=../../.test-storage-group-c/backend-targeted-tmp`:
+  incomplete due to Windows sandbox temp-directory ACL errors, including pytest
+  cleanup. Seven dots and thirteen setup errors were printed before the cleanup
+  exception; this is not a passing suite result. Log: backend-targeted.log.
+- In apps/api, `../../.venv/Scripts/python.exe -u -m pytest -q --tb=short
+  -p no:cacheprovider --basetemp=../../.test-storage-group-c/backend-full-tmp`:
+  full elevated run in progress. ENVIRONMENT=test, PYTHONUTF8=1, supplied test
+  connection in child-process TEST_DATABASE_URL/DATABASE_URL only, normalized
+  to plain postgresql for the harness's psycopg maintenance connection; only
+  127.0.0.1:55462 and disposable postgres_test. Provider credentials and global
+  stub flags cleared in the child environment. Log: backend-full.log.
+- In apps/web, `npm.cmd run test -- --reporter=line`: full production build and
+  62-test suite in progress with the dotenv-blocking preload, offline provider
+  harness, isolated group_c_browser_test on the same authorized DB port,
+  E2E_API_PORT=18148 and API_PROXY_TARGET=http://127.0.0.1:18148. All connection
+  settings are child-process environment only. Log: frontend-full.log.
+
+No live manual browser login verification was performed, per owner request.
+Exact completed outcomes and final integration will be appended below.

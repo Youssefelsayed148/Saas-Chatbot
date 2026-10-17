@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 
 from app.auth import cookies
-from app.core.audit import record_audit
+from app.core.audit import audit_action_matches, record_audit
 from app.core.config import Settings, get_settings
 from app.core.tenancy import TenantContextDep
 from app.db.models import (
@@ -356,6 +356,7 @@ def export_tenant_data(
             for event in export_data["usage_events"]
             if event["kind"] != "ai_usage"
         ]
+    # GET export intentionally writes an audit row to record each data download.
     record_audit(
         db,
         action="tenant.data.exported",
@@ -407,7 +408,7 @@ def tenant_audit_review(
     context.require_role("admin")
     statement = select(AuditEvent).where(AuditEvent.tenant_id == context.tenant_id)
     if q and q.strip():
-        statement = statement.where(AuditEvent.action.ilike(f"%{q.strip()}%"))
+        statement = statement.where(audit_action_matches(q))
     rows = list(
         context.db.execute(statement.order_by(AuditEvent.created_at.desc()).limit(limit)).scalars()
     )

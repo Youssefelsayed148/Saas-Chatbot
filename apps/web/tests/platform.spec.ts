@@ -55,7 +55,7 @@ test("staff list, onboard a client end to end, and open the client detail", asyn
   const clientName = `Onboarded Org ${Date.now()}`;
   await page.getByTestId("ob-client-name").fill(clientName);
   await page
-    .getByTestId("ob-owner-email")
+    .getByTestId("ob-admin-email")
     .fill(`admin.${Date.now()}@client.example`);
   await page.getByTestId("ob-bot-name").fill("First Bot");
   await page.getByTestId("ob-submit").click();

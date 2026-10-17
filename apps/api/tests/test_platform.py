@@ -14,13 +14,13 @@ from fastapi.testclient import TestClient
 from sqlalchemy import text
 
 import tests.retrieval_helpers as _rh  # noqa: F401 — registers the corpus fixture
-from tests.helpers import logged_in, make_bot, seeded_tenant
+from tests.helpers import accept_invitation, logged_in, make_bot, seeded_tenant
 
 corpus = _rh.corpus
 
 ONBOARD_FORM = {
     "client_name": "Provisioned Org",
-    "owner_email": "new-admin@example.com",
+    "admin_email": "new-admin@example.com",
     "bot_name": "First Bot",
 }
 
@@ -83,7 +83,7 @@ def test_staff_flag_is_separate_from_tenant_roles(
     listing = platform_call(staff_client, "GET", "/tenants")
     assert listing.status_code == 200
     # ...and a tenant ADMIN without the flag is refused (role is not enough).
-    admin_client, _payload = logged_in(app, "plain-owner2@example.com")
+    admin_client, _payload = logged_in(app, "plain-admin2@example.com")
     admin_client.post(
         "/api/v1/tenants",
         json={"name": "Plain"},
@@ -95,7 +95,7 @@ def test_staff_flag_is_separate_from_tenant_roles(
 # --- onboarding -------------------------------------------------------------
 
 
-def test_staff_onboarding_creates_tenant_bot_and_owner_invite(
+def test_staff_onboarding_creates_tenant_bot_and_admin_invite(
     app: Any, db: Any, corpus: dict[str, Any]
 ) -> None:
     staff_client = staff_login(app, db)
@@ -112,7 +112,7 @@ def test_staff_onboarding_creates_tenant_bot_and_owner_invite(
     result = body["result"]
     tenant_id = result["tenant_id"]
     assert result["bot_id"]
-    invite = result["owner_invite"]
+    invite = result["admin_invite"]
     assert invite["link_path"].startswith("/accept-invite?token=")
     # the invitation exists as an ADMIN row (single-use token hashed)
     invitations = db.execute(
@@ -129,6 +129,8 @@ def test_staff_onboarding_creates_tenant_bot_and_owner_invite(
         {"t": tenant_id},
     ).fetchall()
     actions = {row[0] for row in audit}
+    assert "platform.onboarding.admin_invited" in actions
+    assert "platform.onboarding.owner_invited" not in actions
     assert "platform.onboarding.tenant_created" in actions
     assert all(row[1] for row in audit)
     # tenant is a REAL tenant (no admin membership yet — invite-pending)
@@ -137,6 +139,14 @@ def test_staff_onboarding_creates_tenant_bot_and_owner_invite(
         {"t": tenant_id},
     ).scalar_one()
     assert int(members) == 0
+    invitee, _ = logged_in(app, ONBOARD_FORM["admin_email"])
+    accepted = accept_invitation(invitee, invite["link_path"].split("token=")[1])
+    assert accepted.status_code == 200, accepted.text
+    role = db.execute(
+        text("SELECT role FROM memberships WHERE tenant_id = :t"), {"t": tenant_id}
+    ).scalar_one()
+    assert role == "admin"
+    assert invitee.get("/api/v1/platform/me").status_code == 403
 
 
 def test_double_submit_creates_exactly_one_tenant(

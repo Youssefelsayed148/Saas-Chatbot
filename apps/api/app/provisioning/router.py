@@ -36,7 +36,7 @@ def self_service_signup(
         raise ApiError(403, "FORBIDDEN", "Self-service signup is disabled.")
     payload = ProvisioningPayload(
         client_name=body.client_name,
-        owner_email=actor.email,
+        admin_email=actor.email,
         bot_name=body.bot_name,
         plan_label="free",
     )

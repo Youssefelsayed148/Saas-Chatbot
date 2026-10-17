@@ -7,7 +7,7 @@ import { useSession } from "@/lib/session";
 import { Loading, Notice } from "@/lib/ui";
 
 /** Staff onboarding form (P4-06, docs/11): one form → ProvisioningService
- * (tenant + owner one-time invite link + optional bot + skill-output files).
+ * (tenant + admin one-time invite link + optional bot + skill-output files).
  * Idempotency-Key is generated per submit; a retry reuses the SAME key so the
  * durable record cannot be duplicated. The invite link is shown ONCE. */
 
@@ -24,7 +24,7 @@ export default function PlatformHomePage() {
   const [loading, setLoading] = useState(true);
 
   const [clientName, setClientName] = useState("");
-  const [ownerEmail, setOwnerEmail] = useState("");
+  const [adminEmail, setAdminEmail] = useState("");
   const [botName, setBotName] = useState("Website assistant");
   const [files, setFiles] = useState<FileList | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -65,13 +65,13 @@ export default function PlatformHomePage() {
       const result = await api.platformOnboard(
         {
           client_name: clientName.trim(),
-          owner_email: ownerEmail.trim(),
+          admin_email: adminEmail.trim(),
           bot_name: botName.trim() || null,
         },
         key,
         files,
       );
-      setInviteLink(result.result?.owner_invite?.link_path ?? null);
+      setInviteLink(result.result?.admin_invite?.link_path ?? null);
       setRequestId(result.request_id);
       await Promise.all([load(), refresh()]);
     } catch (caught) {
@@ -189,11 +189,11 @@ export default function PlatformHomePage() {
           <label>
             Admin email (one-time invite link, no email)
             <input
-              data-testid="ob-owner-email"
+              data-testid="ob-admin-email"
               type="email"
               required
-              value={ownerEmail}
-              onChange={(event) => setOwnerEmail(event.target.value)}
+              value={adminEmail}
+              onChange={(event) => setAdminEmail(event.target.value)}
             />
           </label>
           <label>
