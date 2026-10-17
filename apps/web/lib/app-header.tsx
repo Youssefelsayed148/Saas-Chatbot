@@ -60,7 +60,7 @@ export function AppShell({
     };
   }, [tenantId, me, platform]);
   const conversationsHref =
-    conversationBot?.tenant === tenantId && conversationBot.id
+    conversationBot && conversationBot.tenant === tenantId && conversationBot.id
       ? `${base}/bots/${conversationBot.id}/conversations`
       : `${base}/conversations`;
   const links: Destination[] = platform
