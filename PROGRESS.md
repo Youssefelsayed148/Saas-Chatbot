@@ -2034,3 +2034,120 @@ confirm the new dialogs while retaining their real payload and effective-limit
 assertions. The next full browser command is again `npm.cmd run test --
 --reporter=line` in apps/web with the same isolated process environment; output
 is `.test-storage-group-c/frontend-final.log`. It rebuilds the final product.
+
+
+Final frontend verification completed:
+- `npm.cmd run lint`: exit 0; log frontend-lint-final.log.
+- `npm.cmd run typecheck`: exit 0; route generation and tsc passed;
+  log frontend-typecheck-final.log.
+- In apps/web, `npm.cmd run test -- --reporter=line`: exit 0,
+  **62 passed (5.1m)**. Final production rebuild included every source and test
+  correction described above. No product/test changes followed this run.
+  Log: `.test-storage-group-c/frontend-final.log` (ignored).
+- All eleven new Group C tests passed, plus all 51 existing cases (with the
+  documented sample-route/confirmation/metadata expectations updated).
+  Coverage includes Cancel/Escape/focus restoration/no-write and one confirmed
+  request for all six placements, both lists' five job statuses, all three
+  audit displays, client navigation titles, SVG icons, actual rendered middle
+  dots, favicon bytes, anonymous/client-admin denial of sample access, and
+  staff sample access. The existing install journey verifies saved colour in
+  the live public widget config with no publish step.
+- The final API log includes three closed-connection tracebacks while cleaning
+  up `event_stream` generators during navigation/teardown. All 62 tests passed;
+  this log noise remains outside Group C changes (inbox backend is untouched).
+  The frontend harness completed its normal process teardown.
+- In apps/api, `../../.venv/Scripts/python.exe -m mypy --follow-imports=silent
+  app/core/audit.py app/platform/router.py app/provisioning/router.py
+  app/provisioning/service.py app/tenants/data.py tests/test_group_c_polish.py
+  tests/test_platform.py tests/test_self_service_signup.py`: exit 0,
+  no issues in eight changed files. Imported modules are excluded from this
+  scoped check; the broader baseline findings above remain. Log:
+  backend-mypy-changed.log.
+- The same eight-file list passed `../../.venv/Scripts/python.exe -m ruff check`
+  (exit 0); log backend-ruff-changed.log. `git diff --check main`: exit 0.
+
+
+Group C files changed (46, relative to the repository root):
+
+- `PROGRESS.md`
+- `apps/api/app/core/audit.py`
+- `apps/api/app/platform/router.py`
+- `apps/api/app/provisioning/router.py`
+- `apps/api/app/provisioning/service.py`
+- `apps/api/app/tenants/data.py`
+- `apps/api/tests/test_group_c_polish.py`
+- `apps/api/tests/test_platform.py`
+- `apps/api/tests/test_self_service_signup.py`
+- `apps/web/app/app/[tenant]/bots/[botId]/conversations/page.tsx`
+- `apps/web/app/app/[tenant]/bots/[botId]/knowledge/page.tsx`
+- `apps/web/app/app/[tenant]/bots/[botId]/settings/page.tsx`
+- `apps/web/app/app/[tenant]/contacts/[contactId]/page.tsx`
+- `apps/web/app/app/[tenant]/settings/data/page.tsx`
+- `apps/web/app/app/[tenant]/settings/members/page.tsx`
+- `apps/web/app/favicon.ico`
+- `apps/web/app/layout.tsx`
+- `apps/web/app/platform/clients/[clientId]/page.tsx`
+- `apps/web/app/platform/layout.tsx`
+- `apps/web/app/platform/operations/page.tsx`
+- `apps/web/app/platform/page.tsx`
+- `apps/web/app/widget/sample/page.tsx`
+- `apps/web/app/widget/sample/sample.tsx`
+- `apps/web/lib/api.ts`
+- `apps/web/lib/app-header.tsx`
+- `apps/web/lib/labels.tsx`
+- `apps/web/lib/page-title.tsx`
+- `apps/web/lib/rag-operator-panel.tsx`
+- `apps/web/lib/rag-tier-control.tsx`
+- `apps/web/lib/staff-access.ts`
+- `apps/web/lib/ui.tsx`
+- `apps/web/tests/conversations.spec.ts`
+- `apps/web/tests/e2e-helpers.ts`
+- `apps/web/tests/foundation.spec.ts`
+- `apps/web/tests/group-c-fixtures.ts`
+- `apps/web/tests/group-c-polish.spec.ts`
+- `apps/web/tests/install.spec.ts`
+- `apps/web/tests/platform.spec.ts`
+- `apps/web/tests/roles-control.spec.ts`
+- `apps/web/tests/ui-characterization.spec.ts`
+- `apps/web/tests/widget.spec.ts`
+- `docs/18-EXPECTED-BEHAVIOUR.md`
+- `docs/RAG-PLAN-v2.md`
+- `implementation/FEATURE-INVENTORY.md`
+- `implementation/MANUAL-TEST.md`
+- `implementation/PHASE-CHECKLISTS.md`
+
+
+Final backend and local integration readiness:
+- The full backend command recorded above exited 0: **409 passed, 1 skipped,
+  1 warning in 1601.46s (26m41s)**. The skip is
+  tests/test_knowledge_parsers.py:52 (POSIX process-group integration on Windows).
+  The warning is the existing Starlette TestClient/httpx deprecation.
+- In apps/api, `../../.venv/Scripts/python.exe -u -m pytest -q --tb=short
+  -p no:cacheprovider tests/test_group_c_polish.py
+  --basetemp=../../.test-storage-group-c/backend-audit-final-tmp` exited 0:
+  **2 passed, 1 existing warning in 2.03s**. This verifies the final uppercase
+  admin/owner search behavior, immutable old/new history, tenant A/B isolation,
+  authorization, stable historical provisioning fingerprints and admin replay
+  responses. Same process-only disposable DB settings as the full backend run.
+  Log: `.test-storage-group-c/backend-audit-final.log` (ignored).
+- Final frontend: **62 passed**, full lint/typecheck passed. PowerShell
+  `$files = @(git diff --name-only main -- apps/web | Where-Object {
+  $_ -match '\.(ts|tsx)$' }); npm.cmd exec -- prettier --check $files`
+  exited 0; log frontend-format-final.log. `git diff --check main`: exit 0.
+- Runtime onboarding acceptance test passed: invited user receives admin and
+  cannot access /platform/me. Self-service assigns admin and emits the new
+  admin_assigned action. No DB columns or migration files were renamed.
+- Confirmed the evaluation report changed only its generated timestamp and
+  restored that unrelated line. Final scope is the 46 files listed above.
+- Remaining limitations: manual/live browser login verification intentionally
+  skipped; POSIX parser process-group behavior unverified on Windows; untouched
+  baseline Ruff/mypy findings and SSE cleanup tracebacks documented above.
+- No credential-file reads, persisted DB connection values, Docker commands,
+  paid provider calls, customer sends, push, tags or deployment. DB runtime
+  checks used only disposable databases on 127.0.0.1:55462 with the supplied test
+  account. No customer or production database was inspected or changed.
+- Requested implementation and checks are complete. The owner-authorized final
+  local operations are `git switch main`, `git merge --no-ff
+  fix/group-c-polish -m "Merge Group C safety and polish"`, then
+  `git branch -d fix/group-c-polish`; leave main clean. This maintenance merge
+  does not sign off unrelated roadmap phases, hosting or billing decisions.
