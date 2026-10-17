@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { LabelBadge } from "@/lib/labels";
+import { auditActionLabel, LabelBadge } from "@/lib/labels";
 import * as api from "@/lib/api";
 import { Loading, Notice } from "@/lib/ui";
 
@@ -80,7 +80,8 @@ export default function PlatformOperationsPage() {
             <h2>Provisional quota limits</h2>
             <p>
               These values are for verification. Pricing and final plan limits
-              are still under review; no token or currency spend cap is enforced.
+              are still under review; no token or currency spend cap is
+              enforced.
             </p>
             <table>
               <thead>
@@ -180,28 +181,24 @@ export default function PlatformOperationsPage() {
                     <td>{job.attempts}</td>
                     <td>{job.error ?? "—"}</td>
                     <td>
-                      <button
-                        type="button"
-                        disabled={
-                          reason.trim().length < 3 ||
-                          !["failed", "cancelled", "succeeded"].includes(
-                            job.status,
-                          )
-                        }
-                        onClick={() => void act(job.id, "retry")}
-                      >
-                        Retry
-                      </button>{" "}
-                      <button
-                        type="button"
-                        disabled={
-                          reason.trim().length < 3 ||
-                          !["pending", "running"].includes(job.status)
-                        }
-                        onClick={() => void act(job.id, "cancel")}
-                      >
-                        Cancel
-                      </button>
+                      {job.status === "failed" && (
+                        <button
+                          type="button"
+                          disabled={reason.trim().length < 3}
+                          onClick={() => void act(job.id, "retry")}
+                        >
+                          Retry
+                        </button>
+                      )}
+                      {["pending", "running"].includes(job.status) && (
+                        <button
+                          type="button"
+                          disabled={reason.trim().length < 3}
+                          onClick={() => void act(job.id, "cancel")}
+                        >
+                          Cancel
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -231,7 +228,8 @@ export default function PlatformOperationsPage() {
             <ul>
               {audit.events.map((event, index) => (
                 <li key={`${event.created_at}-${index}`}>
-                  {event.created_at.slice(0, 19)} · {event.action} ·{" "}
+                  {event.created_at.slice(0, 19)} ·{" "}
+                  {auditActionLabel(event.action)} ·{" "}
                   {event.target_type ?? "platform"}:{event.target_id ?? ""}
                 </li>
               ))}

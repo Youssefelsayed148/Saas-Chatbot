@@ -8,7 +8,7 @@ import { LabelBadge } from "@/lib/labels";
 import * as api from "@/lib/api";
 import type { Bot } from "@/lib/api";
 import { useSession } from "@/lib/session";
-import { Loading, Notice } from "@/lib/ui";
+import { ConfirmAction, Loading, Notice } from "@/lib/ui";
 import BotWorkspaceNav from "@/lib/bot-workspace-nav";
 import RagTierControl from "@/lib/rag-tier-control";
 
@@ -171,12 +171,13 @@ export default function BotSettingsPage() {
       <BotWorkspaceNav tenantId={tenantId} botId={botId} />
       <h1>{bot.name} — settings</h1>
       <p className="page-purpose">
-        Configure your assistant, appearance and website access.
+        Configure your assistant, appearance and website access. Save settings
+        applies appearance changes live.
       </p>
-      <p data-status={bot.status}>
+      <div data-status={bot.status}>
         Status: <LabelBadge value={bot.status} />
         {canEdit && bot.status !== "archived" && (
-          <span>
+          <div>
             {" "}
             {bot.status !== "active" && (
               <button
@@ -189,18 +190,21 @@ export default function BotSettingsPage() {
               </button>
             )}
             {bot.status === "active" && (
-              <button
-                type="button"
-                data-testid="pause-bot"
+              <ConfirmAction
+                title="Pause bot?"
+                description={
+                  "The website widget will become unavailable and this bot will stop answering visitors until activated again."
+                }
+                testId="pause-bot"
                 disabled={transitioning}
-                onClick={() => void transitionTo("paused")}
+                onConfirm={() => void transitionTo("paused")}
               >
                 {transitioning ? "Pausing…" : "Pause bot"}
-              </button>
+              </ConfirmAction>
             )}
-          </span>
+          </div>
         )}
-      </p>
+      </div>
       {bot.widget_locator && (
         <p className="muted">
           Widget locator:{" "}

@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import * as api from "@/lib/api";
 import type { Invitation, Member, Role } from "@/lib/api";
 import { roleSatisfies, useSession } from "@/lib/session";
-import { Empty, Loading, Notice } from "@/lib/ui";
+import { ConfirmAction, Empty, Loading, Notice } from "@/lib/ui";
 
 const CHANGEABLE_ROLES: Role[] = ["viewer", "editor", "admin"];
 
@@ -296,10 +296,13 @@ export default function MembersPage() {
                           protected
                         </span>
                       ) : (
-                        <button
-                          type="button"
+                        <ConfirmAction
+                          title="Remove member?"
+                          description={
+                            "This member will lose access to this organization immediately."
+                          }
                           disabled={busy === `remove-${member.user_id}`}
-                          onClick={async () => {
+                          onConfirm={async () => {
                             setBusy(`remove-${member.user_id}`);
                             setActionError(null);
                             try {
@@ -323,7 +326,7 @@ export default function MembersPage() {
                           {busy === `remove-${member.user_id}`
                             ? "Removing…"
                             : "Remove"}
-                        </button>
+                        </ConfirmAction>
                       )}
                       {isSelf && <span className="muted"> (you)</span>}
                     </td>
