@@ -49,7 +49,7 @@ test("admin signup provisions first bot and bot lifecycle stays with platform st
   page,
 }) => {
   const orgName = `E2E Org ${Date.now()}`;
-  const { tenantId, botName } = await registerAdmin(page, "E2E", {
+  const { tenantId } = await registerAdmin(page, "E2E", {
     organizationName: orgName,
   });
   await page.goto("/app");
@@ -58,18 +58,15 @@ test("admin signup provisions first bot and bot lifecycle stays with platform st
   ).toBeVisible();
   await expect(page.getByRole("link", { name: orgName })).toBeVisible();
   await page.goto(`/app/${tenantId}/bots`);
-  const row = page.getByRole("row", { name: new RegExp(botName) });
-  await expect(row).toBeVisible();
-  await expect(row.locator("[data-status]")).toHaveAttribute(
-    "data-status",
-    "draft",
-  );
-
+  await expect(page).toHaveURL(`/app/${tenantId}`);
+  await expect(
+    page.getByRole("heading", { name: "Overview", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Bots", exact: true }),
+  ).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Create bot" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Archive" })).toHaveCount(0);
-  await expect(
-    page.getByText("Contact us to add or change bots."),
-  ).toBeVisible();
 
   // Sign out returns to the protected flow requiring re-login.
   await page.getByRole("button", { name: "Sign out" }).click();
@@ -139,9 +136,7 @@ test("team management: admin invites, invitee accepts, viewer sees read-only bot
   expect(plan.status()).toBe(200);
 
   // Invite an editor and a viewer.
-  await admin.goto(
-    new URL(admin.url()).pathname.replace(/\/bots$/, "/settings/members"),
-  );
+  await admin.goto(`/app/${tenantId}/settings/members`);
   const editorEmail = uniqueEmail("editor");
   await admin.getByLabel("Email", { exact: true }).fill(editorEmail);
   await admin.getByRole("combobox", { name: "Role" }).selectOption("editor");
@@ -169,15 +164,15 @@ test("team management: admin invites, invitee accepts, viewer sees read-only bot
 
   // Two orgs listed? The editor belongs only to the invited org.
   await editor.getByRole("link", { name: /Team Org/i }).click();
-  await editor.waitForURL(/\/app\/[0-9a-f-]{36}\/bots$/);
+  await editor.waitForURL(/\/app\/[0-9a-f-]{36}$/);
 
   // Tenant members cannot create bots; the client UI directs them to support.
   await expect(editor.getByRole("button", { name: "Create bot" })).toHaveCount(
     0,
   );
   await expect(
-    editor.getByText("Contact us to add or change bots."),
-  ).toBeVisible();
+    editor.getByRole("link", { name: "Bots", exact: true }),
+  ).toHaveCount(0);
   const editorCsrf = await editor.evaluate(
     () =>
       document.cookie

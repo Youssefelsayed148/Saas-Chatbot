@@ -10,7 +10,7 @@ test("client admin requests a change and a separate operator triages it", async 
     await (await page.request.get(`/api/v1/tenants/${tenantId}/bots`)).json()
   )[0] as { id: string };
   await page.goto(`/app/${tenantId}/bots/${bot.id}/knowledge`);
-  await expect(page.getByText("Platform staff access required.")).toBeVisible();
+  await expect(page).toHaveURL(`/app/${tenantId}`);
   await expect(
     page.getByRole("button", { name: "Upload", exact: true }),
   ).toHaveCount(0);
@@ -99,9 +99,7 @@ test("all client roles cannot obtain snippets or enter bot-control surfaces", as
   await expect(page.getByTestId("nav-install")).toHaveCount(0);
   for (const surface of ["install", "knowledge"]) {
     await page.goto(`/app/${tenantId}/bots/${botId}/${surface}`);
-    await expect(
-      page.getByText("Platform staff access required."),
-    ).toBeVisible();
+    await expect(page).toHaveURL(`/app/${tenantId}`);
     await expect(page.getByTestId("install-snippet")).toHaveCount(0);
   }
   const csrf = (await page.context().cookies()).find(
@@ -163,14 +161,10 @@ test("all client roles cannot obtain snippets or enter bot-control surfaces", as
       ).status(),
     ).toBe(403);
     await member.goto(`/app/${tenantId}/bots/${botId}/install`);
-    await expect(
-      member.getByText("Platform staff access required."),
-    ).toBeVisible();
+    await expect(member).toHaveURL(`/app/${tenantId}`);
     await expect(member.getByTestId("install-snippet")).toHaveCount(0);
     await member.goto(`/app/${tenantId}/bots/${botId}/knowledge`);
-    await expect(
-      member.getByText("Platform staff access required."),
-    ).toBeVisible();
+    await expect(member).toHaveURL(`/app/${tenantId}`);
     await expect(member.getByTestId("sources-list")).toHaveCount(0);
     await context.close();
     const members = (await (

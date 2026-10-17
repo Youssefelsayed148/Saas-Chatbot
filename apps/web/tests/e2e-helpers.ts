@@ -31,7 +31,7 @@ export async function registerAdmin(
   );
   await page.getByRole("button", { name: "Create account" }).click();
   expect((await registration).status()).toBe(201);
-  await page.waitForURL(/\/app\/[0-9a-f-]{36}\/bots$/);
+  await page.waitForURL(/\/app\/[0-9a-f-]{36}$/);
   return { tenantId: new URL(page.url()).pathname.split("/")[2], botName };
 }
 
@@ -43,7 +43,7 @@ export async function registerOperator(
   const email = opts.email ?? uniqueEmail(prefix);
   const result = await registerAdmin(page, prefix, { ...opts, email });
   promoteToStaff(email);
-  await page.reload();
+  await page.goto(`/app/${result.tenantId}/bots`);
   return result;
 }
 
@@ -67,7 +67,7 @@ export async function registerAndPrepareBot(
     email: operatorEmail,
   });
   promoteToStaff(operatorEmail);
-  await page.reload();
+  await page.goto(`/app/${tenantId}/bots`);
   await page
     .getByRole("row", { name: new RegExp(botName) })
     .getByRole("link")
