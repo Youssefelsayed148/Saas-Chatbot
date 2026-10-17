@@ -217,6 +217,16 @@ export default function PlatformClientPage() {
               ))}
             </ul>
           </section>
+          <section aria-label="Pending invitations">
+            <h2>Pending invitations</h2>
+            <ul aria-label="Pending invitations">
+              {detail.pending_invitations.map((invite) => (
+                <li key={invite.id}>
+                  {invite.email} — {invite.role} (pending invite)
+                </li>
+              ))}
+            </ul>
+          </section>
           <section aria-label="Recent audit" data-testid="client-detail-audit">
             <h2>Recent audit</h2>
             {detail.recent_audit.length === 0 ? (
