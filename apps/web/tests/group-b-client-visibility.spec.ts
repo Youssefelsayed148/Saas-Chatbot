@@ -175,6 +175,7 @@ async function fixture(page: Page, role: Role | "staff", hasBot = true) {
         effective_limits: {},
         usage: {},
       });
+    if (suffix.endsWith("/rag/costs")) return respond({ costs: [] });
     if (suffix === "/data/audit") return respond({ events: [] });
     if (suffix === "")
       return respond({
@@ -195,7 +196,7 @@ async function noOperatorText(page: Page) {
     return clone.textContent;
   });
   expect(text).not.toMatch(
-    /\bbots?\b|knowledge|playground|\binstall\b|\bdomains?\b|appearance|AI tier|AI costs?|AI limits|provisional|under review|platform staff|staff access|operator assistant/i,
+    /\bbots?\b|knowledge|playground|\binstall\b|\bdomains?\b|widget appearance|\bsettings\b|AI tier|AI costs?|AI limits|provisional|under review|platform staff|staff access|operator assistant/i,
   );
 }
 
