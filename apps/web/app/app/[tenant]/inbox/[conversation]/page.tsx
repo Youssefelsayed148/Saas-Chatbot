@@ -18,6 +18,7 @@ export default function InboxConversationPage() {
   const conversationId = params.conversation;
   const { me, roleIn } = useSession();
   const canEdit =
+    !me?.is_platform_staff &&
     roleSatisfies(roleIn(tenantId), "editor") &&
     !!me?.memberships.some((member) => member.tenant_id === tenantId);
   const [thread, setThread] = useState<InboxThread | null>(null);
@@ -129,6 +130,11 @@ export default function InboxConversationPage() {
           </Link>
         </p>
         <h1>Conversation</h1>
+        {me?.is_platform_staff && (
+          <p role="note">
+            Staff view is read-only; replies come from client team members
+          </p>
+        )}
         <p className="page-purpose">
           Read the thread, coordinate with your team and help the visitor.
         </p>
@@ -377,7 +383,7 @@ export default function InboxConversationPage() {
             </form>
           </section>
         )}
-        {!canEdit && (
+        {!canEdit && !me?.is_platform_staff && (
           <p className="muted">
             Viewer access: replies and conversation changes are disabled.
           </p>

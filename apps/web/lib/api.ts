@@ -312,6 +312,7 @@ export interface PlatformTenantDetail {
   bots: Array<{ id: string; name: string; status: string; published: boolean }>;
   failed_jobs: Array<{ id: string; type: string; error: string | null }>;
   members: Array<{ user_id: string; email: string; role: string }>;
+  pending_invitations: Array<{ id: string; email: string; role: string }>;
   recent_audit: Array<{
     action: string;
     actor: string | null;
@@ -1003,6 +1004,19 @@ export async function platformTenantDetail(
   tenantId: string,
 ): Promise<PlatformTenantDetail> {
   return api<PlatformTenantDetail>(`platform/tenants/${tenantId}`);
+}
+
+/** Fetch every staff-visible organization, including those beyond the API page cap. */
+export async function allPlatformTenants(): Promise<PlatformTenantRow[]> {
+  const tenants: PlatformTenantRow[] = [];
+  let total: number;
+  do {
+    const page = await platformTenants(`limit=200&offset=${tenants.length}`);
+    tenants.push(...page.tenants);
+    total = page.total;
+    if (page.tenants.length === 0) break;
+  } while (tenants.length < total);
+  return tenants;
 }
 
 export async function platformOnboard(

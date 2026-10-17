@@ -25,6 +25,8 @@ interface SessionState {
   me: Me | null;
   loading: boolean;
   error: string | null;
+  staffOrganizations: api.PlatformTenantRow[] | null;
+  staffOrganizationsError: string | null;
   refresh: () => Promise<Me | null>;
   roleIn: (tenantId: string) => Role | null;
 }
@@ -35,6 +37,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [me, setMe] = useState<Me | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [staffOrganizations, setStaffOrganizations] = useState<
+    api.PlatformTenantRow[] | null
+  >(null);
+  const [staffOrganizationsError, setStaffOrganizationsError] = useState<
+    string | null
+  >(null);
   const router = useRouter();
 
   const refresh = useCallback(async (): Promise<Me | null> => {
@@ -42,11 +50,26 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const nextMe = await api.me();
       setMe(nextMe);
       setError(null);
+      setStaffOrganizations(null);
+      setStaffOrganizationsError(null);
+      if (nextMe.is_platform_staff) {
+        try {
+          setStaffOrganizations(await api.allPlatformTenants());
+        } catch (caught) {
+          setStaffOrganizationsError(
+            caught instanceof Error
+              ? caught.message
+              : "Could not load organizations.",
+          );
+        }
+      }
       return nextMe;
     } catch (caught) {
       // An invalid or expired session is simply "signed out"; the UI then
       // redirects to /login instead of rendering an error.
       setMe(null);
+      setStaffOrganizations(null);
+      setStaffOrganizationsError(null);
       if (isSessionError(caught)) {
         const here = `${window.location.pathname}${window.location.search}`;
         if (here.startsWith("/app") || here.startsWith("/platform")) {
@@ -94,7 +117,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <SessionContext.Provider value={{ me, loading, error, refresh, roleIn }}>
+    <SessionContext.Provider
+      value={{
+        me,
+        loading,
+        error,
+        refresh,
+        roleIn,
+        staffOrganizations,
+        staffOrganizationsError,
+      }}
+    >
       {children}
     </SessionContext.Provider>
   );
