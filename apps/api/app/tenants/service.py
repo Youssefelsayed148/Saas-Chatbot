@@ -14,7 +14,7 @@ from datetime import UTC, datetime, timedelta
 from typing import cast
 from uuid import UUID, uuid4
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session as OrmSession
 
 from app.auth.security import generate_session_token, hash_token
@@ -351,6 +351,19 @@ class TenantService:
         # Authorization and seat counts only include active memberships.
         membership.status = "revoked"
         self.db.add(membership)
+        # An older outstanding invite must not restore the access just removed.
+        member = self.db.get(User, user_id)
+        assert member is not None  # membership FK guarantees presence
+        self.db.execute(
+            update(Invitation)
+            .where(
+                Invitation.tenant_id == context.tenant_id,
+                Invitation.email == member.email,
+                Invitation.accepted_at.is_(None),
+                Invitation.revoked_at.is_(None),
+            )
+            .values(revoked_at=datetime.now(UTC))
+        )
         self.db.commit()
 
     def _get_membership(self, tenant_id: UUID, user_id: UUID) -> Membership:

@@ -96,6 +96,16 @@ class AuthService:
         if user is None or not verify_password(password, user.password_hash):
             # Same error for unknown email and wrong password: no account enumeration.
             raise ApiError(401, "INVALID_CREDENTIALS", "Email or password is incorrect.")
+        if not user.is_platform_staff:
+            statuses = set(
+                self.db.scalars(
+                    select(Membership.status)
+                    .join(Tenant, Tenant.id == Membership.tenant_id)
+                    .where(Membership.user_id == user.id, Tenant.status == "active")
+                )
+            )
+            if statuses == {"revoked"}:
+                raise ApiError(401, "INVALID_CREDENTIALS", "Email or password is incorrect.")
         session_row, token = self._create_session(user)
         if rotate_token:
             self._revoke_token(rotate_token)

@@ -11,6 +11,7 @@ import csv
 import io
 import json
 import secrets
+from datetime import UTC, datetime
 from typing import Annotated, Any
 from uuid import UUID, uuid4
 
@@ -24,19 +25,20 @@ from fastapi import (
     Response,
     UploadFile,
 )
-from app.auth import cookies
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session as OrmSession
 
-from app.core.audit import record_audit
+from app.auth import cookies
 from app.bots.schemas import BotOut
+from app.core.audit import record_audit
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
 from app.db.models import (
     AuditEvent,
     Bot,
     Conversation,
+    Invitation,
     Job,
     Membership,
     Message,
@@ -49,7 +51,7 @@ from app.db.session import get_session
 from app.jobs.queue import request_cancel, requeue_for_retry
 from app.platform.staff import PlatformStaffDep
 from app.provisioning.service import ProvisioningPayload, ProvisioningService
-from app.quotas.service import PLAN_LABELS, PLACEHOLDER_PLAN_LIMITS
+from app.quotas.service import PLACEHOLDER_PLAN_LIMITS, PLAN_LABELS
 
 router = APIRouter(prefix="/api/v1/platform")
 
@@ -117,16 +119,18 @@ def platform_tenants(
     q: Annotated[str | None, Query(max_length=100)] = None,
     status: Annotated[str | None, Query()] = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ) -> dict[str, Any]:
     """Client list: plan label (internal), status, bot count, seats, message
     usage this month, last activity; search and filter."""
-    statement = select(Tenant).order_by(Tenant.created_at.desc())
+    statement = select(Tenant).order_by(Tenant.created_at.desc(), Tenant.id)
     if status in ("active", "archived"):
         statement = statement.where(Tenant.status == status)
     if q:
         like = f"%{q.strip()}%"
         statement = statement.where(or_(Tenant.name.ilike(like), Tenant.slug.ilike(like)))
-    tenants = list(db.execute(statement.limit(limit)).scalars())
+    total = db.scalar(select(func.count()).select_from(statement.order_by(None).subquery()))
+    tenants = list(db.execute(statement.offset(offset).limit(limit)).scalars())
     month_start = func.date_trunc("month", func.now())
     clients: list[dict[str, Any]] = []
     for tenant in tenants:
@@ -171,7 +175,7 @@ def platform_tenants(
                 "last_activity": last_activity.isoformat() if last_activity else None,
             }
         )
-    return {"tenants": clients, "total": len(clients)}
+    return {"tenants": clients, "total": total}
 
 
 @router.get("/operations/jobs")
@@ -256,7 +260,9 @@ def platform_assign_plan(
         raise ApiError(404, "NOT_FOUND", "Resource not found.")
     label = payload.plan_label.strip()
     if label.lower() not in PLAN_LABELS:
-        raise ApiError(422, "VALIDATION_ERROR", "Choose a PLACEHOLDER plan: free, starter, pro, or business.")
+        raise ApiError(
+            422, "VALIDATION_ERROR", "Choose a PLACEHOLDER plan: free, starter, pro, or business."
+        )
     previous = tenant.plan_label
     tenant.plan_label = label.lower()
     record_audit(
@@ -325,7 +331,9 @@ def platform_archive_bot(
 ) -> BotOut:
     from datetime import UTC, datetime
 
-    bot = db.execute(select(Bot).where(Bot.id == bot_id, Bot.tenant_id == tenant_id)).scalar_one_or_none()
+    bot = db.execute(
+        select(Bot).where(Bot.id == bot_id, Bot.tenant_id == tenant_id)
+    ).scalar_one_or_none()
     if bot is None:
         raise ApiError(404, "NOT_FOUND", "Resource not found.")
     if bot.status != "archived":
@@ -476,7 +484,7 @@ def platform_tenant_detail(
         for membership, member in db.execute(
             select(Membership, User)
             .join(User, User.id == Membership.user_id)
-            .where(Membership.tenant_id == tenant.id)
+            .where(Membership.tenant_id == tenant.id, Membership.status == "active")
             .order_by(Membership.created_at)
         ).all()
     ]
@@ -504,6 +512,19 @@ def platform_tenant_detail(
         "bots": bots,
         "failed_jobs": failed_jobs,
         "members": members,
+        "pending_invitations": [
+            {"id": str(invite.id), "email": invite.email, "role": invite.role}
+            for invite in db.scalars(
+                select(Invitation)
+                .where(
+                    Invitation.tenant_id == tenant.id,
+                    Invitation.accepted_at.is_(None),
+                    Invitation.revoked_at.is_(None),
+                    Invitation.expires_at > datetime.now(UTC),
+                )
+                .order_by(Invitation.created_at)
+            )
+        ],
         "recent_audit": [
             {
                 "action": row.action,

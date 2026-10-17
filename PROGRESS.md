@@ -1637,3 +1637,36 @@ volumes require matching original POSTGRES_* values; URL passwords must be URL-s
 No volumes were deleted. **All runtime behaviour is UNVERIFIED**: builds, startup,
 migrations, healthchecks, authentication, seeding, premium routing, queue execution,
 embeddings, persistence, and shutdown require owner validation. No phase gate was signed off.
+
+## 2026-10-17 — Group A operator fixes (in progress)
+
+Owner scope: `fix/group-a-operator` from main; small local commits; merge with
+`--no-ff` and delete the branch only after checks pass. No push, tags, Docker,
+credential-file reads, deployment or paid API calls. Owner approved separately
+committing the pre-existing untracked feature inventory. Owner approved G4's
+rule: non-staff with only revoked memberships in active organizations cannot
+log in; another active organization and staff access remain valid. Outstanding
+invitations for the removed membership's organization/email are revoked.
+
+Changes: paginate the existing platform tenants API; shared staff organizations
+for `/app` and the header, onboarding navigation and refresh; API-side active
+member filtering for platform detail (Team already filters active members);
+separate pending invitations; explicit read-only staff inbox, including staff
+who also have a membership. Archived organizations open their platform detail.
+Tenant A/B and revoked admin/editor/viewer regressions use test fixtures only.
+
+Validation so far (PowerShell; paths relative to repository unless noted):
+- `npm.cmd run lint` — exit 0.
+- `npm.cmd run typecheck` — exit 0 (`next typegen && tsc --noEmit`).
+- In `apps/api`: `../../.venv/Scripts/ruff.exe check app/auth/service.py app/platform/router.py app/tenants/service.py tests/test_group_a_operator.py` — exit 0.
+- In `apps/api`: `../../.venv/Scripts/mypy.exe --follow-imports=silent app/auth/service.py app/platform/router.py app/tenants/service.py tests/test_group_a_operator.py` — exit 0.
+- In `apps/api`: `../../.venv/Scripts/ruff.exe format --check app/auth/service.py app/tenants/service.py tests/test_group_a_operator.py` — exit 0.
+- The initial mypy command without `--follow-imports=silent` reported three existing Windows-incompatible attributes in `app/knowledge/ingest.py`: `os.setsid`, `os.killpg`, `signal.SIGKILL` (exit 1).
+- Initial Ruff found an unused test import and pre-existing import ordering/two long lines in the touched platform router; corrected, then the above checks passed.
+- In `apps/api`, `$env:ENVIRONMENT='test'; $env:TEST_DATABASE_URL='postgresql://postgres@127.0.0.1:55437/group_a'; ../../.venv/Scripts/python.exe -m pytest tests/test_auth.py -q --tb=short` — exit 1, 15 setup errors: native PostgreSQL lacks pgvector.
+- In `apps/api`, with the same environment: `../../.venv/Scripts/python.exe -m pytest -q --tb=short -x -p no:cacheprovider` — exit 1, first test blocked during Alembic `0014_rag_embeddings` (`CREATE EXTENSION vector`). Also encountered Windows temporary-directory cleanup permissions. Full log: `.test-storage-group-a/backend-full.log` (ignored).
+- A fresh native PostgreSQL cluster was initialized under `.test-storage-group-a/pg`, started only on loopback port 55437; no existing database was modified. This installation has no pgvector. No migration was skipped or altered to get past that failure.
+- In `apps/web`: `npm.cmd run test -- --config ../../.test-storage-group-a/operator.config.ts --reporter=line` — 4 isolated Playwright tests passed (55.0s) against a fresh production build. The ignored config reuses the normal Playwright configuration but disables API setup/teardown for these API-mocked tests. Earlier run: 2 passed/2 failed because the test mocked `/inbox/{id}` instead of the actual `/conversations/{id}` endpoint; corrected the fixture and reran. The later archived-navigation refinement requires another final run.
+- From root, the first `npm.cmd test -- --config ...` invocation lost options through nested npm scripts and hit sandbox `spawn EPERM`; corrected by invoking the workspace script directly, with process execution approval.
+- In `apps/web`, `$env:ENVIRONMENT='test'; $env:DATABASE_URL='postgresql://postgres@127.0.0.1:55437/group_a_browser_test'; $env:E2E_API_PORT='18137'; $env:API_PROXY_TARGET='http://127.0.0.1:18137'; npm.cmd run test -- --reporter=line` — stopped after migration setup failed for missing pgvector and the harness continued into repeated API 500 errors. Log: `.test-storage-group-a/frontend-full.log` (ignored). This was not a passing full run; the real member-visibility browser regression remains unverified.
+- The owner started PostgreSQL; ports 55462/5432 now answer but require authentication. Awaiting a test-only connection without reading dotenv/key files. No merge has been performed while integration checks remain blocked.
