@@ -56,6 +56,9 @@ def _unread_count(tenant_id: UUID, user_id: UUID, conversation_id: Any) -> Any:
             read_alias.conversation_id == conversation_id,
             read_alias.user_id == user_id,
         )
+        # The conversation belongs to the outer inbox query, two SELECT levels
+        # up. Auto-correlation only considers the immediate unread-message query.
+        .correlate(Conversation)
         .scalar_subquery()
     )
     read_id = (
@@ -65,6 +68,7 @@ def _unread_count(tenant_id: UUID, user_id: UUID, conversation_id: Any) -> Any:
             read_alias.conversation_id == conversation_id,
             read_alias.user_id == user_id,
         )
+        .correlate(Conversation)
         .scalar_subquery()
     )
     inbound = or_(
