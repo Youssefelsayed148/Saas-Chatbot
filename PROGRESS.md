@@ -1716,3 +1716,86 @@ Final result and local integration readiness:
 - All runtime verification used disposable test databases. After the owner supplied the connection, only port 55462 was used. Model/provider behavior was mocked or fixture-controlled; no paid API calls, credential-file reads, Docker commands, push, tags or production deployment.
 - No schema migration is required. Remaining verification limitation: the existing POSIX-only parser descendant-process cleanup test cannot execute on this Windows host.
 - Restore the evaluation report's generated timestamp, commit this exact validation record, then perform the owner's authorized local `git merge --no-ff fix/group-a-operator` into `main` and `git branch -d fix/group-a-operator`. The merge commit records final integration; no phase/release or deployment sign-off is implied.
+
+## 2026-10-17 — Group 0 inbox 500 regression
+
+Owner scope: branch `fix/group-0-inbox-500` from clean `main`; small local
+commits; merge with `--no-ff` and delete the branch after relevant checks pass.
+Only task-related tests; no Docker, push, tags, deployment or paid providers.
+Hosting/billing decisions and phase gates are outside this bug-fix scope.
+
+Root cause: `_unread_count` nested read-marker scalar subqueries implicitly
+introduced their own `conversations` FROM instead of correlating to the outer
+conversation (two SELECT levels up). Multiple read markers for the same user
+and tenant returned multiple rows and PostgreSQL rejected the scalar expression.
+This is data-dependent, not an admin/editor permission failure: viewer/staff
+without read state succeed. One marker also silently applied its cursor to
+other conversations. Explicit `.correlate(Conversation)` on both marker queries
+fixes the SQL scope without exception suppression, authorization changes or schema changes.
+
+Baseline traceback (original `listing.py`, unmodified from `main`):
+```text
+tests/test_group_0_inbox.py:166 in test_inbox_multiple_read_cursors
+    response = client.get(data.base + "/inbox")
+app/inbox/listing.py:181 in list_inbox
+    rows = context.db.execute(...)
+sqlalchemy/engine/base.py:1969 in _exec_single_context
+sqlalchemy/engine/default.py:952 in do_execute
+    cursor.execute(statement, parameters)
+psycopg/cursor.py:117 in execute
+    raise ex.with_traceback(None)
+psycopg.errors.CardinalityViolation: more than one row returned by a subquery used as an expression
+sqlalchemy.exc.ProgrammingError: (psycopg.errors.CardinalityViolation) more than one row returned by a subquery used as an expression
+```
+
+Also found: `/inbox/events` crashes during its initial counts query for the same
+admin/editor data; fixed by the shared helper. No other crash/5xx was found in
+the four-role sidebar sweep. The actual thread API is `/conversations/{id}`;
+`/inbox/{id}` is a web page and its API equivalent correctly returns 404.
+
+Coverage: six website conversations spanning every status, assigned/unassigned,
+AI/human mode, handoff, contacts, visitor/AI/agent/system messages, timestamp/UUID
+ties, admin/editor read cursors, invitations and a change request. Independent
+staff has no tenant membership. Tests assert per-user counts and filters,
+read-marker updates, zero/one/multiple markers, tenant A/B isolation and explicit
+200/403/404 statuses for 31 GETs per role. SSE HTTP transport is bounded to its
+first event while retaining the real generator, SQL, authentication and serialization.
+
+Database handling: only `127.0.0.1:55462` was contacted. Initially no connection
+environment was set; a passwordless probe was rejected. The owner subsequently
+allowed reading database fields in `.env.local`; both configured URL and
+POSTGRES credentials were rejected on port 55462 (8 setup errors, then 1 setup
+error with `-x`). No dev database was contacted or modified. The owner then
+provided throwaway test credentials and prohibited further dotenv use. A local
+credential-reading helper was deleted. Successful runs use only process-level
+`TEST_DATABASE_URL` and `DATABASE_URL`, base database `group_0_inbox`; the harness
+creates/migrates/cleans `group_0_inbox_test`. The plain `postgresql://` scheme is
+required by the harness's direct psycopg maintenance connection. No connection
+values were written to tracked files or dotenv files. `ENVIRONMENT=test` disables
+dotenv loading. Providers remain fixture-controlled/offline.
+
+Commands/results (PowerShell, API commands in `apps/api`; all pytest commands
+use the process-only connection above plus `ENVIRONMENT=test`, `PYTHONUTF8=1`):
+- Before the fix, `../../.venv/Scripts/python.exe -m pytest tests/test_group_0_inbox.py -k 'multiple_read_cursors or sidebar_get_sweep' -q --tb=short -p no:cacheprovider` — exit 1: **4 failed, 4 passed, 8 deselected**, 10.75s. Admin/editor regression and sweeps fail; viewer/staff pass. Log: `.test-storage-group-0/reproduction.log` (ignored).
+- Before the fix, `../../.venv/Scripts/python.exe -m pytest tests/test_group_0_inbox.py::test_unread_zero_one_and_multiple_markers -q --tb=short -p no:cacheprovider` — exit 1: **2 failed, 1 passed**, 3.46s. Zero markers passes; one marker has wrong counts; two markers crashes. Log: `.test-storage-group-0/cursor-baseline.log`. An earlier version of this new assertion incorrectly counted the caller's own agent message as unread; corrected the expectation before this final baseline.
+- After the fix, `../../.venv/Scripts/python.exe -m pytest tests/test_group_0_inbox.py -q --tb=short -p no:cacheprovider` — exit 0: **16 passed**, 15.61s, one existing Starlette deprecation warning. Log: `.test-storage-group-0/regression-green.log`.
+- `../../.venv/Scripts/ruff.exe check --no-cache app/inbox/listing.py tests/test_group_0_inbox.py` — exit 0. Initial new-test formatting/import issues were corrected before the database runs.
+- `../../.venv/Scripts/ruff.exe format --check --no-cache app/inbox/listing.py tests/test_group_0_inbox.py` — exit 0, both files formatted.
+- `../../.venv/Scripts/mypy.exe --platform linux app/inbox/listing.py tests/test_group_0_inbox.py` — exit 0, no issues in 2 source files.
+- In `apps/web`, `npm.cmd exec -- eslint lib/inbox-list.tsx lib/api.ts lib/session.tsx lib/app-header.tsx "app/app/[tenant]/inbox/page.tsx" "app/app/[tenant]/inbox/[conversation]/page.tsx" --max-warnings 0` — exit 0.
+- In `apps/web`, `npm.cmd exec -- tsc --noEmit --incremental false` — exit 0. Direct TypeScript checking avoids Next's dotenv-loading setup commands.
+- `../../.venv/Scripts/python.exe -m pytest tests/test_inbox_list.py tests/test_handoff.py -q --tb=short -p no:cacheprovider` — initial sandbox run exit 1: **5 failed, 1 passed, 4 setup errors**, 6.63s. Ingestion-dependent fixtures could not publish (`KNOWLEDGE_EMPTY`) before reaching inbox checks. Same targeted command rerunning with normal subprocess permissions; result to be recorded below. Logs: `.test-storage-group-0/existing-inbox-green.log`, `.test-storage-group-0/existing-inbox-green2.log`.
+
+Final verification: the identical existing inbox/handoff command with normal
+subprocess permissions exited **0: 10 passed**, 62.57s, one existing Starlette
+warning. No product or fixture code was changed for that rerun. Together with
+the new regression module, **26 relevant backend tests passed**. The four-role
+sweep covers **124 GET/status checks**; no remaining 5xx/crashes were observed.
+`git diff --check` also passed. Files touched: `apps/api/app/inbox/listing.py`,
+`apps/api/tests/test_group_0_inbox.py`, `PROGRESS.md`. No migration is needed.
+Frontend lint and TypeScript checks passed; no browser journey, production/demo
+database, provider integration, or full suite was run (full suites explicitly
+excluded by the owner). SSE long-lived behavior is covered by the existing
+reconnection test, while the new role/data HTTP sweep checks its initial event.
+Commit the fix/verification record, then perform the authorized local `--no-ff`
+merge into main and delete the fix branch. No deployment/phase gate is implied.
