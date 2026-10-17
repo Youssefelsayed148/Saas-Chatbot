@@ -1,0 +1,1911 @@
+{
+  "note": "All non-GET /api requests were aborted in the browser; nothing was submitted.",
+  "staff": {
+    "role": "staff",
+    "note": "All non-GET /api requests were aborted in the browser; nothing was submitted.",
+    "pages": [
+      {
+        "url": "/app",
+        "tabs": [],
+        "buttons": [
+          {
+            "label": "☾ Appearance",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "☀"
+            ]
+          },
+          {
+            "label": "«",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "»"
+            ]
+          },
+          {
+            "label": "Search pages ⌘ / Ctrl K",
+            "url_changed_to": null,
+            "dialogs": [
+              {
+                "text": "Go to a page | Close | Search pages | ↗ Organizations | ✧ | ↗ Platform admin | ✧ | Arrow keys to select · Enter to open · Escape to close",
+                "buttons": [
+                  "Close"
+                ],
+                "fields": [
+                  "text: Where would you like to go?"
+                ]
+              }
+            ],
+            "blocked_non_get": [],
+            "new_text": [
+              "Go to a page",
+              "Close",
+              "↗ Organizations",
+              "↗ Platform admin",
+              "Arrow keys to select · Enter to open · Escape to close"
+            ],
+            "screenshot": "screens/staff/clicks/app__2_SearchpagesCtrlK.png"
+          },
+          {
+            "label": "Sign out",
+            "action": "skipped (logout)"
+          }
+        ]
+      },
+      {
+        "url": "/platform",
+        "tabs": [],
+        "buttons": [
+          {
+            "label": "☀ Appearance",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "☾"
+            ]
+          },
+          {
+            "label": "«",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "»"
+            ]
+          },
+          {
+            "label": "Search pages ⌘ / Ctrl K",
+            "url_changed_to": null,
+            "dialogs": [
+              {
+                "text": "Go to a page | Close | Search pages | ◈ Clients | ✧ | ? Change requests | ✧ | ▥ Operations | ✧ | ↗ Client workspaces | ✧ | Arrow keys to select · Enter to open · Escape to close",
+                "buttons": [
+                  "Close"
+                ],
+                "fields": [
+                  "text: Where would you like to go?"
+                ]
+              }
+            ],
+            "blocked_non_get": [],
+            "new_text": [
+              "Go to a page",
+              "Close",
+              "◈ Clients",
+              "? Change requests",
+              "▥ Operations",
+              "↗ Client workspaces",
+              "Arrow keys to select · Enter to open · Escape to close"
+            ],
+            "screenshot": "screens/staff/clicks/platform__2_SearchpagesCtrlK.png"
+          },
+          {
+            "label": "Sign out",
+            "action": "skipped (logout)"
+          },
+          {
+            "label": "Search",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": []
+          },
+          {
+            "label": "Onboard client",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": []
+          }
+        ]
+      },
+      {
+        "url": "/platform/operations",
+        "tabs": [],
+        "buttons": [
+          {
+            "label": "☾ Appearance",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "☀"
+            ]
+          },
+          {
+            "label": "«",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "»"
+            ]
+          },
+          {
+            "label": "Search pages ⌘ / Ctrl K",
+            "url_changed_to": null,
+            "dialogs": [
+              {
+                "text": "Go to a page | Close | Search pages | ◈ Clients | ✧ | ? Change requests | ✧ | ▥ Operations | ✧ | ↗ Client workspaces | ✧ | Arrow keys to select · Enter to open · Escape to close",
+                "buttons": [
+                  "Close"
+                ],
+                "fields": [
+                  "text: Where would you like to go?"
+                ]
+              }
+            ],
+            "blocked_non_get": [],
+            "new_text": [
+              "Go to a page",
+              "Close",
+              "◈ Clients",
+              "? Change requests",
+              "▥ Operations",
+              "↗ Client workspaces",
+              "Arrow keys to select · Enter to open · Escape to close"
+            ],
+            "screenshot": "screens/staff/clicks/platform_operations__2_SearchpagesCtrlK.png"
+          },
+          {
+            "label": "Sign out",
+            "action": "skipped (logout)"
+          },
+          {
+            "label": "Retry",
+            "action": "disabled"
+          },
+          {
+            "label": "Cancel",
+            "action": "disabled"
+          },
+          {
+            "label": "Search",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": []
+          }
+        ]
+      },
+      {
+        "url": "/platform/change-requests",
+        "tabs": [],
+        "buttons": [
+          {
+            "label": "☀ Appearance",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "☾"
+            ]
+          },
+          {
+            "label": "«",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "»"
+            ]
+          },
+          {
+            "label": "Search pages ⌘ / Ctrl K",
+            "url_changed_to": null,
+            "dialogs": [
+              {
+                "text": "Go to a page | Close | Search pages | ◈ Clients | ✧ | ? Change requests | ✧ | ▥ Operations | ✧ | ↗ Client workspaces | ✧ | Arrow keys to select · Enter to open · Escape to close",
+                "buttons": [
+                  "Close"
+                ],
+                "fields": [
+                  "text: Where would you like to go?"
+                ]
+              }
+            ],
+            "blocked_non_get": [],
+            "new_text": [
+              "Go to a page",
+              "Close",
+              "◈ Clients",
+              "? Change requests",
+              "▥ Operations",
+              "↗ Client workspaces",
+              "Arrow keys to select · Enter to open · Escape to close"
+            ],
+            "screenshot": "screens/staff/clicks/platform_change_requests__2_SearchpagesCtrlK.png"
+          },
+          {
+            "label": "Sign out",
+            "action": "skipped (logout)"
+          }
+        ]
+      },
+      {
+        "url": "/platform/clients/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "tabs": [],
+        "buttons": [
+          {
+            "label": "☾ Appearance",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "☀"
+            ]
+          },
+          {
+            "label": "«",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "»"
+            ]
+          },
+          {
+            "label": "Search pages ⌘ / Ctrl K",
+            "url_changed_to": null,
+            "dialogs": [
+              {
+                "text": "Go to a page | Close | Search pages | ◈ Clients | ✧ | ? Change requests | ✧ | ▥ Operations | ✧ | ↗ Client workspaces | ✧ | Arrow keys to select · Enter to open · Escape to close",
+                "buttons": [
+                  "Close"
+                ],
+                "fields": [
+                  "text: Where would you like to go?"
+                ]
+              }
+            ],
+            "blocked_non_get": [],
+            "new_text": [
+              "Go to a page",
+              "Close",
+              "◈ Clients",
+              "? Change requests",
+              "▥ Operations",
+              "↗ Client workspaces",
+              "Arrow keys to select · Enter to open · Escape to close"
+            ],
+            "screenshot": "screens/staff/clicks/platform_clients_T__2_SearchpagesCtrlK.png"
+          },
+          {
+            "label": "Sign out",
+            "action": "skipped (logout)"
+          },
+          {
+            "label": "Pause bot",
+            "action": "disabled"
+          },
+          {
+            "label": "Save plan",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": []
+          },
+          {
+            "label": "Save override with reason",
+            "action": "disabled"
+          }
+        ]
+      },
+      {
+        "url": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "tabs": [],
+        "buttons": [
+          {
+            "label": "☀ Appearance",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "☾"
+            ]
+          },
+          {
+            "label": "«",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "»"
+            ]
+          },
+          {
+            "label": "Search pages ⌘ / Ctrl K",
+            "url_changed_to": null,
+            "dialogs": [
+              {
+                "text": "Go to a page | Close | Search pages | ◈ Overview | ✧ | ✧ Bots | ✧ | ▤ Inbox | ✧ | ◎ Contacts | ✧ | ? Request a change | ✧ | ♧ Team | ✧ | ▦ Tenant data and audit | ✧ | ▥ Handoff analytics | ✧ | ↗ Platform admin | ✧ | Arrow keys to select · Enter to open · Escape to close",
+                "buttons": [
+                  "Close"
+                ],
+                "fields": [
+                  "text: Where would you like to go?"
+                ]
+              }
+            ],
+            "blocked_non_get": [],
+            "new_text": [
+              "Go to a page",
+              "Close",
+              "◈ Overview",
+              "✧ Bots",
+              "▤ Inbox",
+              "◎ Contacts",
+              "? Request a change",
+              "♧ Team",
+              "▦ Tenant data and audit",
+              "▥ Handoff analytics",
+              "↗ Platform admin",
+              "Arrow keys to select · Enter to open · Escape to close"
+            ],
+            "screenshot": "screens/staff/clicks/app_T_bots__2_SearchpagesCtrlK.png"
+          },
+          {
+            "label": "Sign out",
+            "action": "skipped (logout)"
+          }
+        ]
+      },
+      {
+        "url": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/overview",
+        "tabs": [],
+        "buttons": [
+          {
+            "label": "☾ Appearance",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "☀"
+            ]
+          },
+          {
+            "label": "«",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "»"
+            ]
+          },
+          {
+            "label": "Search pages ⌘ / Ctrl K",
+            "url_changed_to": null,
+            "dialogs": [
+              {
+                "text": "Go to a page | Close | Search pages | ◈ Overview | ✧ | ✧ Bots | ✧ | ▤ Inbox | ✧ | ◎ Contacts | ✧ | ? Request a change | ✧ | ♧ Team | ✧ | ▦ Tenant data and audit | ✧ | ▥ Handoff analytics | ✧ | ↗ Platform admin | ✧ | Arrow keys to select · Enter to open · Escape to close",
+                "buttons": [
+                  "Close"
+                ],
+                "fields": [
+                  "text: Where would you like to go?"
+                ]
+              }
+            ],
+            "blocked_non_get": [],
+            "new_text": [
+              "Go to a page",
+              "Close",
+              "◈ Overview",
+              "✧ Bots",
+              "▤ Inbox",
+              "◎ Contacts",
+              "? Request a change",
+              "♧ Team",
+              "▦ Tenant data and audit",
+              "▥ Handoff analytics",
+              "↗ Platform admin",
+              "Arrow keys to select · Enter to open · Escape to close"
+            ],
+            "screenshot": "screens/staff/clicks/app_T_bots_BOT_overview__2_SearchpagesCtrlK.png"
+          },
+          {
+            "label": "Sign out",
+            "action": "skipped (logout)"
+          },
+          {
+            "label": "Apply",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": []
+          }
+        ]
+      },
+      {
+        "url": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/knowledge",
+        "tabs": [],
+        "buttons": [
+          {
+            "label": "☀ Appearance",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "☾"
+            ]
+          },
+          {
+            "label": "«",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "»"
+            ]
+          },
+          {
+            "label": "Search pages ⌘ / Ctrl K",
+            "url_changed_to": null,
+            "dialogs": [
+              {
+                "text": "Go to a page | Close | Search pages | ◈ Overview | ✧ | ✧ Bots | ✧ | ▤ Inbox | ✧ | ◎ Contacts | ✧ | ? Request a change | ✧ | ♧ Team | ✧ | ▦ Tenant data and audit | ✧ | ▥ Handoff analytics | ✧ | ↗ Platform admin | ✧ | Arrow keys to select · Enter to open · Escape to close",
+                "buttons": [
+                  "Close"
+                ],
+                "fields": [
+                  "text: Where would you like to go?"
+                ]
+              }
+            ],
+            "blocked_non_get": [],
+            "new_text": [
+              "Go to a page",
+              "Close",
+              "◈ Overview",
+              "✧ Bots",
+              "▤ Inbox",
+              "◎ Contacts",
+              "? Request a change",
+              "♧ Team",
+              "▦ Tenant data and audit",
+              "▥ Handoff analytics",
+              "↗ Platform admin",
+              "Arrow keys to select · Enter to open · Escape to close"
+            ],
+            "screenshot": "screens/staff/clicks/app_T_bots_BOT_knowledge__2_SearchpagesCtrlK.png"
+          },
+          {
+            "label": "Sign out",
+            "action": "skipped (logout)"
+          },
+          {
+            "label": "Upload",
+            "action": "disabled"
+          },
+          {
+            "label": "Ingest files",
+            "action": "disabled"
+          },
+          {
+            "label": "Retry",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [
+              "POST /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/jobs/d6c1a945-27c0-471b-bfa9-aae009d40a95/retry"
+            ],
+            "new_text": [
+              "Failed to fetch",
+              "Retry page"
+            ],
+            "screenshot": "screens/staff/clicks/app_T_bots_BOT_knowledge__6_Retry.png"
+          },
+          {
+            "label": "Opening hours — Opening hours",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "#0 · We are open Monday to Friday from 09:00 to 17:00."
+            ]
+          },
+          {
+            "label": "Pricing — Pricing",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "#0 · A fictional checkup costs 50 demo credits. Cleaning costs 80 demo credits."
+            ]
+          },
+          {
+            "label": "Booking — Booking",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "#0 · Request a booking in this chat. A demo agent will confirm a time."
+            ]
+          },
+          {
+            "label": "Location — Location",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "#0 · Find our fictional clinic at 42 Example Lane, Demo City."
+            ]
+          }
+        ]
+      },
+      {
+        "url": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/playground",
+        "tabs": [],
+        "buttons": [
+          {
+            "label": "☾ Appearance",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "☀"
+            ]
+          },
+          {
+            "label": "«",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "»"
+            ]
+          },
+          {
+            "label": "Search pages ⌘ / Ctrl K",
+            "url_changed_to": null,
+            "dialogs": [
+              {
+                "text": "Go to a page | Close | Search pages | ◈ Overview | ✧ | ✧ Bots | ✧ | ▤ Inbox | ✧ | ◎ Contacts | ✧ | ? Request a change | ✧ | ♧ Team | ✧ | ▦ Tenant data and audit | ✧ | ▥ Handoff analytics | ✧ | ↗ Platform admin | ✧ | Arrow keys to select · Enter to open · Escape to close",
+                "buttons": [
+                  "Close"
+                ],
+                "fields": [
+                  "text: Where would you like to go?"
+                ]
+              }
+            ],
+            "blocked_non_get": [],
+            "new_text": [
+              "Go to a page",
+              "Close",
+              "◈ Overview",
+              "✧ Bots",
+              "▤ Inbox",
+              "◎ Contacts",
+              "? Request a change",
+              "♧ Team",
+              "▦ Tenant data and audit",
+              "▥ Handoff analytics",
+              "↗ Platform admin",
+              "Arrow keys to select · Enter to open · Escape to close"
+            ],
+            "screenshot": "screens/staff/clicks/app_T_bots_BOT_playground__2_SearchpagesCtrlK.png"
+          },
+          {
+            "label": "Sign out",
+            "action": "skipped (logout)"
+          },
+          {
+            "label": "Send",
+            "action": "disabled"
+          }
+        ]
+      },
+      {
+        "url": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/settings",
+        "tabs": [],
+        "buttons": [
+          {
+            "label": "☀ Appearance",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "☾"
+            ]
+          },
+          {
+            "label": "«",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "»"
+            ]
+          },
+          {
+            "label": "Search pages ⌘ / Ctrl K",
+            "url_changed_to": null,
+            "dialogs": [
+              {
+                "text": "Go to a page | Close | Search pages | ◈ Overview | ✧ | ✧ Bots | ✧ | ▤ Inbox | ✧ | ◎ Contacts | ✧ | ? Request a change | ✧ | ♧ Team | ✧ | ▦ Tenant data and audit | ✧ | ▥ Handoff analytics | ✧ | ↗ Platform admin | ✧ | Arrow keys to select · Enter to open · Escape to close",
+                "buttons": [
+                  "Close"
+                ],
+                "fields": [
+                  "text: Where would you like to go?"
+                ]
+              }
+            ],
+            "blocked_non_get": [],
+            "new_text": [
+              "Go to a page",
+              "Close",
+              "◈ Overview",
+              "✧ Bots",
+              "▤ Inbox",
+              "◎ Contacts",
+              "? Request a change",
+              "♧ Team",
+              "▦ Tenant data and audit",
+              "▥ Handoff analytics",
+              "↗ Platform admin",
+              "Arrow keys to select · Enter to open · Escape to close"
+            ],
+            "screenshot": "screens/staff/clicks/app_T_bots_BOT_settings__2_SearchpagesCtrlK.png"
+          },
+          {
+            "label": "Sign out",
+            "action": "skipped (logout)"
+          },
+          {
+            "label": "Pause bot",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [
+              "PATCH /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332"
+            ],
+            "new_text": [
+              "Failed to fetch",
+              "Retry page"
+            ],
+            "screenshot": "screens/staff/clicks/app_T_bots_BOT_settings__4_Pausebot.png"
+          },
+          {
+            "label": "Save settings",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [
+              "PATCH /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332"
+            ],
+            "new_text": [
+              "Failed to fetch",
+              "Retry page"
+            ],
+            "screenshot": "screens/staff/clicks/app_T_bots_BOT_settings__5_Savesettings.png"
+          },
+          {
+            "label": "Start embedding backfill",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [
+              "POST /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/rag/backfill"
+            ],
+            "new_text": [
+              "Could not update AI tier settings."
+            ]
+          }
+        ]
+      },
+      {
+        "url": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/install",
+        "tabs": [],
+        "buttons": [
+          {
+            "label": "☾ Appearance",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "☀"
+            ]
+          },
+          {
+            "label": "«",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "»"
+            ]
+          },
+          {
+            "label": "Search pages ⌘ / Ctrl K",
+            "url_changed_to": null,
+            "dialogs": [
+              {
+                "text": "Go to a page | Close | Search pages | ◈ Overview | ✧ | ✧ Bots | ✧ | ▤ Inbox | ✧ | ◎ Contacts | ✧ | ? Request a change | ✧ | ♧ Team | ✧ | ▦ Tenant data and audit | ✧ | ▥ Handoff analytics | ✧ | ↗ Platform admin | ✧ | Arrow keys to select · Enter to open · Escape to close",
+                "buttons": [
+                  "Close"
+                ],
+                "fields": [
+                  "text: Where would you like to go?"
+                ]
+              }
+            ],
+            "blocked_non_get": [],
+            "new_text": [
+              "Go to a page",
+              "Close",
+              "◈ Overview",
+              "✧ Bots",
+              "▤ Inbox",
+              "◎ Contacts",
+              "? Request a change",
+              "♧ Team",
+              "▦ Tenant data and audit",
+              "▥ Handoff analytics",
+              "↗ Platform admin",
+              "Arrow keys to select · Enter to open · Escape to close"
+            ],
+            "screenshot": "screens/staff/clicks/app_T_bots_BOT_install__2_SearchpagesCtrlK.png"
+          },
+          {
+            "label": "Sign out",
+            "action": "skipped (logout)"
+          },
+          {
+            "label": "Copy snippet",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": []
+          }
+        ]
+      },
+      {
+        "url": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations",
+        "tabs": [],
+        "buttons": [
+          {
+            "label": "☀ Appearance",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "☾"
+            ]
+          },
+          {
+            "label": "«",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "»"
+            ]
+          },
+          {
+            "label": "Search pages ⌘ / Ctrl K",
+            "url_changed_to": null,
+            "dialogs": [
+              {
+                "text": "Go to a page | Close | Search pages | ◈ Overview | ✧ | ✧ Bots | ✧ | ▤ Inbox | ✧ | ◎ Contacts | ✧ | ? Request a change | ✧ | ♧ Team | ✧ | ▦ Tenant data and audit | ✧ | ▥ Handoff analytics | ✧ | ↗ Platform admin | ✧ | Arrow keys to select · Enter to open · Escape to close",
+                "buttons": [
+                  "Close"
+                ],
+                "fields": [
+                  "text: Where would you like to go?"
+                ]
+              }
+            ],
+            "blocked_non_get": [],
+            "new_text": [
+              "Go to a page",
+              "Close",
+              "◈ Overview",
+              "✧ Bots",
+              "▤ Inbox",
+              "◎ Contacts",
+              "? Request a change",
+              "♧ Team",
+              "▦ Tenant data and audit",
+              "▥ Handoff analytics",
+              "↗ Platform admin",
+              "Arrow keys to select · Enter to open · Escape to close"
+            ],
+            "screenshot": "screens/staff/clicks/app_T_bots_BOT_conversations__2_SearchpagesCtrlK.png"
+          },
+          {
+            "label": "Sign out",
+            "action": "skipped (logout)"
+          },
+          {
+            "label": "Save retention",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "Enter a retention value between 1 and 365 days.",
+              "Retry page"
+            ],
+            "screenshot": "screens/staff/clicks/app_T_bots_BOT_conversations__4_Saveretention.png"
+          },
+          {
+            "label": "Delete",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [
+              "DELETE /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations/3724a0fa-1799-5eb7-96ed-42e13bfb3601"
+            ],
+            "new_text": [
+              "Failed to fetch",
+              "Retry page"
+            ],
+            "screenshot": "screens/staff/clicks/app_T_bots_BOT_conversations__5_Delete.png"
+          },
+          {
+            "label": "Delete",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [
+              "DELETE /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations/6e7b130a-db4d-5e18-8de1-a4e0efbc6795"
+            ],
+            "new_text": [
+              "Failed to fetch",
+              "Retry page"
+            ],
+            "screenshot": "screens/staff/clicks/app_T_bots_BOT_conversations__6_Delete.png"
+          },
+          {
+            "label": "Delete",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [
+              "DELETE /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations/af13700d-4bdf-58cb-b8c5-99b7f15b112c"
+            ],
+            "new_text": [
+              "Failed to fetch",
+              "Retry page"
+            ],
+            "screenshot": "screens/staff/clicks/app_T_bots_BOT_conversations__7_Delete.png"
+          },
+          {
+            "label": "Delete",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [
+              "DELETE /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations/cae26f06-cad7-571f-a1bb-444fa35cf501"
+            ],
+            "new_text": [
+              "Failed to fetch",
+              "Retry page"
+            ],
+            "screenshot": "screens/staff/clicks/app_T_bots_BOT_conversations__8_Delete.png"
+          },
+          {
+            "label": "Delete",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [
+              "DELETE /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations/30c5cf21-bcd0-5e22-a9c5-f49a90b451a8"
+            ],
+            "new_text": [
+              "Failed to fetch",
+              "Retry page"
+            ],
+            "screenshot": "screens/staff/clicks/app_T_bots_BOT_conversations__9_Delete.png"
+          },
+          {
+            "label": "Delete",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [
+              "DELETE /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations/eb5f6270-3c71-5622-bafc-144c75efde30"
+            ],
+            "new_text": [
+              "Failed to fetch",
+              "Retry page"
+            ],
+            "screenshot": "screens/staff/clicks/app_T_bots_BOT_conversations__10_Delete.png"
+          }
+        ]
+      },
+      {
+        "url": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/settings/data",
+        "tabs": [],
+        "buttons": [
+          {
+            "label": "☾ Appearance",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "☀"
+            ]
+          },
+          {
+            "label": "«",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "»"
+            ]
+          },
+          {
+            "label": "Search pages ⌘ / Ctrl K",
+            "url_changed_to": null,
+            "dialogs": [
+              {
+                "text": "Go to a page | Close | Search pages | ◈ Overview | ✧ | ✧ Bots | ✧ | ▤ Inbox | ✧ | ◎ Contacts | ✧ | ? Request a change | ✧ | ♧ Team | ✧ | ▦ Tenant data and audit | ✧ | ▥ Handoff analytics | ✧ | ↗ Platform admin | ✧ | Arrow keys to select · Enter to open · Escape to close",
+                "buttons": [
+                  "Close"
+                ],
+                "fields": [
+                  "text: Where would you like to go?"
+                ]
+              }
+            ],
+            "blocked_non_get": [],
+            "new_text": [
+              "Go to a page",
+              "Close",
+              "◈ Overview",
+              "✧ Bots",
+              "▤ Inbox",
+              "◎ Contacts",
+              "? Request a change",
+              "♧ Team",
+              "▦ Tenant data and audit",
+              "▥ Handoff analytics",
+              "↗ Platform admin",
+              "Arrow keys to select · Enter to open · Escape to close"
+            ],
+            "screenshot": "screens/staff/clicks/app_T_settings_data__2_SearchpagesCtrlK.png"
+          },
+          {
+            "label": "Sign out",
+            "action": "skipped (logout)"
+          },
+          {
+            "label": "Download export",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "2026-10-17T01:11:45 · tenant.data.exported · tenant:eb26cfc5-67ea-53d7-850a-879b5d18a732"
+            ]
+          },
+          {
+            "label": "Search",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": []
+          },
+          {
+            "label": "Schedule organization deletion",
+            "action": "disabled"
+          }
+        ]
+      },
+      {
+        "url": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "tabs": [],
+        "buttons": [
+          {
+            "label": "☀ Appearance",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "☾"
+            ]
+          },
+          {
+            "label": "«",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "»"
+            ]
+          },
+          {
+            "label": "Search pages ⌘ / Ctrl K",
+            "url_changed_to": null,
+            "dialogs": [
+              {
+                "text": "Go to a page | Close | Search pages | ◈ Overview | ✧ | ✧ Bots | ✧ | ▤ Inbox | ✧ | ◎ Contacts | ✧ | ? Request a change | ✧ | ♧ Team | ✧ | ▦ Tenant data and audit | ✧ | ▥ Handoff analytics | ✧ | ↗ Platform admin | ✧ | Arrow keys to select · Enter to open · Escape to close",
+                "buttons": [
+                  "Close"
+                ],
+                "fields": [
+                  "text: Where would you like to go?"
+                ]
+              }
+            ],
+            "blocked_non_get": [],
+            "new_text": [
+              "Go to a page",
+              "Close",
+              "◈ Overview",
+              "✧ Bots",
+              "▤ Inbox",
+              "◎ Contacts",
+              "? Request a change",
+              "♧ Team",
+              "▦ Tenant data and audit",
+              "▥ Handoff analytics",
+              "↗ Platform admin",
+              "Arrow keys to select · Enter to open · Escape to close"
+            ],
+            "screenshot": "screens/staff/clicks/app_T__2_SearchpagesCtrlK.png"
+          },
+          {
+            "label": "Sign out",
+            "action": "skipped (logout)"
+          }
+        ]
+      },
+      {
+        "url": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "tabs": [],
+        "buttons": [
+          {
+            "label": "☾ Appearance",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "☀"
+            ]
+          },
+          {
+            "label": "«",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "»"
+            ]
+          },
+          {
+            "label": "Search pages ⌘ / Ctrl K",
+            "url_changed_to": null,
+            "dialogs": [
+              {
+                "text": "Go to a page | Close | Search pages | ◈ Overview | ✧ | ✧ Bots | ✧ | ▤ Inbox | ✧ | ◎ Contacts | ✧ | ? Request a change | ✧ | ♧ Team | ✧ | ▦ Tenant data and audit | ✧ | ▥ Handoff analytics | ✧ | ↗ Platform admin | ✧ | Arrow keys to select · Enter to open · Escape to close",
+                "buttons": [
+                  "Close"
+                ],
+                "fields": [
+                  "text: Where would you like to go?"
+                ]
+              }
+            ],
+            "blocked_non_get": [],
+            "new_text": [
+              "Go to a page",
+              "Close",
+              "◈ Overview",
+              "✧ Bots",
+              "▤ Inbox",
+              "◎ Contacts",
+              "? Request a change",
+              "♧ Team",
+              "▦ Tenant data and audit",
+              "▥ Handoff analytics",
+              "↗ Platform admin",
+              "Arrow keys to select · Enter to open · Escape to close"
+            ],
+            "screenshot": "screens/staff/clicks/app_T_inbox__2_SearchpagesCtrlK.png"
+          },
+          {
+            "label": "Sign out",
+            "action": "skipped (logout)"
+          }
+        ]
+      },
+      {
+        "url": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "tabs": [],
+        "buttons": [
+          {
+            "label": "☀ Appearance",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "☾"
+            ]
+          },
+          {
+            "label": "«",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "»"
+            ]
+          },
+          {
+            "label": "Search pages ⌘ / Ctrl K",
+            "url_changed_to": null,
+            "dialogs": [
+              {
+                "text": "Go to a page | Close | Search pages | ◈ Overview | ✧ | ✧ Bots | ✧ | ▤ Inbox | ✧ | ◎ Contacts | ✧ | ? Request a change | ✧ | ♧ Team | ✧ | ▦ Tenant data and audit | ✧ | ▥ Handoff analytics | ✧ | ↗ Platform admin | ✧ | Arrow keys to select · Enter to open · Escape to close",
+                "buttons": [
+                  "Close"
+                ],
+                "fields": [
+                  "text: Where would you like to go?"
+                ]
+              }
+            ],
+            "blocked_non_get": [],
+            "new_text": [
+              "Go to a page",
+              "Close",
+              "◈ Overview",
+              "✧ Bots",
+              "▤ Inbox",
+              "◎ Contacts",
+              "? Request a change",
+              "♧ Team",
+              "▦ Tenant data and audit",
+              "▥ Handoff analytics",
+              "↗ Platform admin",
+              "Arrow keys to select · Enter to open · Escape to close"
+            ],
+            "screenshot": "screens/staff/clicks/app_T_contacts__2_SearchpagesCtrlK.png"
+          },
+          {
+            "label": "Sign out",
+            "action": "skipped (logout)"
+          },
+          {
+            "label": "Create contact",
+            "action": "disabled"
+          }
+        ]
+      },
+      {
+        "url": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/settings/requests",
+        "tabs": [],
+        "buttons": [
+          {
+            "label": "☾ Appearance",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "☀"
+            ]
+          },
+          {
+            "label": "«",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "»"
+            ]
+          },
+          {
+            "label": "Search pages ⌘ / Ctrl K",
+            "url_changed_to": null,
+            "dialogs": [
+              {
+                "text": "Go to a page | Close | Search pages | ◈ Overview | ✧ | ✧ Bots | ✧ | ▤ Inbox | ✧ | ◎ Contacts | ✧ | ? Request a change | ✧ | ♧ Team | ✧ | ▦ Tenant data and audit | ✧ | ▥ Handoff analytics | ✧ | ↗ Platform admin | ✧ | Arrow keys to select · Enter to open · Escape to close",
+                "buttons": [
+                  "Close"
+                ],
+                "fields": [
+                  "text: Where would you like to go?"
+                ]
+              }
+            ],
+            "blocked_non_get": [],
+            "new_text": [
+              "Go to a page",
+              "Close",
+              "◈ Overview",
+              "✧ Bots",
+              "▤ Inbox",
+              "◎ Contacts",
+              "? Request a change",
+              "♧ Team",
+              "▦ Tenant data and audit",
+              "▥ Handoff analytics",
+              "↗ Platform admin",
+              "Arrow keys to select · Enter to open · Escape to close"
+            ],
+            "screenshot": "screens/staff/clicks/app_T_settings_requests__2_SearchpagesCtrlK.png"
+          },
+          {
+            "label": "Sign out",
+            "action": "skipped (logout)"
+          },
+          {
+            "label": "Submit request",
+            "action": "disabled"
+          }
+        ]
+      },
+      {
+        "url": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/settings/members",
+        "tabs": [],
+        "buttons": [
+          {
+            "label": "☀ Appearance",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "☾"
+            ]
+          },
+          {
+            "label": "«",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "»"
+            ]
+          },
+          {
+            "label": "Search pages ⌘ / Ctrl K",
+            "url_changed_to": null,
+            "dialogs": [
+              {
+                "text": "Go to a page | Close | Search pages | ◈ Overview | ✧ | ✧ Bots | ✧ | ▤ Inbox | ✧ | ◎ Contacts | ✧ | ? Request a change | ✧ | ♧ Team | ✧ | ▦ Tenant data and audit | ✧ | ▥ Handoff analytics | ✧ | ↗ Platform admin | ✧ | Arrow keys to select · Enter to open · Escape to close",
+                "buttons": [
+                  "Close"
+                ],
+                "fields": [
+                  "text: Where would you like to go?"
+                ]
+              }
+            ],
+            "blocked_non_get": [],
+            "new_text": [
+              "Go to a page",
+              "Close",
+              "◈ Overview",
+              "✧ Bots",
+              "▤ Inbox",
+              "◎ Contacts",
+              "? Request a change",
+              "♧ Team",
+              "▦ Tenant data and audit",
+              "▥ Handoff analytics",
+              "↗ Platform admin",
+              "Arrow keys to select · Enter to open · Escape to close"
+            ],
+            "screenshot": "screens/staff/clicks/app_T_settings_members__2_SearchpagesCtrlK.png"
+          },
+          {
+            "label": "Sign out",
+            "action": "skipped (logout)"
+          },
+          {
+            "label": "Create invite link",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": []
+          },
+          {
+            "label": "Remove",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [
+              "DELETE /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/members/f8d3bb81-4f94-5645-ad3f-60e1aac7633e"
+            ],
+            "new_text": [
+              "Failed to fetch",
+              "Retry page"
+            ],
+            "screenshot": "screens/staff/clicks/app_T_settings_members__5_Remove.png"
+          },
+          {
+            "label": "Remove",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [
+              "DELETE /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/members/610219ea-3e99-5a89-ac2c-c67da26fb813"
+            ],
+            "new_text": [
+              "Failed to fetch",
+              "Retry page"
+            ],
+            "screenshot": "screens/staff/clicks/app_T_settings_members__6_Remove.png"
+          }
+        ]
+      },
+      {
+        "url": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics",
+        "tabs": [],
+        "buttons": [
+          {
+            "label": "☾ Appearance",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "☀"
+            ]
+          },
+          {
+            "label": "«",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "»"
+            ]
+          },
+          {
+            "label": "Search pages ⌘ / Ctrl K",
+            "url_changed_to": null,
+            "dialogs": [
+              {
+                "text": "Go to a page | Close | Search pages | ◈ Overview | ✧ | ✧ Bots | ✧ | ▤ Inbox | ✧ | ◎ Contacts | ✧ | ? Request a change | ✧ | ♧ Team | ✧ | ▦ Tenant data and audit | ✧ | ▥ Handoff analytics | ✧ | ↗ Platform admin | ✧ | Arrow keys to select · Enter to open · Escape to close",
+                "buttons": [
+                  "Close"
+                ],
+                "fields": [
+                  "text: Where would you like to go?"
+                ]
+              }
+            ],
+            "blocked_non_get": [],
+            "new_text": [
+              "Go to a page",
+              "Close",
+              "◈ Overview",
+              "✧ Bots",
+              "▤ Inbox",
+              "◎ Contacts",
+              "? Request a change",
+              "♧ Team",
+              "▦ Tenant data and audit",
+              "▥ Handoff analytics",
+              "↗ Platform admin",
+              "Arrow keys to select · Enter to open · Escape to close"
+            ],
+            "screenshot": "screens/staff/clicks/app_T_analytics__2_SearchpagesCtrlK.png"
+          },
+          {
+            "label": "Sign out",
+            "action": "skipped (logout)"
+          },
+          {
+            "label": "Save AI limits",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [
+              "PATCH /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/rag"
+            ],
+            "new_text": [
+              "Could not save AI limits."
+            ]
+          },
+          {
+            "label": "Reset to plan defaults",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [
+              "PATCH /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/rag"
+            ],
+            "new_text": [
+              "Could not save AI limits."
+            ]
+          }
+        ]
+      },
+      {
+        "url": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations/3724a0fa-1799-5eb7-96ed-42e13bfb3601",
+        "tabs": [],
+        "buttons": [
+          {
+            "label": "☀ Appearance",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "☾"
+            ]
+          },
+          {
+            "label": "«",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "»"
+            ]
+          },
+          {
+            "label": "Search pages ⌘ / Ctrl K",
+            "url_changed_to": null,
+            "dialogs": [
+              {
+                "text": "Go to a page | Close | Search pages | ◈ Overview | ✧ | ✧ Bots | ✧ | ▤ Inbox | ✧ | ◎ Contacts | ✧ | ? Request a change | ✧ | ♧ Team | ✧ | ▦ Tenant data and audit | ✧ | ▥ Handoff analytics | ✧ | ↗ Platform admin | ✧ | Arrow keys to select · Enter to open · Escape to close",
+                "buttons": [
+                  "Close"
+                ],
+                "fields": [
+                  "text: Where would you like to go?"
+                ]
+              }
+            ],
+            "blocked_non_get": [],
+            "new_text": [
+              "Go to a page",
+              "Close",
+              "◈ Overview",
+              "✧ Bots",
+              "▤ Inbox",
+              "◎ Contacts",
+              "? Request a change",
+              "♧ Team",
+              "▦ Tenant data and audit",
+              "▥ Handoff analytics",
+              "↗ Platform admin",
+              "Arrow keys to select · Enter to open · Escape to close"
+            ],
+            "screenshot": "screens/staff/clicks/app_T_bots_BOT_conversations_3724a0fa__2_SearchpagesCtrlK.png"
+          },
+          {
+            "label": "Sign out",
+            "action": "skipped (logout)"
+          }
+        ]
+      },
+      {
+        "url": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox/3724a0fa-1799-5eb7-96ed-42e13bfb3601",
+        "tabs": [],
+        "buttons": [
+          {
+            "label": "☾ Appearance",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "☀"
+            ]
+          },
+          {
+            "label": "«",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "»"
+            ]
+          },
+          {
+            "label": "Search pages ⌘ / Ctrl K",
+            "url_changed_to": null,
+            "dialogs": [
+              {
+                "text": "Go to a page | Close | Search pages | ◈ Overview | ✧ | ✧ Bots | ✧ | ▤ Inbox | ✧ | ◎ Contacts | ✧ | ? Request a change | ✧ | ♧ Team | ✧ | ▦ Tenant data and audit | ✧ | ▥ Handoff analytics | ✧ | ↗ Platform admin | ✧ | Arrow keys to select · Enter to open · Escape to close",
+                "buttons": [
+                  "Close"
+                ],
+                "fields": [
+                  "text: Where would you like to go?"
+                ]
+              }
+            ],
+            "blocked_non_get": [],
+            "new_text": [
+              "Go to a page",
+              "Close",
+              "◈ Overview",
+              "✧ Bots",
+              "▤ Inbox",
+              "◎ Contacts",
+              "? Request a change",
+              "♧ Team",
+              "▦ Tenant data and audit",
+              "▥ Handoff analytics",
+              "↗ Platform admin",
+              "Arrow keys to select · Enter to open · Escape to close"
+            ],
+            "screenshot": "screens/staff/clicks/app_T_inbox_3724a0fa__2_SearchpagesCtrlK.png"
+          },
+          {
+            "label": "Sign out",
+            "action": "skipped (logout)"
+          }
+        ]
+      },
+      {
+        "url": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts/858a15c8-e06e-5dc8-8259-8238c97decff",
+        "tabs": [],
+        "buttons": [
+          {
+            "label": "☀ Appearance",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "☾"
+            ]
+          },
+          {
+            "label": "«",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "»"
+            ]
+          },
+          {
+            "label": "Search pages ⌘ / Ctrl K",
+            "url_changed_to": null,
+            "dialogs": [
+              {
+                "text": "Go to a page | Close | Search pages | ◈ Overview | ✧ | ✧ Bots | ✧ | ▤ Inbox | ✧ | ◎ Contacts | ✧ | ? Request a change | ✧ | ♧ Team | ✧ | ▦ Tenant data and audit | ✧ | ▥ Handoff analytics | ✧ | ↗ Platform admin | ✧ | Arrow keys to select · Enter to open · Escape to close",
+                "buttons": [
+                  "Close"
+                ],
+                "fields": [
+                  "text: Where would you like to go?"
+                ]
+              }
+            ],
+            "blocked_non_get": [],
+            "new_text": [
+              "Go to a page",
+              "Close",
+              "◈ Overview",
+              "✧ Bots",
+              "▤ Inbox",
+              "◎ Contacts",
+              "? Request a change",
+              "♧ Team",
+              "▦ Tenant data and audit",
+              "▥ Handoff analytics",
+              "↗ Platform admin",
+              "Arrow keys to select · Enter to open · Escape to close"
+            ],
+            "screenshot": "screens/staff/clicks/app_T_contacts_858a15c8__2_SearchpagesCtrlK.png"
+          },
+          {
+            "label": "Sign out",
+            "action": "skipped (logout)"
+          },
+          {
+            "label": "Save contact",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [
+              "PATCH /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts/858a15c8-e06e-5dc8-8259-8238c97decff"
+            ],
+            "new_text": [
+              "Failed to fetch",
+              "Retry page"
+            ],
+            "screenshot": "screens/staff/clicks/app_T_contacts_858a15c8__4_Savecontact.png"
+          },
+          {
+            "label": "Schedule follow-up",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": []
+          },
+          {
+            "label": "Merge into selected contact",
+            "action": "disabled"
+          },
+          {
+            "label": "Erase contact",
+            "url_changed_to": null,
+            "dialogs": [
+              {
+                "text": "Erase this contact? | The contact and its channel identities will be removed. | Also erase messages in this contact’s conversations | Cancel | Confirm erasure",
+                "buttons": [
+                  "Cancel",
+                  "Confirm erasure"
+                ],
+                "fields": [
+                  "checkbox: "
+                ]
+              }
+            ],
+            "blocked_non_get": [],
+            "new_text": [
+              "Erase this contact?",
+              "The contact and its channel identities will be removed.",
+              "Also erase messages in this contact’s conversations",
+              "Cancel",
+              "Confirm erasure"
+            ],
+            "screenshot": "screens/staff/clicks/app_T_contacts_858a15c8__7_Erasecontact.png"
+          }
+        ]
+      }
+    ],
+    "all_blocked_non_get": [
+      "POST /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/jobs/d6c1a945-27c0-471b-bfa9-aae009d40a95/retry",
+      "PATCH /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332",
+      "PATCH /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332",
+      "POST /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/rag/backfill",
+      "DELETE /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations/3724a0fa-1799-5eb7-96ed-42e13bfb3601",
+      "DELETE /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations/6e7b130a-db4d-5e18-8de1-a4e0efbc6795",
+      "DELETE /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations/af13700d-4bdf-58cb-b8c5-99b7f15b112c",
+      "DELETE /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations/cae26f06-cad7-571f-a1bb-444fa35cf501",
+      "DELETE /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations/30c5cf21-bcd0-5e22-a9c5-f49a90b451a8",
+      "DELETE /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations/eb5f6270-3c71-5622-bafc-144c75efde30",
+      "DELETE /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/members/f8d3bb81-4f94-5645-ad3f-60e1aac7633e",
+      "DELETE /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/members/610219ea-3e99-5a89-ac2c-c67da26fb813",
+      "PATCH /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/rag",
+      "PATCH /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/rag",
+      "PATCH /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts/858a15c8-e06e-5dc8-8259-8238c97decff"
+    ]
+  },
+  "admin": {
+    "role": "admin",
+    "note": "All non-GET /api requests were aborted in the browser; nothing was submitted.",
+    "pages": [
+      {
+        "url": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/settings/members",
+        "tabs": [],
+        "buttons": [
+          {
+            "label": "☾ Appearance",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "☀"
+            ]
+          },
+          {
+            "label": "«",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "»"
+            ]
+          },
+          {
+            "label": "Search pages ⌘ / Ctrl K",
+            "url_changed_to": null,
+            "dialogs": [
+              {
+                "text": "Go to a page | Close | Search pages | ◈ Overview | ✧ | ✧ Bots | ✧ | ▤ Inbox | ✧ | ◎ Contacts | ✧ | ? Request a change | ✧ | ♧ Team | ✧ | ▦ Tenant data and audit | ✧ | ▥ Handoff analytics | ✧ | Arrow keys to select · Enter to open · Escape to close",
+                "buttons": [
+                  "Close"
+                ],
+                "fields": [
+                  "text: Where would you like to go?"
+                ]
+              }
+            ],
+            "blocked_non_get": [],
+            "new_text": [
+              "Go to a page",
+              "Close",
+              "◈ Overview",
+              "✧ Bots",
+              "▤ Inbox",
+              "◎ Contacts",
+              "? Request a change",
+              "♧ Team",
+              "▦ Tenant data and audit",
+              "▥ Handoff analytics",
+              "Arrow keys to select · Enter to open · Escape to close"
+            ],
+            "screenshot": "screens/admin/clicks/app_T_settings_members__2_SearchpagesCtrlK.png"
+          },
+          {
+            "label": "Sign out",
+            "action": "skipped (logout)"
+          },
+          {
+            "label": "Create invite link",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": []
+          },
+          {
+            "label": "Remove",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [
+              "DELETE /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/members/f8d3bb81-4f94-5645-ad3f-60e1aac7633e"
+            ],
+            "new_text": [
+              "Failed to fetch",
+              "Retry page"
+            ],
+            "screenshot": "screens/admin/clicks/app_T_settings_members__5_Remove.png"
+          },
+          {
+            "label": "Remove",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [
+              "DELETE /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/members/610219ea-3e99-5a89-ac2c-c67da26fb813"
+            ],
+            "new_text": [
+              "Failed to fetch",
+              "Retry page"
+            ],
+            "screenshot": "screens/admin/clicks/app_T_settings_members__6_Remove.png"
+          }
+        ]
+      },
+      {
+        "url": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/settings/data",
+        "tabs": [],
+        "buttons": [
+          {
+            "label": "☀ Appearance",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "☾"
+            ]
+          },
+          {
+            "label": "«",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "»"
+            ]
+          },
+          {
+            "label": "Search pages ⌘ / Ctrl K",
+            "url_changed_to": null,
+            "dialogs": [
+              {
+                "text": "Go to a page | Close | Search pages | ◈ Overview | ✧ | ✧ Bots | ✧ | ▤ Inbox | ✧ | ◎ Contacts | ✧ | ? Request a change | ✧ | ♧ Team | ✧ | ▦ Tenant data and audit | ✧ | ▥ Handoff analytics | ✧ | Arrow keys to select · Enter to open · Escape to close",
+                "buttons": [
+                  "Close"
+                ],
+                "fields": [
+                  "text: Where would you like to go?"
+                ]
+              }
+            ],
+            "blocked_non_get": [],
+            "new_text": [
+              "Go to a page",
+              "Close",
+              "◈ Overview",
+              "✧ Bots",
+              "▤ Inbox",
+              "◎ Contacts",
+              "? Request a change",
+              "♧ Team",
+              "▦ Tenant data and audit",
+              "▥ Handoff analytics",
+              "Arrow keys to select · Enter to open · Escape to close"
+            ],
+            "screenshot": "screens/admin/clicks/app_T_settings_data__2_SearchpagesCtrlK.png"
+          },
+          {
+            "label": "Sign out",
+            "action": "skipped (logout)"
+          },
+          {
+            "label": "Download export",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "2026-10-17T01:07:50 · tenant.data.exported · tenant:eb26cfc5-67ea-53d7-850a-879b5d18a732"
+            ]
+          },
+          {
+            "label": "Search",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": []
+          }
+        ]
+      },
+      {
+        "url": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/settings/requests",
+        "tabs": [],
+        "buttons": [
+          {
+            "label": "☾ Appearance",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "☀"
+            ]
+          },
+          {
+            "label": "«",
+            "url_changed_to": null,
+            "dialogs": [],
+            "blocked_non_get": [],
+            "new_text": [
+              "»"
+            ]
+          },
+          {
+            "label": "Search pages ⌘ / Ctrl K",
+            "url_changed_to": null,
+            "dialogs": [
+              {
+                "text": "Go to a page | Close | Search pages | ◈ Overview | ✧ | ✧ Bots | ✧ | ▤ Inbox | ✧ | ◎ Contacts | ✧ | ? Request a change | ✧ | ♧ Team | ✧ | ▦ Tenant data and audit | ✧ | ▥ Handoff analytics | ✧ | Arrow keys to select · Enter to open · Escape to close",
+                "buttons": [
+                  "Close"
+                ],
+                "fields": [
+                  "text: Where would you like to go?"
+                ]
+              }
+            ],
+            "blocked_non_get": [],
+            "new_text": [
+              "Go to a page",
+              "Close",
+              "◈ Overview",
+              "✧ Bots",
+              "▤ Inbox",
+              "◎ Contacts",
+              "? Request a change",
+              "♧ Team",
+              "▦ Tenant data and audit",
+              "▥ Handoff analytics",
+              "Arrow keys to select · Enter to open · Escape to close"
+            ],
+            "screenshot": "screens/admin/clicks/app_T_settings_requests__2_SearchpagesCtrlK.png"
+          },
+          {
+            "label": "Sign out",
+            "action": "skipped (logout)"
+          },
+          {
+            "label": "Submit request",
+            "action": "disabled"
+          }
+        ]
+      }
+    ],
+    "all_blocked_non_get": [
+      "DELETE /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/members/f8d3bb81-4f94-5645-ad3f-60e1aac7633e",
+      "DELETE /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/members/610219ea-3e99-5a89-ac2c-c67da26fb813"
+    ]
+  }
+}
