@@ -1,6 +1,8 @@
 """Operator organizations, member visibility and revoked access regressions."""
 
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
+from threading import Barrier
 from uuid import UUID, uuid4
 
 import pytest
@@ -165,3 +167,49 @@ def test_revocation_preserves_other_org_and_staff_login(app: FastAPI, db: Sessio
     finally:
         a.cleanup()
         b.cleanup()
+
+
+def test_removal_and_old_invite_acceptance_cannot_restore_membership(
+    app: FastAPI, db: Session
+) -> None:
+    users = seeded_tenant(app, db, "revoke-race")
+    try:
+        user_id = UUID(users.users["editor"]["id"])
+        token = "fixture-racing-outstanding-invitation"
+        db.add(
+            Invitation(
+                id=uuid4(),
+                tenant_id=users.tenant_id,
+                email=users.users["editor"]["email"],
+                role="editor",
+                token_hash=hash_token(token),
+                expires_at=datetime.now(UTC) + timedelta(days=1),
+                created_by=UUID(users.users["admin"]["id"]),
+            )
+        )
+        db.commit()
+        barrier = Barrier(2)
+
+        def remove() -> int:
+            barrier.wait(timeout=10)
+            return int(
+                users.call(
+                    "admin", "DELETE", f"/api/v1/tenants/{users.tenant_id}/members/{user_id}"
+                ).status_code
+            )
+
+        def accept() -> int:
+            barrier.wait(timeout=10)
+            return int(accept_invitation(users.as_user("editor"), token).status_code)
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            removal = pool.submit(remove)
+            acceptance = pool.submit(accept)
+            assert removal.result(timeout=15) == 204
+            assert acceptance.result(timeout=15) == 409
+        db.expire_all()
+        membership = db.get(Membership, (users.tenant_id, user_id))
+        assert membership is not None and membership.status == "revoked"
+        assert users.as_user("editor").get(f"/api/v1/tenants/{users.tenant_id}").status_code == 404
+    finally:
+        users.cleanup()

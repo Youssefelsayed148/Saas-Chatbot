@@ -222,12 +222,21 @@ class TenantService:
         return invitation
 
     def accept_invitation(self, db: OrmSession, user: User, token: str) -> Membership:
+        token_hash = hash_token(token.strip())
+        tenant_id = db.scalar(
+            select(Invitation.tenant_id).where(Invitation.token_hash == token_hash)
+        )
+        if tenant_id is None:
+            raise ApiError(404, "NOT_FOUND", "Invitation not found or no longer valid.")
+        # Removal revokes outstanding invites while holding this tenant lock.
+        # Both paths must lock tenant -> invitation to avoid a lock inversion.
+        tenant = lock_tenant(db, tenant_id)
         # Lock the invitation row: two concurrent accepts of one token must
         # serialize, so exactly one performs the accept and the other sees
         # `accepted_at` set (409) instead of creating a duplicate membership.
         invitation = db.execute(
             select(Invitation)
-            .where(Invitation.token_hash == hash_token(token.strip()))
+            .where(Invitation.tenant_id == tenant_id, Invitation.token_hash == token_hash)
             .with_for_update()
         ).scalar_one_or_none()
         now = datetime.now(UTC)
@@ -246,7 +255,6 @@ class TenantService:
                 "Register or log in with the address the invitation was sent to.",
             )
 
-        tenant = lock_tenant(db, invitation.tenant_id)
         existing_membership = db.execute(
             select(Membership).where(
                 Membership.tenant_id == invitation.tenant_id,

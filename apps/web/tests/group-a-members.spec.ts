@@ -72,8 +72,12 @@ test("revoked members are absent from client Team and platform detail; pending i
     await expect(
       page.getByRole("heading", { name: "Team", exact: true }),
     ).toBeVisible();
-    await expect(page.getByText(pendingEmail, { exact: true })).toBeVisible();
-    await expect(page.getByText(revokedEmail, { exact: true })).toHaveCount(0);
+    await expect(
+      page.getByRole("region", { name: "Pending invitations", exact: true }),
+    ).toContainText(pendingEmail);
+    await expect(
+      page.getByRole("region", { name: "Members", exact: true }),
+    ).not.toContainText(revokedEmail);
 
     const staff = await staffContext.newPage();
     const staffEmail = uniqueEmail("operator-fixture");
