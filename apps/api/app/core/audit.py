@@ -38,6 +38,6 @@ def record_audit(
 
 def audit_action_matches(query: str) -> ColumnElement[bool]:
     """Search both onboarding vocabularies while preserving immutable history."""
-    query = query.strip()
+    query = query.strip().lower()
     variants = {query, query.replace("admin", "owner"), query.replace("owner", "admin")}
     return or_(*(AuditEvent.action.ilike(f"%{value}%") for value in sorted(variants)))

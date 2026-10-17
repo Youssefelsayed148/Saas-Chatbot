@@ -29,11 +29,19 @@ def test_audit_readers_search_old_and_new_names_without_rewriting_history(
         for action in ACTIONS:
             record_audit(db, action=action, tenant_id=tenant.tenant_id, actor_user_id=None)
     db.commit()
-    for query in ("admin", "owner", "admin_invited", "owner_invited", "admin_assigned"):
+    for query in (
+        "admin",
+        "owner",
+        "ADMIN",
+        "OWNER_INVITED",
+        "admin_invited",
+        "owner_invited",
+        "admin_assigned",
+    ):
         expected = {
             action
             for action in ACTIONS
-            if query.replace("owner", "admin") in action.replace("owner", "admin")
+            if query.lower().replace("owner", "admin") in action.replace("owner", "admin")
         }
         path = f"/api/v1/tenants/{a.tenant_id}/data/audit?q={query}"
         response = a.call("admin", "GET", path)
