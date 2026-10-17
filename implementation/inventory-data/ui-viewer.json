@@ -1,0 +1,1283 @@
+{
+  "role": "viewer",
+  "email": "demo-viewer@example.com",
+  "tenant": "eb26cfc5-67ea-53d7-850a-879b5d18a732",
+  "botId": "70417b12-544b-5480-b945-b5cfcecb4332",
+  "pages": [
+    {
+      "requested": "/app",
+      "final_url": "http://localhost:3000/app",
+      "status": 200,
+      "title": "Website Chatbot SaaS",
+      "heading": [
+        "Your organizations",
+        "Go to a page"
+      ],
+      "nav_labels": [
+        "✧ Website Chatbot AI workspace",
+        "↗ Organizations",
+        "Workspaces",
+        "↗Organizations"
+      ],
+      "buttons": [
+        "☾ Appearance",
+        "«",
+        "☰",
+        "Search pages ⌘ / Ctrl K",
+        "Sign out",
+        "Close navigation",
+        "☾Appearance",
+        "Close"
+      ],
+      "links": [
+        "Skip to content -> #workspace-content",
+        "✧ Website Chatbot AI workspace -> /app",
+        "↗ Organizations -> /app",
+        "Workspaces -> /app",
+        "Demo Dental Clinic -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "✧Website ChatbotAI workspace -> /app",
+        "↗Organizations -> /app",
+        "↗ Organizations✧ -> /app"
+      ],
+      "form_fields": [
+        "select-one: Organization",
+        "text: Search pages"
+      ],
+      "labels": [
+        "Organization",
+        "Search pages"
+      ],
+      "tabs": [],
+      "screenshot": "screens/viewer/app.png"
+    },
+    {
+      "requested": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+      "final_url": "http://localhost:3000/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+      "status": 200,
+      "title": "Website Chatbot SaaS",
+      "heading": [
+        "Bots",
+        "Plan usage",
+        "Go to a page"
+      ],
+      "nav_labels": [
+        "✧ Website Chatbot AI workspace",
+        "◈ Overview",
+        "✧ Bots",
+        "▤ Inbox",
+        "◎ Contacts",
+        "▥ Handoff analytics",
+        "Workspaces",
+        "◈Overview",
+        "✧Bots",
+        "▤Inbox",
+        "◎Contacts",
+        "▥Handoff analytics"
+      ],
+      "buttons": [
+        "☾ Appearance",
+        "«",
+        "☰",
+        "Search pages ⌘ / Ctrl K",
+        "Sign out",
+        "Close navigation",
+        "☾Appearance",
+        "Close"
+      ],
+      "links": [
+        "Skip to content -> #workspace-content",
+        "✧ Website Chatbot AI workspace -> /app",
+        "◈ Overview -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧ Bots -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤ Inbox -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎ Contacts -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥ Handoff analytics -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics",
+        "Workspaces -> /app",
+        "Demo Dental Assistant -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/settings",
+        "Open bot -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/settings",
+        "✧Website ChatbotAI workspace -> /app",
+        "◈Overview -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧Bots -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤Inbox -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎Contacts -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥Handoff analytics -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics",
+        "◈ Overview✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧ Bots✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤ Inbox✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎ Contacts✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥ Handoff analytics✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics"
+      ],
+      "form_fields": [
+        "select-one: Organization",
+        "checkbox: ",
+        "text: Search pages"
+      ],
+      "labels": [
+        "Organization",
+        "Show archived bots",
+        "Search pages"
+      ],
+      "tabs": [],
+      "screenshot": "screens/viewer/app_eb26cfc5_67ea_53d7_850a_879b5d18a732_bots.png"
+    },
+    {
+      "requested": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+      "final_url": "http://localhost:3000/app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+      "status": 200,
+      "title": "Website Chatbot SaaS",
+      "heading": [
+        "Overview",
+        "Recent conversations",
+        "Your first assistant",
+        "Plan usage",
+        "Go to a page"
+      ],
+      "nav_labels": [
+        "✧ Website Chatbot AI workspace",
+        "◈ Overview",
+        "✧ Bots",
+        "▤ Inbox",
+        "◎ Contacts",
+        "▥ Handoff analytics",
+        "Workspaces",
+        "◈Overview",
+        "✧Bots",
+        "▤Inbox",
+        "◎Contacts",
+        "▥Handoff analytics"
+      ],
+      "buttons": [
+        "☾ Appearance",
+        "«",
+        "☰",
+        "Search pages ⌘ / Ctrl K",
+        "Sign out",
+        "Close navigation",
+        "☾Appearance",
+        "Close"
+      ],
+      "links": [
+        "Skip to content -> #workspace-content",
+        "✧ Website Chatbot AI workspace -> /app",
+        "◈ Overview -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧ Bots -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤ Inbox -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎ Contacts -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥ Handoff analytics -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics",
+        "Workspaces -> /app",
+        "Open inbox ↗ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "View inbox → -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "سيساعدك أحد الموظفين قريباً. Website · Waiting for human · 10/15/2026 -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox/3724a0fa-1799-5eb7-96ed-42e13bfb3601",
+        "Your fictional booking is confirmed for Tuesday at 10:00. Website · Resolved · 10/15/2026 -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox/6e7b130a-db4d-5e18-8de1-a4e0efbc6795",
+        "Your fictional booking is confirmed for Tuesday at 10:00. Website · Open · 10/15/2026 -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox/af13700d-4bdf-58cb-b8c5-99b7f15b112c",
+        "A human will help you shortly. Website · Waiting for human · 10/15/2026 -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox/cae26f06-cad7-571f-a1bb-444fa35cf501",
+        "A human will help with your question. Website · Waiting for human · 10/15/2026 -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox/30c5cf21-bcd0-5e22-a9c5-f49a90b451a8",
+        "First bot created -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "✧Website ChatbotAI workspace -> /app",
+        "◈Overview -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧Bots -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤Inbox -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎Contacts -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥Handoff analytics -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics",
+        "◈ Overview✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧ Bots✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤ Inbox✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎ Contacts✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥ Handoff analytics✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics"
+      ],
+      "form_fields": [
+        "select-one: Organization",
+        "text: Search pages"
+      ],
+      "labels": [
+        "Organization",
+        "Bots 1 / 30",
+        "Seats 3 / 50",
+        "Pages Per Bot 4 / 2000",
+        "Upload File Mb 0 / 25",
+        "Monthly Messages 5 / 60000",
+        "Contacts 3 / 100000",
+        "Channel Connections 1 / 10",
+        "Sentiment Runs 0 / 20000",
+        "Search pages"
+      ],
+      "tabs": [],
+      "screenshot": "screens/viewer/app_eb26cfc5_67ea_53d7_850a_879b5d18a732.png"
+    },
+    {
+      "requested": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+      "final_url": "http://localhost:3000/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+      "status": 200,
+      "title": "Website Chatbot SaaS",
+      "heading": [
+        "Inbox",
+        "Every conversation, in context",
+        "Go to a page"
+      ],
+      "nav_labels": [
+        "✧ Website Chatbot AI workspace",
+        "◈ Overview",
+        "✧ Bots",
+        "▤ Inbox",
+        "◎ Contacts",
+        "▥ Handoff analytics",
+        "Workspaces",
+        "◈Overview",
+        "✧Bots",
+        "▤Inbox",
+        "◎Contacts",
+        "▥Handoff analytics"
+      ],
+      "buttons": [
+        "☾ Appearance",
+        "«",
+        "☰",
+        "Search pages ⌘ / Ctrl K",
+        "Sign out",
+        "Close navigation",
+        "☾Appearance",
+        "Close"
+      ],
+      "links": [
+        "Skip to content -> #workspace-content",
+        "✧ Website Chatbot AI workspace -> /app",
+        "◈ Overview -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧ Bots -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤ Inbox -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎ Contacts -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥ Handoff analytics -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics",
+        "Workspaces -> /app",
+        "Fictional Visitor 3 10/15/2026 سيساعدك أحد الموظفين قريباً. ◎ Website Waiting for human ● 1 Human · Visitor requested a person -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox/3724a0fa-1799-5eb7-96ed-42e13bfb3601",
+        "Fictional Visitor 2 10/15/2026 Your fictional booking is confirmed for Tuesday at 10:00. ◎ Website Resolved ● 2 Human · Manual takeover -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox/6e7b130a-db4d-5e18-8de1-a4e0efbc6795",
+        "Fictional Visitor 1 10/15/2026 Your fictional booking is confirmed for Tuesday at 10:00. ◎ Website Open ● 2 Human · Manual takeover -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox/af13700d-4bdf-58cb-b8c5-99b7f15b112c",
+        "Fictional Visitor 3 10/15/2026 A human will help you shortly. ◎ Website Waiting for human ● 1 Human · Visitor requested a person -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox/cae26f06-cad7-571f-a1bb-444fa35cf501",
+        "Fictional Visitor 2 10/15/2026 A human will help with your question. ◎ Website Waiting for human ● 2 Human · Repeated unanswered questions -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox/30c5cf21-bcd0-5e22-a9c5-f49a90b451a8",
+        "Fictional Visitor 1 10/15/2026 We are open Monday to Friday from 09:00 to 17:00. ◎ Website Open ● 1 AI -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox/eb5f6270-3c71-5622-bafc-144c75efde30",
+        "✧Website ChatbotAI workspace -> /app",
+        "◈Overview -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧Bots -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤Inbox -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎Contacts -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥Handoff analytics -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics",
+        "◈ Overview✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧ Bots✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤ Inbox✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎ Contacts✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥ Handoff analytics✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics"
+      ],
+      "form_fields": [
+        "select-one: Organization",
+        "text: Search conversations",
+        "select-one: ",
+        "select-one: Assignee",
+        "text: Filter by tag",
+        "text: Search pages"
+      ],
+      "labels": [
+        "Organization",
+        "Search",
+        "Status All Waiting for human Open Resolved",
+        "Search pages"
+      ],
+      "tabs": [],
+      "screenshot": "screens/viewer/app_eb26cfc5_67ea_53d7_850a_879b5d18a732_inbox.png"
+    },
+    {
+      "requested": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+      "final_url": "http://localhost:3000/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+      "status": 200,
+      "title": "Website Chatbot SaaS",
+      "heading": [
+        "Contacts",
+        "Go to a page"
+      ],
+      "nav_labels": [
+        "✧ Website Chatbot AI workspace",
+        "◈ Overview",
+        "✧ Bots",
+        "▤ Inbox",
+        "◎ Contacts",
+        "▥ Handoff analytics",
+        "Workspaces",
+        "◈Overview",
+        "✧Bots",
+        "▤Inbox",
+        "◎Contacts",
+        "▥Handoff analytics"
+      ],
+      "buttons": [
+        "☾ Appearance",
+        "«",
+        "☰",
+        "Search pages ⌘ / Ctrl K",
+        "Sign out",
+        "Close navigation",
+        "☾Appearance",
+        "Close"
+      ],
+      "links": [
+        "Skip to content -> #workspace-content",
+        "✧ Website Chatbot AI workspace -> /app",
+        "◈ Overview -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧ Bots -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤ Inbox -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎ Contacts -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥ Handoff analytics -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics",
+        "Workspaces -> /app",
+        "Export CSV -> /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts/export.csv",
+        "Fictional Visitor 3 -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts/858a15c8-e06e-5dc8-8259-8238c97decff",
+        "Fictional Visitor 1 -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts/db74f719-f5e0-5952-850e-9022e0986bcb",
+        "Fictional Visitor 2 -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts/f023c6d2-c5c4-5478-af81-7a21398e0f25",
+        "✧Website ChatbotAI workspace -> /app",
+        "◈Overview -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧Bots -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤Inbox -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎Contacts -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥Handoff analytics -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics",
+        "◈ Overview✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧ Bots✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤ Inbox✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎ Contacts✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥ Handoff analytics✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics"
+      ],
+      "form_fields": [
+        "select-one: Organization",
+        "text: Search pages"
+      ],
+      "labels": [
+        "Organization",
+        "Search pages"
+      ],
+      "tabs": [],
+      "screenshot": "screens/viewer/app_eb26cfc5_67ea_53d7_850a_879b5d18a732_contacts.png"
+    },
+    {
+      "requested": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics",
+      "final_url": "http://localhost:3000/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics",
+      "status": 200,
+      "title": "Website Chatbot SaaS",
+      "heading": [
+        "Handoff analytics",
+        "Conversation outcomes",
+        "Conversations by channel",
+        "Agent workload",
+        "Sentiment",
+        "Go to a page"
+      ],
+      "nav_labels": [
+        "✧ Website Chatbot AI workspace",
+        "◈ Overview",
+        "✧ Bots",
+        "▤ Inbox",
+        "◎ Contacts",
+        "▥ Handoff analytics",
+        "Workspaces",
+        "◈Overview",
+        "✧Bots",
+        "▤Inbox",
+        "◎Contacts",
+        "▥Handoff analytics"
+      ],
+      "buttons": [
+        "☾ Appearance",
+        "«",
+        "☰",
+        "Search pages ⌘ / Ctrl K",
+        "Sign out",
+        "Close navigation",
+        "☾Appearance",
+        "Close"
+      ],
+      "links": [
+        "Skip to content -> #workspace-content",
+        "✧ Website Chatbot AI workspace -> /app",
+        "◈ Overview -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧ Bots -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤ Inbox -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎ Contacts -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥ Handoff analytics -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics",
+        "Workspaces -> /app",
+        "✧Website ChatbotAI workspace -> /app",
+        "◈Overview -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧Bots -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤Inbox -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎Contacts -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥Handoff analytics -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics",
+        "◈ Overview✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧ Bots✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤ Inbox✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎ Contacts✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥ Handoff analytics✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics"
+      ],
+      "form_fields": [
+        "select-one: Organization",
+        "text: Search pages"
+      ],
+      "labels": [
+        "Organization",
+        "Search pages"
+      ],
+      "tabs": [],
+      "screenshot": "screens/viewer/app_eb26cfc5_67ea_53d7_850a_879b5d18a732_analytics.png"
+    },
+    {
+      "requested": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/settings",
+      "final_url": "http://localhost:3000/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/settings",
+      "status": 200,
+      "title": "Website Chatbot SaaS",
+      "heading": [
+        "Bot status",
+        "Go to a page"
+      ],
+      "nav_labels": [
+        "✧ Website Chatbot AI workspace",
+        "◈ Overview",
+        "✧ Bots",
+        "▤ Inbox",
+        "◎ Contacts",
+        "▥ Handoff analytics",
+        "Workspaces",
+        "‹ Bots",
+        "Overview",
+        "Conversations",
+        "◈Overview",
+        "✧Bots",
+        "▤Inbox",
+        "◎Contacts",
+        "▥Handoff analytics"
+      ],
+      "buttons": [
+        "☾ Appearance",
+        "«",
+        "☰",
+        "Search pages ⌘ / Ctrl K",
+        "Sign out",
+        "Close navigation",
+        "☾Appearance",
+        "Close"
+      ],
+      "links": [
+        "Skip to content -> #workspace-content",
+        "✧ Website Chatbot AI workspace -> /app",
+        "◈ Overview -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧ Bots -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤ Inbox -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎ Contacts -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥ Handoff analytics -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics",
+        "Workspaces -> /app",
+        "‹ Bots -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "Overview -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/overview",
+        "Conversations -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations",
+        "✧Website ChatbotAI workspace -> /app",
+        "◈Overview -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧Bots -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤Inbox -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎Contacts -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥Handoff analytics -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics",
+        "◈ Overview✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧ Bots✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤ Inbox✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎ Contacts✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥ Handoff analytics✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics"
+      ],
+      "form_fields": [
+        "select-one: Organization",
+        "text: Search pages"
+      ],
+      "labels": [
+        "Organization",
+        "Search pages"
+      ],
+      "tabs": [],
+      "screenshot": "screens/viewer/app_eb26cfc5_67ea_53d7_850a_879b5d18a732_bots_70417b12_544b_5480_b945_b5cfcecb4332_settings.png"
+    },
+    {
+      "requested": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox/3724a0fa-1799-5eb7-96ed-42e13bfb3601",
+      "final_url": "http://localhost:3000/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox/3724a0fa-1799-5eb7-96ed-42e13bfb3601",
+      "status": 200,
+      "title": "Website Chatbot SaaS",
+      "heading": [
+        "Inbox",
+        "Conversation",
+        "Go to a page"
+      ],
+      "nav_labels": [
+        "✧ Website Chatbot AI workspace",
+        "◈ Overview",
+        "✧ Bots",
+        "▤ Inbox",
+        "◎ Contacts",
+        "▥ Handoff analytics",
+        "Workspaces",
+        "◈Overview",
+        "✧Bots",
+        "▤Inbox",
+        "◎Contacts",
+        "▥Handoff analytics"
+      ],
+      "buttons": [
+        "☾ Appearance",
+        "«",
+        "☰",
+        "Search pages ⌘ / Ctrl K",
+        "Sign out",
+        "Close navigation",
+        "☾Appearance",
+        "Close"
+      ],
+      "links": [
+        "Skip to content -> #workspace-content",
+        "✧ Website Chatbot AI workspace -> /app",
+        "◈ Overview -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧ Bots -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤ Inbox -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎ Contacts -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥ Handoff analytics -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics",
+        "Workspaces -> /app",
+        "Fictional Visitor 3 10/15/2026 سيساعدك أحد الموظفين قريباً. ◎ Website Waiting for human ● 1 Human · Visitor requested a person -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox/3724a0fa-1799-5eb7-96ed-42e13bfb3601",
+        "Fictional Visitor 2 10/15/2026 Your fictional booking is confirmed for Tuesday at 10:00. ◎ Website Resolved ● 2 Human · Manual takeover -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox/6e7b130a-db4d-5e18-8de1-a4e0efbc6795",
+        "Fictional Visitor 1 10/15/2026 Your fictional booking is confirmed for Tuesday at 10:00. ◎ Website Open ● 2 Human · Manual takeover -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox/af13700d-4bdf-58cb-b8c5-99b7f15b112c",
+        "Fictional Visitor 3 10/15/2026 A human will help you shortly. ◎ Website Waiting for human ● 1 Human · Visitor requested a person -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox/cae26f06-cad7-571f-a1bb-444fa35cf501",
+        "Fictional Visitor 2 10/15/2026 A human will help with your question. ◎ Website Waiting for human ● 2 Human · Repeated unanswered questions -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox/30c5cf21-bcd0-5e22-a9c5-f49a90b451a8",
+        "Fictional Visitor 1 10/15/2026 We are open Monday to Friday from 09:00 to 17:00. ◎ Website Open ● 1 AI -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox/eb5f6270-3c71-5622-bafc-144c75efde30",
+        "← Back to inbox -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "✧Website ChatbotAI workspace -> /app",
+        "◈Overview -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧Bots -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤Inbox -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎Contacts -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥Handoff analytics -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics",
+        "◈ Overview✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧ Bots✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤ Inbox✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎ Contacts✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥ Handoff analytics✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics"
+      ],
+      "form_fields": [
+        "select-one: Organization",
+        "text: Search conversations",
+        "select-one: ",
+        "select-one: Filter assignee",
+        "text: Filter by tag",
+        "text: Search pages"
+      ],
+      "labels": [
+        "Organization",
+        "Search",
+        "Status All Waiting for human Open Resolved",
+        "Search pages"
+      ],
+      "tabs": [],
+      "screenshot": "screens/viewer/app_eb26cfc5_67ea_53d7_850a_879b5d18a732_inbox_3724a0fa_1799_5eb7_96ed_42e13bfb3601.png"
+    },
+    {
+      "requested": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox/6e7b130a-db4d-5e18-8de1-a4e0efbc6795",
+      "final_url": "http://localhost:3000/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox/6e7b130a-db4d-5e18-8de1-a4e0efbc6795",
+      "status": 200,
+      "title": "Website Chatbot SaaS",
+      "heading": [
+        "Inbox",
+        "Conversation",
+        "Go to a page"
+      ],
+      "nav_labels": [
+        "✧ Website Chatbot AI workspace",
+        "◈ Overview",
+        "✧ Bots",
+        "▤ Inbox",
+        "◎ Contacts",
+        "▥ Handoff analytics",
+        "Workspaces",
+        "◈Overview",
+        "✧Bots",
+        "▤Inbox",
+        "◎Contacts",
+        "▥Handoff analytics"
+      ],
+      "buttons": [
+        "☾ Appearance",
+        "«",
+        "☰",
+        "Search pages ⌘ / Ctrl K",
+        "Sign out",
+        "Close navigation",
+        "☾Appearance",
+        "Close"
+      ],
+      "links": [
+        "Skip to content -> #workspace-content",
+        "✧ Website Chatbot AI workspace -> /app",
+        "◈ Overview -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧ Bots -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤ Inbox -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎ Contacts -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥ Handoff analytics -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics",
+        "Workspaces -> /app",
+        "Fictional Visitor 3 10/15/2026 سيساعدك أحد الموظفين قريباً. ◎ Website Waiting for human ● 1 Human · Visitor requested a person -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox/3724a0fa-1799-5eb7-96ed-42e13bfb3601",
+        "Fictional Visitor 2 10/15/2026 Your fictional booking is confirmed for Tuesday at 10:00. ◎ Website Resolved ● 2 Human · Manual takeover -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox/6e7b130a-db4d-5e18-8de1-a4e0efbc6795",
+        "Fictional Visitor 1 10/15/2026 Your fictional booking is confirmed for Tuesday at 10:00. ◎ Website Open ● 2 Human · Manual takeover -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox/af13700d-4bdf-58cb-b8c5-99b7f15b112c",
+        "Fictional Visitor 3 10/15/2026 A human will help you shortly. ◎ Website Waiting for human ● 1 Human · Visitor requested a person -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox/cae26f06-cad7-571f-a1bb-444fa35cf501",
+        "Fictional Visitor 2 10/15/2026 A human will help with your question. ◎ Website Waiting for human ● 2 Human · Repeated unanswered questions -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox/30c5cf21-bcd0-5e22-a9c5-f49a90b451a8",
+        "Fictional Visitor 1 10/15/2026 We are open Monday to Friday from 09:00 to 17:00. ◎ Website Open ● 1 AI -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox/eb5f6270-3c71-5622-bafc-144c75efde30",
+        "← Back to inbox -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "✧Website ChatbotAI workspace -> /app",
+        "◈Overview -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧Bots -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤Inbox -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎Contacts -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥Handoff analytics -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics",
+        "◈ Overview✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧ Bots✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤ Inbox✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎ Contacts✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥ Handoff analytics✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics"
+      ],
+      "form_fields": [
+        "select-one: Organization",
+        "text: Search conversations",
+        "select-one: ",
+        "select-one: Filter assignee",
+        "text: Filter by tag",
+        "text: Search pages"
+      ],
+      "labels": [
+        "Organization",
+        "Search",
+        "Status All Waiting for human Open Resolved",
+        "Search pages"
+      ],
+      "tabs": [],
+      "screenshot": "screens/viewer/app_eb26cfc5_67ea_53d7_850a_879b5d18a732_inbox_6e7b130a_db4d_5e18_8de1_a4e0efbc6795.png"
+    },
+    {
+      "requested": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts/858a15c8-e06e-5dc8-8259-8238c97decff",
+      "final_url": "http://localhost:3000/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts/858a15c8-e06e-5dc8-8259-8238c97decff",
+      "status": 200,
+      "title": "Website Chatbot SaaS",
+      "heading": [
+        "Fictional Visitor 3",
+        "Channel identities",
+        "Timeline",
+        "Website follow-ups",
+        "Go to a page"
+      ],
+      "nav_labels": [
+        "✧ Website Chatbot AI workspace",
+        "◈ Overview",
+        "✧ Bots",
+        "▤ Inbox",
+        "◎ Contacts",
+        "▥ Handoff analytics",
+        "Workspaces",
+        "◈Overview",
+        "✧Bots",
+        "▤Inbox",
+        "◎Contacts",
+        "▥Handoff analytics"
+      ],
+      "buttons": [
+        "☾ Appearance",
+        "«",
+        "☰",
+        "Search pages ⌘ / Ctrl K",
+        "Sign out",
+        "Close navigation",
+        "☾Appearance",
+        "Close"
+      ],
+      "links": [
+        "Skip to content -> #workspace-content",
+        "✧ Website Chatbot AI workspace -> /app",
+        "◈ Overview -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧ Bots -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤ Inbox -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎ Contacts -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥ Handoff analytics -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics",
+        "Workspaces -> /app",
+        "← Contacts -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "✧Website ChatbotAI workspace -> /app",
+        "◈Overview -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧Bots -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤Inbox -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎Contacts -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥Handoff analytics -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics",
+        "◈ Overview✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧ Bots✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤ Inbox✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎ Contacts✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥ Handoff analytics✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics"
+      ],
+      "form_fields": [
+        "select-one: Organization",
+        "text: ",
+        "email: ",
+        "textarea: ",
+        "text: Search pages"
+      ],
+      "labels": [
+        "Organization",
+        "Name",
+        "Email",
+        "Phone",
+        "Stage",
+        "Tags (comma separated)",
+        "Custom fields (JSON, up to 20 keys)",
+        "Search pages"
+      ],
+      "tabs": [],
+      "screenshot": "screens/viewer/app_eb26cfc5_67ea_53d7_850a_879b5d18a732_contacts_858a15c8_e06e_5dc8_8259_8238c97decff.png"
+    },
+    {
+      "requested": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts/db74f719-f5e0-5952-850e-9022e0986bcb",
+      "final_url": "http://localhost:3000/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts/db74f719-f5e0-5952-850e-9022e0986bcb",
+      "status": 200,
+      "title": "Website Chatbot SaaS",
+      "heading": [
+        "Fictional Visitor 1",
+        "Channel identities",
+        "Timeline",
+        "Website follow-ups",
+        "Go to a page"
+      ],
+      "nav_labels": [
+        "✧ Website Chatbot AI workspace",
+        "◈ Overview",
+        "✧ Bots",
+        "▤ Inbox",
+        "◎ Contacts",
+        "▥ Handoff analytics",
+        "Workspaces",
+        "◈Overview",
+        "✧Bots",
+        "▤Inbox",
+        "◎Contacts",
+        "▥Handoff analytics"
+      ],
+      "buttons": [
+        "☾ Appearance",
+        "«",
+        "☰",
+        "Search pages ⌘ / Ctrl K",
+        "Sign out",
+        "Close navigation",
+        "☾Appearance",
+        "Close"
+      ],
+      "links": [
+        "Skip to content -> #workspace-content",
+        "✧ Website Chatbot AI workspace -> /app",
+        "◈ Overview -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧ Bots -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤ Inbox -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎ Contacts -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥ Handoff analytics -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics",
+        "Workspaces -> /app",
+        "← Contacts -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "✧Website ChatbotAI workspace -> /app",
+        "◈Overview -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧Bots -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤Inbox -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎Contacts -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥Handoff analytics -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics",
+        "◈ Overview✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧ Bots✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤ Inbox✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎ Contacts✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥ Handoff analytics✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics"
+      ],
+      "form_fields": [
+        "select-one: Organization",
+        "text: ",
+        "email: ",
+        "textarea: ",
+        "text: Search pages"
+      ],
+      "labels": [
+        "Organization",
+        "Name",
+        "Email",
+        "Phone",
+        "Stage",
+        "Tags (comma separated)",
+        "Custom fields (JSON, up to 20 keys)",
+        "Search pages"
+      ],
+      "tabs": [],
+      "screenshot": "screens/viewer/app_eb26cfc5_67ea_53d7_850a_879b5d18a732_contacts_db74f719_f5e0_5952_850e_9022e0986bcb.png"
+    },
+    {
+      "requested": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/overview",
+      "final_url": "http://localhost:3000/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/overview",
+      "status": 200,
+      "title": "Website Chatbot SaaS",
+      "heading": [
+        "Overview",
+        "Volume per day",
+        "Top questions",
+        "Unanswered questions (the bot could not confirm)",
+        "Leads trend",
+        "Go to a page"
+      ],
+      "nav_labels": [
+        "✧ Website Chatbot AI workspace",
+        "◈ Overview",
+        "✧ Bots",
+        "▤ Inbox",
+        "◎ Contacts",
+        "▥ Handoff analytics",
+        "Workspaces",
+        "‹ Bots",
+        "Overview",
+        "Conversations",
+        "◈Overview",
+        "✧Bots",
+        "▤Inbox",
+        "◎Contacts",
+        "▥Handoff analytics"
+      ],
+      "buttons": [
+        "☾ Appearance",
+        "«",
+        "☰",
+        "Search pages ⌘ / Ctrl K",
+        "Sign out",
+        "Apply",
+        "Close navigation",
+        "☾Appearance",
+        "Close"
+      ],
+      "links": [
+        "Skip to content -> #workspace-content",
+        "✧ Website Chatbot AI workspace -> /app",
+        "◈ Overview -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧ Bots -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤ Inbox -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎ Contacts -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥ Handoff analytics -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics",
+        "Workspaces -> /app",
+        "‹ Bots -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "Overview -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/overview",
+        "Conversations -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations",
+        "Export conversations CSV -> /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/analytics/conversations.csv?from=2026-09-18&to=2026-10-17",
+        "Export leads CSV -> /api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/analytics/leads.csv?from=2026-09-18&to=2026-10-17",
+        "✧Website ChatbotAI workspace -> /app",
+        "◈Overview -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧Bots -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤Inbox -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎Contacts -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥Handoff analytics -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics",
+        "◈ Overview✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧ Bots✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤ Inbox✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎ Contacts✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥ Handoff analytics✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics"
+      ],
+      "form_fields": [
+        "select-one: Organization",
+        "date: ",
+        "text: Search pages"
+      ],
+      "labels": [
+        "Organization",
+        "From",
+        "To",
+        "Search pages"
+      ],
+      "tabs": [],
+      "screenshot": "screens/viewer/app_eb26cfc5_67ea_53d7_850a_879b5d18a732_bots_70417b12_544b_5480_b945_b5cfcecb4332_overview.png"
+    },
+    {
+      "requested": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations",
+      "final_url": "http://localhost:3000/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations",
+      "status": 200,
+      "title": "Website Chatbot SaaS",
+      "heading": [
+        "Conversations",
+        "Go to a page"
+      ],
+      "nav_labels": [
+        "✧ Website Chatbot AI workspace",
+        "◈ Overview",
+        "✧ Bots",
+        "▤ Inbox",
+        "◎ Contacts",
+        "▥ Handoff analytics",
+        "Workspaces",
+        "‹ Bots",
+        "Overview",
+        "Conversations",
+        "◈Overview",
+        "✧Bots",
+        "▤Inbox",
+        "◎Contacts",
+        "▥Handoff analytics"
+      ],
+      "buttons": [
+        "☾ Appearance",
+        "«",
+        "☰",
+        "Search pages ⌘ / Ctrl K",
+        "Sign out",
+        "Close navigation",
+        "☾Appearance",
+        "Close"
+      ],
+      "links": [
+        "Skip to content -> #workspace-content",
+        "✧ Website Chatbot AI workspace -> /app",
+        "◈ Overview -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧ Bots -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤ Inbox -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎ Contacts -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥ Handoff analytics -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics",
+        "Workspaces -> /app",
+        "‹ Bots -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "Overview -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/overview",
+        "Conversations -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations",
+        "10/15/2026, 2:01:30 PM -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations/3724a0fa-1799-5eb7-96ed-42e13bfb3601",
+        "10/15/2026, 1:57:30 PM -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations/6e7b130a-db4d-5e18-8de1-a4e0efbc6795",
+        "10/15/2026, 1:53:30 PM -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations/af13700d-4bdf-58cb-b8c5-99b7f15b112c",
+        "10/15/2026, 1:49:30 PM -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations/cae26f06-cad7-571f-a1bb-444fa35cf501",
+        "10/15/2026, 1:45:32 PM -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations/30c5cf21-bcd0-5e22-a9c5-f49a90b451a8",
+        "10/15/2026, 1:41:30 PM -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations/eb5f6270-3c71-5622-bafc-144c75efde30",
+        "✧Website ChatbotAI workspace -> /app",
+        "◈Overview -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧Bots -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤Inbox -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎Contacts -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥Handoff analytics -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics",
+        "◈ Overview✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧ Bots✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤ Inbox✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎ Contacts✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥ Handoff analytics✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics"
+      ],
+      "form_fields": [
+        "select-one: Organization",
+        "text: Search pages"
+      ],
+      "labels": [
+        "Organization",
+        "Search pages"
+      ],
+      "tabs": [],
+      "screenshot": "screens/viewer/app_eb26cfc5_67ea_53d7_850a_879b5d18a732_bots_70417b12_544b_5480_b945_b5cfcecb4332_conversations.png"
+    },
+    {
+      "requested": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations/3724a0fa-1799-5eb7-96ed-42e13bfb3601",
+      "final_url": "http://localhost:3000/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations/3724a0fa-1799-5eb7-96ed-42e13bfb3601",
+      "status": 200,
+      "title": "Website Chatbot SaaS",
+      "heading": [
+        "Conversation",
+        "Go to a page"
+      ],
+      "nav_labels": [
+        "✧ Website Chatbot AI workspace",
+        "◈ Overview",
+        "✧ Bots",
+        "▤ Inbox",
+        "◎ Contacts",
+        "▥ Handoff analytics",
+        "Workspaces",
+        "◈Overview",
+        "✧Bots",
+        "▤Inbox",
+        "◎Contacts",
+        "▥Handoff analytics"
+      ],
+      "buttons": [
+        "☾ Appearance",
+        "«",
+        "☰",
+        "Search pages ⌘ / Ctrl K",
+        "Sign out",
+        "Close navigation",
+        "☾Appearance",
+        "Close"
+      ],
+      "links": [
+        "Skip to content -> #workspace-content",
+        "✧ Website Chatbot AI workspace -> /app",
+        "◈ Overview -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧ Bots -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤ Inbox -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎ Contacts -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥ Handoff analytics -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics",
+        "Workspaces -> /app",
+        "Back to conversations -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations",
+        "✧Website ChatbotAI workspace -> /app",
+        "◈Overview -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧Bots -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤Inbox -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎Contacts -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥Handoff analytics -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics",
+        "◈ Overview✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧ Bots✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤ Inbox✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎ Contacts✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥ Handoff analytics✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics"
+      ],
+      "form_fields": [
+        "select-one: Organization",
+        "text: Search pages"
+      ],
+      "labels": [
+        "Organization",
+        "Search pages"
+      ],
+      "tabs": [],
+      "screenshot": "screens/viewer/app_eb26cfc5_67ea_53d7_850a_879b5d18a732_bots_70417b12_544b_5480_b945_b5cfcecb4332_conversations_3724a0fa_1799_5eb7_96ed_42e13bfb3601.png"
+    },
+    {
+      "requested": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations/6e7b130a-db4d-5e18-8de1-a4e0efbc6795",
+      "final_url": "http://localhost:3000/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations/6e7b130a-db4d-5e18-8de1-a4e0efbc6795",
+      "status": 200,
+      "title": "Website Chatbot SaaS",
+      "heading": [
+        "Conversation",
+        "Go to a page"
+      ],
+      "nav_labels": [
+        "✧ Website Chatbot AI workspace",
+        "◈ Overview",
+        "✧ Bots",
+        "▤ Inbox",
+        "◎ Contacts",
+        "▥ Handoff analytics",
+        "Workspaces",
+        "◈Overview",
+        "✧Bots",
+        "▤Inbox",
+        "◎Contacts",
+        "▥Handoff analytics"
+      ],
+      "buttons": [
+        "☾ Appearance",
+        "«",
+        "☰",
+        "Search pages ⌘ / Ctrl K",
+        "Sign out",
+        "Close navigation",
+        "☾Appearance",
+        "Close"
+      ],
+      "links": [
+        "Skip to content -> #workspace-content",
+        "✧ Website Chatbot AI workspace -> /app",
+        "◈ Overview -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧ Bots -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤ Inbox -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎ Contacts -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥ Handoff analytics -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics",
+        "Workspaces -> /app",
+        "Back to conversations -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations",
+        "✧Website ChatbotAI workspace -> /app",
+        "◈Overview -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧Bots -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤Inbox -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎Contacts -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥Handoff analytics -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics",
+        "◈ Overview✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732",
+        "✧ Bots✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots",
+        "▤ Inbox✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox",
+        "◎ Contacts✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts",
+        "▥ Handoff analytics✧ -> /app/eb26cfc5-67ea-53d7-850a-879b5d18a732/analytics"
+      ],
+      "form_fields": [
+        "select-one: Organization",
+        "text: Search pages"
+      ],
+      "labels": [
+        "Organization",
+        "Search pages"
+      ],
+      "tabs": [],
+      "screenshot": "screens/viewer/app_eb26cfc5_67ea_53d7_850a_879b5d18a732_bots_70417b12_544b_5480_b945_b5cfcecb4332_conversations_6e7b130a_db4d_5e18_8de1_a4e0efbc6795.png"
+    }
+  ],
+  "skipped": [
+    {
+      "url": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox/af13700d-4bdf-58cb-b8c5-99b7f15b112c",
+      "reason": "3rd+ instance of dynamic route family /app/:id/inbox/:id"
+    },
+    {
+      "url": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox/cae26f06-cad7-571f-a1bb-444fa35cf501",
+      "reason": "3rd+ instance of dynamic route family /app/:id/inbox/:id"
+    },
+    {
+      "url": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox/30c5cf21-bcd0-5e22-a9c5-f49a90b451a8",
+      "reason": "3rd+ instance of dynamic route family /app/:id/inbox/:id"
+    },
+    {
+      "url": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/inbox/eb5f6270-3c71-5622-bafc-144c75efde30",
+      "reason": "3rd+ instance of dynamic route family /app/:id/inbox/:id"
+    },
+    {
+      "url": "/api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts/export.csv",
+      "reason": "api/file link, not navigated"
+    },
+    {
+      "url": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/contacts/f023c6d2-c5c4-5478-af81-7a21398e0f25",
+      "reason": "3rd+ instance of dynamic route family /app/:id/contacts/:id"
+    },
+    {
+      "url": "/api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/analytics/conversations.csv?from=2026-09-18&to=2026-10-17",
+      "reason": "api/file link, not navigated"
+    },
+    {
+      "url": "/api/v1/tenants/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/analytics/leads.csv?from=2026-09-18&to=2026-10-17",
+      "reason": "api/file link, not navigated"
+    },
+    {
+      "url": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations/af13700d-4bdf-58cb-b8c5-99b7f15b112c",
+      "reason": "3rd+ instance of dynamic route family /app/:id/bots/:id/conversations/:id"
+    },
+    {
+      "url": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations/cae26f06-cad7-571f-a1bb-444fa35cf501",
+      "reason": "3rd+ instance of dynamic route family /app/:id/bots/:id/conversations/:id"
+    },
+    {
+      "url": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations/30c5cf21-bcd0-5e22-a9c5-f49a90b451a8",
+      "reason": "3rd+ instance of dynamic route family /app/:id/bots/:id/conversations/:id"
+    },
+    {
+      "url": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/conversations/eb5f6270-3c71-5622-bafc-144c75efde30",
+      "reason": "3rd+ instance of dynamic route family /app/:id/bots/:id/conversations/:id"
+    }
+  ],
+  "direct_url_checks": [
+    {
+      "body_excerpt": "Your organizations Choose a workspace to manage its bots and conversations. Demo Dental Clinic — your role: viewer",
+      "requested": "/platform",
+      "final_url": "http://localhost:3000/app",
+      "status": 200,
+      "title": "Website Chatbot SaaS",
+      "headings": [
+        "Your organizations",
+        "Go to a page"
+      ],
+      "buttons": [
+        "☾ Appearance",
+        "«",
+        "☰",
+        "Search pages ⌘ / Ctrl K",
+        "Sign out",
+        "Close navigation",
+        "☾Appearance",
+        "Close"
+      ],
+      "screenshot": "screens/viewer/direct_platform.png"
+    },
+    {
+      "body_excerpt": "Your organizations Choose a workspace to manage its bots and conversations. Demo Dental Clinic — your role: viewer",
+      "requested": "/platform/operations",
+      "final_url": "http://localhost:3000/app",
+      "status": 200,
+      "title": "Website Chatbot SaaS",
+      "headings": [
+        "Your organizations",
+        "Go to a page"
+      ],
+      "buttons": [
+        "☾ Appearance",
+        "«",
+        "☰",
+        "Search pages ⌘ / Ctrl K",
+        "Sign out",
+        "Close navigation",
+        "☾Appearance",
+        "Close"
+      ],
+      "screenshot": "screens/viewer/direct_platform_operations.png"
+    },
+    {
+      "body_excerpt": "Knowledge Platform staff access required.",
+      "requested": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/knowledge",
+      "final_url": "http://localhost:3000/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/knowledge",
+      "status": 200,
+      "title": "Website Chatbot SaaS",
+      "headings": [
+        "Knowledge",
+        "Go to a page"
+      ],
+      "buttons": [
+        "☾ Appearance",
+        "«",
+        "☰",
+        "Search pages ⌘ / Ctrl K",
+        "Sign out",
+        "Close navigation",
+        "☾Appearance",
+        "Close"
+      ],
+      "screenshot": "screens/viewer/direct_app_eb26cfc5_67ea_53d7_850a_879b5d18a732_bots_70417b12_544b_5480_b945_b5cfcecb4332_knowledge.png"
+    },
+    {
+      "body_excerpt": "‹ Bots Overview Conversations Bot status active Contact your operator to request settings changes.",
+      "requested": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/settings",
+      "final_url": "http://localhost:3000/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/settings",
+      "status": 200,
+      "title": "Website Chatbot SaaS",
+      "headings": [
+        "Bot status",
+        "Go to a page"
+      ],
+      "buttons": [
+        "☾ Appearance",
+        "«",
+        "☰",
+        "Search pages ⌘ / Ctrl K",
+        "Sign out",
+        "Close navigation",
+        "☾Appearance",
+        "Close"
+      ],
+      "screenshot": "screens/viewer/direct_app_eb26cfc5_67ea_53d7_850a_879b5d18a732_bots_70417b12_544b_5480_b945_b5cfcecb4332_settings.png"
+    },
+    {
+      "body_excerpt": "Install Platform staff access required.",
+      "requested": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/install",
+      "final_url": "http://localhost:3000/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/install",
+      "status": 200,
+      "title": "Website Chatbot SaaS",
+      "headings": [
+        "Install",
+        "Go to a page"
+      ],
+      "buttons": [
+        "☾ Appearance",
+        "«",
+        "☰",
+        "Search pages ⌘ / Ctrl K",
+        "Sign out",
+        "Close navigation",
+        "☾Appearance",
+        "Close"
+      ],
+      "screenshot": "screens/viewer/direct_app_eb26cfc5_67ea_53d7_850a_879b5d18a732_bots_70417b12_544b_5480_b945_b5cfcecb4332_install.png"
+    },
+    {
+      "body_excerpt": "Playground Platform staff access required.",
+      "requested": "/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/playground",
+      "final_url": "http://localhost:3000/app/eb26cfc5-67ea-53d7-850a-879b5d18a732/bots/70417b12-544b-5480-b945-b5cfcecb4332/playground",
+      "status": 200,
+      "title": "Website Chatbot SaaS",
+      "headings": [
+        "Playground",
+        "Go to a page"
+      ],
+      "buttons": [
+        "☾ Appearance",
+        "«",
+        "☰",
+        "Search pages ⌘ / Ctrl K",
+        "Sign out",
+        "Close navigation",
+        "☾Appearance",
+        "Close"
+      ],
+      "screenshot": "screens/viewer/direct_app_eb26cfc5_67ea_53d7_850a_879b5d18a732_bots_70417b12_544b_5480_b945_b5cfcecb4332_playground.png"
+    }
+  ]
+}

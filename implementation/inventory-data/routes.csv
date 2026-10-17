@@ -1,0 +1,117 @@
+method,path,x-minimum-role,PlatformStaffDep,require_operator,tag,dependency_chain,notes
+POST,/api/public/v1/sessions/{session_id}/lead,none/public,False,False,,"get_session,get_settings",
+GET,/api/public/v1/sessions/{session_id}/messages,none/public,False,False,,"get_session,get_settings",
+POST,/api/public/v1/sessions/{session_id}/messages,none/public,False,False,,"get_session,get_settings",
+POST,/api/public/v1/sessions/{session_id}/messages/{message_id}/feedback,none/public,False,False,,"get_session,get_settings",
+GET,/api/public/v1/widgets/{locator}/config,none/public,False,False,,get_session,
+POST,/api/public/v1/widgets/{locator}/sessions,none/public,False,False,,"get_session,get_settings",
+GET,/api/v1/auth/config,none/public,False,False,auth,get_settings,
+POST,/api/v1/auth/login,none/public,False,False,auth,"get_session,get_settings",csrf;
+POST,/api/v1/auth/logout,none/public,False,False,auth,"get_session,get_settings,require_csrf",csrf;
+GET,/api/v1/auth/me,authenticated(any),False,False,auth,"get_current_user,get_session,get_settings",csrf;
+POST,/api/v1/auth/register,none/public,False,False,auth,"get_session,get_settings",csrf;
+POST,/api/v1/invitations/accept,authenticated(any),False,False,tenants,"get_current_user,get_session,get_settings,require_csrf",csrf;
+GET,/api/v1/platform/analytics,platform_staff_only,True,False,,"get_current_user,get_platform_staff,get_session,get_settings",
+GET,/api/v1/platform/audit,platform_staff_only,True,False,,"get_current_user,get_platform_staff,get_session,get_settings",
+POST,/api/v1/platform/bots/{bot_id}/pause,platform_staff_only,True,False,,"get_current_user,get_platform_staff,get_session,get_settings",
+GET,/api/v1/platform/change-requests,platform_staff_only,True,False,change-requests,"get_current_user,get_platform_staff,get_session,get_settings",
+PATCH,/api/v1/platform/change-requests/{request_id},platform_staff_only,True,False,change-requests,"get_current_user,get_platform_staff,get_session,get_settings,require_csrf",csrf;
+GET,/api/v1/platform/me,platform_staff_only,True,False,,"get_current_user,get_platform_staff,get_session,get_settings",
+POST,/api/v1/platform/onboarding,platform_staff_only,True,False,,"get_current_user,get_platform_staff,get_session,get_settings",
+GET,/api/v1/platform/onboarding.csv,platform_staff_only,True,False,,"get_current_user,get_platform_staff,get_session,get_settings",
+GET,/api/v1/platform/onboarding/{request_id},platform_staff_only,True,False,,"get_current_user,get_platform_staff,get_session,get_settings",
+GET,/api/v1/platform/operations/jobs,platform_staff_only,True,False,,"get_current_user,get_platform_staff,get_session,get_settings",
+POST,/api/v1/platform/operations/jobs/{job_id}/cancel,platform_staff_only,True,False,,"get_current_user,get_platform_staff,get_session,get_settings",
+POST,/api/v1/platform/operations/jobs/{job_id}/retry,platform_staff_only,True,False,,"get_current_user,get_platform_staff,get_session,get_settings",
+GET,/api/v1/platform/quotas,platform_staff_only,True,False,,"get_current_user,get_platform_staff,get_session,get_settings",
+GET,/api/v1/platform/tenants,platform_staff_only,True,False,,"get_current_user,get_platform_staff,get_session,get_settings",
+GET,/api/v1/platform/tenants/{tenant_id},platform_staff_only,True,False,,"get_current_user,get_platform_staff,get_session,get_settings",
+POST,/api/v1/platform/tenants/{tenant_id}/bots,platform_staff_only,True,False,,"get_current_user,get_platform_staff,get_session,get_settings,require_csrf",csrf;
+DELETE,/api/v1/platform/tenants/{tenant_id}/bots/{bot_id},platform_staff_only,True,False,,"get_current_user,get_platform_staff,get_session,get_settings,require_csrf",csrf;
+PATCH,/api/v1/platform/tenants/{tenant_id}/plan,platform_staff_only,True,False,,"get_current_user,get_platform_staff,get_session,get_settings",
+PATCH,/api/v1/platform/tenants/{tenant_id}/quota-overrides,platform_staff_only,True,False,,"get_current_user,get_platform_staff,get_session,get_settings",
+POST,/api/v1/provisioning/self-service,authenticated(any),False,False,provisioning,"get_current_user,get_session,get_settings,require_csrf",csrf;
+POST,/api/v1/tenants,authenticated,False,False,tenants,"get_current_user,get_session,get_settings,require_csrf",csrf;
+GET,/api/v1/tenants/{tenant_id},viewer,False,False,tenants,"get_current_user,get_session,get_settings,get_tenant_context",
+PATCH,/api/v1/tenants/{tenant_id},admin,False,False,tenants,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",inline require_role;csrf;
+GET,/api/v1/tenants/{tenant_id}/analytics,viewer,False,False,analytics,"get_current_user,get_session,get_settings,get_tenant_context",inline require_role;
+GET,/api/v1/tenants/{tenant_id}/bots,viewer,False,False,bots,"get_current_user,get_session,get_settings,get_tenant_context",
+POST,/api/v1/tenants/{tenant_id}/bots,platform_staff_only,False,True,bots,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",csrf;
+DELETE,/api/v1/tenants/{tenant_id}/bots/{bot_id},platform_staff_only,False,True,bots,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",csrf;
+GET,/api/v1/tenants/{tenant_id}/bots/{bot_id},viewer,False,False,bots,"get_current_user,get_session,get_settings,get_tenant_context",
+PATCH,/api/v1/tenants/{tenant_id}/bots/{bot_id},platform_staff_only,False,True,bots,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",csrf;
+GET,/api/v1/tenants/{tenant_id}/bots/{bot_id}/analytics/conversations.csv,admin,False,False,,"get_current_user,get_session,get_settings,get_tenant_context",inline require_role;
+GET,/api/v1/tenants/{tenant_id}/bots/{bot_id}/analytics/leads,viewer,False,False,,"get_current_user,get_session,get_settings,get_tenant_context",
+GET,/api/v1/tenants/{tenant_id}/bots/{bot_id}/analytics/leads.csv,admin,False,False,,"get_current_user,get_session,get_settings,get_tenant_context",inline require_role;
+GET,/api/v1/tenants/{tenant_id}/bots/{bot_id}/analytics/summary,viewer,False,False,,"get_current_user,get_session,get_settings,get_tenant_context",
+GET,/api/v1/tenants/{tenant_id}/bots/{bot_id}/analytics/top-questions,viewer,False,False,,"get_current_user,get_session,get_settings,get_tenant_context",
+GET,/api/v1/tenants/{tenant_id}/bots/{bot_id}/analytics/unanswered,viewer,False,False,,"get_current_user,get_session,get_settings,get_tenant_context",
+GET,/api/v1/tenants/{tenant_id}/bots/{bot_id}/analytics/volume,viewer,False,False,,"get_current_user,get_session,get_settings,get_tenant_context",
+GET,/api/v1/tenants/{tenant_id}/bots/{bot_id}/conversations,viewer,False,False,,"get_current_user,get_session,get_settings,get_tenant_context",
+DELETE,/api/v1/tenants/{tenant_id}/bots/{bot_id}/conversations/{conversation_id},admin,False,False,,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",inline require_role;csrf;
+GET,/api/v1/tenants/{tenant_id}/bots/{bot_id}/conversations/{conversation_id},viewer,False,False,,"get_current_user,get_session,get_settings,get_tenant_context",
+GET,/api/v1/tenants/{tenant_id}/bots/{bot_id}/documents,platform_staff_only,False,True(via x-minimum-role=platform_staff_only -> context.require_operator),,"get_current_user,get_session,get_settings,get_tenant_context",
+GET,/api/v1/tenants/{tenant_id}/bots/{bot_id}/documents/{document_id}/chunks,platform_staff_only,False,True(via x-minimum-role=platform_staff_only -> context.require_operator),,"get_current_user,get_session,get_settings,get_tenant_context",
+POST,/api/v1/tenants/{tenant_id}/bots/{bot_id}/ingestion,platform_staff_only,False,True,,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",csrf;
+GET,/api/v1/tenants/{tenant_id}/bots/{bot_id}/jobs,platform_staff_only,False,True(via x-minimum-role=platform_staff_only -> context.require_operator),,"get_current_user,get_session,get_settings,get_tenant_context",
+GET,/api/v1/tenants/{tenant_id}/bots/{bot_id}/jobs/{job_id},platform_staff_only,False,True(via x-minimum-role=platform_staff_only -> context.require_operator),,"get_current_user,get_session,get_settings,get_tenant_context",
+POST,/api/v1/tenants/{tenant_id}/bots/{bot_id}/jobs/{job_id}/cancel,platform_staff_only,False,True,,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",csrf;
+POST,/api/v1/tenants/{tenant_id}/bots/{bot_id}/jobs/{job_id}/retry,platform_staff_only,False,True,,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",csrf;
+POST,/api/v1/tenants/{tenant_id}/bots/{bot_id}/messages/{message_id}/feedback,platform_staff_only,False,True,,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",csrf;
+GET,/api/v1/tenants/{tenant_id}/bots/{bot_id}/playground/conversation,platform_staff_only,False,True(via x-minimum-role=platform_staff_only -> context.require_operator),,"get_current_user,get_session,get_settings,get_tenant_context",
+POST,/api/v1/tenants/{tenant_id}/bots/{bot_id}/playground/messages,platform_staff_only,False,True,,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",csrf;
+GET,/api/v1/tenants/{tenant_id}/bots/{bot_id}/quota,viewer,False,False,tenants,"get_current_user,get_session,get_settings,get_tenant_context",
+GET,/api/v1/tenants/{tenant_id}/bots/{bot_id}/rag,platform_staff_only,False,True,staff-rag,"get_current_user,get_session,get_settings,get_tenant_context",
+PATCH,/api/v1/tenants/{tenant_id}/bots/{bot_id}/rag,platform_staff_only,False,True,staff-rag,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",csrf;
+POST,/api/v1/tenants/{tenant_id}/bots/{bot_id}/rag/backfill,platform_staff_only,False,True,staff-rag,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",csrf;
+GET,/api/v1/tenants/{tenant_id}/bots/{bot_id}/rag/costs,platform_staff_only,False,True,staff-rag,"get_current_user,get_session,get_settings,get_tenant_context",
+GET,/api/v1/tenants/{tenant_id}/bots/{bot_id}/rag/traces,platform_staff_only,False,True,staff-rag,"get_current_user,get_session,get_settings,get_tenant_context",
+GET,/api/v1/tenants/{tenant_id}/bots/{bot_id}/revisions,platform_staff_only,False,True(via x-minimum-role=platform_staff_only -> context.require_operator),,"get_current_user,get_session,get_settings,get_tenant_context",
+POST,/api/v1/tenants/{tenant_id}/bots/{bot_id}/revisions/{revision_id}/publish,platform_staff_only,False,True,,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",csrf;
+GET,/api/v1/tenants/{tenant_id}/bots/{bot_id}/sources,platform_staff_only,False,True(via x-minimum-role=platform_staff_only -> context.require_operator),,"get_current_user,get_session,get_settings,get_tenant_context",
+POST,/api/v1/tenants/{tenant_id}/bots/{bot_id}/sources/files,platform_staff_only,False,True,,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",csrf;
+GET,/api/v1/tenants/{tenant_id}/bots/{bot_id}/sources/qa-template,platform_staff_only,False,True,,"get_current_user,get_session,get_settings,get_tenant_context",
+GET,/api/v1/tenants/{tenant_id}/bots/{bot_id}/sources/{source_id},platform_staff_only,False,True(via x-minimum-role=platform_staff_only -> context.require_operator),,"get_current_user,get_session,get_settings,get_tenant_context",
+GET,/api/v1/tenants/{tenant_id}/change-requests,admin,False,False,change-requests,"get_current_user,get_session,get_settings,get_tenant_context",inline require_role;
+POST,/api/v1/tenants/{tenant_id}/change-requests,admin,False,False,change-requests,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",inline require_role;csrf;
+GET,/api/v1/tenants/{tenant_id}/change-requests/{request_id}/attachments/{attachment_id},admin,False,False,change-requests,"get_current_user,get_session,get_settings,get_tenant_context",inline require_role;
+GET,/api/v1/tenants/{tenant_id}/contacts,viewer,False,False,contacts,"get_current_user,get_session,get_settings,get_tenant_context",inline require_role;
+POST,/api/v1/tenants/{tenant_id}/contacts,editor,False,False,contacts,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",inline require_role;csrf;
+GET,/api/v1/tenants/{tenant_id}/contacts/export.csv,admin,False,False,contacts,"get_current_user,get_session,get_settings,get_tenant_context",inline require_role;
+GET,/api/v1/tenants/{tenant_id}/contacts/stages,viewer,False,False,contacts,"get_current_user,get_session,get_settings,get_tenant_context",inline require_role;
+PATCH,/api/v1/tenants/{tenant_id}/contacts/stages,admin,False,False,contacts,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",inline require_role;csrf;
+DELETE,/api/v1/tenants/{tenant_id}/contacts/{contact_id},admin,False,False,contacts,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",inline require_role;csrf;
+GET,/api/v1/tenants/{tenant_id}/contacts/{contact_id},viewer,False,False,contacts,"get_current_user,get_session,get_settings,get_tenant_context",inline require_role;
+PATCH,/api/v1/tenants/{tenant_id}/contacts/{contact_id},editor,False,False,contacts,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",inline require_role;csrf;
+POST,/api/v1/tenants/{tenant_id}/contacts/{contact_id}/merge,admin,False,False,contacts,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",inline require_role;csrf;
+GET,/api/v1/tenants/{tenant_id}/conversations/{conversation_id},viewer,False,False,,"get_current_user,get_session,get_settings,get_tenant_context",
+POST,/api/v1/tenants/{tenant_id}/conversations/{conversation_id}/assign,editor,False,False,,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",inline require_role;csrf;
+POST,/api/v1/tenants/{tenant_id}/conversations/{conversation_id}/messages,editor,False,False,,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",inline require_role;csrf;
+POST,/api/v1/tenants/{tenant_id}/conversations/{conversation_id}/notes,editor,False,False,,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",inline require_role;csrf;
+POST,/api/v1/tenants/{tenant_id}/conversations/{conversation_id}/resolve,editor,False,False,,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",inline require_role;csrf;
+POST,/api/v1/tenants/{tenant_id}/conversations/{conversation_id}/return-to-ai,editor,False,False,,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",inline require_role;csrf;
+POST,/api/v1/tenants/{tenant_id}/conversations/{conversation_id}/takeover,editor,False,False,,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",inline require_role;csrf;
+DELETE,/api/v1/tenants/{tenant_id}/data,platform_staff_only,False,True,tenant-data,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",csrf;
+GET,/api/v1/tenants/{tenant_id}/data/audit,admin,False,False,tenant-data,"get_current_user,get_session,get_settings,get_tenant_context",inline require_role;
+GET,/api/v1/tenants/{tenant_id}/data/deletion-preview,platform_staff_only,False,True,tenant-data,"get_current_user,get_session,get_settings,get_tenant_context",
+GET,/api/v1/tenants/{tenant_id}/data/export,admin,False,False,tenant-data,"get_current_user,get_session,get_settings,get_tenant_context",inline require_role;
+GET,/api/v1/tenants/{tenant_id}/follow-ups,viewer,False,False,follow-ups,"get_current_user,get_session,get_settings,get_tenant_context",inline require_role;
+POST,/api/v1/tenants/{tenant_id}/follow-ups,editor,False,False,follow-ups,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",inline require_role;csrf;
+DELETE,/api/v1/tenants/{tenant_id}/follow-ups/{follow_up_id},editor,False,False,follow-ups,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",inline require_role;csrf;
+GET,/api/v1/tenants/{tenant_id}/inbox,viewer,False,False,inbox,"get_current_user,get_session,get_settings,get_tenant_context",
+GET,/api/v1/tenants/{tenant_id}/inbox/assignees,editor,False,False,inbox,"get_current_user,get_session,get_settings,get_tenant_context",inline require_role;
+GET,/api/v1/tenants/{tenant_id}/inbox/counts,viewer,False,False,inbox,"get_current_user,get_session,get_settings,get_tenant_context",
+GET,/api/v1/tenants/{tenant_id}/inbox/events,viewer,False,False,inbox,"get_current_user,get_session,get_settings,get_tenant_context",
+POST,/api/v1/tenants/{tenant_id}/inbox/{conversation_id}/read,editor,False,False,inbox,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",inline require_role;csrf;
+POST,/api/v1/tenants/{tenant_id}/inbox/{conversation_id}/tags,editor,False,False,inbox,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",inline require_role;csrf;
+DELETE,/api/v1/tenants/{tenant_id}/inbox/{conversation_id}/tags/{tag},editor,False,False,inbox,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",inline require_role;csrf;
+GET,/api/v1/tenants/{tenant_id}/invitations,admin,False,False,tenants,"get_current_user,get_session,get_settings,get_tenant_context",inline require_role;
+POST,/api/v1/tenants/{tenant_id}/invitations,admin,False,False,tenants,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",inline require_role;csrf;
+DELETE,/api/v1/tenants/{tenant_id}/invitations/{invitation_id},admin,False,False,tenants,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",inline require_role;csrf;
+POST,/api/v1/tenants/{tenant_id}/invitations/{invitation_id}/resend,admin,False,False,tenants,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",inline require_role;csrf;
+GET,/api/v1/tenants/{tenant_id}/members,admin,False,False,tenants,"get_current_user,get_session,get_settings,get_tenant_context",inline require_role;
+DELETE,/api/v1/tenants/{tenant_id}/members/{user_id},admin,False,False,tenants,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",inline require_role;csrf;
+PATCH,/api/v1/tenants/{tenant_id}/members/{user_id},admin,False,False,tenants,"get_current_user,get_session,get_settings,get_tenant_context,require_csrf",inline require_role;csrf;
+GET,/api/v1/tenants/{tenant_id}/quota,viewer,False,False,tenants,"get_current_user,get_session,get_settings,get_tenant_context",
+GET,/health,none/public,False,False,health,,
+GET,/ready,none/public,False,False,health,get_settings,
