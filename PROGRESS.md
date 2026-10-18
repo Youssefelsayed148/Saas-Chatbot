@@ -2151,3 +2151,32 @@ Final backend and local integration readiness:
   fix/group-c-polish -m "Merge Group C safety and polish"`, then
   `git branch -d fix/group-c-polish`; leave main clean. This maintenance merge
   does not sign off unrelated roadmap phases, hosting or billing decisions.
+
+## 2026-10-18 — Phase 6 P6-00 preflight
+
+- Worktree: `D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai-phase6`,
+  branch `feature/phase-6-channels`. `git merge main` returned `Already up to
+  date`; commit `5c4d253` is already an ancestor of the branch. Re-read
+  `implementation/PHASE-06/AGENT-PROMPT.md`; P6-05b is present.
+- Python import check, from the worktree root:
+  `.\.venv\Scripts\python -c "import app; print(app.__file__)"` — passed;
+  resolved to `apps/api/app/__init__.py` inside this worktree.
+- API baseline command, run separately for each file from `apps/api` using the
+  per-process `TEST_DATABASE_URL` targeting disposable database `phase6` on
+  `127.0.0.1:55462` (the fixture uses `phase6_test`):
+  `..\..\.venv\Scripts\python.exe -m pytest -q <test-file>`.
+  Results: `test_conversations.py` 13 passed; `test_conversations_view.py` 5
+  passed; `test_inbox_list.py` 5 passed; `test_group_0_inbox.py` 16 passed;
+  `test_contacts.py` 1 passed; `test_analytics.py` 6 passed; `test_quotas.py`
+  12 passed; `test_tenant_route_matrix.py` 6 passed; `test_platform.py` 9 passed;
+  `test_platform_ops.py` 4 passed; `test_create_platform_staff.py` 2 passed;
+  `test_widget_public.py` 14 passed; `test_widget_leads.py` 5 passed; and
+  `test_widget_appearance.py` 3 passed. Total: 101 passed, 0 failed across 14
+  files. Each file emitted one existing Starlette TestClient/httpx deprecation
+  warning.
+- Parking list — dependency audit: initial `npm ci` output reported 5 high
+  severity findings but did not name packages. Subsequent `npm audit --json`
+  from both the repository root and `apps/web` reported 0 vulnerabilities and
+  no package names. Names could not be verified, so no package names are
+  recorded and no dependencies were changed. Reconcile the audit discrepancy
+  before any dependency remediation.
