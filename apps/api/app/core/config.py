@@ -73,6 +73,8 @@ class Settings(BaseSettings):
     chat_openai_base_url: str = "https://api.openai.com/v1"
     chat_openai_api_key: SecretStr | None = None
     chat_openai_model: str = ""
+    # Comma-separated Fernet keys, newest first; never log or expose this field.
+    channel_secret_encryption_keys: SecretStr | None = None
     chat_max_tokens: int = Field(default=700, ge=64, le=2000)
     # Message retention (docs/14 §7): configurable days; the worker purges.
     retention_days: int = Field(default=30, ge=1, le=365)
@@ -153,3 +155,14 @@ def validate_startup_settings(settings: Settings) -> None:
             "EMBEDDING_PROVIDER must be set explicitly when environment=production "
             "(openai is the default model family; ollama is optional)."
         )
+    if settings.environment == "production":
+        from app.channels.secrets import encryption_keys
+
+        if settings.channel_secret_encryption_keys is None:
+            raise RuntimeError(
+                "CHANNEL_SECRET_ENCRYPTION_KEYS must be configured when environment=production."
+            )
+        try:
+            encryption_keys(settings.channel_secret_encryption_keys)
+        except ValueError as exc:
+            raise RuntimeError("CHANNEL_SECRET_ENCRYPTION_KEYS is invalid.") from exc
