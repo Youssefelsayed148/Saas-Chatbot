@@ -42,7 +42,7 @@ def decide_handoff(
     can_answer: bool,
 ) -> HandoffDecision | None:
     """Return the first matching handoff rule; playgrounds never enter inbox."""
-    if conversation.source != "website" or conversation.status == "waiting_human":
+    if conversation.source == "playground" or conversation.status == "waiting_human":
         return None
     config = bot.config if isinstance(bot.config, dict) else {}
     if reply_kind == "busy":

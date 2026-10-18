@@ -8,6 +8,8 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
+from app.chat.conversations import channel_chat_turn
+from app.core.config import Settings, get_settings
 from app.db.models import (
     Bot,
     ChannelConnection,
@@ -120,7 +122,9 @@ def _conversation(
     return conversation
 
 
-def _received(db: OrmSession, connection: ChannelConnection, payload: dict[str, Any]) -> None:
+def _received(
+    db: OrmSession, connection: ChannelConnection, payload: dict[str, Any]
+) -> tuple[Conversation, Message | None, bool]:
     identity = _identity(db, connection=connection, payload=payload)
     conversation = _conversation(
         db, connection=connection, identity=identity, payload=payload
@@ -135,7 +139,8 @@ def _received(db: OrmSession, connection: ChannelConnection, payload: dict[str, 
         )
     )
     if exists is not None:
-        return
+        message = db.get(Message, exists)
+        return conversation, message, False
     text = payload.get("text", "")
     if payload.get("type") == "unsupported":
         text = (
@@ -146,21 +151,22 @@ def _received(db: OrmSession, connection: ChannelConnection, payload: dict[str, 
         conversation.status = "waiting_human"
     elif connection.status == "paused":
         conversation.status = "waiting_human"
-    db.add(
-        Message(
-            tenant_id=connection.tenant_id,
-            bot_id=connection.bot_id,
-            conversation_id=conversation.id,
-            sender_type="visitor",
-            text=text,
-            channel_message_id=external_message_id,
-            created_at=_event_time(payload, "received_at"),
-        )
+    message = Message(
+        tenant_id=connection.tenant_id,
+        bot_id=connection.bot_id,
+        conversation_id=conversation.id,
+        sender_type="visitor",
+        text=text,
+        channel_message_id=external_message_id,
+        created_at=_event_time(payload, "received_at"),
     )
+    db.add(message)
     now = datetime.now(UTC)
     conversation.last_message_at = now
     conversation.updated_at = now
     db.add(conversation)
+    db.flush()
+    return conversation, message, True
 
 
 def _message_status(db: OrmSession, connection: ChannelConnection, payload: dict[str, Any]) -> None:
@@ -208,8 +214,11 @@ def _channel_status(connection: ChannelConnection, payload: dict[str, Any]) -> N
     connection.updated_at = datetime.now(UTC)
 
 
-def run_channel_inbound(db: OrmSession, job: Job) -> str | None:
+def run_channel_inbound(
+    db: OrmSession, job: Job, settings: Settings | None = None
+) -> str | None:
     """Process a channel event with tenant/bot authority taken only from its connection."""
+    settings = settings or get_settings()
     raw_event_id = job.payload.get("channel_event_id")
     try:
         event_id = UUID(str(raw_event_id))
@@ -246,7 +255,19 @@ def run_channel_inbound(db: OrmSession, job: Job) -> str | None:
         return None
     payload = event.payload
     if event.event_type == "message.received":
-        _received(db, connection, payload)
+        conversation, visitor_message, is_new = _received(db, connection, payload)
+        if is_new and visitor_message is not None:
+            channel_chat_turn(
+                db,
+                tenant_id=connection.tenant_id,
+                bot=bot,
+                conversation=conversation,
+                connection=connection,
+                visitor_message=visitor_message,
+                question=str(payload.get("text", "")),
+                supported=payload.get("type") == "text",
+                settings=settings,
+            )
     elif event.event_type == "message.status":
         _message_status(db, connection, payload)
     elif event.event_type == "channel.status":

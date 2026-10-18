@@ -48,6 +48,7 @@ CANNED = {
             "That needs help from a person on our team. Please contact "
             "{support_contact} and we will take it from there."
         ),
+        "unsupported": "I can’t read that message type. Please send a text message instead.",
         "not_ready": "The assistant is not set up for this bot yet.",
         "hello_default": "Hello! How can I help?",
     },
@@ -62,6 +63,7 @@ CANNED = {
         "handoff": (
             "هذا يحتاج مساعدة شخص من فريقنا. يرجى التواصل مع {support_contact} وسنكمل معك."
         ),
+        "unsupported": "لا أستطيع قراءة هذا النوع من الرسائل. يرجى إرسال رسالة نصية.",
         "not_ready": "المساعد غير مهيأ لهذا الروبوت بعد.",
         "hello_default": "أهلاً بك! كيف أستطيع مساعدتك؟",
     },

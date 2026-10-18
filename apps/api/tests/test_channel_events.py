@@ -13,10 +13,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 import app.channels.events as event_module
+import app.chat.conversations as chat_conversations
 from app.channels.inbound import run_channel_inbound
 from app.channels.secrets import encrypt_secret
 from app.channels.signing import sign
+from app.chat.providers import ChatModel, ProviderError
+from app.chat.service import ChatReply
 from app.core.config import get_settings
+from app.core.errors import ApiError
 from app.db.models import (
     ChannelConnection,
     ChannelEvent,
@@ -25,6 +29,7 @@ from app.db.models import (
     Conversation,
     Job,
     Message,
+    UsageEvent,
 )
 from tests.conftest import build_test_settings
 from tests.helpers import make_bot, seeded_tenant
@@ -104,7 +109,9 @@ def _post(
     )
 
 
-def _run_event(db: Session, event_id: str) -> ChannelEvent:
+def _run_event(
+    db: Session, event_id: str, *, settings: Any | None = None
+) -> ChannelEvent:
     event = db.scalar(select(ChannelEvent).where(ChannelEvent.event_id == event_id))
     assert event is not None
     job = Job(
@@ -120,7 +127,7 @@ def _run_event(db: Session, event_id: str) -> ChannelEvent:
     )
     db.add(job)
     db.flush()
-    assert run_channel_inbound(db, job) is None
+    assert run_channel_inbound(db, job, settings) is None
     db.commit()
     db.refresh(event)
     return event
@@ -181,7 +188,9 @@ def test_event_duplicate_replay_paused_acceptance_and_atomic_enqueue(
     assert len(jobs) == 1 and jobs[0].payload == {"channel_event_id": str(event.id)}
     _run_event(db, "evt-duplicate")
     assert db.scalar(select(Conversation)).status == "waiting_human"
-    assert db.scalar(select(Message)).text == "Hello"
+    visitor_message = db.scalar(select(Message).where(Message.sender_type == "visitor"))
+    assert visitor_message is not None and visitor_message.text == "Hello"
+    assert db.scalar(select(func_count(Message.id)).where(Message.sender_type == "ai")) == 0
 
 
 def test_unknown_type_is_stored_ignored_and_oversized_is_generic_401(
@@ -242,9 +251,13 @@ def test_tenant_scoping_and_processed_job_rerun_are_idempotent(
     )
     db.add(replay)
     db.flush()
+    message_count_before = db.scalar(select(func_count(Message.id)))
     assert run_channel_inbound(db, replay) is None
     db.commit()
-    assert db.scalar(select(func_count(Message.id))) == 2
+    assert db.scalar(select(func_count(Message.id))) == message_count_before
+    assert db.scalar(
+        select(func_count(Message.id)).where(Message.sender_type == "visitor")
+    ) == 2
 
 
 def test_inbound_dedupe_sanitization_and_origin_is_written_once(
@@ -252,6 +265,10 @@ def test_inbound_dedupe_sanitization_and_origin_is_written_once(
 ) -> None:
     connection_id, secret = _connection(app, db)
     first = _payload(connection_id, event_id="evt-first")
+    first["contact"] = {
+        "name": " Visitor\u0000 Name " + "x" * 150,
+        "handle": "@person\u0007" + "h" * 150,
+    }
     assert _post(client, connection_id, secret, json.dumps(first).encode()).status_code == 202
     _run_event(db, "evt-first")
     second = _payload(
@@ -268,10 +285,15 @@ def test_inbound_dedupe_sanitization_and_origin_is_written_once(
         == 202
     )
     _run_event(db, "evt-third")
-    assert db.scalar(select(func_count(Message.id))) == 2
+    assert db.scalar(
+        select(func_count(Message.id)).where(Message.sender_type == "visitor")
+    ) == 2
     contact = db.scalar(select(Contact))
-    assert contact is not None and contact.display_name == "Visitor Name"
-    assert contact.custom_fields == {"channel_handle": "@person"}
+    assert contact is not None and contact.display_name.startswith("Visitor Name")
+    assert len(contact.display_name) == 120
+    handle = contact.custom_fields["channel_handle"]
+    assert isinstance(handle, str) and handle.startswith("@person") and len(handle) == 120
+    assert "\u0007" not in handle
     identity = db.scalar(select(ContactIdentity))
     conversation = db.scalar(select(Conversation))
     assert identity is not None and identity.connection_id == connection_id
@@ -282,6 +304,57 @@ def func_count(column: Any) -> Any:
     from sqlalchemy import func
 
     return func.count(column)
+
+
+class _UnusedModel(ChatModel):
+    usage_totals: dict[str, int] | None = {}
+
+    def complete(
+        self, messages: list[dict[str, str]], *, json_mode: bool, max_tokens: int
+    ) -> str:
+        del messages, json_mode, max_tokens
+        raise ProviderError("test provider unavailable")
+
+
+def _patch_success_pipeline(
+    monkeypatch: pytest.MonkeyPatch, captured_questions: list[str] | None = None
+) -> None:
+    monkeypatch.setattr(chat_conversations, "default_model", lambda _bot: _UnusedModel())
+
+    def successful_answer(*_args: Any, question: str, **_kwargs: Any) -> ChatReply:
+        if captured_questions is not None:
+            captured_questions.append(question)
+        return ChatReply(
+            answer="Stored answer",
+            can_answer=True,
+            needs_human=False,
+            language="en",
+            kind="answer",
+            trace={"fake_pipeline": True},
+        )
+
+    monkeypatch.setattr(chat_conversations, "chat_answer", successful_answer)
+
+
+def _post_received(
+    client: Any,
+    connection_id: UUID,
+    secret: str,
+    *,
+    event_id: str,
+    external_message_id: str,
+    text: str = "Hello",
+    message_type: str = "text",
+) -> None:
+    body = _payload(
+        connection_id,
+        event_id=event_id,
+        external_message_id=external_message_id,
+        text=text,
+        type=message_type,
+    )
+    response = _post(client, connection_id, secret, json.dumps(body).encode())
+    assert response.status_code == 202, response.text
 
 
 def test_message_status_is_monotonic_and_health_ignores_old_events(
@@ -333,4 +406,206 @@ def test_message_status_is_monotonic_and_health_ignores_old_events(
         _run_event(db, body["event_id"])
     connection = db.get(ChannelConnection, connection_id)
     assert connection is not None and connection.health_status == "healthy"
+
+
+def test_channel_pipeline_truncates_only_model_input_and_stores_pending_reply(
+    client: Any,
+    app: Any,
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    connection_id, secret = _connection(app, db)
+    captured: list[str] = []
+    _patch_success_pipeline(monkeypatch, captured)
+    long_text = "x" * 1500
+    _post_received(
+        client,
+        connection_id,
+        secret,
+        event_id="evt-long-text",
+        external_message_id="msg-long-text",
+        text=long_text,
+    )
+    _run_event(db, "evt-long-text", settings=build_test_settings(chat_stub_model=True))
+    visitor = db.scalar(select(Message).where(Message.sender_type == "visitor"))
+    ai_message = db.scalar(select(Message).where(Message.sender_type == "ai"))
+    assert visitor is not None and visitor.text == long_text
+    assert captured == ["x" * 1000]
+    assert ai_message is not None and ai_message.text == "Stored answer"
+    assert ai_message.delivery_status == "pending"
+    message_usage = db.scalar(
+        select(UsageEvent).where(
+            UsageEvent.kind == "message", UsageEvent.message_id == ai_message.id
+        )
+    )
+    assert message_usage is not None
+    trace = message_usage.payload["rag_trace"]
+    assert trace["channel"] == "whatsapp"
+    assert trace["connection_id"] == str(connection_id)
+    metering = db.scalar(
+        select(UsageEvent).where(
+            UsageEvent.kind == "ai_usage",
+            UsageEvent.payload["event_type"].as_string() == "message",
+        )
+    )
+    assert metering is not None and metering.payload["channel"] == "whatsapp"
+    assert db.scalar(select(func_count(Job.id)).where(Job.type == "channel_send")) == 0
+
+
+def test_human_mode_is_silent_and_resolved_conversation_reopens_in_ai_mode(
+    client: Any,
+    app: Any,
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    connection_id, secret = _connection(app, db)
+    connection = db.get(ChannelConnection, connection_id)
+    assert connection is not None
+    connection.ai_enabled = False
+    db.commit()
+    _post_received(
+        client,
+        connection_id,
+        secret,
+        event_id="evt-human-seed",
+        external_message_id="msg-human-seed",
+    )
+    _run_event(db, "evt-human-seed")
+    conversation = db.scalar(select(Conversation))
+    assert conversation is not None
+    conversation.mode = "human"
+    conversation.status = "open"
+    connection.ai_enabled = True
+    db.commit()
+    _post_received(
+        client,
+        connection_id,
+        secret,
+        event_id="evt-human-silent",
+        external_message_id="msg-human-silent",
+    )
+    _run_event(db, "evt-human-silent")
+    assert db.scalar(select(func_count(Message.id)).where(Message.sender_type == "ai")) == 0
+    assert conversation.mode == "human"
+
+    conversation.status = "resolved"
+    db.commit()
+    _patch_success_pipeline(monkeypatch)
+    _post_received(
+        client,
+        connection_id,
+        secret,
+        event_id="evt-reopen",
+        external_message_id="msg-reopen",
+    )
+    _run_event(db, "evt-reopen", settings=build_test_settings(chat_stub_model=True))
+    db.refresh(conversation)
+    assert conversation.mode == "ai"
+    assert conversation.status == "open"
+    assert db.scalar(select(func_count(Message.id)).where(Message.sender_type == "ai")) == 1
+
+
+def test_ai_disabled_and_unsupported_hourly_reply_rules(
+    client: Any, app: Any, db: Session
+) -> None:
+    connection_id, secret = _connection(app, db)
+    connection = db.get(ChannelConnection, connection_id)
+    assert connection is not None
+    connection.ai_enabled = False
+    db.commit()
+    _post_received(
+        client,
+        connection_id,
+        secret,
+        event_id="evt-disabled",
+        external_message_id="msg-disabled",
+    )
+    _run_event(db, "evt-disabled")
+    conversation = db.scalar(select(Conversation))
+    assert conversation is not None and conversation.status == "waiting_human"
+    assert db.scalar(select(func_count(Message.id)).where(Message.sender_type == "ai")) == 0
+
+    connection.ai_enabled = True
+    db.commit()
+    for event_id, message_id in (
+        ("evt-unsupported-1", "msg-unsupported-1"),
+        ("evt-unsupported-2", "msg-unsupported-2"),
+    ):
+        _post_received(
+            client,
+            connection_id,
+            secret,
+            event_id=event_id,
+            external_message_id=message_id,
+            text="",
+            message_type="unsupported",
+        )
+        _run_event(db, event_id)
+    notices = list(
+        db.scalars(
+            select(Message).where(Message.sender_type == "ai", Message.needs_human.is_(True))
+        )
+    )
+    assert len(notices) == 1
+    assert notices[0].delivery_status == "pending"
+    assert notices[0].citations is None
+    assert conversation.status == "waiting_human"
+
+
+def test_quota_and_provider_failures_store_handoff_replies_without_logging_text(
+    client: Any,
+    app: Any,
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    connection_id, secret = _connection(app, db)
+    monkeypatch.setattr(chat_conversations, "default_model", lambda _bot: _UnusedModel())
+    monkeypatch.setattr(
+        chat_conversations,
+        "reserve",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            ApiError(429, "QUOTA_EXCEEDED", "usage limit")
+        ),
+    )
+    private_text = "private inbound message not for logs"
+    _post_received(
+        client,
+        connection_id,
+        secret,
+        event_id="evt-quota",
+        external_message_id="msg-quota",
+        text=private_text,
+    )
+    _run_event(db, "evt-quota", settings=build_test_settings(chat_stub_model=True))
+    quota_reply = db.scalar(select(Message).where(Message.sender_type == "ai"))
+    conversation = db.scalar(select(Conversation))
+    assert quota_reply is not None and "support" in quota_reply.text.lower()
+    assert conversation is not None and conversation.status == "waiting_human"
+    assert private_text not in caplog.text
+
+    connection_id, secret = _connection(app, db)
+    monkeypatch.undo()
+    monkeypatch.setattr(chat_conversations, "default_model", lambda _bot: _UnusedModel())
+    monkeypatch.setattr(
+        chat_conversations,
+        "chat_answer",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(ProviderError("test provider failure")),
+    )
+    _post_received(
+        client,
+        connection_id,
+        secret,
+        event_id="evt-provider-failure",
+        external_message_id="msg-provider-failure",
+        text=private_text,
+    )
+    _run_event(db, "evt-provider-failure", settings=build_test_settings(chat_stub_model=True))
+    failure_reply = db.scalar(
+        select(Message)
+        .where(Message.sender_type == "ai")
+        .order_by(Message.created_at.desc())
+    )
+    assert failure_reply is not None and "support" in failure_reply.text.lower()
+    assert private_text not in caplog.text
 

@@ -18,14 +18,20 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
 from app.chat.models import default_model
-from app.chat.providers import ChatModel
-from app.chat.service import chat_answer
+from app.chat.prompts import canned
+from app.chat.providers import ChatModel, ProviderError
+from app.chat.service import ChatReply, chat_answer
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
 from app.core.ratelimit import purge_expired_windows
-from app.db.models import Bot, Conversation, Message, UsageEvent
+from app.db.models import Bot, ChannelConnection, Conversation, Message, UsageEvent
 from app.inbox.events import add_inbox_event
-from app.inbox.handoff import decide_handoff, start_handoff, visitor_handoff_reply
+from app.inbox.handoff import (
+    HandoffDecision,
+    decide_handoff,
+    start_handoff,
+    visitor_handoff_reply,
+)
 from app.knowledge.language import detect_language
 from app.quotas.ai import MeteredChatModel
 from app.quotas.rag import release, reserve, settle
@@ -396,6 +402,196 @@ def visitor_chat_turn(
         "kind": reply.kind,
         "language": reply.language,
     }
+
+
+def channel_chat_turn(
+    db: OrmSession,
+    *,
+    tenant_id: UUID,
+    bot: Bot,
+    conversation: Conversation,
+    connection: ChannelConnection,
+    visitor_message: Message,
+    question: str,
+    supported: bool,
+    settings: Settings | None = None,
+    model: ChatModel | None = None,
+) -> Message | None:
+    """Run a delegated-channel turn without changing the website turn contract."""
+    settings = settings or get_settings()
+    language = detect_language(question) or (
+        str(bot.config.get("default_language", "en")) if isinstance(bot.config, dict) else "en"
+    )
+
+    if conversation.status == "resolved":
+        conversation.status = "open"
+        conversation.mode = "ai"
+        conversation.assigned_user_id = None
+        conversation.handoff_reason = None
+        db.add(conversation)
+
+    if connection.status != "active" or not connection.ai_enabled:
+        conversation.status = "waiting_human"
+        db.add(conversation)
+        return None
+    if conversation.mode == "human":
+        return None
+    if not supported:
+        unsupported_decision = HandoffDecision("unsupported_message", language)
+        if conversation.status != "waiting_human":
+            start_handoff(db, bot=bot, conversation=conversation, decision=unsupported_decision)
+        else:
+            conversation.handoff_reason = "unsupported_message"
+            db.add(conversation)
+        placeholder = canned("unsupported", language)
+        cutoff = datetime.now(UTC) - timedelta(hours=1)
+        recent_notice = db.scalar(
+            select(Message.id)
+            .where(
+                Message.tenant_id == tenant_id,
+                Message.conversation_id == conversation.id,
+                Message.sender_type == "ai",
+                Message.text == placeholder,
+                Message.created_at >= cutoff,
+            )
+            .limit(1)
+        )
+        if recent_notice is not None:
+            return None
+        notice = append_message(
+            db,
+            conversation,
+            sender_type="ai",
+            text=placeholder,
+            can_answer=False,
+            needs_human=True,
+        )
+        notice.delivery_status = "pending"
+        return notice
+
+    pipeline_question = question[:1000]
+    history = history_messages(
+        db, conversation, settings=settings, exclude_message_id=visitor_message.id
+    )
+    configured_model = model or default_model(bot)
+    reservation: UUID | None = None
+    response_ms: int | None = None
+    metered_model: MeteredChatModel | None = None
+    if configured_model is None:
+        reply = _channel_busy_reply(bot, language)
+    else:
+        try:
+            reservation = reserve(
+                db,
+                tenant_id,
+                bot.id,
+                settings,
+                event_type="message",
+                model=None,
+                channel=conversation.channel,
+            )
+        except ApiError as exc:
+            if exc.code != "QUOTA_EXCEEDED":
+                raise
+            reply = _channel_busy_reply(bot, language)
+        else:
+            metered_model = MeteredChatModel(
+                configured_model, db, tenant_id, bot.id, settings, conversation.channel
+            )
+            started = datetime.now(UTC)
+            try:
+                reply = chat_answer(
+                    db,
+                    tenant_id=tenant_id,
+                    bot=bot,
+                    question=pipeline_question,
+                    history=history,
+                    language_hint=language,
+                    model=metered_model,
+                    settings=settings,
+                )
+            except ProviderError:
+                release(db, tenant_id, bot.id, reservation, settings)
+                reservation = None
+                reply = _channel_busy_reply(bot, language)
+            except ApiError as exc:
+                if exc.code != "QUOTA_EXCEEDED":
+                    raise
+                release(db, tenant_id, bot.id, reservation, settings)
+                reservation = None
+                reply = _channel_busy_reply(bot, language)
+            response_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
+
+    reply.trace["channel"] = conversation.channel
+    reply.trace["connection_id"] = str(connection.id)
+    ai_message = append_message(
+        db,
+        conversation,
+        sender_type="ai",
+        text=reply.answer,
+        citations=reply.citations,
+        can_answer=reply.can_answer,
+        needs_human=reply.needs_human,
+        response_ms=response_ms,
+    )
+    ai_message.delivery_status = "pending"
+    record_usage_event(
+        db,
+        tenant_id=tenant_id,
+        bot_id=bot.id,
+        kind="message",
+        external_key=f"message:{ai_message.id}",
+        message_id=ai_message.id,
+        conversation_id=conversation.id,
+        payload={
+            "provider_usage": metered_model.usage_totals if metered_model is not None else {},
+            "rag_trace": reply.trace,
+            "ai_metered": reservation is not None,
+        },
+    )
+    if reservation is not None:
+        settle(
+            db,
+            tenant_id,
+            bot.id,
+            reservation,
+            settings,
+            tokens=0,
+            cost_usd=None,
+            commit=False,
+        )
+    decision = decide_handoff(
+        db,
+        bot=bot,
+        conversation=conversation,
+        question=pipeline_question,
+        language=reply.language,
+        reply_kind=reply.kind,
+        can_answer=reply.can_answer,
+    )
+    if decision is not None:
+        start_handoff(db, bot=bot, conversation=conversation, decision=decision)
+        ai_message.text = visitor_handoff_reply(bot, reply.language)
+        ai_message.citations = None
+        ai_message.can_answer = False
+        ai_message.needs_human = True
+    return ai_message
+
+
+def _channel_busy_reply(bot: Bot, language: str) -> ChatReply:
+    config = bot.config if isinstance(bot.config, dict) else {}
+    contact = " / ".join(
+        str(value).strip()
+        for value in (config.get("support_email"), config.get("support_phone"))
+        if isinstance(value, str) and value.strip()
+    ) or "our support team"
+    return ChatReply(
+        answer=canned("busy", language, support_contact=contact),
+        can_answer=False,
+        needs_human=True,
+        language=language,
+        kind="busy",
+    )
 
 
 def messages_of(
