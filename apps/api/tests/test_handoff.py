@@ -1,7 +1,8 @@
 """P5-01 state machine, handoff and widget agent-message visibility."""
 
 import threading
-from typing import Any
+from types import SimpleNamespace
+from typing import Any, cast
 from uuid import UUID
 
 from fastapi import FastAPI
@@ -15,6 +16,27 @@ from tests.conftest import csrf_headers
 from tests.test_conversations_view import seed_setup
 
 corpus = _rh.corpus
+
+
+def test_unknown_conversation_source_keeps_handoff_disabled(db: OrmSession) -> None:
+    from app.inbox.handoff import decide_handoff
+
+    bot = cast(Bot, SimpleNamespace(config={}))
+    conversation = cast(
+        Conversation, SimpleNamespace(source="legacy-import", status="open")
+    )
+    assert (
+        decide_handoff(
+            db,
+            bot=bot,
+            conversation=conversation,
+            question="Please let me speak to an agent",
+            language="en",
+            reply_kind="busy",
+            can_answer=False,
+        )
+        is None
+    )
 
 
 def test_handoff_reply_copy_is_business_generic() -> None:

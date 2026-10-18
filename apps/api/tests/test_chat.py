@@ -3,6 +3,7 @@ strict output contract, fallbacks, provider free_only guard, and localized
 canned replies. Retrieval runs over the real pipeline-ingested corpus so the
 citation validation is exercised end to end."""
 
+import hashlib
 import json
 import re
 from typing import Any
@@ -12,6 +13,7 @@ import pytest
 from sqlalchemy.orm import Session as OrmSession
 
 import tests.retrieval_helpers as _rh  # noqa: F401 — registers the corpus fixture
+from app.chat.prompts import system_prompt
 from app.chat.providers import FakeChatModel, OpenAICompatibleModel, ProviderError
 from app.chat.service import chat_answer, condense
 from app.core.errors import ApiError
@@ -19,6 +21,20 @@ from app.db.models import Bot
 from tests.retrieval_helpers import published_revision_id
 
 corpus = _rh.corpus
+
+
+def test_system_prompt_matches_main_bytes_for_fixed_website_input() -> None:
+    prompt = system_prompt(
+        assistant_name="A",
+        business_name="B",
+        business_description="D",
+        support_contact="S",
+        language="en",
+        evidence_block="[c] source\\ntext",
+    )
+    assert hashlib.sha256(prompt.encode("utf-8")).hexdigest() == (
+        "aebc54a6ea68098e978211932bfa7ef50eca4933b8cb5745ad92749fdf240664"
+    )
 
 
 def bot_config(**overrides: object) -> dict[str, object]:
