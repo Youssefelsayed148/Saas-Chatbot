@@ -1,0 +1,133 @@
+"""P6-01 migration 0017 reversible round-trip preserving website rows."""
+
+from uuid import uuid4
+
+from sqlalchemy import text
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
+
+from app.db.models import Bot, Contact, ContactIdentity, Conversation, Tenant
+from tests.conftest import run_migrations
+
+
+def test_channel_migration_up_down_up_preserves_website_rows(db: Session, engine: Engine) -> None:
+    tenant_id, bot_id, contact_id, conversation_id = uuid4(), uuid4(), uuid4(), uuid4()
+    identity_id = uuid4()
+    tenant = Tenant(id=tenant_id, name="P6 Migration", slug=f"p6-migration-{tenant_id.hex[:12]}")
+    db.add(tenant)
+    db.flush()
+    bot = Bot(
+        id=bot_id,
+        tenant_id=tenant_id,
+        name="Website bot",
+        status="active",
+        config={},
+        widget_locator=f"w{uuid4().hex}",
+    )
+    db.add(bot)
+    db.flush()
+    contact = Contact(
+        id=contact_id,
+        tenant_id=tenant_id,
+        display_name="Website visitor",
+        email=f"visitor-{tenant_id.hex[:12]}@example.test",
+    )
+    conversation = Conversation(
+        id=conversation_id,
+        tenant_id=tenant_id,
+        bot_id=bot_id,
+        contact_id=contact_id,
+        channel="website",
+        connection_id=None,
+        mode="ai",
+        status="open",
+        source="website",
+    )
+    identity = ContactIdentity(
+        id=identity_id,
+        tenant_id=tenant_id,
+        contact_id=contact_id,
+        channel="website",
+        external_id=f"visitor-{tenant_id.hex}",
+        connection_id=None,
+    )
+    db.add_all([contact, conversation, identity])
+    db.commit()
+    before = (tenant_id, bot_id, contact_id, conversation_id, identity_id)
+    database_url = engine.url.render_as_string(hide_password=False)
+    db.close()
+
+    run_migrations(database_url, upgrade_to="", downgrade_to="0016_arabic_fts")
+    with engine.connect() as connection:
+        version = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
+        column_type = connection.execute(
+            text(
+                "SELECT data_type FROM information_schema.columns "
+                "WHERE table_schema='public' AND table_name='conversations' "
+                "AND column_name='connection_id'"
+            )
+        ).scalar_one()
+        website_row = connection.execute(
+            text(
+                "SELECT tenant_id, bot_id, contact_id, id, connection_id "
+                "FROM conversations WHERE id = :id"
+            ),
+            {"id": conversation_id},
+        ).one()
+        identity_row = connection.execute(
+            text(
+                "SELECT id, tenant_id, contact_id, channel, external_id "
+                "FROM contact_identities WHERE id=:id"
+            ),
+            {"id": identity_id},
+        ).one()
+    assert version == "0016_arabic_fts"
+    assert column_type == "text"
+    assert tuple(website_row[:4]) == before[:4] and website_row.connection_id is None
+    assert tuple(identity_row[:3]) == (identity_id, tenant_id, contact_id)
+    assert identity_row.channel == "website"
+    assert identity_row.external_id == f"visitor-{tenant_id.hex}"
+    print("migration 0017 downgrade: at 0016, connection_id is text, website rows preserved")
+
+    run_migrations(database_url)
+    with engine.connect() as connection:
+        version = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
+        column_type = connection.execute(
+            text(
+                "SELECT data_type FROM information_schema.columns "
+                "WHERE table_schema='public' AND table_name='conversations' "
+                "AND column_name='connection_id'"
+            )
+        ).scalar_one()
+        website_row = connection.execute(
+            text(
+                "SELECT tenant_id, bot_id, contact_id, id, channel, source, connection_id "
+                "FROM conversations WHERE id = :id"
+            ),
+            {"id": conversation_id},
+        ).one()
+        identity_row = connection.execute(
+            text(
+                "SELECT id, tenant_id, contact_id, channel, external_id, connection_id "
+                "FROM contact_identities WHERE id=:id"
+            ),
+            {"id": identity_id},
+        ).one()
+        channel_tables = connection.execute(
+            text(
+                "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' "
+                "AND table_name IN ('channel_connections', 'channel_events')"
+            )
+        ).scalar_one()
+    assert version == "0017_manyosiris_channels"
+    assert column_type == "uuid"
+    assert tuple(website_row[:4]) == before[:4]
+    assert tuple(website_row[4:6]) == ("website", "website")
+    assert website_row.connection_id is None
+    assert tuple(identity_row[:3]) == (identity_id, tenant_id, contact_id)
+    assert identity_row.channel == "website"
+    assert identity_row.external_id == f"visitor-{tenant_id.hex}"
+    assert identity_row.connection_id is None
+    assert channel_tables == 2
+    print("migration 0017 upgrade: UUID schema and channel tables created; website rows unchanged")
+    print("migration 0017 upgrade again: completed at head with website rows unchanged")

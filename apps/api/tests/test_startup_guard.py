@@ -8,7 +8,9 @@ never run with environment=production.
 from typing import Any
 
 import pytest
+from cryptography.fernet import Fernet
 from fastapi.testclient import TestClient
+from pydantic import SecretStr
 
 from app.core.config import Settings, validate_startup_settings
 
@@ -31,14 +33,25 @@ def test_stub_model_with_development_allowed() -> None:
 
 def test_real_provider_with_production_allowed() -> None:
     validate_startup_settings(
-        _settings(chat_stub_model=False, environment="production", embedding_provider="openai")
+        _settings(
+            chat_stub_model=False,
+            environment="production",
+            embedding_provider="openai",
+            channel_secret_encryption_keys=SecretStr(Fernet.generate_key().decode("ascii")),
+        )
     )
 
 
 def test_production_requires_an_explicit_embedding_provider() -> None:
     with pytest.raises(RuntimeError, match="EMBEDDING_PROVIDER"):
         validate_startup_settings(_settings(environment="production"))
-    validate_startup_settings(_settings(environment="production", embedding_provider="ollama"))
+    validate_startup_settings(
+        _settings(
+            environment="production",
+            embedding_provider="ollama",
+            channel_secret_encryption_keys=SecretStr(Fernet.generate_key().decode("ascii")),
+        )
+    )
     # Development and test keep the OpenAI default without configuration.
     validate_startup_settings(_settings(environment="development"))
     validate_startup_settings(_settings(environment="test"))
@@ -50,7 +63,20 @@ def test_real_settings_object_tracks_explicit_provider(monkeypatch: pytest.Monke
     with pytest.raises(RuntimeError, match="EMBEDDING_PROVIDER"):
         validate_startup_settings(unset)
     monkeypatch.setenv("EMBEDDING_PROVIDER", "openai")
+    monkeypatch.setenv("CHANNEL_SECRET_ENCRYPTION_KEYS", Fernet.generate_key().decode("ascii"))
     validate_startup_settings(Settings(_env_file=None, environment="production"))  # type: ignore[call-arg]
+
+
+def test_production_requires_channel_secret_encryption_key() -> None:
+    with pytest.raises(RuntimeError, match="CHANNEL_SECRET_ENCRYPTION_KEYS"):
+        validate_startup_settings(_settings(environment="production", embedding_provider="openai"))
+    validate_startup_settings(
+        _settings(
+            environment="production",
+            embedding_provider="openai",
+            channel_secret_encryption_keys=SecretStr(Fernet.generate_key().decode("ascii")),
+        )
+    )
 
 
 def test_create_app_refuses_production_stub(monkeypatch: pytest.MonkeyPatch) -> None:

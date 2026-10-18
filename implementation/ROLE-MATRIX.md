@@ -7,6 +7,8 @@ without requiring membership. Hidden tenant resources continue to return 404.
 | Screen or control | Operator / staff | Admin | Editor | Viewer |
 | --- | --- | --- | --- | --- |
 | Overview and read-only organization Plan usage | Yes | Yes | Yes | Yes |
+| Connected channels health (read-only Overview card) | Yes | Yes | Yes | Yes |
+| ManyOsirisChat connection lifecycle and secret management | Yes | No | No | No |
 | Conversations: list and read | Yes | Yes | Yes | Yes |
 | Inbox: view | Yes | Yes | Yes | Yes |
 | Inbox: reply, takeover, resolve, return to AI, tag, note, assign | Read-only operator view* | Yes | Yes | No |

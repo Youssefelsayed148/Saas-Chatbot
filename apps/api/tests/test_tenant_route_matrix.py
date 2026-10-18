@@ -31,6 +31,29 @@ from scripts.seed_demo import FAKE_PASSWORD, seed_demo
 from tests.conftest import build_test_settings, csrf_headers
 from tests.helpers import logged_in, seeded_tenant
 
+CHANNEL_PLATFORM_ROUTE_ROLES = {
+    ("GET", "/api/v1/platform/channel-connections"): "platform_staff_only",
+    ("POST", "/api/v1/platform/channel-connections"): "platform_staff_only",
+    ("GET", "/api/v1/platform/channel-connections/{connection_id}"): "platform_staff_only",
+    ("PATCH", "/api/v1/platform/channel-connections/{connection_id}"): "platform_staff_only",
+    (
+        "POST",
+        "/api/v1/platform/channel-connections/{connection_id}/pause",
+    ): "platform_staff_only",
+    (
+        "POST",
+        "/api/v1/platform/channel-connections/{connection_id}/resume",
+    ): "platform_staff_only",
+    (
+        "POST",
+        "/api/v1/platform/channel-connections/{connection_id}/revoke",
+    ): "platform_staff_only",
+    (
+        "POST",
+        "/api/v1/platform/channel-connections/{connection_id}/rotate-secret",
+    ): "platform_staff_only",
+}
+
 
 @pytest.mark.parametrize("role", ["viewer", "editor", "admin", "staff"])
 def test_every_openapi_route_role_and_cross_tenant(
@@ -324,7 +347,7 @@ def test_exact_route_contract_and_operator_knowledge(app: Any) -> None:
         for method, operation in methods.items()
         if method.upper() in {"GET", "POST", "PATCH", "DELETE"}
     }
-    assert len(actual) == len(TENANT_ROUTE_ROLES) == 82
+    assert len(actual) == len(TENANT_ROUTE_ROLES) == 83
     assert actual == TENANT_ROUTE_ROLES
     base = "/api/v1/tenants/{tenant_id}/bots/{bot_id}"
     for suffix in (
@@ -339,3 +362,13 @@ def test_exact_route_contract_and_operator_knowledge(app: Any) -> None:
         "/rag",
     ):
         assert actual[("GET", base + suffix)] == "platform_staff_only"
+
+
+def test_channel_platform_routes_are_classified(app: Any) -> None:
+    actual = {
+        (method.upper(), path): operation["x-minimum-role"]
+        for path, methods in app.openapi()["paths"].items()
+        for method, operation in methods.items()
+        if (method.upper(), path) in CHANNEL_PLATFORM_ROUTE_ROLES
+    }
+    assert actual == CHANNEL_PLATFORM_ROUTE_ROLES

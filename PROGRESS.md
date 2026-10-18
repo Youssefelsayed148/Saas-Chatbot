@@ -2174,9 +2174,56 @@ Final backend and local integration readiness:
   `test_widget_appearance.py` 3 passed. Total: 101 passed, 0 failed across 14
   files. Each file emitted one existing Starlette TestClient/httpx deprecation
   warning.
-- Parking list — dependency audit: initial `npm ci` output reported 5 high
-  severity findings but did not name packages. Subsequent `npm audit --json`
-  from both the repository root and `apps/web` reported 0 vulnerabilities and
-  no package names. Names could not be verified, so no package names are
-  recorded and no dependencies were changed. Reconcile the audit discrepancy
-  before any dependency remediation.
+- Parking list — npm audit (5 high findings; package names only):
+  `eslint-config-next`, `@next/eslint-plugin-next`, `fast-glob`, `micromatch`,
+  `braces`. Do not change dependencies for these findings in Phase 6.
+
+## 2026-10-18 — Phase 6 P6-01 connections, secrets, signing
+
+- Pre-migration test-DB query on `phase6_test`: `conversations.connection_id`
+  was `text`; counts were total 0, NULL 0, non-NULL 0. The migration also
+  checks for non-NULL rows and stops with an owner-review error before changing
+  the type.
+- Migration `0017_manyosiris_channels` is hand-written and reversible. The
+  migration test inserted website tenant, bot, contact, conversation and
+  identity rows, then ran downgrade, upgrade, and upgrade-at-head again:
+  downgrade reached `0016_arabic_fts`, restored `connection_id` to text, and
+  preserved the website rows; upgrade converted it to UUID, created both
+  channel tables, and preserved the rows; the second upgrade completed at
+  `0017_manyosiris_channels` with the same website rows intact. Test printed
+  all three outcomes and passed.
+- Identity uniqueness preserves the old tenant/channel/external-ID rule for
+  rows without a connection (including website visitors), and adds uniqueness
+  scoped to tenant/connection/external-ID for channel identities. Regression
+  coverage verifies two distinct website visitors, rejects reusing one
+  website external ID, allows the same channel external ID on two connections,
+  and rejects its duplicate on the same connection.
+- Added channel connection/event models, composite tenant-scoped foreign keys,
+  `external_conversation_id`, `origin`, inbound dedupe and partial unique
+  indexes; staff lifecycle endpoints and client-safe health read model; quota
+  counting; key validation at production startup; encrypted create/rotation
+  secrets with show-once responses and 24-hour previous-secret verification.
+  Tests cover audit rows, logs and exports excluding secrets, including after
+  rotation. Added all channel routes to the route matrix and the client/staff
+  rows to `implementation/ROLE-MATRIX.md`.
+- Dependency-only local commit `1aac486` adds `cryptography==50.0.2` to both
+  lockfiles and the API project metadata. This is isolated from the P6-01
+  implementation commit(s).
+- Final baseline rerun used one pytest process per file, each with
+  `TEST_DATABASE_URL=postgresql://test:test@127.0.0.1:55462/phase6` and
+  `-p no:cacheprovider`. Results: `test_conversations.py` 13 passed;
+  `test_conversations_view.py` 5; `test_inbox_list.py` 5;
+  `test_group_0_inbox.py` 16; `test_contacts.py` 1; `test_analytics.py` 6;
+  `test_quotas.py` 12; `test_tenant_route_matrix.py` 7 (6 prior baseline
+  checks plus 1 P6 route classification); `test_platform.py` 9;
+  `test_platform_ops.py` 4; `test_create_platform_staff.py` 2;
+  `test_widget_public.py` 14; `test_widget_leads.py` 5; and
+  `test_widget_appearance.py` 3. The prior 101 baseline tests all passed;
+  1 additional route-matrix test passed, for 102 total across these files.
+- New/focused checks after the final source changes: `test_channels.py` 5
+  passed; `test_channel_migrations.py` 1 passed; `test_startup_guard.py` 8
+  passed (including production startup failure without the encryption key).
+  `ruff check` passed for all touched Python files; strict mypy with
+  `--follow-imports=silent` passed for 12 application source files; and
+  `git diff --check` passed. Pytest runs emitted the existing Starlette
+  TestClient/httpx deprecation warning.
