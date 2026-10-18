@@ -57,4 +57,8 @@ def _run(job: Job, db: OrmSession, settings: Settings, storage: Storage) -> str 
         from app.quotas.sentiment import run_sentiment_job
 
         return run_sentiment_job(db, job, settings)
+    if job.type == "channel_inbound":
+        from app.channels.inbound import run_channel_inbound
+
+        return run_channel_inbound(db, job)
     return f"Unknown job type {job.type!r}."

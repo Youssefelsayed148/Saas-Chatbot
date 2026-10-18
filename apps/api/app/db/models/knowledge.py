@@ -41,7 +41,7 @@ SOURCE_KIND_VALUES = ("pdf", "docx", "txt", "md", "qa_csv")
 SOURCE_STATUS_VALUES = ("stored", "queued", "ingested", "failed")
 JOB_TYPE_VALUES = (
     "ingest_batch", "retention_purge", "follow_up_delivery", "sentiment_classify",
-    "reembed_backfill",
+    "reembed_backfill", "channel_inbound",
 )
 JOB_STATUS_VALUES = ("pending", "running", "succeeded", "failed", "cancelled")
 REVISION_STATUS_VALUES = ("draft", "published", "archived")
@@ -84,8 +84,8 @@ class Job(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "type IN ('ingest_batch', 'retention_purge', 'follow_up_delivery', 'sentiment_classify')"
-            " OR type = 'reembed_backfill'",
+            "type IN ('ingest_batch', 'retention_purge', 'follow_up_delivery', "
+            "'sentiment_classify', 'reembed_backfill', 'channel_inbound')",
             name="ck_jobs_type",
         ),
         CheckConstraint(

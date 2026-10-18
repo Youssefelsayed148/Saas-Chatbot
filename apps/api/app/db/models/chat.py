@@ -70,7 +70,10 @@ class Contact(Base):
     )
 
     __table_args__ = (
-        CheckConstraint("email IS NOT NULL OR phone IS NOT NULL", name="ck_contacts_reachable"),
+        CheckConstraint(
+            "email IS NOT NULL OR phone IS NOT NULL OR source_channel IS NOT NULL",
+            name="ck_contacts_reachable",
+        ),
         Index(
             "uq_contacts_tenant_email",
             "tenant_id",
