@@ -17,6 +17,7 @@ from app.core.tenancy import TenantContextDep
 from app.db.models import (
     AuditEvent,
     Bot,
+    ChannelConnection,
     Chunk,
     Contact,
     ContactIdentity,
@@ -132,6 +133,26 @@ def export_tenant_data(
         "bots": _serialize(
             _rows(db, Bot, tenant_id),
             ("id", "name", "status", "config", "created_at", "updated_at"),
+        ),
+        "channel_connections": _serialize(
+            _rows(db, ChannelConnection, tenant_id),
+            (
+                "id",
+                "bot_id",
+                "channel",
+                "display_name",
+                "many_base_url",
+                "many_channel_ref",
+                "status",
+                "ai_enabled",
+                "health_status",
+                "health_reason",
+                "health_detail",
+                "health_updated_at",
+                "last_event_at",
+                "created_at",
+                "updated_at",
+            ),
         ),
         "contacts": _serialize(
             _rows(db, Contact, tenant_id),

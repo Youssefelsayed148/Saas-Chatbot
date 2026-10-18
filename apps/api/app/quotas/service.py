@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session as OrmSession
 from app.core.errors import ApiError
 from app.db.models import (
     Bot,
+    ChannelConnection,
     Contact,
     Invitation,
     Membership,
@@ -134,7 +135,15 @@ def usage_snapshot(db: OrmSession, tenant: Tenant, *, bot_id: UUID | None = None
             UsageEvent.created_at >= month_start,
         ),
     )
-    # Channel connection rows belong to P6; no such connections exist before it.
+    channel_connection_count = _count(
+        db,
+        select(func.count())
+        .select_from(ChannelConnection)
+        .where(
+            ChannelConnection.tenant_id == tenant.id,
+            ChannelConnection.status != "revoked",
+        ),
+    )
     usage = {
         "bots": bot_count,
         "seats": seat_count,
@@ -142,9 +151,7 @@ def usage_snapshot(db: OrmSession, tenant: Tenant, *, bot_id: UUID | None = None
         "upload_file_mb": 0,
         "monthly_messages": message_count,
         "contacts": contacts_count,
-        # Website widget availability maps 1:1 to a non-archived bot until
-        # Many connections become available in P6.
-        "channel_connections": bot_count,
+        "channel_connections": channel_connection_count,
         "sentiment_runs": sentiment_count,
     }
     limits = limits_for(tenant)
@@ -191,7 +198,10 @@ def require_capacity(
             (
                 f"Your plan allows {limit} bot(s). Contact us to add another bot."
                 if counter == "bots"
-                else f"The {counter.replace('_', ' ')} limit for the {tenant.plan_label} plan is {limit}."
+                else (
+                    f"The {counter.replace('_', ' ')} limit for the "
+                    f"{tenant.plan_label} plan is {limit}."
+                )
             ),
             details={
                 "counter": counter,

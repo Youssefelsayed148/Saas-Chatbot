@@ -7,6 +7,7 @@ from app.analytics.router import router as analytics_router
 from app.api.health import router as health_router
 from app.auth.router import router as auth_router
 from app.bots.router import router as bots_router
+from app.channels.router import router as channels_router
 from app.chat.router import router as chat_router
 from app.contacts.router import router as contacts_router
 from app.conversations.router import router as conversations_router
@@ -60,6 +61,7 @@ def create_app() -> FastAPI:
         analytics_router,
         handoff_analytics_router,
         widget_router,
+        channels_router,
     )
     # Every tenant endpoint must have an explicit reviewed declaration. Missing
     # entries fail startup, rather than silently granting the lowest role.
@@ -72,7 +74,7 @@ def create_app() -> FastAPI:
                 raise RuntimeError(f"Inconsistent route roles: {route.path}")
             route.openapi_extra = {**(route.openapi_extra or {}), "x-minimum-role": minimums.pop()}
 
-    for source_router in (platform_router, changes_router):
+    for source_router in (platform_router, changes_router, channels_router):
         for route in source_router.routes:
             if isinstance(route, APIRoute) and route.path.startswith("/api/v1/platform"):
                 route.openapi_extra = {
@@ -97,6 +99,7 @@ def create_app() -> FastAPI:
     application.include_router(analytics_router)
     application.include_router(handoff_analytics_router)
     application.include_router(widget_router)
+    application.include_router(channels_router)
     application.include_router(platform_router)
     application.include_router(provisioning_router)
     install_error_handlers(application)
