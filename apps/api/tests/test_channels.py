@@ -16,7 +16,14 @@ from sqlalchemy.orm import Session
 from app.channels.secrets import decrypt_secret, encrypt_secret, signing_secrets
 from app.channels.signing import sign, verify
 from app.core.config import get_settings
-from app.db.models import AuditEvent, ChannelConnection, Contact, ContactIdentity
+from app.db.models import (
+    AuditEvent,
+    ChannelConnection,
+    Contact,
+    ContactIdentity,
+    Conversation,
+    Message,
+)
 from tests.conftest import build_test_settings, csrf_headers
 from tests.helpers import make_bot, seeded_tenant
 
@@ -77,7 +84,29 @@ def test_multi_fernet_decrypt_and_previous_secret_grace() -> None:
     settings = build_test_settings(channel_secret_encryption_keys=SecretStr(f"{new_key},{old_key}"))
     assert decrypt_secret(connection.secret_ciphertext, settings.channel_secret_encryption_keys)
     assert signing_secrets(connection, settings, now=now) == (current_secret, old_secret)
+    timestamp = int(now.timestamp())
+    body = b'{"event_id":"rotation-check"}'
+    old_signature = sign(old_secret, timestamp, body)
+    current_signature = sign(current_secret, timestamp, body)
+    active_secrets = signing_secrets(connection, settings, now=now)
+    assert any(
+        verify(candidate, timestamp, body, old_signature, now=timestamp)
+        for candidate in active_secrets
+    )
+    assert any(
+        verify(candidate, timestamp, body, current_signature, now=timestamp)
+        for candidate in active_secrets
+    )
     assert signing_secrets(connection, settings, now=now + timedelta(hours=1)) == (current_secret,)
+    expired_secrets = signing_secrets(connection, settings, now=now + timedelta(hours=1))
+    assert not any(
+        verify(candidate, timestamp, body, old_signature, now=timestamp)
+        for candidate in expired_secrets
+    )
+    assert any(
+        verify(candidate, timestamp, body, current_signature, now=timestamp)
+        for candidate in expired_secrets
+    )
 
 
 def test_connection_lifecycle_secrets_audit_export_and_tenant_sanitization(
@@ -158,10 +187,13 @@ def test_connection_lifecycle_secrets_audit_export_and_tenant_sanitization(
     assert updated.status_code == 200
     assert updated.json()["display_name"] == "Support number"
     assert updated.json()["ai_enabled"] is False
+    assert secret not in updated.text
     paused = _platform_call(staff, "POST", f"/channel-connections/{connection_id}/pause")
     assert paused.status_code == 200 and paused.json()["status"] == "paused"
+    assert secret not in paused.text
     resumed = _platform_call(staff, "POST", f"/channel-connections/{connection_id}/resume")
     assert resumed.status_code == 200 and resumed.json()["status"] == "active"
+    assert secret not in resumed.text
 
     rotated = _platform_call(staff, "POST", f"/channel-connections/{connection_id}/rotate-secret")
     assert rotated.status_code == 200
@@ -198,6 +230,7 @@ def test_connection_lifecycle_secrets_audit_export_and_tenant_sanitization(
 
     revoked = _platform_call(staff, "POST", f"/channel-connections/{connection_id}/revoke")
     assert revoked.status_code == 200 and revoked.json()["status"] == "revoked"
+    assert secret not in revoked.text and new_secret not in revoked.text
     resume_revoked = _platform_call(staff, "POST", f"/channel-connections/{connection_id}/resume")
     assert resume_revoked.status_code == 409
 
@@ -239,6 +272,39 @@ def test_channel_connection_quota_counts_non_revoked_rows(app: Any, db: Session)
         json=_create_payload(users.tenant_id, bot["id"], name="Second"),
     )
     assert retry.status_code == 201, retry.text
+
+
+def test_channel_create_rejects_private_hosts_non_http_and_production_http(
+    app: Any, db: Session
+) -> None:
+    key = _configure_channel_key(app)
+    users = seeded_tenant(app, db, prefix="channel-url-validation", plan_label="business")
+    bot = make_bot(users)
+    staff = users.as_user("staff")
+    for base_url in (
+        "http://127.0.0.1:8080",
+        "http://0x7f000001:8080",
+        "http://192.168.1.20",
+        "http://[::1]:8080",
+        "http://localhost:8080",
+        "http://service.internal",
+        "ftp://many.example.test",
+    ):
+        payload = _create_payload(users.tenant_id, bot["id"])
+        payload["many_base_url"] = base_url
+        response = _platform_call(staff, "POST", "/channel-connections", json=payload)
+        assert response.status_code == 422, (base_url, response.text)
+        assert response.json()["error"]["code"] == "INVALID_MANY_URL"
+
+    app.dependency_overrides[get_settings] = lambda: build_test_settings(
+        channel_secret_encryption_keys=SecretStr(key),
+        environment="production",
+    )
+    payload = _create_payload(users.tenant_id, bot["id"])
+    payload["many_base_url"] = "http://many.example.test"
+    response = _platform_call(staff, "POST", "/channel-connections", json=payload)
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "INVALID_MANY_URL"
 
 
 def test_contact_identity_indexes_preserve_website_and_scope_channels(
@@ -347,3 +413,56 @@ def test_contact_identity_indexes_preserve_website_and_scope_channels(
         )
         is not None
     )
+
+
+def test_inbound_channel_message_dedupe_is_unique_per_conversation(app: Any, db: Session) -> None:
+    users = seeded_tenant(app, db, prefix="channel-message-dedupe", plan_label="business")
+    bot = make_bot(users)
+    conversation = Conversation(
+        tenant_id=users.tenant_id,
+        bot_id=UUID(bot["id"]),
+        channel="whatsapp",
+        mode="ai",
+        status="open",
+        source="website",
+    )
+    db.add(conversation)
+    db.flush()
+
+    db.add(
+        Message(
+            tenant_id=users.tenant_id,
+            bot_id=UUID(bot["id"]),
+            conversation_id=conversation.id,
+            sender_type="visitor",
+            text="hello",
+            channel_message_id="external-message-1",
+        )
+    )
+    db.flush()
+    with pytest.raises(IntegrityError):
+        with db.begin_nested():
+            db.add(
+                Message(
+                    tenant_id=users.tenant_id,
+                    bot_id=UUID(bot["id"]),
+                    conversation_id=conversation.id,
+                    sender_type="visitor",
+                    text="duplicate inbound",
+                    channel_message_id="external-message-1",
+                )
+            )
+            db.flush()
+
+    # The partial index applies only to inbound visitor messages.
+    db.add(
+        Message(
+            tenant_id=users.tenant_id,
+            bot_id=UUID(bot["id"]),
+            conversation_id=conversation.id,
+            sender_type="ai",
+            text="reply",
+            channel_message_id="external-message-1",
+        )
+    )
+    db.flush()

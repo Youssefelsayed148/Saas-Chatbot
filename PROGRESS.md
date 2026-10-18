@@ -2220,10 +2220,41 @@ Final backend and local integration readiness:
   `test_widget_public.py` 14; `test_widget_leads.py` 5; and
   `test_widget_appearance.py` 3. The prior 101 baseline tests all passed;
   1 additional route-matrix test passed, for 102 total across these files.
-- New/focused checks after the final source changes: `test_channels.py` 5
+- New/focused checks after the final source changes: `test_channels.py` 7
   passed; `test_channel_migrations.py` 1 passed; `test_startup_guard.py` 8
   passed (including production startup failure without the encryption key).
   `ruff check` passed for all touched Python files; strict mypy with
   `--follow-imports=silent` passed for 12 application source files; and
   `git diff --check` passed. Pytest runs emitted the existing Starlette
   TestClient/httpx deprecation warning.
+
+## 2026-10-18 — Phase 6 P6-01 coverage follow-up
+
+- Coverage map:
+  1. Fixed signing vector, tampering, wrong secret and ±300-second boundaries:
+     `apps/api/tests/test_channels.py::test_hmac_fixed_vector_and_timestamp_boundaries`.
+  2. Old and new signatures accepted during rotation grace; only new accepted
+     after expiry: `apps/api/tests/test_channels.py::test_multi_fernet_decrypt_and_previous_secret_grace`.
+  3. Staff lifecycle access, client-role 403s, and sanitized client model:
+     `test_connection_lifecycle_secrets_audit_export_and_tenant_sanitization`
+     plus `test_every_platform_route_denies_each_client_role` in
+     `test_tenant_route_matrix.py`.
+  4. Cross-tenant channel listing isolation and foreign-tenant 404:
+     `test_connection_lifecycle_secrets_audit_export_and_tenant_sanitization`.
+  5. Real quota count, limit 429 and revoked connection exclusion:
+     `apps/api/tests/test_channels.py::test_channel_connection_quota_counts_non_revoked_rows`.
+  6. Show-once and no later secret leakage in responses, logs, audits or exports:
+     `apps/api/tests/test_channels.py::test_connection_lifecycle_secrets_audit_export_and_tenant_sanitization`.
+  7. Website and per-connection identity uniqueness:
+     `apps/api/tests/test_channels.py::test_contact_identity_indexes_preserve_website_and_scope_channels`.
+  8. Duplicate inbound visitor message rejection by the partial unique index:
+     `apps/api/tests/test_channels.py::test_inbound_channel_message_dedupe_is_unique_per_conversation`.
+  9. Private/loopback/local host, non-HTTP scheme, and production HTTPS
+     validation: `apps/api/tests/test_channels.py::test_channel_create_rejects_private_hosts_non_http_and_production_http`.
+- URL validation rejects non-global IP literals, localhost and local-only DNS
+  suffixes, malformed numeric and hexadecimal IP forms, non-HTTP(S) schemes,
+  and HTTP in production. It continues to accept public HTTPS Many hosts.
+- Follow-up channel test run: 7 passed. The 14 P6-00 baseline files were run
+  again individually: the original 101 cases all passed; the route matrix
+  added one P6 classification test (7 passed in that file), for 102 total
+  across the 14 files. Existing TestClient/httpx deprecation warning only.

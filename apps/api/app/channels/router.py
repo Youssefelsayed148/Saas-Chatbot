@@ -1,5 +1,6 @@
 """Staff lifecycle and client-safe read routes for delegated channels."""
 
+import ipaddress
 import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Literal, cast
@@ -121,6 +122,30 @@ def _validate_base_url(value: str, settings: Settings) -> str:
     parsed = urlsplit(value.strip())
     if parsed.scheme not in {"https", "http"} or not parsed.hostname:
         raise ApiError(422, "INVALID_MANY_URL", "Many base URL must use HTTP or HTTPS.")
+    hostname = parsed.hostname.rstrip(".").lower()
+    try:
+        address = ipaddress.ip_address(hostname)
+    except ValueError:
+        address = None
+        if hostname == "localhost" or hostname.endswith(
+            (".localhost", ".local", ".internal", ".lan", ".home.arpa")
+        ):
+            raise ApiError(
+                422, "INVALID_MANY_URL", "Many base URL must use a public host."
+            ) from None
+        numeric_labels = hostname.split(".")
+        if all(
+            label.isdecimal()
+            or (
+                label.startswith("0x")
+                and len(label) > 2
+                and all(character in "0123456789abcdef" for character in label[2:])
+            )
+            for label in numeric_labels
+        ):
+            raise ApiError(422, "INVALID_MANY_URL", "Many base URL has an invalid host.") from None
+    if address is not None and not address.is_global:
+        raise ApiError(422, "INVALID_MANY_URL", "Many base URL must use a public host.")
     if (
         parsed.username is not None
         or parsed.password is not None
