@@ -2,6 +2,7 @@
 
 from app.db.models.types import CITEXT, TSVECTOR
 
+from .channels import ChannelConnection, ChannelEvent
 from .chat import (
     Contact,
     ContactIdentity,
@@ -37,6 +38,8 @@ from .widget import RateLimitCounter, VisitorSession
 
 __all__ = [
     "AuditEvent",
+    "ChannelConnection",
+    "ChannelEvent",
     "ChangeRequest",
     "OrganizationDeletion",
     "Bot",

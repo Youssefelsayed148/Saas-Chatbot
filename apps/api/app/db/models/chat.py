@@ -91,6 +91,7 @@ class ContactIdentity(Base):
     contact_id: Mapped[UUID] = mapped_column(nullable=False)
     channel: Mapped[str] = mapped_column(Text, nullable=False)
     external_id: Mapped[str] = mapped_column(Text, nullable=False)
+    connection_id: Mapped[UUID | None] = mapped_column()
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utcnow
     )
@@ -106,12 +107,27 @@ class ContactIdentity(Base):
             name="fk_contact_identities_contact",
             ondelete="CASCADE",
         ),
+        ForeignKeyConstraint(
+            ["tenant_id", "connection_id"],
+            ["channel_connections.tenant_id", "channel_connections.id"],
+            name="fk_contact_identities_connection",
+            ondelete="CASCADE",
+        ),
         Index(
             "uq_contact_identities_tenant_channel_external",
             "tenant_id",
             "channel",
             "external_id",
             unique=True,
+            postgresql_where=sa_text("connection_id IS NULL"),
+        ),
+        Index(
+            "uq_contact_identities_tenant_connection_external",
+            "tenant_id",
+            "connection_id",
+            "external_id",
+            unique=True,
+            postgresql_where=sa_text("connection_id IS NOT NULL"),
         ),
     )
 
@@ -187,7 +203,9 @@ class Conversation(Base):
     session_id: Mapped[UUID | None] = mapped_column()
     # The Meta channel value is channel=s mandate (P6) — never a Meta token here.
     channel: Mapped[str] = mapped_column(Text, nullable=False, default="website")
-    connection_id: Mapped[str | None] = mapped_column(Text)
+    connection_id: Mapped[UUID | None] = mapped_column()
+    external_conversation_id: Mapped[str | None] = mapped_column(Text)
+    origin: Mapped[dict[str, object] | None] = mapped_column(JSONB)
     mode: Mapped[str] = mapped_column(Text, nullable=False, default="ai")
     status: Mapped[str] = mapped_column(Text, nullable=False, default="open")
     assigned_user_id: Mapped[UUID | None] = mapped_column()
@@ -234,6 +252,12 @@ class Conversation(Base):
             ondelete="SET NULL",
         ),
         ForeignKeyConstraint(
+            ["tenant_id", "connection_id"],
+            ["channel_connections.tenant_id", "channel_connections.id"],
+            name="fk_conversations_connection",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
             ["tenant_id"],
             ["tenants.id"],
             name="fk_conversations_tenant_anchor",
@@ -256,6 +280,14 @@ class Conversation(Base):
             unique=True,
         ),
         Index("ix_conversations_bot_active", "tenant_id", "bot_id", "status"),
+        Index(
+            "uq_conversations_connection_external",
+            "tenant_id",
+            "connection_id",
+            "external_conversation_id",
+            unique=True,
+            postgresql_where=sa_text("connection_id IS NOT NULL"),
+        ),
         Index("ix_conversations_last_message", "tenant_id", "last_message_at"),
     )
 
@@ -320,6 +352,14 @@ class Message(Base):
             ondelete="SET NULL",
         ),
         Index("ix_messages_conversation_created", "conversation_id", "created_at"),
+        Index(
+            "uq_messages_channel_inbound_dedupe",
+            "tenant_id",
+            "conversation_id",
+            "channel_message_id",
+            unique=True,
+            postgresql_where=sa_text("sender_type = 'visitor' AND channel_message_id IS NOT NULL"),
+        ),
         # Retention purge scans by tenant + created_at.
         Index("ix_messages_tenant_created", "tenant_id", "created_at"),
     )
@@ -425,7 +465,8 @@ class UsageEvent(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "kind IN ('message', 'widget_open', 'lead', 'feedback_up', 'feedback_down', 'handoff', 'sentiment_run')"
+            "kind IN ('message', 'widget_open', 'lead', 'feedback_up', "
+            "'feedback_down', 'handoff', 'sentiment_run')"
             " OR kind = 'ai_usage'",
             name="ck_usage_events_kind",
         ),
