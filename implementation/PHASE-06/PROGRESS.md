@@ -77,3 +77,8 @@ Each file was run in a separate Python process with `TEST_DATABASE_URL=postgresq
 | `test_widget_appearance.py` | 3 passed |
 
 Total: **102 passed**. No existing website tests or fixtures were changed.
+
+### P6-02 post-acceptance verification
+
+- Main worktree read-only strict mypy check (same `--strict` mode, using shared targets present on `main`): `python -m mypy --strict --cache-dir $env:MYPY_CACHE_DIR apps/api/app/db/models/knowledge.py apps/api/app/db/models/chat.py apps/api/app/jobs/runner.py apps/api/app/main.py`, with `MYPY_CACHE_DIR` set to `%TEMP%\phase6-main-mypy-cache` and the phase worktree Python executable. Result: **3 errors**, matching the P6 worktree diagnostics in `apps/api/app/knowledge/ingest.py`: `os.setsid` line 112, `os.killpg` line 127, and `signal.SIGKILL` line 127. Main worktree remained clean.
+- Post-acceptance coverage review: all 26 requested P6-02 assertions map to tests in `apps/api/tests/test_channel_events.py`; no additional tests were needed.
