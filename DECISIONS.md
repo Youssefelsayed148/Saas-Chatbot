@@ -64,3 +64,6 @@ and minimum matched content terms, and never applies recommendations automatical
 Alternatives: unavailable local Ollama as default and threshold inheritance across
 models rejected. Impact: runtime defaults, demo corpus and owner calibration tooling;
 no real calls, merge, tag, deployment or hosting/billing decision authorized.
+
+## 2026-10-18 - Phase 6 isolated build and delegated mode
+Approver: product owner. Rationale: build P6 on `feature/phase-6-channels` in an isolated worktree while website MVP testing continues. Alternatives: wait for website closeout before starting P6 (deferred for the build, retained as a merge gate). Impact: P6 may be built locally in parallel; merge remains gated on website MVP sign-off, completion of P7, and a full green Playwright run, followed by owner approval. ADR-017 delegated mode is decided, not an assumption: Many forwards all inbound messages for delegated channels and does not run its own AI or takeover controls; the SaaS owns reply generation and handoff. ADR-007 hosting and ADR-008 billing remain OPEN and gate staging and paid plans only, not this isolated branch.

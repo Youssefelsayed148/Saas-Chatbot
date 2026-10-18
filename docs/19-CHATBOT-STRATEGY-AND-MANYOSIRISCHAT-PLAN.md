@@ -1,3 +1,5 @@
+> Contract v1 in docs/17 and the approved Phase 6 plan supersede older draft language in this decisions record.
+
 # Chatbot strategy and ManyOsirisChat plan (decisions record)
 
 Status: DRAFT for owner review after testing. Written 2026-10-17 from the triage session.

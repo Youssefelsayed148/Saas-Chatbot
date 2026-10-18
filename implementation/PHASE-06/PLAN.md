@@ -1,6 +1,6 @@
 # Phase 6 plan: ManyOsirisChat channel (delegated mode, MVP)
 
-Status: DRAFT v1 for owner review, 2026-10-18. Contract: docs/17 (v1). Decisions record: docs/19. ADRs: ADR-002, ADR-015, ADR-016, ADR-017, ADR-019.
+Status: APPROVED v1, 2026-10-18. Contract: docs/17 (v1). Decisions record: docs/19. ADRs: ADR-002, ADR-015, ADR-016, ADR-017, ADR-019.
 Attach this file together with `AGENT-PROMPT.md` (same folder) when starting the SaaS agent.
 
 ## 1. Branch and parallel-work rules (owner decision 2026-10-18)
