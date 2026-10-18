@@ -82,3 +82,29 @@ Total: **102 passed**. No existing website tests or fixtures were changed.
 
 - Main worktree read-only strict mypy check, using shared targets present on `main`. Exact PowerShell command: `$env:MYPY_CACHE_DIR = Join-Path $env:TEMP 'phase6-main-mypy-cache'; & 'D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai-phase6\.venv\Scripts\python.exe' -m mypy --strict --cache-dir $env:MYPY_CACHE_DIR apps/api/app/db/models/knowledge.py apps/api/app/db/models/chat.py apps/api/app/jobs/runner.py apps/api/app/main.py`. Result: **3 errors**, matching the P6 worktree diagnostics in `apps/api/app/knowledge/ingest.py`: `os.setsid` line 112, `os.killpg` line 127, and `signal.SIGKILL` line 127. Main worktree remained clean.
 - Post-acceptance coverage review: all 26 requested P6-02 assertions map to tests in `apps/api/tests/test_channel_events.py`; no additional tests were needed.
+
+### Additional website-path verification
+
+- `Conversation.source` is a `Text` column and has no source check constraint in the model or migrations. Application assignments found by code search are `website` (widget), `playground` (playground), and `channel` (Many inbound). The column can technically store other text values. The previous handoff guard blocked every non-website source; the initial P6 edit enabled unknown values. The guard now allows only `website` and `channel`, preserving the previous behavior for `playground` and all other values. Regression: `apps/api/tests/test_handoff.py::test_unknown_conversation_source_keeps_handoff_disabled`.
+- The added English and Arabic `unsupported` strings are `CANNED` reply templates, not model prompt content. They are called from `channel_chat_turn` only, and `SYSTEM_TEMPLATE` is unchanged. A fixed website-input prompt digest was captured from `main` and checked in `apps/api/tests/test_chat.py::test_system_prompt_matches_main_bytes_for_fixed_website_input`: SHA-256 `aebc54a6ea68098e978211932bfa7ef50eca4933b8cb5745ad92749fdf240664`.
+- New regression tests: **2 passed**. Ruff on the changed Python files: **passed** (`ruff check --no-cache`).
+- The first restricted baseline attempt failed during `test_conversations.py` fixture setup with `KNOWLEDGE_EMPTY`; the permission-enabled rerun passed. Exact PowerShell loop from `apps/api`: `$env:TEST_DATABASE_URL = 'postgresql://test:test@127.0.0.1:55462/phase6'; $pytest = 'D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai-phase6\.venv\Scripts\python.exe'; $files = @('test_conversations.py','test_conversations_view.py','test_inbox_list.py','test_group_0_inbox.py','test_contacts.py','test_analytics.py','test_quotas.py','test_tenant_route_matrix.py','test_platform.py','test_platform_ops.py','test_create_platform_staff.py','test_widget_public.py','test_widget_leads.py','test_widget_appearance.py'); foreach ($file in $files) { & $pytest -m pytest "tests/$file" -q -p no:cacheprovider --basetemp=".pytest-tmp-phase6-website-checks"; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } }`. The verified 14-file baseline used the disposable database one file per process:
+
+| File | Result |
+| --- | --- |
+| `test_conversations.py` | 13 passed |
+| `test_conversations_view.py` | 5 passed |
+| `test_inbox_list.py` | 5 passed |
+| `test_group_0_inbox.py` | 16 passed |
+| `test_contacts.py` | 1 passed |
+| `test_analytics.py` | 6 passed |
+| `test_quotas.py` | 12 passed |
+| `test_tenant_route_matrix.py` | 7 passed |
+| `test_platform.py` | 9 passed |
+| `test_platform_ops.py` | 4 passed |
+| `test_create_platform_staff.py` | 2 passed |
+| `test_widget_public.py` | 14 passed |
+| `test_widget_leads.py` | 5 passed |
+| `test_widget_appearance.py` | 3 passed |
+
+Total: **102 passed**.
