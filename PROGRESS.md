@@ -2731,3 +2731,90 @@ carried over from any prior claim): 13 (conversations) + 63 (channel suites)
 + 30 (chat/handoff/route_matrix) + 8 (startup_guard) = **114 passed, 0 failed**.
 The remaining 10 baseline files of the 14-file website set are re-verified in
 the P6-06 full-suite run, not claimed here.
+
+## 2026-10-19 — New session: Phase 6 Step 1 gate PASSED (fresh full numbers)
+
+Read in order: AGENTS.md, implementation/PHASE-06/PLAN.md, PROGRESS.md (P6
+entries), docs/17, `git log --oneline main..HEAD` (16 commits, HEAD `7ac8353`).
+Worktree `SAAS-chats-ai-phase6`, branch `feature/phase-6-channels`; tests via
+`.venv/Scripts/python.exe` (WSL interop, WSLENV passthrough); `import app`
+resolves inside this worktree. No Docker, push, merge, or credential read.
+
+Baseline command (one pytest process per file, from apps/api):
+`TEST_DATABASE_URL=postgresql://test:test@127.0.0.1:55462/phase6` (fixture uses
+`phase6_test`; verified 0 users before the run) plus `ENVIRONMENT=test
+CHAT_STUB_MODEL=true EMBEDDING_TEST_STUB=true`:
+`python.exe -m pytest -q -p no:cacheprovider tests/<file> --tb=short`.
+
+1. 14-file baseline (all exit 0): test_conversations.py 13; test_conversations_view.py 5;
+   test_inbox_list.py 5; test_group_0_inbox.py 16; test_contacts.py 1; test_analytics.py 6;
+   test_quotas.py 12; test_tenant_route_matrix.py 7; test_platform.py 9; test_platform_ops.py 4;
+   test_create_platform_staff.py 2; test_widget_public.py 14; test_widget_leads.py 5;
+   test_widget_appearance.py 3. **Total 102 passed, 0 failed, 0 skipped** (existing
+   Starlette/httpx deprecation warning only). Website tests unchanged.
+
+2. Five channel suites vs counts accepted at P6-01/P6-02/P6-03:
+   test_channels.py 7 (=accepted 7); test_channel_migrations.py 1 (=1);
+   test_channel_events.py 12 (=12); test_channel_outbound.py 27 (=27);
+   test_channel_outbound_unit.py 16 (=16). Total 63 (=accepted 63). No drift.
+
+3. Website prompt digest test:
+   `apps/api/tests/test_chat.py::test_system_prompt_matches_main_bytes_for_fixed_website_input`
+   (fixed SHA-256 of the website `system_prompt`). PASSED this session both
+   standalone (1 passed in 0.52s) and inside the full `test_chat.py` file run
+   (17 passed in 188.03s).
+
+4. Requested git output (from the worktree):
+   - `git status --short` — (empty; clean)
+   - `git status --ignored --short | grep p6_` — (no matches)
+   - `git ls-files | grep p6_` — (no matches)
+   - `git show --stat 7ac8353` — `PROGRESS.md | 81 ++++++ 1 file changed, 81 insertions(+)`
+     ("test: verify P6-03 against the disposable database in-session")
+   - `git worktree list` — main worktree `SAAS-chats-ai` on `main` @5c4d253;
+     worktree entry `.../SAAS-chats-ai-phase6` @7ac8353 [feature/phase-6-channels]
+     (listed "prunable" only because the stored gitdir is the Windows-style path;
+     the worktree is intact and in use — pointer not touched per owner rule).
+
+5. P6-03 decision-to-test map (D8/D9 + no-AI-fallback), file::test per behavior
+   (paths from repo root; all passed this session):
+
+   D8 — outbound `channel_send`:
+   | Behavior | Test |
+   |---|---|
+   | Enqueue on AI reply / handoff/busy/text-only reply | `tests/test_channel_outbound.py::test_channel_pipeline_enqueues_final_replies` |
+   | Enqueue on agent reply; internal notes never sent | `tests/test_channel_outbound.py::test_agent_reply_pause_atomic_enqueue_notes_and_tenant_isolation` |
+   | 409 CONNECTION_PAUSED on paused OR revoked agent reply (nothing stored) | `tests/test_channel_outbound.py::test_agent_reply_pause_atomic_enqueue_notes_and_tenant_isolation` (asserts code) |
+   | Paused/revoked at job time (send refused) | `tests/test_channel_outbound.py::test_paused_at_job_time` |
+   | Signed POST per docs/17 §5.1 to stored `many_base_url` only | `tests/test_channel_outbound.py::test_success_duplicate_current_secret_rotation_and_no_text_logs`; `tests/test_channel_outbound_unit.py::test_fake_many_real_streaming_client_and_signature` (FakeMany verifies signatures) |
+   | No redirects; 5 s connect / 15 s read; 64 KB response cap | `tests/test_channel_outbound_unit.py::test_transport_cap_and_no_redirects`; `tests/test_channel_outbound.py::test_redirect_response_cap_and_invalid_ack` |
+   | Send-time host validation / DNS pin to global IP | `tests/test_channel_outbound.py::test_send_time_target_rejection`; `tests/test_channel_outbound_unit.py::test_non_global_dns_answers_are_rejected`, `::test_invalid_target_rejected_before_dns`, `::test_dns_pin_and_date_retry_after` |
+   | Retry 5xx/timeout/network/429, exponential backoff, same `message_id`, Retry-After honored | `tests/test_channel_outbound.py::test_retry_then_success_with_same_id` (500/ReadTimeout/ConnectError/(429,120) params); date-form Retry-After in `::test_dns_pin_and_date_retry_after` |
+   | Permanent 4xx → failed with readable code, not retried | `tests/test_channel_outbound.py::test_permanent_4xx_and_callback_reason_not_retried`; generic 401 in `::test_redirect_response_cap_and_invalid_ack` |
+   | Retry exhaustion → `many_unreachable` + degraded health | `tests/test_channel_outbound.py::test_retry_exhaustion` |
+   | Duplicate send idempotency (unique job key; rerun skips) | `tests/test_channel_outbound.py::test_success_duplicate_current_secret_rotation_and_no_text_logs`; `::test_job_unique_key_and_foreign_job_cannot_send` |
+   | Ack id stored as `channel_message_id`; `pending` until `message.status` | `tests/test_channel_outbound.py::test_success_duplicate_current_secret_rotation_and_no_text_logs` |
+   | Long reply split at sentence boundaries, ordered parts | `tests/test_channel_outbound.py::test_long_reply_order_and_enqueue_idempotency`; `tests/test_channel_outbound_unit.py::test_split_sentence_boundaries_and_unbroken_text` |
+   | Signs with CURRENT secret at send time (incl. job queued before rotation) | `tests/test_channel_outbound.py::test_job_queued_before_rotation_signs_with_new_secret`; `::test_success_duplicate_current_secret_rotation_and_no_text_logs` |
+   | 0019 migration round trip + one outbox job per tenant/message | `tests/test_channel_outbound.py::test_send_migration_round_trip_and_unique_message_key` |
+   | No message text/secrets in logs or job errors | `tests/test_channel_outbound.py::test_success_duplicate_current_secret_rotation_and_no_text_logs` |
+
+   D9 — delivery status:
+   | Behavior | Test |
+   |---|---|
+   | Monotonic rank pending<sent<delivered<read; failed only below delivered | `tests/test_channel_events.py::test_message_status_is_monotonic_and_health_ignores_old_events` |
+   | Out-of-order / duplicate status callbacks harmless | `tests/test_channel_outbound.py::test_status_callbacks_and_out_of_order`; `tests/test_channel_events.py::test_message_status_is_monotonic_and_health_ignores_old_events` |
+   | `window_closed`/`template_required`/`recipient_unreachable` not retried, readable reason | `tests/test_channel_outbound.py::test_permanent_4xx_and_callback_reason_not_retried` (parametrized 3 codes); `::test_status_callbacks_and_out_of_order` (window_closed); `apps/web/tests/channel-delivery.unit.mjs` (readable reasons) |
+   | Delivery state surfaced per message in inbox; hidden for website; paused composer disabled | `apps/web/tests/channel-delivery.spec.ts`; `apps/web/tests/channel-delivery.unit.mjs` |
+   | Website agent-reply response/storage unchanged, no outbox | `tests/test_channel_outbound.py::test_website_agent_reply_keeps_response_and_has_no_outbox` |
+
+   No AI fallback:
+   | Behavior | Test |
+   |---|---|
+   | Human mode: inbound stored, no AI reply (silent) | `tests/test_channel_events.py::test_human_mode_is_silent_and_resolved_conversation_reopens_in_ai_mode` |
+   | `ai_enabled=false`: stored, `waiting_human`, agents can still reply | `tests/test_channel_events.py::test_ai_disabled_and_unsupported_hourly_reply_rules` |
+   | Paused: inbound accepted+stored, no AI, no outbound | `tests/test_channel_events.py::test_event_duplicate_replay_paused_acceptance_and_atomic_enqueue`; `tests/test_channel_outbound.py::test_paused_at_job_time` |
+   | Quota/provider failure → stored handoff/busy reply (never a fake success) | `tests/test_channel_events.py::test_quota_and_provider_failures_store_handoff_replies_without_logging_text` |
+   | Many-side "no AI fallback when SaaS unreachable" is a Many requirement (docs/17 §1.4/§6): NOT testable in this repo; contract requirement carried to P6-06 handover/MANY-AGENT-PROMPT check |
+
+   Gate verdict: GO — baseline 102/102, channel suites match accepted counts,
+   digest green. Proceeding to P6-05.
