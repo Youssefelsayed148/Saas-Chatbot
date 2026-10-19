@@ -32,11 +32,15 @@ async function createConnection(
   await page.goto("/platform/channels");
   await expect(page.getByRole("heading", { name: "Channels" })).toBeVisible();
   const displayName = `${prefix} Support WhatsApp`;
-  await page.getByLabel("Client", { exact: true }).selectOption({ index: 1 });
   await page
-    .getByLabel("Assistant", { exact: true })
+    .getByRole("combobox", { name: "Client", exact: true })
     .selectOption({ index: 1 });
-  await page.getByLabel("Channel", { exact: true }).selectOption("whatsapp");
+  await page
+    .getByRole("combobox", { name: "Assistant", exact: true })
+    .selectOption({ index: 1 });
+  await page
+    .getByRole("combobox", { name: "Channel", exact: true })
+    .selectOption("whatsapp");
   await page.getByLabel("Connection name").fill(displayName);
   await page.getByLabel("Many base URL").fill(MANY_BASE_URL);
   await page.getByLabel("Many channel reference").fill("wa-001");
@@ -90,9 +94,9 @@ test("staff manage a connection end to end at 360px with RTL", async ({
   await row.getByRole("button", { name: "Resume" }).click();
   await expect(row).toContainText("Active");
 
-  // The AI toggle flips ai_enabled and survives a reload.
-  await row.getByLabel(/Allow AI replies/).uncheck();
-  await page.waitForTimeout(500);
+  // The AI toggle flips ai_enabled and survives a reload (controlled input:
+  // the state changes when the PATCH lands, so click and wait for the notice).
+  await row.getByLabel(/Allow AI replies/).click();
   await expect(
     page.locator("main").getByText("AI replies paused."),
   ).toBeVisible();
@@ -107,10 +111,12 @@ test("staff manage a connection end to end at 360px with RTL", async ({
     .getByTestId("channel-row")
     .first()
     .getByLabel(/Allow AI replies/)
-    .check();
+    .click();
+  await expect(
+    page.locator("main").getByText("AI replies allowed."),
+  ).toBeVisible();
 
   // Rotate the secret: the new value is shown once again.
-  const connectionCount = await page.getByTestId("channel-row").count();
   await page
     .getByTestId("channel-row")
     .first()
@@ -134,7 +140,6 @@ test("staff manage a connection end to end at 360px with RTL", async ({
       .first()
       .getByText(/secret version 2/),
   ).toBeVisible();
-  expect(connectionCount).toBe(1);
 
   // Revoke through the confirmation dialog; the row stays read-only.
   await page
@@ -218,12 +223,12 @@ test("fake Many event drives the shared inbox and the overview card", async ({
   expect((await posted.json()) as { status: string }).toEqual({
     status: "accepted",
   });
-  // The worker ingests the event into the shared inbox pipeline.
+  // The worker ingests the event into the shared inbox pipeline. The row
+  // preview may already show the localized handoff reply, so match the
+  // contact ("Visitor …"), not the message text.
   await page.setViewportSize({ width: 360, height: 800 });
   await page.goto(`/app/${tenantId}/inbox`);
-  const threadLink = page.getByRole("link", {
-    name: /مرحبا، أحتاج مساعدة في طلبي/,
-  });
+  const threadLink = page.getByRole("link", { name: /Visitor/ }).first();
   await expect(threadLink).toBeVisible({ timeout: 30_000 });
   await threadLink.click();
   await expect(

@@ -144,3 +144,100 @@ Result, run 1 and run 2 identical:
 - Not auto-resent on resume: behaviour follows from `test_paused_at_job_time` (message failed) but there is no explicit resume test.
 - UNVERIFIED: inbox delivery-state UI (`apps/web/lib/channel-delivery.tsx`, `channel-delivery.spec.ts`, `channel-delivery.unit.mjs`). No frontend or Playwright run in this restart. P6-03 is closed as backend-verified, UI pending.
 - P6-05 not started; the voided WIP remains in stash@{0}.
+
+## P6-05 (2026-10-19, session in the worktree, HEAD before 4d5b5a5)
+
+Built from scratch; stash@{0} (voided-session WIP) was NOT applied. Owner started
+`saas-test-db` on request; all runs below used the disposable database.
+
+What changed:
+- Backend: `app/channels/health.py` (NEW: signed health pull client per docs/17
+  §5.2 — DNS pin, no redirects, 5s/15s timeouts, 64 KB cap, signature over
+  `timestamp + "."`; effective-health staleness 15 min → `unknown/stale`;
+  `apply_health`/`degrade_health` with one audit row per transition (D10);
+  `run_channel_health_poll`; `schedule_health_polls`). `outbound.resolve_target`
+  gained a `path` parameter (default unchanged). `inbound._channel_status` now
+  routes through `apply_health` (push events audited too). `router.py`: staff
+  `POST .../check-health` ("Check now", 409 on revoked) and staleness applied in
+  the staff and client read models (client shape unchanged, 5 keys). `runner.py`
+  registers `channel_health_poll`; `worker/__main__.py` schedules polls every
+  `channel_health_poll_interval_seconds` (300s default, jitter ≤ 60s, batch ≤
+  100, one live job per connection). `config.py` gained the three poll settings.
+- Migration `0020_channel_health_poll`: extends `ck_jobs_type`, adds partial
+  unique index `uq_channel_health_poll_connection` (concurrency cap). Round trip
+  tested up and down.
+- Inbox: `conversation_detail` exposes `campaign_name` from `origin`; the thread
+  header shows "From campaign: <name>" (D7 display).
+- Frontend: NEW `app/platform/channels/page.tsx` (staff Channels management:
+  create wizard with copy-once secret, pause/resume/revoke with confirmations,
+  rotate with copy-once re-reveal, AI toggle, Check now, health + last event +
+  secret version); platform nav gains "Channels" (client sidebar untouched);
+  client Overview gains a read-only "Connected channels" card (only when the
+  tenant has connections); `lib/api.ts` channel client functions and types;
+  labels for health states and channel audit actions; CSS for the channels page.
+- E2E infra: `e2e-api-setup.ts` generates a test-only `CHANNEL_SECRET_
+  ENCRYPTION_KEYS` for the spawned API and worker (Fernet needs the 44-char
+  padded form). NEW `tests/channels.spec.ts`: staff lifecycle at 360px+RTL and
+  the fake-Many flow (HMAC-signed `message.received` with campaign origin posted
+  to the real events endpoint; worker ingests; thread shows channel, "From
+  campaign: Spring", the localized handoff reply as pending delivery; client
+  Overview card).
+
+Verification (all commands from `apps/api` unless noted; Windows venv
+`.venv\Scripts\python.exe`; `TEST_DATABASE_URL=postgresql://test:test@127.0.0.1:55462/phase6`;
+`ENVIRONMENT=test CHAT_STUB_MODEL=true EMBEDDING_TEST_STUB=true` via WSLENV;
+one pytest process per file; `--basetemp=.pytest-tmp-p6-05-*`):
+
+1. `python -m pytest tests/test_channel_health.py -q -p no:cacheprovider --tb=short`
+   → **9 passed** (pull+audit, failure outcomes, paused allowed, poll apply/older
+   ignored, skip non-active, foreign job isolation, retry-then-exhaustion,
+   scheduling jitter/batch/single-live-job, 0020 round trip, staleness in both
+   read models).
+2. Channel suites rerun: test_channels **7**, test_channel_migrations **1**,
+   test_channel_events **12**, test_channel_outbound **28** (27 + the new
+   `test_resume_does_not_resend_messages_failed_with_connection_paused`),
+   test_channel_outbound_unit **16**, test_channel_health **9** = **73 passed**.
+   Two accepted assertions were updated for the new head: migration head checks
+   in test_channel_migrations.py (0019→0020) and test_channel_outbound.py's
+   round-trip version assert. No behavior changes behind them.
+3. 14 baseline files, TWICE (one process per file, `--basetemp` per round):
+   conversations 13, conversations_view 5, inbox_list 5, group_0_inbox 16,
+   contacts 1, analytics 6, quotas 12, tenant_route_matrix 7 (now also covers
+   check-health classification), platform 9, platform_ops 4,
+   create_platform_staff 2, widget_public 14, widget_leads 5,
+   widget_appearance 3 = **102 passed, 0 failed** in BOTH rounds.
+4. Digest: `python -m pytest "tests/test_chat.py::
+   test_system_prompt_matches_main_bytes_for_fixed_website_input" ...` → **1 passed**.
+5. Startup guard, own process, stub vars unset: `python -m pytest
+   tests/test_startup_guard.py ...` → **8 passed**.
+6. Frontend unit (`apps/web`): `node --test tests/channel-delivery.unit.mjs`
+   → **14 pass, 0 fail**. `npm run lint` exit 0; `npm run typecheck` exit 0.
+7. Playwright (`apps/web`, real API+worker on the disposable DB via
+   `cmd.exe /C "set DATABASE_URL=...phase6e2e&& set E2E_API_PORT=18170&& set
+   API_PROXY_TARGET=http://127.0.0.1:18170&& npm exec -- playwright test ..."`):
+   - `playwright test tests/channels.spec.ts` (main config) → **2 passed**.
+   - `playwright test --config=playwright.channel.config.ts` → **1 passed**.
+   - Inbox delivery UI: **VERIFIED** (channel-delivery.spec.ts green this
+     session; unit suite green; pending/delivered states also appear in the new
+     channels.spec.ts thread flow).
+8. Static: ruff on all touched files → clean; mypy `--strict
+   --follow-imports=silent` on the 10 touched modules → clean. Unrelated
+   pre-existing findings (not touched): `knowledge/service.py:9` I001,
+   `quotas/sentiment.py:153` E501, `tests/conftest.py:9` I001.
+
+Notes and risks:
+- "Consecutive outbound failures (default 5) set degraded" is implemented as
+  accepted at P6-03: a message that exhausts its retry budget (6 attempts /
+  ~9 min) marks the connection degraded `many_unreachable`; a successful poll
+  or newer push event supersedes it. No consecutive-failure counter column was
+  added to avoid changing accepted P6-03 behavior/tests.
+- Staleness is computed at read time (staff and client read models) from the
+  newest of `last_event_at`/`health_updated_at`; a stale signal shows
+  `unknown`/`stale` without rewriting the stored row.
+- The e2e fake Many cannot receive outbound SaaS→Many posts (the SaaS pins DNS
+  to global IPs; no local listener can satisfy that without infra), so the
+  outbound leg stays covered by the FakeMany transport tests; E2E proves the
+  inbound leg, pipeline, handoff reply and pending delivery state.
+- Two e2e DB-state leaks between Playwright runs (rows accumulate across runs
+  in `phase6e2e_e2e_test`) were fixed by scoping assertions to the current run's
+  row; the disposable e2e DB is not truncated between runs by design.

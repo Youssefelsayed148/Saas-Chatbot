@@ -21,7 +21,8 @@ interface ServerHandle {
 
 /** Test-only Fernet key for P6 channel secret encryption; never persisted. */
 function channelKey(): string {
-  return randomBytes(32).toString("base64url");
+  // Fernet keys are exactly 44 url-safe base64 characters (padding included).
+  return `${randomBytes(32).toString("base64url")}=`;
 }
 
 export async function startServer(): Promise<ServerHandle> {

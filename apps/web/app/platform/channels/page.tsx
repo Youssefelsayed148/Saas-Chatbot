@@ -171,7 +171,7 @@ export default function PlatformChannelsPage() {
       try {
         const rows = wizardTenant ? await api.listBots(wizardTenant, true) : [];
         if (!cancelled) {
-          setBots(rows.filter((bot) => bot.status === "active"));
+          setBots(rows.filter((bot) => bot.status !== "archived"));
           setWizardBot("");
         }
       } catch {
