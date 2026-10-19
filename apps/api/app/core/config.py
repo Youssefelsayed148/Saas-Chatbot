@@ -74,7 +74,9 @@ class Settings(BaseSettings):
     chat_openai_api_key: SecretStr | None = None
     chat_openai_model: str = ""
     # Comma-separated Fernet keys, newest first; never log or expose this field.
-    channel_secret_encryption_keys: SecretStr | None = None
+    # repr=False: never render the key name or value in Settings.__repr__
+    # (the repr must not leak channel secret material, docs/17 §7 / ADR-020).
+    channel_secret_encryption_keys: SecretStr | None = Field(default=None, repr=False)
     chat_max_tokens: int = Field(default=700, ge=64, le=2000)
     # Message retention (docs/14 §7): configurable days; the worker purges.
     retention_days: int = Field(default=30, ge=1, le=365)
