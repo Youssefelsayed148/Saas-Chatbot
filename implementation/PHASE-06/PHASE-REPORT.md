@@ -1,23 +1,78 @@
-﻿# Phase 6 report — STOPPED
+﻿# Phase 6 report
 
-Status: STOPPED — required 14-file baseline is below 102 passed. The first website baseline file fails during knowledge-corpus setup on both `feature/phase-6-channels` and clean `main` (`KNOWLEDGE_EMPTY`); fixing it would touch out-of-scope website knowledge behavior. Per the run hard stop, no further Phase 6 tickets were started.
+Status: tickets P6-05, P6-05b and P6-06 are built and verified on
+`feature/phase-6-channels` in the phase worktree. NOT mergeable: the owner has
+not signed off, P7 is incomplete, no staging canary has been run, and the
+Many-side delegated mode does not exist yet. See "Remaining gaps" below.
 
-| Ticket | Result | Commit range |
+| Ticket | Result | Commits |
 |---|---|---|
-| P6-00–02 | Done in existing branch history | `cd3b02d..e0c5526` (see `git log` for per-ticket commits) |
-| P6-03 | Partial; outbound implementation/tests exist in the worktree, but baseline/contract re-verification did not complete | Uncommitted; no new commit |
-| P6-05 | Skipped due hard stop | — |
-| P6-02b | Skipped | — |
-| P6-05b | Skipped | — |
-| P6-06 | Skipped | — |
-| P6-04 | Not built, as instructed | — |
+| P6-00–02 | Done in existing branch history | through `e0c5526` |
+| P6-03 | Backend accepted on verification evidence (P6-03 status in PROGRESS.md); delivery UI verified by Playwright + unit tests | historical |
+| P6-05 | Done: health pull/push, poll job, staleness, staff Channels UI, client Overview card | `5eba256` + `c1c20f7` |
+| P6-05b | Done: unified inbox (channel filter/badges/connection names) + insights by channel + contacts channels | `6996132` + `398ed3c` |
+| P6-06 | Done: docs/17 v1 contract suite (17 tests) + docs (docs/16 runbook, docs/17 deviation note, ADR-020), PHASE-REPORT reconciled | `a9a7066` + docs commit |
+| P6-02b | Optional, not built (campaign opening message is displayed only, D7 display-only) | — |
+| P6-04 | Not built, per instruction (follow-ups/broadcasts deferred) | — |
 
-Verification: requested 14-file baseline: NOT COMPLETE; first file `test_conversations.py` = 0 passed, 1 setup error on feature branch and reproduced on clean `main`. The initially supplied SQLAlchemy-style URL failed because the fixture's direct psycopg connection rejects that URL form; retry used `postgresql://test:test@127.0.0.1:55462/phase6_run_20261018`, whose fixture created `phase6_run_20261018_test`. Channel suites: NOT RUN in this resumed attempt. Full API: NOT RUN. Frontend lint/typecheck/unit: NOT RUN. Full Playwright: NOT RUN.
+The earlier STOPPED finding (corpus fixture `KNOWLEDGE_EMPTY` at baseline) was
+environmental; the Step 1 gate after the clean restart recorded 102 passed × 2
+rounds and P6-05 closed it (PROGRESS.md).
 
-Website regression proof already recorded in `PROGRESS.md`: `visitor_chat_turn` AST is identical to `main`; the website agent reply path retains its original checks/storage/response, with only channel-specific branches added. P6-03 diff is limited to channel work; no existing website test was edited. The baseline failure itself reproduces on `main`.
+## Remaining gaps (honest list)
 
-Decisions made unattended: no manual truncation of the existing `phase6_test` database after it was found to contain eight users and the first attempt hit an email collision/deadlock; a fresh disposable `_test` DB on the approved server was used for diagnosis. Its first test demonstrated the blocking pre-existing failure, so the hard stop was applied. No deviation to website behavior or P6-04 scope.
+1. **"No AI fallback" is a Many-side rule** (docs/17 §1.4 item 4). This repo
+   cannot prove Many's behavior. SaaS-side evidence is only that a message
+   that exhausts its retry budget fails with `many_unreachable` and no
+   alternate send path exists (`test_channel_contract.py::test_e3_...`).
+   Verifying Many's responsibility needs the Many workstream tests
+   (MANY-AGENT-PROMPT.md item 1 / 12.5 test list).
+2. **No staging end-to-end with a real test number.** The canary in docs/16 is
+   a plan; it needs owner approval, ADR-007 hosting, and Many-side delegated
+   mode. The E2E here is inbound-only against the fake peer: the SaaS pins
+   outbound DNS to global IPs, so the e2e cannot receive SaaS→Many sends; that
+   leg is covered by the FakeMany transport tests instead.
+3. **Contract scope:** the FakeMany suite pins docs/17 v1 (signing, skew,
+   dedupe, paused, revoked, pull, retries, statuses) but cannot pin Many-side
+   behaviors (forwarding retries up to 24 h, heartbeat interval, Meta error
+   mapping) — they are handover requirements, not SaaS tests.
+4. **ADR-020 needs owner sign-off** (retry-budget exhaustion vs the literal
+   consecutive-failure wording in docs/17 §6). The built behavior is
+   documented in docs/17 and DECISIONS.md; changing it later is small and
+   reversible.
+5. **Website tests were not touched**, but the Playwright env now exposes
+   `E2E_WEB_PORT` and sets `ENVIRONMENT=test` on the spawned worker (harness
+   fixes without behavior change to accepted suites).
+6. **Owner-known open items** from PLAN §9 stand (rate limit values, reply
+   length constants per channel, whether P6-02b should still be built).
+7. **No merge claim:** merge gates remain the PLAN §1 rules (website MVP
+   sign-off, P7 completion, full green Playwright + owner approval, then
+   `git merge --no-ff`).
 
-Known limitations / parking: resolve the `test_conversations.py` corpus setup failure on main (or provide a clean, owner-approved baseline environment); then resume P6-03 review and required checks, followed by P6-05, optional P6-02b, P6-05b, and P6-06. No Phase 6 completion or staging canary is claimed.
+## Playwright delivery states covered (P6)
 
-Review first: existing uncommitted P6-03 files listed by `git status --short`; `PROGRESS.md`; this report. Before merge: website MVP sign-off, P7, a full green Playwright run, Many-side staging readiness, and owner approval.
+- Staff Channels page lifecycle at 360px + RTL (create, pause/resume, AI
+  toggle, rotate, revoke) — `channels.spec.ts` (commit `c1c20f7`).
+- Inbound leg with fake Many: signed campaign event → thread with channel
+  badge, "From campaign: Spring", pending delivery, client Overview card —
+  `channels.spec.ts`; delivery states pending→delivered in
+  `channel-delivery.spec.ts` and the unit suite — same commit.
+- Mixed-channel inbox + insights + contacts at 360px + RTL (badges, filter,
+  campaign note, connection note, insights table/campaign list match) —
+  `channel-insights.spec.ts` (commit `398ed3c`).
+
+## Verification summary
+
+Exact commands and counts per ticket are in PROGRESS.md:
+- Step 1 gate after clean restart: 14 baseline files × 2 rounds = 102 passed
+  each round; channel suites 63; startup guard 8; digest 1.
+- P6-05: health file 9; channel suites 73 total; frontend unit 14/14; lint +
+  typecheck exit 0; two Playwright runs green.
+- P6-05b: API 9 new; affected suites unchanged (6/5/1/5/16/6); node unit 8+14;
+  lint/typecheck exit 0; new Playwright spec 1 passed.
+- P6-06: contract suite 17; channel suites 7+1+12+28+16+9+17 = 90; final
+  massive re-run recorded below in PROGRESS.md (final verification section).
+
+Not mergeable until: owner sign-off on ADR-020 + P6-05b scope, P7 completion,
+full green Playwright on the final head, staging canary with the Many side in
+delegated mode, and explicit owner approval.

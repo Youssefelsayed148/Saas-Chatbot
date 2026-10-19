@@ -22,6 +22,7 @@ Change a decision only by adding a dated entry below with rationale, alternative
 | ADR-017 | ManyOsirisChat channel contract: HMAC-SHA256 signed JSON both ways, per-connection secret, timestamp window, idempotent event ids, async processing via jobs. Many owns Meta tokens, webhook verification, 24-hour window and templates; the SaaS owns bot, conversation, inbox and CRM for linked connections. Mapping (tenant+bot to Many channel) is explicit and staff-created. Many must run linked connections in "delegated" mode (no bot or takeover of its own). Spec in docs/14 §18 and docs/17 | Approved 2026-10-12 (delegated-mode assumption to confirm when Many's side is designed) |
 | ADR-018 | Two dashboards: (1) client dashboard per chatbot (overview, inbox, contacts, knowledge, playground, settings, install, channels, follow-ups, team) and (2) platform admin console for staff to manage all clients. A basic admin console (client list, client detail, staff onboarding through the shared ProvisioningService) is built in P4 so first clients can be onboarded; quotas, platform analytics, connection health and audit review follow in P7 | Approved 2026-10-12 |
 | ADR-019 | Hybrid RAG retrieval, embeddings and relevance gate; docs/RAG-PLAN-v2.md plus execution overrides | Approved RAG phase; renumbered 2026-10-16 by owner request |
+| ADR-020 | Channel health degradation model: retry-budget exhaustion instead of a consecutive-failure counter; cleared by a newer health signal; one failed send can flip health. Recorded as a deviation against docs/17 §6 / PLAN D10 wording during P6-06 | Proposed by agent 2026-10-19 on the P6 branch evidence; owner sign-off pending |
 
 ## 2026-10-12 — ADR-003 approval
 Approver: product owner. Rationale: one standalone deployment with clear module boundaries and tenant isolation, minimal infrastructure. Alternatives: historical multi-service control plane and cross-product architecture rejected for MVP. Impact: `apps/web`, `apps/api`, local Compose PostgreSQL.
@@ -67,3 +68,25 @@ no real calls, merge, tag, deployment or hosting/billing decision authorized.
 
 ## 2026-10-18 - Phase 6 isolated build and delegated mode
 Approver: product owner. Rationale: build P6 on `feature/phase-6-channels` in an isolated worktree while website MVP testing continues. Alternatives: wait for website closeout before starting P6 (deferred for the build, retained as a merge gate). Impact: P6 may be built locally in parallel; merge remains gated on website MVP sign-off, completion of P7, and a full green Playwright run, followed by owner approval. ADR-017 delegated mode is decided, not an assumption: Many forwards all inbound messages for delegated channels and does not run its own AI or takeover controls; the SaaS owns reply generation and handoff. ADR-007 hosting and ADR-008 billing remain OPEN and gate staging and paid plans only, not this isolated branch.
+
+## 2026-10-19 - ADR-020: channel health degradation is retry-budget exhaustion (P6-06 deviation record)
+Approver: pending owner sign-off (recorded by the P6-06 agent run so the built
+behaviour and the spec cannot drift silently). docs/17 §6 and PLAN D10 said
+"consecutive outbound failures (default 5) set degraded many_unreachable". The
+built implementation (accepted at P6-03 and kept for P6-05b) has no
+consecutive-failure counter column: a single message that exhausts its retry
+budget (6 attempts, exponential backoff, roughly 10 minutes) marks the
+connection degraded with reason `many_unreachable` (evidence:
+`apps/api/tests/test_channel_outbound.py::test_retry_exhaustion` and
+`tests/test_channel_contract.py::test_e1_...`). Alternatives: add a
+`consecutive_send_failures` counter plus a threshold reset (rejected for now:
+new migration column, extra reset logic, and accepted P6-03 tests would need
+editing). What clears the degraded state: any newer health signal — a
+successful §5.2 pull ("Check now" or the 5-minute poll job) or a newer
+`channel.status` push — overwrites the row per the newer-occurred_at rule;
+staleness AFTER 15 minutes without signal shows `unknown/stale` at read time
+without rewriting the row. One message CAN flip health to degraded, and one
+newer signal CAN clear it; a per-message flip is loud enough because the
+failure is already user-visible as a failed message in the inbox. If the owner
+prefers the literal consecutive-failure model, migration 0020 has unused head
+room and the change is small — decide before staging.

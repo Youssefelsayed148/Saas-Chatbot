@@ -241,3 +241,91 @@ Notes and risks:
 - Two e2e DB-state leaks between Playwright runs (rows accumulate across runs
   in `phase6e2e_e2e_test`) were fixed by scoping assertions to the current run's
   row; the disposable e2e DB is not truncated between runs by design.
+
+## P6-05b (2026-10-19, session in the worktree, HEAD before 6996132)
+
+Read-only inspection first (per PLAN ticket): the API already had the inbox
+`channel` filter and per-row `channel`; the web inbox already had the channel
+filter and channel badge; the thread showed "From campaign: <name>" (P6-05);
+handoff analytics had `conversations_by_channel` (website-only) and the
+conversations CSV already carried `channel`. Missing and built:
+
+- Inbox: `connection_name` on channel rows (list) and in the thread detail;
+  shown next to the channel badge and as "Via <name> (channel)" on the thread.
+- Insights: `GET /api/v1/tenants/{tenant}/analytics` gains `channel`
+  (website stays default; a Meta channel value widens the source to
+  `channel`), `channel_breakdown` (conversations, handoff rate, unanswered,
+  median first response, resolved rate per docs/10) and
+  `conversations_by_campaign` (origin.campaign_name counts). Analytics page:
+  channel filter, per-channel table, by-campaign list. Contacts: `channel`
+  filter (identity-based), `channels` column, robots via `ContactOut.channels`,
+  and the export CSV gained the neutralized `channels` column.
+- Channel inbound now publishes the shared inbox SSE event for new visitor
+  messages (`message.created`), so waiting-human inbound is visible to open
+  inboxes (AI-off threads previously never appeared live). Website path
+  unchanged (`append_message` already emitted it).
+- E2E harness: Playwright web port is now `E2E_WEB_PORT` (default unchanged)
+  and the spawned worker gets `ENVIRONMENT=test` like the API (the embedding
+  test stub refuses a non-test environment; without it `reembed_backfill`
+  retried forever and broke knowledge-dependent specs).
+
+Verification (disposable DB `phase6`, Windows venv, one pytest process per
+file, `-q -p no:cacheprovider`):
+- New API tests `tests/test_channel_inbox_insights.py`: **9 passed** (channel
+  filter + connection names, empty channel, tenant A/B isolation, per-channel
+  breakdown, campaigns, channel filter, viewer roles, website-only tenant
+  unchanged, contacts column/filter/export).
+- Affected existing suites unchanged counts: analytics 6, inbox_list 5,
+  contacts 1, conversations_view 5, group_0_inbox 16, handoff 6.
+- New channel events/job coverage after the SSE change: test_channel_events
+  **12 passed**.
+- Node unit tests: `node --test tests/insights.unit.mjs` → **8 pass**;
+  `channel-delivery.unit.mjs` **14 pass** (rerun).
+- Frontend: `npm run lint` exit 0, `npm run typecheck` exit 0.
+- Playwright `tests/channel-insights.spec.ts` (main config): **1 passed**
+  (~60s) — mixed website+whatsapp+instagram at 360px, filter narrows, badges
+  and connection names, campaign + connection on the thread, insights table
+  and campaign list matching the inbox count, contacts column/filter, RTL
+  without horizontal overflow on inbox/analytics/contacts.
+- Ruff + mypy `--strict --follow-imports=silent` on all touched API files:
+  clean.
+
+Commits: `6996132 feat: P6-05b unified inbox and insights by channel`,
+`398ed3c test: P6-05b ...`.
+
+## P6-06 (2026-10-19, HEAD before a9a7066)
+
+- Contract suite `apps/api/tests/test_channel_contract.py` (17 tests) pins
+  docs/17 v1 against the FakeMany transport with a section→test map in the
+  module docstring: §3 HMAC input bytes and ±5-min skew boundary (±299 ok,
+  ±301 rejected) and one generic 401 for every auth failure including
+  revoked; §2 paused (202 stored, no AI, no `channel_send`, agent reply 409
+  `CONNECTION_PAUSED`, resume sends nothing) and revoked (all rejected);
+  secret encrypted at rest and absent from every read model; §4 202
+  accepted/duplicate, 422 signed-malformed, unknown types ignored, job-later
+  processing and idempotent reruns; §5.1 signed outbound with the exact
+  recorded body, contract fields, once-only sends across duplicate job runs,
+  notes/system never sent; §6 same `message_id` across retries, budget →
+  `failed`/`many_unreachable` + degraded health, 429 Retry-After scheduling;
+  §1.4 no SaaS-side fallback (no further job after exhaustion); §5.2 signed
+  empty-body health pull and §4.3 push mapping with older-occurred_at
+  ignored. Confirmed instead of duplicated at P6-02/03/05 files; the
+  "no AI fallback" rule itself is Many-side (docs/17 §1.4 item 4).
+- MANY-AGENT-PROMPT.md compared against docs/17 §9: no blocking mismatch. The
+  only nuance: item 8 says the forwarder reports degraded health "in the
+  dashboard" while docs/17 §6 says the channel reports degraded health — the
+  SaaS-side signal arrives via `channel.status` and the health endpoint, which
+  both exist in the prompt.
+- Docs: docs/17 §6 gained the failure-counter deviation note (ADR-020);
+  ADR-020 added to DECISIONS.md (owner sign-off pending, small reversible
+  change if the owner prefers the literal consecutive-failure model);
+  docs/16 gained the channel runbook (env var names only, migrations
+  0017–0020, canary steps with migration 0020 called out, rollback = pause →
+  revoke → downgrade order).
+- PHASE-REPORT.md reconciled with PROGRESS.md (STOPPED note superseded by the
+  verified P6-05/P6-05b/P6-06 state; remaining gaps listed there, including
+  "no AI fallback" being a Many-side rule with no SaaS-side proof beyond
+  exhaustion and no staging end-to-end with a real number).
+- Commits: `a9a7066 test: docs/17 v1 contract suite ...`, then the docs
+  commit in this run.
+
