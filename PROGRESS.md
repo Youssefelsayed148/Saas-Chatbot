@@ -2650,3 +2650,84 @@ frontend/static checks documented immediately above. It was read to identify
 the discrepancy and left untouched (no overwrite, deletion or commit). The
 successful results above come from actual commands/logs using phase6_test,
 not from that report. No later Phase 6 ticket was started by this run.
+
+## 2026-10-19 — P6-03 resume: environment probe and Step 2 review (new agent session)
+
+Environment probe (new session):
+- Worktree/branch re-verified. The worktree `.git` pointer file contained a
+  Windows-style gitdir path that WSL git could not resolve; it was rewritten to
+  the equivalent `/mnt/d/...` path (metadata only; no repo content touched).
+  Working tree clean; P6-03 exists solely as WIP commit `cd47060`
+  "wip: P6-03 (unverified)"; no uncommitted edits, no untracked files,
+  no `.p6_*` scratch files on disk and none tracked (`git ls-files | grep p6_` = 0).
+- Tests run through the worktree's Windows venv (`.venv/Scripts/python.exe`)
+  via WSL interop; `import app` resolves inside this worktree. Env vars pass
+  into the Windows process only with `WSLENV=TEST_DATABASE_URL/w:ENVIRONMENT/w:CHAT_STUB_MODEL/w:EMBEDDING_TEST_STUB/w`.
+- DB-backed capability probe: from `apps/api`,
+  `TEST_DATABASE_URL=postgresql://test:test@127.0.0.1:55462/phase6_r2` (fixture
+  created `phase6_r2_test`), `ENVIRONMENT=test CHAT_STUB_MODEL=true
+  EMBEDDING_TEST_STUB=true`, `python.exe -m pytest -q -p no:cacheprovider
+  tests/test_conversations.py --tb=short` — exit 0, **13 passed, 1 warning in
+  252.27s**. The prior sessions' blockers (WinError 5 named-pipe denial,
+  psycopg ConnectionTimeout, KNOWLEDGE_EMPTY corpus setup failure) did NOT
+  reproduce in this session. DB-backed verification can proceed here.
+
+Step 2 review of P6-03 (`cd47060`) against PLAN D8/D9 and docs/17 §5.1, §6:
+
+| Item | Status |
+|---|---|
+| Enqueue points: AI reply, handoff/busy reply, text-only notice, agent reply | implemented + covered by `test_channel_outbound.py` |
+| agent_reply 409 CONNECTION_PAUSED (paused or revoked, locked row check) | implemented + covered |
+| Send-time host validation (`_validate_base_url` + global-IP pin), no redirects, trust_env off, connect 5 s / read 15 s, 64 KB response cap | implemented + covered (fake asserts SNI/host/timeouts) |
+| Retry 5xx/timeout/network/429 with exponential backoff + jitter, Retry-After honored (job `retry_after_seconds`), max 6 attempts, then `many_unreachable` + degraded health | implemented + covered |
+| Idempotency: same `message_id` (our message UUID) every attempt, existing-job guard, `channel_message_id` guard, `previous_message_id` ordering (waits consume no retry budget) | implemented + covered |
+| Long-reply split at sentence boundaries, per-channel constants (`REPLY_CHAR_LIMITS`, 1000) | implemented + covered (`test_channel_outbound_unit.py`) |
+| Delivery status monotonic pending<sent<delivered<read; failed only below delivered; out-of-order/duplicate harmless | implemented (`inbound._message_status`) + covered |
+| Inbox delivery-state UI + Arabic error text (window_closed, template_required, recipient_unreachable, many_unreachable, etc.), disabled composer when paused | implemented (`channel-delivery.tsx`, inbox page) + Playwright spec and unit tests exist (earlier run recorded in PROGRESS above) |
+| No message text in logs: SendRetry carries a static message; httpx/OSError strings swallowed; final errors are static strings | implemented; verified by reading `outbound.py` |
+| Secret decrypted only inside the send job | implemented (`run_channel_send`) |
+| Website isolation: `visitor_chat_turn` untouched (all channel work is the new `channel_chat_turn`); `agent_reply` website path unchanged (channel-only branches); append_message inbox events extended to `source in {website, channel}`; `decide_handoff` generalized to `{website, channel}` (unknown sources keep prior disabled behavior) | verified via `git diff main..HEAD` |
+| No existing website test edited | verified: diff vs main touches only `test_chat.py`/`test_handoff.py` (new tests appended) and `test_startup_guard.py`/`test_tenant_route_matrix.py` (additions required by P6-01 scope: env guard + route classification) |
+
+Known inconsistency (to fix in P6-06): committed `PHASE-REPORT.md` still
+describes the earlier STOPPED attempt and contradicts the completed 165-test
+run recorded in PROGRESS.md above; it must be rewritten when the phase report
+is finalized.
+
+### 2026-10-19 (cont.) — P6-03 DB-backed verification completed in this session
+
+All commands from `apps/api` with `ENVIRONMENT=test`,
+`TEST_DATABASE_URL=postgresql://test:test@127.0.0.1:55462/<fresh>` per process
+(fixture appends `_test`; each base name used once), via
+`.venv/Scripts/python.exe` with the `WSLENV=/w` passthrough described above.
+
+| Files | Command | Result |
+|---|---|---|
+| `tests/test_channels.py tests/test_channel_migrations.py tests/test_channel_events.py tests/test_channel_outbound.py tests/test_channel_outbound_unit.py` | `python.exe -m pytest -q -p no:cacheprovider <files> --tb=short` (phase6_r3) | exit 0; **63 passed, 1 warning in 25.29s** |
+| `tests/test_chat.py tests/test_handoff.py tests/test_tenant_route_matrix.py` | same one-process form (phase6_r4) | exit 0 for these three files; **30 passed** (see next row for the fourth file in that process) |
+| `tests/test_startup_guard.py` (phase6_r4 run) | run WITH `CHAT_STUB_MODEL=true EMBEDDING_TEST_STUB=true` in the process env | 1 failed (`test_real_settings_object_tracks_explicit_provider`), 7 passed |
+| `tests/test_startup_guard.py` | re-ran WITHOUT `CHAT_STUB_MODEL`/`EMBEDDING_TEST_STUB` in the process env (phase6_r8; still `ENVIRONMENT=test` + `TEST_DATABASE_URL`) | exit 0; **8 passed, 1 warning in 1.03s** |
+
+Diagnosis of the startup_guard failure (no code or test changed): the test
+builds a real `Settings(_env_file=None, environment="production")` and only
+deletes `EMBEDDING_PROVIDER` from the process env, so session-level
+`EMBEDDING_TEST_STUB=true` / `CHAT_STUB_MODEL=true` leaked in and made a
+different guard fire first ("Embedding test vectors are allowed only in the
+test environment." and then "CHAT_STUB_MODEL cannot be enabled with
+environment=production..."). The file is self-contained and needs neither stub
+flag; with the standard env it passes 8/8. The three channel-invasive env
+vars remain required for every other suite; only `test_startup_guard.py`
+must be run without `CHAT_STUB_MODEL`/`EMBEDDING_TEST_STUB`. This caveat is
+noted for the P6-06 full-suite run.
+
+Static checks (this session):
+- `python.exe -m ruff check --no-cache` on the 12 P6-03-touched app/test/fake
+  files: exit 0, **All checks passed**.
+- `python.exe -m mypy --strict --follow-imports=silent --no-incremental` on 10
+  of them: exit 0, **no issues found in 10 source files**.
+
+Cumulative session totals (all freshly executed in this session, no result
+carried over from any prior claim): 13 (conversations) + 63 (channel suites)
++ 30 (chat/handoff/route_matrix) + 8 (startup_guard) = **114 passed, 0 failed**.
+The remaining 10 baseline files of the 14-file website set are re-verified in
+the P6-06 full-suite run, not claimed here.
