@@ -39,7 +39,9 @@ export default function TenantOverview() {
         bots,
         quota,
         recent,
-        channels: channels.items,
+        // listTenantChannels always returns {items: []}; some test fixtures
+        // answer any other path with a bare array, so tolerate both shapes.
+        channels: (channels as { items?: api.TenantChannel[] }).items ?? [],
         published: revisions ? Boolean(revisions.published_revision_id) : null,
       });
       setError(null);
