@@ -12,7 +12,7 @@ from app.chat.conversations import append_message, messages_of
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
 from app.core.tenancy import TenantContext, TenantContextDep
-from app.db.models import Conversation, Membership, UsageEvent
+from app.db.models import ChannelConnection, Conversation, Membership, UsageEvent
 from app.inbox.handoff import add_system_message
 
 router = APIRouter(prefix="/api/v1/tenants/{tenant_id}/conversations")
@@ -38,7 +38,7 @@ def _conversation(
     statement = select(Conversation).where(
         Conversation.id == conversation_id,
         Conversation.tenant_id == context.tenant_id,
-        Conversation.source == "website",
+        Conversation.source.in_(("website", "channel")),
     )
     if lock:
         statement = statement.with_for_update()
@@ -87,8 +87,17 @@ def conversation_detail(
                 feedback_by_message.setdefault(message_id, []).append(
                     "up" if kind == "feedback_up" else "down"
                 )
+    state = _state(row)
+    if row.source == "channel":
+        connection = context.db.scalar(
+            select(ChannelConnection).where(
+                ChannelConnection.tenant_id == context.tenant_id,
+                ChannelConnection.id == row.connection_id,
+            )
+        )
+        state["connection_status"] = connection.status if connection else "revoked"
     return {
-        "conversation": _state(row),
+        "conversation": state,
         "messages": [
             {
                 "id": str(message.id),
@@ -100,6 +109,11 @@ def conversation_detail(
                 "needs_human": message.needs_human,
                 "feedback": feedback_by_message.get(message.id, []),
                 "created_at": message.created_at.isoformat(),
+                **(
+                    {"delivery_status": message.delivery_status, "error_code": message.error_code}
+                    if row.source == "channel" and message.sender_type in {"ai", "agent"}
+                    else {}
+                ),
             }
             for message in messages
         ],
@@ -234,9 +248,25 @@ def agent_reply(
     body: AgentReplyRequest,
     context: TenantContextDep,
     _: CsrfOk,
+    settings: CurrentSettings,
 ) -> dict[str, Any]:
     context.require_role("editor")
     row = _conversation(context, conversation_id, lock=True)
+    if row.source == "channel":
+        connection = context.db.scalar(
+            select(ChannelConnection)
+            .where(
+                ChannelConnection.tenant_id == context.tenant_id,
+                ChannelConnection.id == row.connection_id,
+            )
+            .with_for_update()
+        )
+        if connection is None or connection.status != "active":
+            raise ApiError(
+                409,
+                "CONNECTION_PAUSED",
+                "This channel connection is paused or revoked. Replies are disabled.",
+            )
     if row.status == "resolved":
         raise ApiError(
             409, "CONVERSATION_RESOLVED", "A resolved conversation cannot receive a reply."
@@ -250,6 +280,10 @@ def agent_reply(
         sender_user_id=context.user.id,
         text=body.text.strip(),
     )
+    if row.source == "channel":
+        from app.channels.outbound import enqueue_message
+
+        enqueue_message(context.db, row, message, settings)
     context.db.commit()
     return {
         "message": {

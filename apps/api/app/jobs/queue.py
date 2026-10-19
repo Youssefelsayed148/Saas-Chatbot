@@ -98,7 +98,14 @@ def claim_job(db: OrmSession, worker_id: str, settings: Settings) -> Job | None:
     return job if job.status == "running" else None
 
 
-def release_job(db: OrmSession, job: Job, *, error: str | None, settings: Settings) -> Job:
+def release_job(
+    db: OrmSession,
+    job: Job,
+    *,
+    error: str | None,
+    settings: Settings,
+    retry_after_seconds: float | None = None,
+) -> Job:
     """Finish a claimed job: success forever, failure retries with backoff.
 
     ``attempts`` was already incremented at claim time, so ``attempts`` here is
@@ -129,7 +136,9 @@ def release_job(db: OrmSession, job: Job, *, error: str | None, settings: Settin
     backoff = settings.job_backoff_seconds * (2 ** max(0, job.attempts - 1))
     job.status = "pending"
     job.error = error
-    job.run_at = now + timedelta(seconds=backoff)
+    job.run_at = now + timedelta(
+        seconds=backoff if retry_after_seconds is None else retry_after_seconds
+    )
     db.commit()
     return job
 

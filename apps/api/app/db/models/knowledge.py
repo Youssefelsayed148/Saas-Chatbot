@@ -40,8 +40,13 @@ from app.db.models.types import TSVECTOR, VECTOR1024
 SOURCE_KIND_VALUES = ("pdf", "docx", "txt", "md", "qa_csv")
 SOURCE_STATUS_VALUES = ("stored", "queued", "ingested", "failed")
 JOB_TYPE_VALUES = (
-    "ingest_batch", "retention_purge", "follow_up_delivery", "sentiment_classify",
-    "reembed_backfill", "channel_inbound",
+    "ingest_batch",
+    "retention_purge",
+    "follow_up_delivery",
+    "sentiment_classify",
+    "reembed_backfill",
+    "channel_inbound",
+    "channel_send",
 )
 JOB_STATUS_VALUES = ("pending", "running", "succeeded", "failed", "cancelled")
 REVISION_STATUS_VALUES = ("draft", "published", "archived")
@@ -85,7 +90,7 @@ class Job(Base):
     __table_args__ = (
         CheckConstraint(
             "type IN ('ingest_batch', 'retention_purge', 'follow_up_delivery', "
-            "'sentiment_classify', 'reembed_backfill', 'channel_inbound')",
+            "'sentiment_classify', 'reembed_backfill', 'channel_inbound', 'channel_send')",
             name="ck_jobs_type",
         ),
         CheckConstraint(
@@ -104,6 +109,13 @@ class Job(Base):
         Index("ix_jobs_tenant_bot_created", "tenant_id", "bot_id", "created_at"),
         # Claim scan: pending (or lease-expired, matched via OR in the claim query).
         Index("ix_jobs_claim", "status", "run_at"),
+        Index(
+            "uq_channel_send_message",
+            "tenant_id",
+            sa_text("(payload->>'message_id')"),
+            unique=True,
+            postgresql_where=sa_text("type = 'channel_send'"),
+        ),
     )
 
 

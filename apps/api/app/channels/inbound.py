@@ -20,6 +20,7 @@ from app.db.models import (
     Job,
     Message,
 )
+from app.inbox.events import add_inbox_event
 
 _STATUS_RANK = {"pending": 0, "sent": 1, "delivered": 2, "read": 3}
 _HEALTH = {
@@ -126,9 +127,7 @@ def _received(
     db: OrmSession, connection: ChannelConnection, payload: dict[str, Any]
 ) -> tuple[Conversation, Message | None, bool]:
     identity = _identity(db, connection=connection, payload=payload)
-    conversation = _conversation(
-        db, connection=connection, identity=identity, payload=payload
-    )
+    conversation = _conversation(db, connection=connection, identity=identity, payload=payload)
     external_message_id = payload["external_message_id"]
     exists = db.scalar(
         select(Message.id).where(
@@ -171,13 +170,20 @@ def _received(
 
 def _message_status(db: OrmSession, connection: ChannelConnection, payload: dict[str, Any]) -> None:
     message_id = payload.get("message_id")
-    statement = select(Message).join(
-        Conversation,
-        (Conversation.tenant_id == Message.tenant_id)
-        & (Conversation.id == Message.conversation_id),
-    ).where(
-        Message.tenant_id == connection.tenant_id,
-        Conversation.connection_id == connection.id,
+    statement = (
+        select(Message)
+        .join(
+            Conversation,
+            (Conversation.tenant_id == Message.tenant_id)
+            & (Conversation.id == Message.conversation_id),
+        )
+        .where(
+            Message.tenant_id == connection.tenant_id,
+            Conversation.connection_id == connection.id,
+            Message.sender_type.in_(("ai", "agent")),
+        )
+        .with_for_update(of=Message)
+        .execution_options(populate_existing=True)
     )
     if message_id:
         try:
@@ -192,6 +198,7 @@ def _message_status(db: OrmSession, connection: ChannelConnection, payload: dict
     message = db.scalar(statement)
     if message is None:
         return
+    previous_state = (message.delivery_status, message.error_code)
     incoming = str(payload["status"])
     current = message.delivery_status or "pending"
     if incoming == "failed":
@@ -200,6 +207,14 @@ def _message_status(db: OrmSession, connection: ChannelConnection, payload: dict
             message.error_code = _clean(payload.get("error_code"), 64)
     elif current != "failed" and _STATUS_RANK[incoming] > _STATUS_RANK.get(current, 0):
         message.delivery_status = incoming
+    if previous_state != (message.delivery_status, message.error_code):
+        add_inbox_event(
+            db,
+            tenant_id=message.tenant_id,
+            conversation_id=message.conversation_id,
+            message_id=message.id,
+            event_type="message.delivery",
+        )
 
 
 def _channel_status(connection: ChannelConnection, payload: dict[str, Any]) -> None:
@@ -214,9 +229,7 @@ def _channel_status(connection: ChannelConnection, payload: dict[str, Any]) -> N
     connection.updated_at = datetime.now(UTC)
 
 
-def run_channel_inbound(
-    db: OrmSession, job: Job, settings: Settings | None = None
-) -> str | None:
+def run_channel_inbound(db: OrmSession, job: Job, settings: Settings | None = None) -> str | None:
     """Process a channel event with tenant/bot authority taken only from its connection."""
     settings = settings or get_settings()
     raw_event_id = job.payload.get("channel_event_id")

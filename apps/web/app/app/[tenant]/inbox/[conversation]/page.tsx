@@ -4,6 +4,11 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
+import {
+  ChannelDelivery,
+  ChannelReplyFields,
+  connectionReplyBlock,
+} from "@/lib/channel-delivery";
 import { InboxList } from "@/lib/inbox-list";
 import { humanLabel, LabelBadge } from "@/lib/labels";
 import * as api from "@/lib/api";
@@ -48,11 +53,13 @@ export default function InboxConversationPage() {
 
   useEffect(() => {
     const timer = setTimeout(() => void load(), 0);
+    const poll = setInterval(() => void load(), 5000);
     const stream = new EventSource(`/api/v1/tenants/${tenantId}/inbox/events`);
     const refresh = () => void load();
     stream.addEventListener("inbox.update", refresh);
     return () => {
       clearTimeout(timer);
+      clearInterval(poll);
       stream.close();
     };
   }, [load, tenantId]);
@@ -99,6 +106,10 @@ export default function InboxConversationPage() {
       </main>
     );
   const conversation = thread.conversation;
+  const replyBlock = connectionReplyBlock(
+    conversation.channel,
+    conversation.connection_status,
+  );
   const sendReply = () =>
     run(async () => {
       await api.sendAgentReply(tenantId, conversationId, reply);
@@ -288,6 +299,10 @@ export default function InboxConversationPage() {
                   <div dir="auto" className="message-text">
                     {noteText}
                   </div>
+                  <ChannelDelivery
+                    channel={conversation.channel}
+                    message={message}
+                  />
                   {me?.is_platform_staff && message.citations.length > 0 && (
                     <details className="source-details" open>
                       <summary>Sources ({message.citations.length})</summary>
@@ -345,21 +360,15 @@ export default function InboxConversationPage() {
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
-                  if (reply.trim()) void sendReply();
+                  if (reply.trim() && !replyBlock) void sendReply();
                 }}
               >
-                <label>
-                  Reply
-                  <textarea
-                    dir="auto"
-                    aria-label="Reply"
-                    value={reply}
-                    maxLength={4000}
-                    onChange={(e) => setReply(e.target.value)}
-                    rows={3}
-                  />
-                </label>
-                <button disabled={!reply.trim() || busy}>Send reply</button>
+                <ChannelReplyFields
+                  value={reply}
+                  busy={busy}
+                  block={replyBlock}
+                  onChange={(event) => setReply(event.target.value)}
+                />
               </form>
             )}
             <form

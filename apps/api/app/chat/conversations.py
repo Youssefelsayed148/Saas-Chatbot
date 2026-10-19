@@ -162,7 +162,7 @@ def append_message(
         created_at=now,
     )
     db.add(message)
-    if conversation.source == "website":
+    if conversation.source in {"website", "channel"}:
         add_inbox_event(
             db,
             tenant_id=conversation.tenant_id,
@@ -466,7 +466,9 @@ def channel_chat_turn(
             can_answer=False,
             needs_human=True,
         )
-        notice.delivery_status = "pending"
+        from app.channels.outbound import enqueue_message
+
+        enqueue_message(db, conversation, notice, settings)
         return notice
 
     pipeline_question = question[:1000]
@@ -575,6 +577,9 @@ def channel_chat_turn(
         ai_message.citations = None
         ai_message.can_answer = False
         ai_message.needs_human = True
+    from app.channels.outbound import enqueue_message
+
+    enqueue_message(db, conversation, ai_message, settings)
     return ai_message
 
 

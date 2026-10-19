@@ -7,6 +7,7 @@ its first attempt — retrying cannot fix a foreign or archived target.
 
 from sqlalchemy.orm import Session as OrmSession
 
+from app.channels.outbound import SendRetry
 from app.core.config import Settings
 from app.db.models import Job
 from app.followups.service import mark_follow_up_ready
@@ -25,6 +26,9 @@ def execute_claimed_job(db: OrmSession, job: Job, settings: Settings, storage: S
         if job.cancel_requested:
             # Cancel wins even when the handler had already finished its work.
             error = None
+    except SendRetry as retry:
+        release_job(db, job, error=str(retry), settings=settings, retry_after_seconds=retry.delay)
+        return
     except LeaseLost:
         db.rollback()
         return
@@ -57,6 +61,10 @@ def _run(job: Job, db: OrmSession, settings: Settings, storage: Storage) -> str 
         from app.quotas.sentiment import run_sentiment_job
 
         return run_sentiment_job(db, job, settings)
+    if job.type == "channel_send":
+        from app.channels.outbound import run_channel_send
+
+        return run_channel_send(db, job, settings)
     if job.type == "channel_inbound":
         from app.channels.inbound import run_channel_inbound
 

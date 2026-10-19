@@ -474,6 +474,7 @@ export interface ConversationDetailResponse {
 }
 
 export interface InboxConversation {
+  connection_status?: "active" | "paused" | "revoked";
   id: string;
   bot_id: string;
   contact_id: string | null;
@@ -503,6 +504,8 @@ export interface InboxCounts {
 }
 
 export interface InboxMessage {
+  delivery_status?: "pending" | "sent" | "delivered" | "read" | "failed" | null;
+  error_code?: string | null;
   id: string;
   sender_type: string;
   sender_user_id?: string | null;

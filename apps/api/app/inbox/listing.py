@@ -99,7 +99,7 @@ def _conversation_or_404(context: TenantContext, conversation_id: UUID) -> Conve
         select(Conversation).where(
             Conversation.id == conversation_id,
             Conversation.tenant_id == context.tenant_id,
-            Conversation.source == "website",
+            Conversation.source.in_(("website", "channel")),
         )
     ).scalar_one_or_none()
     if row is None:
@@ -123,7 +123,7 @@ def list_inbox(
     """Tenant-scoped inbox page with filters, search, and per-user unread counts."""
     statement = select(Conversation).where(
         Conversation.tenant_id == context.tenant_id,
-        Conversation.source == "website",
+        Conversation.source.in_(("website", "channel")),
     )
     if status is not None:
         statement = statement.where(Conversation.status == status)
@@ -223,7 +223,7 @@ def list_inbox(
 def notification_counts(context: TenantContextDep) -> dict[str, int]:
     base = select(Conversation).where(
         Conversation.tenant_id == context.tenant_id,
-        Conversation.source == "website",
+        Conversation.source.in_(("website", "channel")),
     )
     waiting = context.db.scalar(
         select(func.count()).select_from(
@@ -244,7 +244,7 @@ def notification_counts(context: TenantContextDep) -> dict[str, int]:
             _unread_count(context.tenant_id, context.user.id, Conversation.id),
         ).where(
             Conversation.tenant_id == context.tenant_id,
-            Conversation.source == "website",
+            Conversation.source.in_(("website", "channel")),
         )
     )
     unread_messages = 0
@@ -455,7 +455,7 @@ def event_stream(tenant_id: UUID, user_id: UUID, cursor: int | None) -> Any:
                 .where(
                     InboxEvent.tenant_id == tenant_id,
                     InboxEvent.id > cursor,
-                    Conversation.source == "website",
+                    Conversation.source.in_(("website", "channel")),
                 )
                 .order_by(InboxEvent.id)
                 .limit(MAX_SSE_BATCH)
@@ -500,7 +500,7 @@ def _notification_counts_for(db: OrmSession, tenant_id: UUID, user_id: UUID) -> 
         db.scalar(
             select(func.count(Conversation.id)).where(
                 Conversation.tenant_id == tenant_id,
-                Conversation.source == "website",
+                Conversation.source.in_(("website", "channel")),
                 Conversation.status == "waiting_human",
             )
         )
@@ -510,7 +510,7 @@ def _notification_counts_for(db: OrmSession, tenant_id: UUID, user_id: UUID) -> 
         db.scalar(
             select(func.count(Conversation.id)).where(
                 Conversation.tenant_id == tenant_id,
-                Conversation.source == "website",
+                Conversation.source.in_(("website", "channel")),
                 Conversation.status != "resolved",
                 Conversation.assigned_user_id == user_id,
             )
@@ -523,7 +523,7 @@ def _notification_counts_for(db: OrmSession, tenant_id: UUID, user_id: UUID) -> 
             _unread_count(tenant_id, user_id, Conversation.id),
         ).where(
             Conversation.tenant_id == tenant_id,
-            Conversation.source == "website",
+            Conversation.source.in_(("website", "channel")),
         )
     )
     unread_messages = 0

@@ -187,7 +187,8 @@ def test_event_duplicate_replay_paused_acceptance_and_atomic_enqueue(
     assert event is not None and event.status == "received"
     assert len(jobs) == 1 and jobs[0].payload == {"channel_event_id": str(event.id)}
     _run_event(db, "evt-duplicate")
-    assert db.scalar(select(Conversation)).status == "waiting_human"
+    paused_conversation = db.scalar(select(Conversation))
+    assert paused_conversation is not None and paused_conversation.status == "waiting_human"
     visitor_message = db.scalar(select(Message).where(Message.sender_type == "visitor"))
     assert visitor_message is not None and visitor_message.text == "Hello"
     assert db.scalar(select(func_count(Message.id)).where(Message.sender_type == "ai")) == 0
@@ -403,7 +404,7 @@ def test_message_status_is_monotonic_and_health_ignores_old_events(
     }
     for body in (newer, older):
         assert _post(client, connection_id, secret, json.dumps(body).encode()).status_code == 202
-        _run_event(db, body["event_id"])
+        _run_event(db, str(body["event_id"]))
     connection = db.get(ChannelConnection, connection_id)
     assert connection is not None and connection.health_status == "healthy"
 
@@ -440,6 +441,7 @@ def test_channel_pipeline_truncates_only_model_input_and_stores_pending_reply(
     )
     assert message_usage is not None
     trace = message_usage.payload["rag_trace"]
+    assert isinstance(trace, dict)
     assert trace["channel"] == "whatsapp"
     assert trace["connection_id"] == str(connection_id)
     metering = db.scalar(
@@ -449,7 +451,7 @@ def test_channel_pipeline_truncates_only_model_input_and_stores_pending_reply(
         )
     )
     assert metering is not None and metering.payload["channel"] == "whatsapp"
-    assert db.scalar(select(func_count(Job.id)).where(Job.type == "channel_send")) == 0
+    assert db.scalar(select(func_count(Job.id)).where(Job.type == "channel_send")) == 1
 
 
 def test_human_mode_is_silent_and_resolved_conversation_reopens_in_ai_mode(

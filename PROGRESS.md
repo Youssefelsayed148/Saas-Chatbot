@@ -2258,3 +2258,395 @@ Final backend and local integration readiness:
   again individually: the original 101 cases all passed; the route matrix
   added one P6 classification test (7 passed in that file), for 102 total
   across the 14 files. Existing TestClient/httpx deprecation warning only.
+
+
+## 2026-10-18 — P6-03 outbound delivery and status (verification BLOCKED)
+
+- P6-02 accepted by the owner. Continued on `feature/phase-6-channels` in
+  the existing isolated `SAAS-chats-ai-phase6` worktree. Import check:
+  `.venv/Scripts/python.exe -c "import app; print(app.__file__)"` resolved
+  inside that worktree. Main product files and all 14 website baseline test
+  files remain unchanged. No push, merge, deployment, Docker command, real
+  Many/Meta request, paid provider call, or credential-file read occurred.
+- Implemented transactional `channel_send` outbox jobs for finalized AI,
+  handoff/busy/text-only and agent replies. System/internal notes are excluded.
+  Split parts preserve their text, get distinct message IDs and ordered jobs;
+  one partial unique job index enforces one outbox row per tenant/message.
+  Migration `0019_channel_send` registers the job type and the index. Its
+  upgrade/downgrade test is collected but has NOT executed against PostgreSQL.
+- Jobs re-check and lock the current connection, decrypt/sign with its current
+  secret only at send time, and keep successful acknowledgements pending until
+  callbacks. DNS resolves once; every answer must be global; the socket target
+  is pinned to a validated IP, preserving Host/TLS SNI and certificate checking.
+  No environment proxies or redirects; connect/read timeouts 5/15 seconds;
+  response cap 64KiB. Six attempts, exponential 18-second base with jitter
+  (five waits total roughly nine minutes), honoring numeric/date Retry-After.
+  Permanent failures and callbacks stop further sends; exhaustion marks
+  many_unreachable and degrades connection health. Exceptions/body text/secrets
+  are not logged or stored in job errors. Many must dedupe message_id after an
+  ambiguous network acknowledgement/crash; a completed job rerun skips sending.
+- Inbox permits channel thread actions with tenant scoping and exposes only
+  connection status and per-outbound-message delivery/error codes. Paused or
+  revoked agent replies return 409 CONNECTION_PAUSED before storing anything.
+  Website agent reply response/storage logic is preserved. Delivery changes
+  create durable inbox events; thread polling also refreshes pause/revoke state.
+  UI has readable delivery/failure text and disabled composer explanation,
+  uses existing layout and dir=auto, and hides delivery state for websites.
+- Fake Many uses httpx.MockTransport and actual signature verification, records
+  requests, supports success/500/timeout/network/429/permanent responses,
+  dedupes logical deliveries, and posts signed status callbacks in-process.
+  New integration coverage: 27 collected cases, including secret rotation
+  after enqueue, duplicate jobs, tenant isolation, ordering, retry exhaustion,
+  callbacks, agent pause and unchanged website replies. These 27 cases remain
+  UNVERIFIED because the approved disposable PostgreSQL service is unavailable.
+- Existing channel-only tests updated: P6-02 expected no send job; P6-03 now
+  expects one. Migration test expects current head 0019. Added type-narrowing
+  assertions to that channel event test file for strict mypy. No existing
+  website test was edited or relaxed.
+
+Commands and actual outcomes (paths relative to worktree root unless stated):
+
+1. From apps/api, with TEST_DATABASE_URL set per process to the approved
+   disposable phase6 base on 127.0.0.1:55462 (fixture targets phase6_test),
+   `../../.venv/Scripts/python.exe -m pytest -q -p no:cacheprovider
+   tests/test_channel_outbound.py --tb=short`: initially stalled at connection
+   setup and was interrupted (exit 1; no test result). Direct psycopg probes
+   with connect_timeout=5 and 3 each failed with ConnectionTimeout.
+2. Repeated with a process-only connect_timeout=3 URL and
+   `../../.venv/Scripts/python.exe -m pytest -q -x -p no:cacheprovider
+   tests/<file> --tb=short`, one process per file, in this exact order:
+   test_conversations.py, test_conversations_view.py, test_inbox_list.py,
+   test_group_0_inbox.py, test_contacts.py, test_analytics.py, test_quotas.py,
+   test_tenant_route_matrix.py, test_platform.py, test_platform_ops.py,
+   test_create_platform_staff.py, test_widget_public.py, test_widget_leads.py,
+   test_widget_appearance.py, test_channels.py, test_channel_migrations.py,
+   test_channel_events.py, test_channel_outbound.py,
+   test_channel_outbound_unit.py. First 18 files: EACH exit 1, one setup error,
+   psycopg.errors.ConnectionTimeout before any test executed (about 3.2–3.4s
+   each). Final file: exit 0, 16 passed, one existing Starlette/httpx warning.
+   Per-file logs: `.test-storage-p6-03/<file>.log` (ignored). Do not count
+   blocked baseline/channel files as passing tests. Owner was asked to start
+   the existing saas-test-db service; no authorization to run Docker inferred.
+3. `.venv/Scripts/python.exe -m pytest -q -p no:cacheprovider
+   apps/api/tests/test_channel_outbound_unit.py --tb=short`: final exit 0,
+   16 passed, one existing Starlette/httpx deprecation warning. Pure security,
+   DNS pinning/rejection, Retry-After, splitting, streaming fake signature,
+   response cap and no-redirect tests override only DB cleanup in this unit
+   module; they use no database and no network.
+4. `.venv/Scripts/python.exe -m pytest --collect-only -q -p no:cacheprovider
+   apps/api/tests/test_channel_outbound.py`: exit 0, 27 cases collected.
+5. `.venv/Scripts/python.exe -m ruff check --no-cache <all 15 touched Python
+   files plus tests/fakes/__init__.py>`: final exit 0, all checks passed.
+   `.venv/Scripts/python.exe -m mypy --strict --follow-imports=silent
+   --no-incremental <the same 15 Python files>`: final exit 0, no issues in
+   15 files. Scope: channels/config.py, outbound.py, inbound.py;
+   chat/conversations.py; inbox/router.py, listing.py; jobs/queue.py, runner.py;
+   db/models/knowledge.py; alembic/versions/0019_channel_send.py;
+   tests/fakes/fake_many.py; tests/test_channel_outbound.py,
+   test_channel_outbound_unit.py, test_channel_events.py,
+   test_channel_migrations.py. Earlier formatting/type findings were corrected;
+   an attempted `--cache-dir NUL` mypy invocation produced an internal error,
+   so the passing final run uses --no-incremental with the ordinary cache.
+6. From apps/web, `node --test tests/channel-delivery.unit.mjs`: exit 0,
+   14 passed. `npm.cmd run lint`: final exit 0. `npm.cmd run typecheck`:
+   final exit 0. An initial CommonJS unit harness failed ESLint's require rule;
+   replaced it with ESM, then reran all three commands successfully.
+7. From apps/web, `npm.cmd exec -- playwright test
+   --config=playwright.channel.config.ts --reporter=line`: exit 0, 1 passed
+   in 52.9s including production build. Every API route is mocked; no DB or
+   worker starts. Verifies four delivery states, window_closed reason,
+   paused/revoked composer, website hiding/enabling, Arabic text, RTL and no
+   horizontal overflow at 360px. The separate React component unit suite
+   includes template_required and recipient_unreachable explanations.
+8. `git diff --check`: final exit 0 (Git emits CRLF conversion notices only).
+
+Files changed/added for P6-03:
+- apps/api/alembic/versions/0019_channel_send.py
+- apps/api/app/channels/config.py
+- apps/api/app/channels/outbound.py
+- apps/api/app/channels/inbound.py
+- apps/api/app/chat/conversations.py
+- apps/api/app/db/models/knowledge.py
+- apps/api/app/inbox/listing.py
+- apps/api/app/inbox/router.py
+- apps/api/app/jobs/queue.py
+- apps/api/app/jobs/runner.py
+- apps/api/tests/fakes/__init__.py
+- apps/api/tests/fakes/fake_many.py
+- apps/api/tests/test_channel_outbound.py
+- apps/api/tests/test_channel_outbound_unit.py
+- apps/api/tests/test_channel_events.py
+- apps/api/tests/test_channel_migrations.py
+- apps/web/lib/channel-delivery.tsx
+- apps/web/lib/api.ts
+- apps/web/app/app/[tenant]/inbox/[conversation]/page.tsx
+- apps/web/playwright.channel.config.ts
+- apps/web/tests/channel-delivery.spec.ts
+- apps/web/tests/channel-delivery.unit.mjs
+- PROGRESS.md
+
+P6-03 is NOT accepted/complete: restore the owner-managed disposable database,
+then run all 14 baseline files and all channel files fully (remove -x if desired),
+fix any implementation failures, run migration round trips, and repeat relevant
+checks after corrections. Stop and ask before editing an existing website test.
+No local implementation commit yet while integration verification is blocked.
+
+### P6-03 database readiness follow-up
+
+Owner opened Docker Desktop and requested resumption. Rechecked isolated import
+path successfully. PostgreSQL connection with connect_timeout=5 still failed
+with psycopg.errors.ConnectionTimeout. Get-NetTCPConnection -LocalPort 55462
+returned no listener; a direct Python socket connect_ex to 127.0.0.1:55462
+returned 10061 (connection refused). A second PostgreSQL handshake probe with
+sslmode=disable also timed out. Requested that the owner start the existing
+saas-test-db container and confirm 55462 -> 5432 mapping, consistent with the
+Phase 6 prohibition on agent Docker commands. No tests were counted or marked
+passing during this readiness follow-up; all previous blocked checks remain.
+
+
+## P6-03 owner-requested verification audit (2026-10-18)
+
+This section records the resumed verification after the owner started the
+approved disposable PostgreSQL database. Final counts follow in the next
+verification-results section; earlier timeout results are historical only.
+
+### Scratch-file audit
+
+Ran `git status --short` and the exact requested
+`git ls-files | findstr /R "^\.p6_"` in the Phase 6 worktree. Also checked the
+main worktree, enumerated root `.p6*` files, and ran
+`git log --all --oneline -- '.p6*' ':(glob)**/.p6*'`.
+All scratch-path/tracked/history queries returned no matches. Main is clean.
+There are no P6-03 commits yet, and no scratch file was ever tracked or committed.
+No introducing commit or cleanup commit exists/was needed. All nine scratch
+scripts below were temporary authoring helpers created in the main workspace,
+used to write authorized files into the separate Phase 6 worktree, and deleted
+before the previous report. None remains in either worktree:
+- `.p6_edit.py`
+- `.p6_tests.py`
+- `.p6_fix.py`
+- `.p6_review.py`
+- `.p6_final_review.py`
+- `.p6_types.py`
+- `.p6_contract.py`
+- `.p6_last.py`
+- `.p6_progress.py`
+
+### Existing website test and product-path audit
+
+P6-03 diff against accepted HEAD changes only these existing test files:
+`apps/api/tests/test_channel_events.py` and
+`apps/api/tests/test_channel_migrations.py` (both channel-only). The former now
+expects one outbound job and adds strict type-narrowing assertions; the latter
+expects the current Alembic head. No existing website test was changed in P6-03.
+New outbound/fake-Many test files remain untracked pending final review.
+
+The requested comparison with main also includes earlier accepted P6-01/P6-02
+work; it must not be represented as an empty test diff. Exact command:
+`git diff --stat main -- apps/api/tests`:
+
+```text
+ apps/api/tests/test_channel_events.py      | 613 +++++++++++++++++++++++++++++
+ apps/api/tests/test_channel_migrations.py  | 133 +++++++
+ apps/api/tests/test_channels.py            | 468 ++++++++++++++++++++++
+ apps/api/tests/test_chat.py                |  16 +
+ apps/api/tests/test_handoff.py             |  24 +-
+ apps/api/tests/test_startup_guard.py       |  30 +-
+ apps/api/tests/test_tenant_route_matrix.py |  35 +-
+ 7 files changed, 1315 insertions(+), 4 deletions(-)
+```
+
+Changed existing files relative to main are `test_chat.py`, `test_handoff.py`,
+`test_startup_guard.py`, and `test_tenant_route_matrix.py`. These were already
+present in accepted HEAD, and P6-03 does not edit them. Their prior changes are
+respectively a new fixed-website-prompt hash test/imports, a new unknown-source
+handoff regression/imports, production encryption-key fixture/guard coverage,
+and channel route classification/count coverage. `git log main..HEAD --` these
+paths identifies `0eb1011` (unknown-source handoff regression) and `d9a25f1`
+(P6-01 security/migration coverage). No new website test change is needed.
+
+Exact requested product diff: `git diff --stat main -- apps/api/app/chat
+apps/api/app/inbox`:
+
+```text
+ apps/api/app/chat/conversations.py | 211 ++++++++++++++++++++++++++++++++++++-
+ apps/api/app/chat/prompts.py       |   2 +
+ apps/api/app/inbox/handoff.py      |   4 +-
+ apps/api/app/inbox/listing.py      |  16 +--
+ apps/api/app/inbox/router.py       |  40 ++++++-
+ 5 files changed, 255 insertions(+), 18 deletions(-)
+```
+
+For P6-03 alone (`git diff --stat HEAD -- apps/api/app/chat apps/api/app/inbox`):
+
+```text
+ apps/api/app/chat/conversations.py |  9 +++++++--
+ apps/api/app/inbox/listing.py      | 16 +++++++--------
+ apps/api/app/inbox/router.py       | 40 +++++++++++++++++++++++++++++++++++---
+ 3 files changed, 52 insertions(+), 13 deletions(-)
+```
+
+Python AST comparison against `git show main:<path>` returned:
+- `visitor_chat_turn`: exactly identical, with no normalization.
+- Website `agent_reply`: identical after excluding the new settings dependency
+  and the two `if row.source == "channel"` branches. The whole route is extended,
+  not byte-identical; website role/mode/resolved checks, stored reply, commit,
+  trimming and response fields remain identical. `_conversation` additionally
+  permits channel rows, with the same tenant predicate and website acceptance.
+
+### Requested P6-03 coverage map
+
+Paths below are relative to the repository root. Each row names actual tests,
+not a planned claim; pass/fail counts are recorded separately below.
+
+| Requested scenario | Test mapping |
+|---|---|
+| Success, acknowledgement ID, pending until callback | `apps/api/tests/test_channel_outbound.py::test_success_duplicate_current_secret_rotation_and_no_text_logs` |
+| 500 then success, same message_id | `apps/api/tests/test_channel_outbound.py::test_retry_then_success_with_same_id` (500 parameter) |
+| Timeout then success | `apps/api/tests/test_channel_outbound.py::test_retry_then_success_with_same_id` (ReadTimeout parameter; ConnectError also covered) |
+| 429 Retry-After honored | `apps/api/tests/test_channel_outbound.py::test_retry_then_success_with_same_id` ((429,120) parameter); date-form header in `apps/api/tests/test_channel_outbound_unit.py::test_dns_pin_and_date_retry_after` |
+| Permanent 4xx | `apps/api/tests/test_channel_outbound.py::test_permanent_4xx_and_callback_reason_not_retried`; generic 401 in `test_redirect_response_cap_and_invalid_ack` |
+| Retry exhaustion to many_unreachable | `apps/api/tests/test_channel_outbound.py::test_retry_exhaustion` |
+| Duplicate job run sends once | `apps/api/tests/test_channel_outbound.py::test_success_duplicate_current_secret_rotation_and_no_text_logs`; unique job key in `test_job_unique_key_and_foreign_job_cannot_send` |
+| Paused/revoked at job time | `apps/api/tests/test_channel_outbound.py::test_paused_at_job_time` (both parameters) |
+| agent_reply 409 and no stored message | `apps/api/tests/test_channel_outbound.py::test_agent_reply_pause_atomic_enqueue_notes_and_tenant_isolation` (paused and revoked, then active enqueue; notes excluded) |
+| Website agent_reply unchanged | `apps/api/tests/test_channel_outbound.py::test_website_agent_reply_keeps_response_and_has_no_outbox`; unchanged website baseline files |
+| Long reply split into N ordered messages | `apps/api/tests/test_channel_outbound.py::test_long_reply_order_and_enqueue_idempotency`; all three channel constants in `apps/api/tests/test_channel_outbound_unit.py::test_split_sentence_boundaries_and_unbroken_text` |
+| window_closed callback, readable reason, no retry | `apps/api/tests/test_channel_outbound.py::test_status_callbacks_and_out_of_order` (window_closed); `test_permanent_4xx_and_callback_reason_not_retried`; `apps/web/tests/channel-delivery.unit.mjs::readable reason for window_closed`; `apps/web/tests/channel-delivery.spec.ts::channel delivery and paused composer fit Arabic RTL at 360px` |
+| Out-of-order statuses | `apps/api/tests/test_channel_outbound.py::test_status_callbacks_and_out_of_order`; `apps/api/tests/test_channel_events.py::test_message_status_is_monotonic_and_health_ignores_old_events` |
+| Current-secret signature verification | `apps/api/tests/test_channel_outbound.py::test_success_duplicate_current_secret_rotation_and_no_text_logs`; `apps/api/tests/test_channel_outbound_unit.py::test_fake_many_real_streaming_client_and_signature` (FakeMany.handle verifies every received signature) |
+| Rotated secret, including job queued before rotation | `apps/api/tests/test_channel_outbound.py::test_job_queued_before_rotation_signs_with_new_secret`; `test_success_duplicate_current_secret_rotation_and_no_text_logs` |
+| No message text or secrets in logs | `apps/api/tests/test_channel_outbound.py::test_success_duplicate_current_secret_rotation_and_no_text_logs`; existing `apps/api/tests/test_channel_events.py::test_quota_and_provider_failures_store_handoff_replies_without_logging_text` |
+| Target-host rejection at send time | `apps/api/tests/test_channel_outbound.py::test_send_time_target_rejection`; `apps/api/tests/test_channel_outbound_unit.py::test_non_global_dns_answers_are_rejected`, `test_invalid_target_rejected_before_dns`, `test_dns_pin_and_date_retry_after` |
+| Frontend delivery states and website hiding | `apps/web/tests/channel-delivery.unit.mjs::channel delivery renders ${status}`, `website and unstated deliveries are hidden`, `${sender} has no delivery state`; Chromium spec above |
+| Frontend disabled composer and explanation | `apps/web/tests/channel-delivery.unit.mjs::${status} disables composer and explains why`, `active channel and website composer stay enabled`; Chromium spec above |
+
+Additional coverage: actual streaming response cap/no redirects, typed wire
+payload, unsupported/busy/final handoff outbox integration, tenant A/B isolation,
+internal-note exclusion, malformed acknowledgements, migration up/down and
+partial unique job key. No requested scenario is marked NOT COVERED.
+
+## 2026-10-18 — Unattended Phase 6 run stopped at baseline hard stop
+
+The user-authorized run resumed in `D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai-phase6`, branch `feature/phase-6-channels`. The worktree already contained uncommitted P6-03 product/test changes and progress notes; these were preserved. No new Phase 6 code was added in this resumed run.
+
+Exact checks and outcomes:
+- `git status --short --branch`, `git worktree list`: expected feature worktree exists; existing P6-03 changes were already dirty.
+- An initial connectivity probe using `postgresql+psycopg://.../phase6` reached PostgreSQL but the named base DB did not exist (the test fixture appends `_test`).
+- First API baseline attempt used that SQLAlchemy URL form; it failed at fixture `psycopg.connect()` with `ProgrammingError: missing "="`. This was a command-format failure, not a test result.
+- Retried the 14-file baseline one file at a time with `TEST_DATABASE_URL=postgresql://test:test@127.0.0.1:55462/phase6`; the existing `phase6_test` database had 8 users. `test_conversations.py` failed at setup with `EMAIL_TAKEN`, followed by a cleanup deadlock. No manual truncation was performed.
+- To avoid destructive cleanup, diagnostic retry used a fresh test base on the same disposable server: `TEST_DATABASE_URL=postgresql://test:test@127.0.0.1:55462/phase6_run_20261018`; the fixture created `phase6_run_20261018_test`. `python -m pytest -q -x -p no:cacheprovider tests/test_conversations.py --tb=short` exited 1: 0 passed, 1 setup error, `KNOWLEDGE_EMPTY` while publishing the retrieval helper corpus.
+- Reproduction on clean `main`: from the main worktree, `TEST_DATABASE_URL=postgresql://test:test@127.0.0.1:55462/phase6_mainprobe`; `.venv/Scripts/python.exe -m pytest -q -x -p no:cacheprovider apps/api/tests/test_conversations.py --tb=short` exited 1 with the same `KNOWLEDGE_EMPTY` corpus setup error. This establishes the blocker as pre-existing on main, before the conversation test reaches its assertion.
+
+Decision: apply the pasted run's hard stop because the baseline is below the required 102 passed and the failure is shared website knowledge setup. Do not change an existing website test or website behavior to force it green. Do not manually clear existing test data. The alternate disposable test database is a recorded deviation from the requested base name `phase6`; it was used only for an isolated reproduction.
+
+Verification status: the remaining 13 baseline files were not run; channel suites, full API, frontend checks and Playwright were not run during this resumed attempt. Existing earlier P6-03 coverage mapping and website diff evidence remain above; this run does not claim new pass counts. Scratch-file checks were not repeated, but no scratch files were created by this run. No additional commits were made.
+
+See `implementation/PHASE-06/PHASE-REPORT.md` for the concise owner-facing run summary and parking list.
+
+
+### Final P6-03 verification results ? 2026-10-18
+
+**Supersedes the earlier database-blocked status. P6-03 implementation and all
+requested verification are complete; awaiting owner acceptance. No later ticket,
+merge, deployment, push, Docker operation, or paid/real provider call was made.**
+No source or test correction was needed during this verification turn.
+
+The approved DB now accepts connections. `.venv/Scripts/python.exe -c
+"import app; print(app.__file__)"` again resolved inside the Phase 6 worktree.
+All backend runs used TEST_DATABASE_URL set only in the process environment
+with base database `phase6` on the approved local endpoint; conftest exclusively
+used disposable `phase6_test`. The URL was not saved to a configuration file.
+Final serial runs also set `ENVIRONMENT=test`, `CHAT_STUB_MODEL=true`, and
+`EMBEDDING_TEST_STUB=true` per process so no real provider is used.
+
+Exact final command from apps/api, one Python process/file at a time:
+`../../.venv/Scripts/python.exe -u -m pytest -q -p no:cacheprovider
+ tests/<file> --tb=short`. The table is the execution order. Every file exited 0.
+Logs: `.test-storage-p6-03/<file>.log` (ignored).
+
+| File | Exact final pytest summary |
+|---|---|
+| `test_conversations.py` | 13 passed, 1 warning in 140.83s (0:02:20) |
+| `test_conversations_view.py` | 5 passed, 1 warning in 55.06s |
+| `test_inbox_list.py` | 5 passed, 1 warning in 9.72s |
+| `test_group_0_inbox.py` | 16 passed, 1 warning in 14.07s |
+| `test_contacts.py` | 1 passed, 1 warning in 10.28s |
+| `test_analytics.py` | 6 passed, 1 warning in 90.05s (0:01:30) |
+| `test_quotas.py` | 12 passed, 1 warning in 10.88s |
+| `test_tenant_route_matrix.py` | 7 passed, 1 warning in 42.52s |
+| `test_platform.py` | 9 passed, 1 warning in 90.67s (0:01:30) |
+| `test_platform_ops.py` | 4 passed, 1 warning in 2.16s |
+| `test_create_platform_staff.py` | 2 passed, 1 warning in 0.51s |
+| `test_widget_public.py` | 14 passed, 1 warning in 163.78s (0:02:43) |
+| `test_widget_leads.py` | 5 passed, 1 warning in 67.03s (0:01:07) |
+| `test_widget_appearance.py` | 3 passed, 1 warning in 34.86s |
+| `test_channels.py` | 7 passed, 1 warning in 3.31s |
+| `test_channel_migrations.py` | 1 passed, 1 warning in 0.53s |
+| `test_channel_events.py` | 12 passed, 1 warning in 7.45s |
+| `test_channel_outbound.py` | 27 passed, 1 warning in 15.15s |
+| `test_channel_outbound_unit.py` | 16 passed, 1 warning in 0.13s |
+
+Totals: **14-file baseline 102 passed; four database-backed channel suites
+47 passed (7 + 1 + 12 + 27); outbound pure unit suite 16 passed; 165 backend
+tests passed overall, 0 failed, 0 skipped.** The only warning in each file is
+the existing Starlette TestClient/httpx deprecation. Both the general channel
+migration round trip and the dedicated 0019 send-job/index round trip passed.
+
+Diagnostic history (excluded from final totals): an initial serial attempt was
+interrupted while output was redirected and had no completed file summary.
+A second first-file attempt with `-o faulthandler_timeout=60` was also
+interrupted without a final result. The diagnostic command
+`../../.venv/Scripts/python.exe -u -c "import faulthandler,pytest;
+faulthandler.dump_traceback_later(25,repeat=True);
+raise SystemExit(pytest.main(['-vv','-s','-p','no:cacheprovider',
+ 'tests/test_conversations.py','--tb=short']))"` completed with **12 passed,
+1 setup error**: EMAIL_TAKEN for a fixture user left by an interrupted run.
+Normal fixture teardown cleaned the disposable tables. The subsequent full,
+clean serial run above passed all 13 conversation cases and all other files.
+No test was modified, weakened, or skipped to obtain the final results.
+
+Final Python static checks:
+- `.venv/Scripts/python.exe -m ruff check --no-cache` with all touched Python
+  paths listed in the earlier scope, including the entire `apps/api/tests/fakes`
+  directory: exit 0, **All checks passed**.
+- `.venv/Scripts/python.exe -m mypy --strict --follow-imports=silent
+  --no-incremental` with the same application/migration/test paths and both
+  `tests/fakes/__init__.py` and `tests/fakes/fake_many.py`: exit 0,
+  **no issues in 16 source files**. The initializer was explicitly added to
+  the prior 15-file scope; no imported-module findings were suppressed beyond
+  the requested --follow-imports=silent.
+
+Final frontend commands from apps/web:
+- `npm.cmd run lint`: exit 0, no errors/warnings.
+- `npm.cmd run typecheck`: exit 0, Next route types generated and tsc passed.
+- `node --test tests/channel-delivery.unit.mjs`: exit 0, **14 passed, 0 failed**.
+- `npm.cmd exec -- playwright test --config=playwright.channel.config.ts
+  --reporter=line`: exit 0, **1 passed in 38.2s**, including production build;
+  verifies actual rendered Arabic/RTL/360px channel delivery and disabled
+  composer UI with fully mocked API requests (no separate DB/worker/server
+  network dependency). Harmless Node NO_COLOR/FORCE_COLOR notices only.
+
+The preceding coverage map is now backed by passing runs for every listed
+scenario, with no NOT COVERED item. The requested main-vs-branch and
+HEAD-vs-P6-03 diff statistics above remain unchanged. No P6-03 website test
+edit; visitor_chat_turn remains identical; website agent_reply behavior and
+response remain identical outside the new channel-only branches. The 14-file
+website baseline passed unchanged. Main-vs-branch differences in four existing
+shared test files predate P6-03 and are disclosed in the audit above.
+
+All nine scratch authoring scripts remain deleted, untracked and absent from
+all commit history; no P6-03 commit or scratch cleanup commit exists. Main
+worktree remains clean. Final git diff --check passes (CRLF notices only).
+Awaiting owner review/acceptance; do not start the next ticket automatically.
+
+
+Final concurrent-file note: the closing git status additionally showed a new,
+untracked `implementation/PHASE-06/PHASE-REPORT.md` that this verification run
+did not create. It describes a separate stopped attempt on a differently named
+disposable database and says baseline/channel/frontend checks are incomplete.
+That report is stale relative to the completed 165-test backend run and passing
+frontend/static checks documented immediately above. It was read to identify
+the discrepancy and left untouched (no overwrite, deletion or commit). The
+successful results above come from actual commands/logs using phase6_test,
+not from that report. No later Phase 6 ticket was started by this run.
