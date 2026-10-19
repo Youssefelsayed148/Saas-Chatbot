@@ -116,3 +116,31 @@ Unattended decisions:
 - The worktree had 14 modified and 4 untracked uncommitted files from the voided session (P6-05 health work: `channels/health.py`, migration `0020_channel_health_poll.py`, `test_channel_health.py`, `apps/web/app/platform/channels/`, plus edits to config/inbound/outbound/router/runner/fake_many/tests/web files). They were backed up outside the repo and set aside with `git stash push -u -m "voided-session P6-05 WIP (unverified)"` (stash@{0}). Nothing was deleted or applied. They are not evidence of anything and P6-05 will be rebuilt from the plan.
 - Shell: the worktree `.git` file points to a WSL path (`/mnt/d/...`), so git works only from WSL; the only venv (`.venv\Scripts\python.exe`) is a Windows venv. Git commands were run through `wsl`; test runs need the Windows venv.
 - Gate result: NOT RUN. The disposable test database `saas-test-db` is not listening on 127.0.0.1:55462 (TCP connect refused from Windows and WSL). Starting it needs docker, which is forbidden for the agent. No test counts are recorded for this restart.
+
+## Step 1 gate and P6-03 close-out (2026-10-19)
+
+Command (PowerShell, Windows venv, one file per process, run twice back to back; `PYTHONDONTWRITEBYTECODE=1`, `TEST_DATABASE_URL=postgresql://test:test@127.0.0.1:55462/phase6_r9`, `CHAT_STUB_MODEL` and `EMBEDDING_TEST_STUB` unset): `python -m pytest tests/<file> -q -p no:cacheprovider --basetemp=.pytest-tmp-gate` from `apps/api`. Script kept outside the repo.
+
+Result, run 1 and run 2 identical:
+- 14 baseline files: conversations 13, conversations_view 5, inbox_list 5, group_0_inbox 16, contacts 1, analytics 6, quotas 12, tenant_route_matrix 7, platform 9, platform_ops 4, create_platform_staff 2, widget_public 14, widget_leads 5, widget_appearance 3 = **102 passed**.
+- Channel suites: test_channels 7, test_channel_events 12, test_channel_migrations 1, test_channel_outbound 27, test_channel_outbound_unit 16 (63 total).
+- Website prompt digest `test_chat.py::test_system_prompt_matches_main_bytes_for_fixed_website_input`: 1 passed.
+- `test_startup_guard.py` (own process, no stub vars): 8 passed.
+- Website tests unchanged. `git ls-files | grep p6_`: empty.
+
+### P6-03 decision-to-test map (apps/api/tests/test_channel_outbound.py unless noted)
+- D8 signed send, same message_id, rotation, no text in logs: `test_success_duplicate_current_secret_rotation_and_no_text_logs`; queued-before-rotation signs with new secret: `test_job_queued_before_rotation_signs_with_new_secret`.
+- D8 retry on 5xx/timeout/429 with same id: `test_retry_then_success_with_same_id`; budget of 6 attempts then `many_unreachable` and health degraded: `test_retry_exhaustion`.
+- D8 4xx permanent, never retried: `test_permanent_4xx_and_callback_reason_not_retried`.
+- D8 no redirects, size cap, invalid ack: `test_redirect_response_cap_and_invalid_ack`; transport/DNS/target rules: `test_channel_outbound_unit.py` (dns pin, non-global DNS, invalid target, transport cap); send-time target rejection: `test_send_time_target_rejection`.
+- D8 only ai/agent sent, notes never sent, enqueue idempotent, long reply split in order: `test_long_reply_order_and_enqueue_idempotency`, `test_agent_reply_pause_atomic_enqueue_notes_and_tenant_isolation`, split units in `test_channel_outbound_unit.py`; pipeline replies enqueued: `test_channel_pipeline_enqueues_final_replies`; website unchanged, no outbox: `test_website_agent_reply_keeps_response_and_has_no_outbox`.
+- 409 CONNECTION_PAUSED: agent reply refused for paused and revoked, no message stored, tenant B gets 404, active reply enqueues a job: `test_agent_reply_pause_atomic_enqueue_notes_and_tenant_isolation`. Paused/revoked at job time fails with `connection_paused`, nothing sent: `test_paused_at_job_time`.
+- D9 status transitions: pending < sent < delivered < read, failed only below delivered, out-of-order and duplicates harmless; window_closed/template_required/recipient_unreachable shown and not retried: `test_status_callbacks_and_out_of_order`.
+- Job uniqueness and tenant safety, migration: `test_job_unique_key_and_foreign_job_cannot_send`, `test_send_migration_round_trip_and_unique_message_key`.
+- "No AI fallback": there is no SaaS-side test for this and none is claimed. It is a Many-side rule (docs/17 section 1.4). SaaS side evidence is only that exhaustion ends in `failed`/`many_unreachable` with no alternate send path (`test_retry_exhaustion`).
+
+### P6-03 status
+- Backend: accepted on the evidence above.
+- Not auto-resent on resume: behaviour follows from `test_paused_at_job_time` (message failed) but there is no explicit resume test.
+- UNVERIFIED: inbox delivery-state UI (`apps/web/lib/channel-delivery.tsx`, `channel-delivery.spec.ts`, `channel-delivery.unit.mjs`). No frontend or Playwright run in this restart. P6-03 is closed as backend-verified, UI pending.
+- P6-05 not started; the voided WIP remains in stash@{0}.
