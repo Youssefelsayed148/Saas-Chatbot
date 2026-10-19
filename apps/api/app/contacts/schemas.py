@@ -48,6 +48,7 @@ class ContactOut(BaseModel):
     custom_fields: dict[str, object]
     consent: dict[str, object]
     source_channel: str | None
+    channels: list[str] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 

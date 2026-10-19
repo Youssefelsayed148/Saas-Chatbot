@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { LabelBadge } from "@/lib/labels";
+import { channelOptions, humanChannel } from "@/lib/insights";
 import * as api from "@/lib/api";
 import type { Contact } from "@/lib/api";
 import { roleSatisfies, useSession } from "@/lib/session";
@@ -16,6 +17,7 @@ export default function ContactsPage() {
   const canEdit = roleSatisfies(roleIn(tenantId), "editor");
   const canExport = roleSatisfies(roleIn(tenantId), "admin");
   const [contacts, setContacts] = useState<Contact[] | null>(null);
+  const [channel, setChannel] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -23,14 +25,16 @@ export default function ContactsPage() {
 
   const load = useCallback(async () => {
     try {
-      setContacts(await api.listContacts(tenantId));
+      setContacts(
+        await api.listContacts(tenantId, { channel: channel || undefined }),
+      );
       setError(null);
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "Could not load contacts.",
       );
     }
-  }, [tenantId]);
+  }, [channel, tenantId]);
   useEffect(() => {
     const timer = setTimeout(() => void load(), 0);
     return () => clearTimeout(timer);
@@ -66,6 +70,23 @@ export default function ContactsPage() {
         organization.
       </p>
       {error && <Notice tone="error" message={error} />}
+      <section aria-label="Contacts filter" className="filter-toolbar">
+        <label>
+          Channel{" "}
+          <select
+            aria-label="Filter contacts by channel"
+            data-testid="contacts-channel-filter"
+            value={channel}
+            onChange={(e) => setChannel(e.target.value)}
+          >
+            {channelOptions().map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </section>
       {canEdit && (
         <form onSubmit={create} className="card">
           <h2>Add contact</h2>
@@ -121,6 +142,7 @@ export default function ContactsPage() {
                 <th>Email</th>
                 <th>Phone</th>
                 <th>Stage</th>
+                <th>Channels</th>
                 <th>Updated</th>
               </tr>
             </thead>
@@ -136,6 +158,16 @@ export default function ContactsPage() {
                   <td>{contact.phone}</td>
                   <td>
                     <LabelBadge value={contact.stage} />
+                  </td>
+                  <td data-testid="contact-channels">
+                    {(contact.channels?.length ? contact.channels : []).map(
+                      (value, index) => (
+                        <span key={value} className="channel-label">
+                          {humanChannel(value)}
+                          {index < (contact.channels?.length ?? 0) - 1 ? ", " : ""}
+                        </span>
+                      ),
+                    )}
                   </td>
                   <td>{new Date(contact.updated_at).toLocaleDateString()}</td>
                 </tr>

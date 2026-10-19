@@ -9,6 +9,7 @@ import {
   ChannelReplyFields,
   connectionReplyBlock,
 } from "@/lib/channel-delivery";
+import { connectionSuffix } from "@/lib/insights";
 import { InboxList } from "@/lib/inbox-list";
 import { humanLabel, LabelBadge } from "@/lib/labels";
 import * as api from "@/lib/api";
@@ -153,6 +154,12 @@ export default function InboxConversationPage() {
         {conversation.campaign_name && (
           <p role="note" data-testid="inbox-campaign">
             From campaign: {conversation.campaign_name}
+          </p>
+        )}
+        {connectionSuffix(conversation.channel, conversation.connection_name) && (
+          <p role="note" data-testid="inbox-connection-note">
+            Via {connectionSuffix(conversation.channel, conversation.connection_name)} (
+            {conversation.channel})
           </p>
         )}
         <section

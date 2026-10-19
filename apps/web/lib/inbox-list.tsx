@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { humanLabel, LabelBadge } from "@/lib/labels";
+import { connectionSuffix } from "@/lib/insights";
 import * as api from "@/lib/api";
 import type { InboxConversation } from "@/lib/api";
 import { roleSatisfies, useSession } from "@/lib/session";
@@ -170,6 +171,7 @@ export function InboxList({
             <label>
               Channel{" "}
               <select
+                data-testid="inbox-channel-filter"
                 value={filters.channel}
                 onChange={(e) => updateFilter("channel", e.target.value)}
               >
@@ -272,9 +274,28 @@ export function InboxList({
                     {row.last_message?.slice(0, 120) || "New conversation"}
                   </p>
                   <div className="inbox-row-meta">
-                    <span className="channel-label" title={row.channel}>
-                      <span aria-hidden="true">◎</span>{" "}
-                      {humanLabel(row.channel)}
+                    <span
+                      className="channel-label"
+                      title={
+                        connectionSuffix(row.channel, row.connection_name) ?? row.channel
+                      }
+                    >
+                      <span aria-hidden="true">◎</span> {humanLabel(row.channel)}
+                      {(() => {
+                        const connection = connectionSuffix(
+                          row.channel,
+                          row.connection_name,
+                        );
+                        return connection ? (
+                          <span
+                            className="connection-label"
+                            data-testid="inbox-connection"
+                          >
+                            {" "}
+                            · {connection}
+                          </span>
+                        ) : null;
+                      })()}
                     </span>
                     <LabelBadge value={row.status} />
                     {(row.unread_count ?? 0) > 0 && (

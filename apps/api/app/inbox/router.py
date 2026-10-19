@@ -96,6 +96,7 @@ def conversation_detail(
             )
         )
         state["connection_status"] = connection.status if connection else "revoked"
+        state["connection_name"] = connection.display_name if connection else None
         origin = row.origin
         if isinstance(origin, dict):
             campaign_name = origin.get("campaign_name")

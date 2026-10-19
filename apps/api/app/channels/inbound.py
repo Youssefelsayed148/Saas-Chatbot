@@ -154,6 +154,15 @@ def _received(
     conversation.updated_at = now
     db.add(conversation)
     db.flush()
+    # Publish on the shared inbox SSE cursor like every other message.append;
+    # without it a waiting-human inbound is invisible to open inboxes (P6-05b).
+    add_inbox_event(
+        db,
+        tenant_id=connection.tenant_id,
+        conversation_id=conversation.id,
+        message_id=message.id,
+        event_type="message.created",
+    )
     return conversation, message, True
 
 

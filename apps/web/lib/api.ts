@@ -40,6 +40,8 @@ export interface Contact {
   custom_fields: Record<string, unknown>;
   consent: Record<string, unknown>;
   source_channel: string | null;
+  /** P6-05b: distinct identity channels measured for this contact. */
+  channels?: string[];
   created_at: string;
   updated_at: string;
 }
@@ -75,15 +77,38 @@ export interface HandoffAnalytics {
   handoff_rate: number | null;
   average_first_human_reply_seconds: number | null;
   conversations_by_channel: Record<string, number>;
+  /** P6-05b per-channel measured breakdown (website + delegated channels). */
+  channel_breakdown: ChannelBreakdownRow[];
+  /** P6-05b channel conversations grouped by Many campaign name. */
+  conversations_by_campaign: Record<string, number>;
   resolved_vs_open: { resolved: number; open: number };
   sentiment_distribution: Record<string, number>;
   agent_workload: Record<string, number>;
 }
 
+export interface ChannelBreakdownRow {
+  channel: string;
+  conversations: number;
+  handoff_count: number;
+  handoff_rate: number | null;
+  unanswered_questions: number;
+  median_first_response_seconds: number | null;
+  resolved_count: number;
+  resolved_rate: number | null;
+}
+
 const CONTACTS = (tenantId: string) => `tenants/${tenantId}/contacts`;
 
-export async function listContacts(tenantId: string): Promise<Contact[]> {
-  const result = await api<{ contacts: Contact[] }>(CONTACTS(tenantId));
+export async function listContacts(
+  tenantId: string,
+  filters: { channel?: string } = {},
+): Promise<Contact[]> {
+  const query = new URLSearchParams();
+  if (filters.channel) query.set("channel", filters.channel);
+  const suffix = query.size ? `?${query.toString()}` : "";
+  const result = await api<{ contacts: Contact[] }>(
+    `${CONTACTS(tenantId)}${suffix}`,
+  );
   return result.contacts;
 }
 
@@ -175,8 +200,14 @@ export function cancelFollowUp(
   });
 }
 
-export function handoffAnalytics(tenantId: string): Promise<HandoffAnalytics> {
-  return api<HandoffAnalytics>(`tenants/${tenantId}/analytics`);
+export function handoffAnalytics(
+  tenantId: string,
+  filters: { channel?: string } = {},
+): Promise<HandoffAnalytics> {
+  const query = new URLSearchParams();
+  if (filters.channel) query.set("channel", filters.channel);
+  const suffix = query.size ? `?${query.toString()}` : "";
+  return api<HandoffAnalytics>(`tenants/${tenantId}/analytics${suffix}`);
 }
 
 export interface Membership {
@@ -579,6 +610,8 @@ export interface ConversationDetailResponse {
 
 export interface InboxConversation {
   connection_status?: "active" | "paused" | "revoked";
+  /** P6-05b: display name of the Many connection (channel rows only). */
+  connection_name?: string | null;
   id: string;
   bot_id: string;
   contact_id: string | null;

@@ -1179,6 +1179,10 @@ progress::-webkit-progress-value {
   font-size: 0.7rem;
   color: var(--muted);
 }
+.connection-label {
+  color: var(--muted);
+  font-weight: 500;
+}
 .unread-count {
   margin-inline-start: auto;
   color: var(--accent);

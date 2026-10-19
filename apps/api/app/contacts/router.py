@@ -51,6 +51,16 @@ def _stages(context: TenantContext) -> list[ContactStage]:
     return list(rows)
 
 
+_EXPORT_SAFE_PREFIXES = ("=", "+", "-", "@")
+
+
+def _export_safe(value: str) -> str:
+    """Neutralize CSV formula injection: escape leading spreadsheet operators."""
+    if value.startswith(_EXPORT_SAFE_PREFIXES) or value.startswith("\t"):
+        return f"'{value}"
+    return value
+
+
 def _ensure_reachable_and_unique(
     context: TenantContext,
     *,
@@ -82,14 +92,32 @@ def list_contacts(
     limit: Annotated[int, Query(ge=1, le=200)] = 100,
     offset: Annotated[int, Query(ge=0)] = 0,
     q: Annotated[str | None, Query(max_length=100)] = None,
+    channel: Annotated[str | None, Query(max_length=32)] = None,
 ) -> dict[str, object]:
     context.require_role("viewer")
+    if channel is not None and channel not in ("website", "whatsapp", "messenger", "instagram"):
+        raise ApiError(
+            422,
+            "VALIDATION_ERROR",
+            "channel must be one of website, whatsapp, messenger, instagram.",
+        )
     query = select(Contact).where(Contact.tenant_id == context.tenant_id)
     if q:
         query = query.where(
             (Contact.display_name.ilike(f"%{q}%"))
             | (Contact.email.ilike(f"%{q}%"))
             | (Contact.phone.ilike(f"%{q}%"))
+        )
+    if channel is not None:
+        # A contact matches when one of its channel identities is on the
+        # requested channel (website sessions and delegated channels both).
+        query = query.where(
+            Contact.id.in_(
+                select(ContactIdentity.contact_id).where(
+                    ContactIdentity.tenant_id == context.tenant_id,
+                    ContactIdentity.channel == channel,
+                )
+            )
         )
     rows = (
         context.db.execute(
@@ -98,7 +126,28 @@ def list_contacts(
         .scalars()
         .all()
     )
-    return {"contacts": [ContactOut.model_validate(row).model_dump(mode="json") for row in rows]}
+    # P6-05b: per-contact channels measured from its identities.
+    channels_by_contact: dict[UUID, list[str]] = {}
+    if rows:
+        identity_rows = context.db.execute(
+            select(ContactIdentity.contact_id, ContactIdentity.channel)
+            .where(
+                ContactIdentity.tenant_id == context.tenant_id,
+                ContactIdentity.contact_id.in_([row.id for row in rows]),
+            )
+            .distinct()
+            .order_by(ContactIdentity.channel)
+        )
+        for contact_id, identity_channel in identity_rows:
+            channels_by_contact.setdefault(contact_id, []).append(str(identity_channel))
+    return {
+        "contacts": [
+            ContactOut.model_validate(row)
+            .model_copy(update={"channels": channels_by_contact.get(row.id, [])})
+            .model_dump(mode="json")
+            for row in rows
+        ]
+    }
 
 
 @router.post("", status_code=201)
@@ -163,6 +212,15 @@ def export_contacts(context: TenantContextDep) -> Response:
         .scalars()
         .all()
     )
+    identity_rows = context.db.execute(
+        select(ContactIdentity.contact_id, ContactIdentity.channel)
+        .where(ContactIdentity.tenant_id == context.tenant_id)
+        .distinct()
+        .order_by(ContactIdentity.channel)
+    )
+    channels_by_contact: dict[UUID, list[str]] = {}
+    for contact_id, identity_channel in identity_rows:
+        channels_by_contact.setdefault(contact_id, []).append(str(identity_channel))
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(
@@ -172,6 +230,7 @@ def export_contacts(context: TenantContextDep) -> Response:
             "email",
             "phone",
             "stage",
+            "channels",
             "tags",
             "custom_fields",
             "consent",
@@ -186,6 +245,9 @@ def export_contacts(context: TenantContextDep) -> Response:
                 row.email,
                 row.phone,
                 row.stage,
+                # Spreadsheet program guard: a value that Excel/Sheets could
+                # otherwise evaluate as a formula is quoted out (D12 exports).
+                ";".join(_export_safe(value) for value in channels_by_contact.get(row.id, [])),
                 ";".join(str(x) for x in row.tags),
                 json.dumps(row.custom_fields, ensure_ascii=False, sort_keys=True),
                 json.dumps(row.consent, ensure_ascii=False, sort_keys=True),

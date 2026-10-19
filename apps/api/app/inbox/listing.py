@@ -18,6 +18,7 @@ from app.auth import cookies
 from app.core.errors import ApiError
 from app.core.tenancy import TenantContext, TenantContextDep
 from app.db.models import (
+    ChannelConnection,
     Conversation,
     ConversationRead,
     ConversationTag,
@@ -199,12 +200,32 @@ def list_inbox(
         )
         for conversation_id, value in tag_rows:
             tags_by_conversation[conversation_id].append(value)
+    # P6-05b: connection display name for channel rows (tenant-scoped join).
+    connection_ids = {
+        row.connection_id
+        for row, _, _ in rows
+        if row.source == "channel" and row.connection_id is not None
+    }
+    connection_names: dict[UUID, str] = {}
+    if connection_ids:
+        connection_rows = context.db.execute(
+            select(ChannelConnection.id, ChannelConnection.display_name).where(
+                ChannelConnection.tenant_id == context.tenant_id,
+                ChannelConnection.id.in_(connection_ids),
+            )
+        )
+        connection_names = {
+            connection_id: display_name for connection_id, display_name in connection_rows
+        }
     conversations = [
         {
             "id": str(row.id),
             "bot_id": str(row.bot_id),
             "contact_id": str(row.contact_id) if row.contact_id else None,
             "channel": row.channel,
+            "connection_name": (
+                connection_names.get(row.connection_id) if row.source == "channel" else None
+            ),
             "mode": row.mode,
             "status": row.status,
             "assigned_user_id": str(row.assigned_user_id) if row.assigned_user_id else None,

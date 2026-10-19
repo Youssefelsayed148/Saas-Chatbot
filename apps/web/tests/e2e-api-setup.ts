@@ -137,6 +137,9 @@ export function startWorker(
     env: {
       ...process.env,
       DATABASE_URL: databaseUrl,
+      // Same test environment as the API; the embedding test stub refuses a
+      // non-test environment, so worker jobs would otherwise retry forever.
+      ENVIRONMENT: "test",
       WORKER_ALLOW_ONLY_TEST_DB: "1",
       CHAT_STUB_MODEL: "1",
       EMBEDDING_TEST_STUB: "1",
