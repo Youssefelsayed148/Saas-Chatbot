@@ -63,15 +63,20 @@ rounds and P6-05 closed it (PROGRESS.md).
 
 ## Verification summary
 
-Exact commands and counts per ticket are in PROGRESS.md:
+Exact commands and counts per ticket are in PROGRESS.md; the final
+verification section there records the end-of-run totals:
 - Step 1 gate after clean restart: 14 baseline files × 2 rounds = 102 passed
   each round; channel suites 63; startup guard 8; digest 1.
 - P6-05: health file 9; channel suites 73 total; frontend unit 14/14; lint +
   typecheck exit 0; two Playwright runs green.
 - P6-05b: API 9 new; affected suites unchanged (6/5/1/5/16/6); node unit 8+14;
   lint/typecheck exit 0; new Playwright spec 1 passed.
-- P6-06: contract suite 17; channel suites 7+1+12+28+16+9+17 = 90; final
-  massive re-run recorded below in PROGRESS.md (final verification section).
+- P6-06: contract suite 17; channel suites 99 total (incl. P6-05b file).
+- Final run after both tickets: 14 baseline files × 2 = 102 + 102; full API
+  suite (55 files + eval) 512 passed / 1 pre-existing skip; channel suites 99;
+  digest 1; startup guard 8 (no stub vars); node unit 22 pass; lint +
+  typecheck exit 0; full Playwright 66 passed in 5.4m; ruff + strict mypy on
+  9 touched files clean.
 
 Not mergeable until: owner sign-off on ADR-020 + P6-05b scope, P7 completion,
 full green Playwright on the final head, staging canary with the Many side in

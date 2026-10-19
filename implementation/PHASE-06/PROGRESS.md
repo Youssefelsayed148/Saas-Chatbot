@@ -329,3 +329,65 @@ Commits: `6996132 feat: P6-05b unified inbox and insights by channel`,
 - Commits: `a9a7066 test: docs/17 v1 contract suite ...`, then the docs
   commit in this run.
 
+## Final verification (2026-10-19, after both tickets were committed)
+
+Environment: disposable database
+`postgresql://test:test@127.0.0.1:55462/phase6final` per process; Windows venv
+from the worktree; `CHAT_STUB_MODEL`/`EMBEDDING_TEST_STUB` unset except where
+noted; one pytest process per file; `-q -p no:cacheprovider`; basetemp in the
+Windows temp dir (two transient temp-file `FileNotFoundError`s on the
+DrvFs-mounted worktree tmpdir disappeared with a Windows-native basetemp).
+
+1. 14 baseline API files, run TWICE: **102 passed** in round 1 and **102
+   passed** in round 2 (identical per-file counts: conversations 13,
+   conversations_view 5, inbox_list 5, group_0_inbox 16, contacts 1,
+   analytics 6, quotas 12, tenant_route_matrix 7, platform 9, platform_ops 4,
+   create_platform_staff 2, widget_public 14, widget_leads 5,
+   widget_appearance 3).
+2. Full API suite (55 files, one process per file) + `tests/eval`:
+   **510 passed, 1 skipped** (the pre-existing
+   `test_knowledge_parsers` skip) + **2 passed** in eval = **512**.
+   Per file: baseline 102; rest1 (auth 15, bot_status 5, bots 4,
+   change_requests 1, chat 17, cross_script 3, database_guard 5,
+   embedding_foundation 17, followups_analytics 2, group_a_operator 7,
+   group_c_polish 2, handoff 6, health 6, hybrid_retrieval 9, invitations 6,
+   jobs 8, knowledge_parsers 28+1 skipped, knowledge_pipeline 9,
+   knowledge_uploads 19, members 8, migrations 1, models_constraints 13);
+   rest2 (rag_evaluation 12, rag_gate 22, rag_limits 14,
+   rag_stage0_baseline 14, rag_traces 3, retrieval 12, seed_demo 21,
+   self_service_signup 4, tenant_data 2, tenants 6).
+3. Channel suites: test_channels **7**, test_channel_migrations **1**,
+   test_channel_events **12**, test_channel_outbound **28**,
+   test_channel_outbound_unit **16**, test_channel_health **9**,
+   test_channel_inbox_insights **9**, test_channel_contract **17** = **99**.
+4. Website prompt digest: **1 passed**.
+5. `test_startup_guard.py` own process, stub vars unset: **8 passed**.
+6. Frontend: `node --test tests/insights.unit.mjs tests/channel-delivery.unit.mjs`
+   → **22 pass, 0 fail** (8 + 14); `npm run lint` exit 0; `npm run typecheck`
+   exit 0.
+7. Full Playwright (all 66 tests, website included, disposable DB
+   `phase6e2e_e2e_test`, API+worker spawned by the global setup): **66 passed
+   in 5.4m**.
+8. Ruff + mypy `--strict --follow-imports=silent` on all 9 touched Python
+   files: clean.
+
+Fixes committed during the final run (each rerun on the affected suite):
+- `fix: keep channel encryption keys out of the Settings repr` — the repr
+  privacy guard in `test_health.py::test_database_error_is_safely_handled`
+  tripped on the P6 field name; the field is now `repr=False`.
+- `fix: tolerate array-shaped channel fixture responses on the client
+  overview` — the P6-05 Overview card read `channels.items` and crashed the
+  page when a fixture answered `/channels` with a bare array; caught by the
+  full Playwright run (group-b spec, 6 passed after the fix).
+- Environment note: `test_rag_evaluation`, `test_rag_gate` and
+  `test_rag_stage0_baseline` read their own UTF-8 JSONL outputs with the
+  default encoding; on Windows Python they need `PYTHONUTF8=1` (pre-existing,
+  not Phase 6 code). `tests/eval` regenerates
+  `implementation/PHASE-03/EVAL-REPORT.md` with the current date; the committed
+  report was restored after the run.
+- Playwright run-infra notes: port 3100 is in use by an unrelated project on
+  this machine, so the web port moved behind `E2E_WEB_PORT` (already committed
+  with P6-05b); `ENVIRONMENT=test` is now set for the spawned worker (same
+  commit).
+
+
