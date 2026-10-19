@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { humanLabel } from "@/lib/labels";
+import { humanLabel, LabelBadge } from "@/lib/labels";
 import * as api from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { Empty, Loading, Notice } from "@/lib/ui";
@@ -16,16 +16,18 @@ export default function TenantOverview() {
     bots: api.Bot[];
     quota: api.TenantQuotaStatus;
     recent: api.InboxResponse;
+    channels: api.TenantChannel[];
     published: boolean | null;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const load = useCallback(async () => {
     try {
-      const [counts, bots, quota, recent] = await Promise.all([
+      const [counts, bots, quota, recent, channels] = await Promise.all([
         api.inboxCounts(tenant),
         api.listBots(tenant, false),
         api.tenantQuota(tenant),
         api.listInbox(tenant, { limit: "5" }),
+        api.listTenantChannels(tenant).catch(() => ({ items: [] })),
       ]);
       // The checklist refers to the first current bot only; no per-bot request fan-out.
       const revisions =
@@ -37,6 +39,7 @@ export default function TenantOverview() {
         bots,
         quota,
         recent,
+        channels: channels.items,
         published: revisions ? Boolean(revisions.published_revision_id) : null,
       });
       setError(null);
@@ -152,6 +155,39 @@ export default function TenantOverview() {
               </section>
             )}
           </div>
+          {data.channels.length > 0 && (
+            <section
+              className="panel"
+              aria-label="Connected channels"
+              data-testid="connected-channels"
+            >
+              <div className="section-heading">
+                <h2>Connected channels</h2>
+              </div>
+              <ul className="recent-list channels-overview-list">
+                {data.channels.map((channel) => (
+                  <li key={`${channel.channel}-${channel.display_name}`}>
+                    <span data-testid="channel-overview-row">
+                      {channel.display_name}{" "}
+                      <span className="badge">
+                        {humanLabel(channel.channel)}
+                      </span>{" "}
+                      <LabelBadge value={channel.status} />{" "}
+                      <LabelBadge value={channel.health_status} />
+                    </span>
+                    <small>
+                      {channel.last_event_at
+                        ? `Last activity ${new Date(channel.last_event_at).toLocaleDateString()}`
+                        : "No activity yet"}
+                    </small>
+                  </li>
+                ))}
+              </ul>
+              <p className="muted">
+                Managed by platform staff; read-only here.
+              </p>
+            </section>
+          )}
           <section aria-label="Plan usage">
             <div className="section-heading">
               <h2>Plan usage</h2>

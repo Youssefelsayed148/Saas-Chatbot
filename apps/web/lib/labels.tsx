@@ -36,6 +36,12 @@ const LABELS: Record<string, string> = {
   succeeded: "Completed",
   cancelled: "Cancelled",
   published: "Published",
+  healthy: "Healthy",
+  degraded: "Degraded",
+  unhealthy: "Unhealthy",
+  unknown: "Unknown",
+  stale: "No recent signal",
+  revoked: "Revoked",
 };
 export function humanLabel(value: string): string {
   return (
@@ -64,6 +70,13 @@ export function auditActionLabel(action: string): string {
     "platform.onboarding.admin_invited": "Admin invited",
     "self_service.owner_assigned": "Admin assigned",
     "self_service.admin_assigned": "Admin assigned",
+    "channel_connection.created": "Channel created",
+    "channel_connection.updated": "Channel updated",
+    "channel_connection.paused": "Channel paused",
+    "channel_connection.active": "Channel resumed",
+    "channel_connection.revoked": "Channel revoked",
+    "channel_connection.secret_rotated": "Channel secret rotated",
+    "channel_connection.health_changed": "Channel health changed",
   };
   return labels[action] ?? action;
 }

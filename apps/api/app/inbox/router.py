@@ -96,6 +96,11 @@ def conversation_detail(
             )
         )
         state["connection_status"] = connection.status if connection else "revoked"
+        origin = row.origin
+        if isinstance(origin, dict):
+            campaign_name = origin.get("campaign_name")
+            if isinstance(campaign_name, str) and campaign_name.strip():
+                state["campaign_name"] = campaign_name.strip()[:120]
     return {
         "conversation": state,
         "messages": [

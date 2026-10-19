@@ -136,14 +136,16 @@ def enqueue_message(
         previous_id = part.id
 
 
-def resolve_target(base_url: str, settings: Settings) -> tuple[httpx.URL, str]:
+def resolve_target(
+    base_url: str, settings: Settings, *, path: str = "/api/saas/messages"
+) -> tuple[httpx.URL, str]:
     """Resolve once, reject every non-global answer and pin TCP to that IP.
 
     Host and TLS SNI still use the original host; TLS certificate verification
     remains enabled. No second hostname resolution, proxies, or redirects.
     """
     try:
-        url = httpx.URL(_validate_base_url(base_url, settings) + "/api/saas/messages")
+        url = httpx.URL(_validate_base_url(base_url, settings) + path)
         addresses = socket.getaddrinfo(
             url.host, url.port or (443 if url.scheme == "https" else 80), type=socket.SOCK_STREAM
         )

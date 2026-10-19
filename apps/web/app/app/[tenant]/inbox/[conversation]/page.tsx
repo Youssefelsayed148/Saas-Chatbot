@@ -150,6 +150,11 @@ export default function InboxConversationPage() {
           Read the thread, coordinate with your team and help the visitor.
         </p>
         {error && <Notice message={error} tone="error" />}
+        {conversation.campaign_name && (
+          <p role="note" data-testid="inbox-campaign">
+            From campaign: {conversation.campaign_name}
+          </p>
+        )}
         <section
           aria-label="Conversation controls"
           className="conversation-controls"

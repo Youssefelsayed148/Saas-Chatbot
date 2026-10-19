@@ -90,7 +90,8 @@ class Job(Base):
     __table_args__ = (
         CheckConstraint(
             "type IN ('ingest_batch', 'retention_purge', 'follow_up_delivery', "
-            "'sentiment_classify', 'reembed_backfill', 'channel_inbound', 'channel_send')",
+            "'sentiment_classify', 'reembed_backfill', 'channel_inbound', "
+            "'channel_send', 'channel_health_poll')",
             name="ck_jobs_type",
         ),
         CheckConstraint(

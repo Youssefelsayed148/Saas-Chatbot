@@ -122,6 +122,11 @@ class Settings(BaseSettings):
     # Worker loop.
     worker_poll_seconds: float = Field(default=1.0, ge=0.1, le=60)
     worker_heartbeat_file: str = "/tmp/chatbot-worker-heartbeat"
+    # P6-05 connection health polls: every 5 minutes, active connections only,
+    # jittered inside the interval, at most ``_batch`` jobs scheduled per cycle.
+    channel_health_poll_interval_seconds: int = Field(default=300, ge=60)
+    channel_health_poll_jitter_seconds: int = Field(default=60, ge=0)
+    channel_health_poll_batch: int = Field(default=100, ge=1)
     # E2E/test harness guard: when set, the worker refuses a non-_test database.
     worker_allow_only_test_db: bool = False
 

@@ -13,6 +13,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session as OrmSession
 
 from app.auth import cookies
+from app.channels.health import check_health, effective_health
 from app.channels.secrets import encrypt_secret
 from app.core.audit import record_audit
 from app.core.config import Settings, get_settings
@@ -167,7 +168,13 @@ def _validate_base_url(value: str, settings: Settings) -> str:
 
 
 def _staff_out(connection: ChannelConnection) -> StaffConnectionOut:
-    return StaffConnectionOut.model_validate(connection, from_attributes=True)
+    output = StaffConnectionOut.model_validate(connection, from_attributes=True)
+    # Read-only staleness (docs/17 §4.3): an old signal shows unknown/stale.
+    status, reason = effective_health(connection)
+    output.health_status = cast(HealthStatus, status)
+    if reason is not None:
+        output.health_reason = reason
+    return output
 
 
 def _require_connection(db: OrmSession, connection_id: UUID, *, lock: bool) -> ChannelConnection:
@@ -378,6 +385,27 @@ def revoke_channel_connection(
 
 
 @router.post(
+    "/api/v1/platform/channel-connections/{connection_id}/check-health",
+    response_model=StaffConnectionOut,
+)
+def check_channel_connection_health(
+    connection_id: UUID,
+    _csrf: CsrfOk,
+    staff: PlatformStaffDep,
+    db: DbSession,
+    settings: CurrentSettings,
+) -> StaffConnectionOut:
+    """Staff "Check now": one signed health pull, applied with an audit row."""
+    connection = _require_connection(db, connection_id, lock=True)
+    if connection.status == "revoked":
+        raise ApiError(409, "CONNECTION_REVOKED", "A revoked connection has no health to check.")
+    check_health(db, connection, settings, actor=staff)
+    db.commit()
+    db.refresh(connection)
+    return _staff_out(connection)
+
+
+@router.post(
     "/api/v1/platform/channel-connections/{connection_id}/rotate-secret",
     response_model=CreatedConnectionOut,
 )
@@ -428,15 +456,16 @@ def list_client_channels(context: TenantContextDep) -> ClientChannelListOut:
         .order_by(ChannelConnection.created_at, ChannelConnection.id)
     )
     # The client contract intentionally omits Many URLs, channel refs, and secrets.
-    return ClientChannelListOut(
-        items=[
+    items: list[ClientChannelOut] = []
+    for row in connections:
+        health_status, _reason = effective_health(row)
+        items.append(
             ClientChannelOut(
                 channel=cast(ChannelName, row.channel),
                 display_name=row.display_name,
                 status=cast(ConnectionStatus, row.status),
-                health_status=cast(HealthStatus, row.health_status),
+                health_status=cast(HealthStatus, health_status),
                 last_event_at=row.last_event_at,
             )
-            for row in connections
-        ]
-    )
+        )
+    return ClientChannelListOut(items=items)

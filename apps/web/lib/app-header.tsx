@@ -71,6 +71,7 @@ export function AppShell({
           href: "/platform/change-requests",
           symbol: <ChangeRequestIcon />,
         },
+        { label: "Channels", href: "/platform/channels", symbol: "⇄" },
         { label: "Operations", href: "/platform/operations", symbol: "▥" },
         { label: "Client workspaces", href: "/app", symbol: "↗" },
       ]

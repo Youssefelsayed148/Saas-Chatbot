@@ -76,6 +76,7 @@ def main() -> None:
 
     print(f"worker: {worker_id} started", flush=True)
     last_purge = 0.0  # monotonic seconds; first purge runs after the interval
+    last_health_poll = 0.0  # monotonic seconds; first poll schedule runs after the interval
     started = time.monotonic()
     try:
         while not stop:
@@ -93,6 +94,23 @@ def main() -> None:
                 finally:
                     session.close()
                 last_purge = time.monotonic() - started
+            if (
+                time.monotonic() - started - last_health_poll
+                >= settings.channel_health_poll_interval_seconds
+            ):
+                session = session_factory(engine)()
+                try:
+                    from app.channels.health import schedule_health_polls
+
+                    scheduled = schedule_health_polls(session, settings)
+                    session.commit()
+                    print(f"jobs: scheduled {scheduled} channel health poll(s)", flush=True)
+                except Exception:
+                    session.rollback()
+                    logging.exception("Channel health poll scheduling failed; will retry.")
+                finally:
+                    session.close()
+                last_health_poll = time.monotonic() - started
             session = session_factory(engine)()
             try:
                 job = claim_job(session, worker_id, settings)

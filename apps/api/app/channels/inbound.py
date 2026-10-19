@@ -1,6 +1,5 @@
 """Idempotent storage handlers for authenticated ManyOsirisChat events."""
 
-import unicodedata
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
@@ -8,6 +7,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
+from app.channels.health import apply_health, clean_text
 from app.chat.conversations import channel_chat_turn
 from app.core.config import Settings, get_settings
 from app.db.models import (
@@ -23,21 +23,10 @@ from app.db.models import (
 from app.inbox.events import add_inbox_event
 
 _STATUS_RANK = {"pending": 0, "sent": 1, "delivered": 2, "read": 3}
-_HEALTH = {
-    "connected": "healthy",
-    "token_expiring": "degraded",
-    "webhook_unhealthy": "degraded",
-    "token_expired": "unhealthy",
-    "disconnected": "unhealthy",
-}
 
 
 def _clean(value: object, limit: int) -> str | None:
-    if not isinstance(value, str):
-        return None
-    cleaned = "".join(char for char in value if not unicodedata.category(char).startswith("C"))
-    cleaned = " ".join(cleaned.split()).strip()[:limit]
-    return cleaned or None
+    return clean_text(value, limit)
 
 
 def _event_time(payload: dict[str, Any], key: str = "occurred_at") -> datetime:
@@ -217,16 +206,19 @@ def _message_status(db: OrmSession, connection: ChannelConnection, payload: dict
         )
 
 
-def _channel_status(connection: ChannelConnection, payload: dict[str, Any]) -> None:
+def _channel_status(
+    db: OrmSession, connection: ChannelConnection, payload: dict[str, Any]
+) -> None:
+    """Pushed ``channel.status`` (docs/17 §4.3): newest wins, audited."""
     occurred_at = _event_time(payload)
-    if connection.health_updated_at is not None and occurred_at < connection.health_updated_at:
-        return
-    status = payload["status"]
-    connection.health_status = _HEALTH[status]
-    connection.health_reason = status
-    connection.health_detail = _clean(payload.get("detail"), 200)
-    connection.health_updated_at = occurred_at
-    connection.updated_at = datetime.now(UTC)
+    apply_health(
+        db,
+        connection,
+        status=payload["status"],
+        detail=clean_text(payload.get("detail"), 200),
+        occurred_at=occurred_at,
+        source="event",
+    )
 
 
 def run_channel_inbound(db: OrmSession, job: Job, settings: Settings | None = None) -> str | None:
@@ -284,7 +276,7 @@ def run_channel_inbound(db: OrmSession, job: Job, settings: Settings | None = No
     elif event.event_type == "message.status":
         _message_status(db, connection, payload)
     elif event.event_type == "channel.status":
-        _channel_status(connection, payload)
+        _channel_status(db, connection, payload)
     else:
         event.status = "ignored"
         event.processed_at = datetime.now(UTC)

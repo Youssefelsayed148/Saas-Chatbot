@@ -201,6 +201,32 @@ def test_paused_at_job_time(send_context: Any, db: Session, status: str) -> None
     assert message.delivery_status == "failed" and message.error_code == "connection_paused"
 
 
+def test_resume_does_not_resend_messages_failed_with_connection_paused(
+    send_context: Any, db: Session
+) -> None:
+    """Auto-resume never re-sends: `connection_paused` failures stay terminal."""
+    connection, _conversation, message, job, settings, fake = send_context
+    connection.status = "paused"
+    db.commit()
+    run(db, job, settings)
+    assert message.delivery_status == "failed" and message.error_code == "connection_paused"
+    assert job.status == "succeeded" and not fake.requests
+    connection.status = "active"
+    db.commit()
+    run(db, job, settings)
+    # Nothing is re-enqueued and the stored failure is not retried into a send.
+    assert not fake.requests
+    assert message.delivery_status == "failed" and message.error_code == "connection_paused"
+    assert (
+        db.scalar(
+            select(func.count())
+            .select_from(Job)
+            .where(Job.type == "channel_send", Job.status == "pending")
+        )
+        == 0
+    )
+
+
 @pytest.mark.parametrize(
     "target",
     [
@@ -448,7 +474,8 @@ def test_send_migration_round_trip_and_unique_message_key(db: Session, engine: E
     run_migrations(url, upgrade_to="", downgrade_to="0018_channel_inbound")
     run_migrations(url)
     with engine.connect() as conn:
-        assert conn.scalar(text("SELECT version_num FROM alembic_version")) == "0019_channel_send"
+        version = conn.scalar(text("SELECT version_num FROM alembic_version"))
+        assert version == "0020_channel_health_poll"
         assert (
             conn.scalar(
                 text("SELECT count(*) FROM pg_indexes WHERE indexname = 'uq_channel_send_message'")

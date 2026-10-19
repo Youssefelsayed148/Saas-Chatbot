@@ -369,6 +369,110 @@ export async function tenantQuota(
   return api(`tenants/${tenantId}/quota`);
 }
 
+// --- delegated channels (P6: docs/17) --------------------------------------
+
+export type ChannelHealth = "healthy" | "degraded" | "unhealthy" | "unknown";
+
+export interface TenantChannel {
+  channel: string;
+  display_name: string;
+  status: string;
+  health_status: ChannelHealth;
+  last_event_at: string | null;
+}
+
+/** Client roles see a read-only "Connected channels" card on Overview only. */
+export async function listTenantChannels(
+  tenantId: string,
+): Promise<{ items: TenantChannel[] }> {
+  return api(`tenants/${tenantId}/channels`);
+}
+
+export interface PlatformChannelConnection {
+  id: string;
+  tenant_id: string;
+  bot_id: string;
+  channel: string;
+  display_name: string;
+  many_base_url: string;
+  many_channel_ref: string | null;
+  status: string;
+  ai_enabled: boolean;
+  secret_key_version: number;
+  secret_rotated_at: string | null;
+  prev_secret_expires_at: string | null;
+  health_status: ChannelHealth;
+  health_reason: string | null;
+  health_detail: string | null;
+  health_updated_at: string | null;
+  last_event_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function listChannelConnections(tenantId?: string): Promise<{
+  items: PlatformChannelConnection[];
+}> {
+  const suffix = tenantId ? `?tenant_id=${encodeURIComponent(tenantId)}` : "";
+  return api(`platform/channel-connections${suffix}`);
+}
+
+export async function createChannelConnection(payload: {
+  tenant_id: string;
+  bot_id: string;
+  channel: string;
+  display_name: string;
+  many_base_url: string;
+  many_channel_ref?: string;
+}): Promise<PlatformChannelConnection & { secret: string }> {
+  return api("platform/channel-connections", { method: "POST", body: payload });
+}
+
+export async function updateChannelConnection(
+  connectionId: string,
+  patch: {
+    display_name?: string;
+    many_base_url?: string;
+    many_channel_ref?: string;
+    ai_enabled?: boolean;
+  },
+): Promise<PlatformChannelConnection> {
+  return api(`platform/channel-connections/${connectionId}`, {
+    method: "PATCH",
+    body: patch,
+  });
+}
+
+export async function channelConnectionStatusAction(
+  connectionId: string,
+  action: "pause" | "resume" | "revoke",
+): Promise<PlatformChannelConnection> {
+  return api(`platform/channel-connections/${connectionId}/${action}`, {
+    method: "POST",
+    body: {},
+  });
+}
+
+export async function rotateChannelSecret(
+  connectionId: string,
+): Promise<PlatformChannelConnection & { secret: string }> {
+  return api(`platform/channel-connections/${connectionId}/rotate-secret`, {
+    method: "POST",
+    body: {},
+  });
+}
+
+/** Staff "Check now": one signed pull to Many; returns the updated state. */
+export async function checkChannelHealth(
+  connectionId: string,
+): Promise<PlatformChannelConnection> {
+  return api(`platform/channel-connections/${connectionId}/check-health`, {
+    method: "POST",
+    body: {},
+  });
+}
+
 export async function platformQuotas(): Promise<PlatformQuotaPlans> {
   return api("platform/quotas");
 }
@@ -487,6 +591,8 @@ export interface InboxConversation {
   last_message?: string | null;
   unread_count?: number;
   tags?: string[];
+  /** Set when the conversation originated from a Many campaign (P6-02 origin). */
+  campaign_name?: string;
 }
 
 export interface InboxResponse {

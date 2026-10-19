@@ -52,6 +52,10 @@ CHANNEL_PLATFORM_ROUTE_ROLES = {
         "POST",
         "/api/v1/platform/channel-connections/{connection_id}/rotate-secret",
     ): "platform_staff_only",
+    (
+        "POST",
+        "/api/v1/platform/channel-connections/{connection_id}/check-health",
+    ): "platform_staff_only",
 }
 
 

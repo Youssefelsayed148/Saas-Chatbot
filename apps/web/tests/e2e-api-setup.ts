@@ -2,6 +2,7 @@
  * (python -m app.worker) against a disposable database. */
 
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
+import { randomBytes } from "node:crypto";
 
 import {
   API_DIR,
@@ -14,9 +15,17 @@ import {
 interface ServerHandle {
   server: ChildProcess | null;
   databaseUrl: string;
+  /** Test-only P6 channel secret key; shared by the API and the worker. */
+  channelKey: string;
+}
+
+/** Test-only Fernet key for P6 channel secret encryption; never persisted. */
+function channelKey(): string {
+  return randomBytes(32).toString("base64url");
 }
 
 export async function startServer(): Promise<ServerHandle> {
+  const key = channelKey();
   if (await waitFor(HEALTH_URL, 1500)) {
     // Reuse is opt-in: silently testing against an unknown running server
     // (e.g. the compose stack on the dev database) hides the disposable-DB
@@ -34,7 +43,7 @@ export async function startServer(): Promise<ServerHandle> {
     const base = process.env.DATABASE_URL;
     if (!base)
       throw new Error("Set DATABASE_URL to a disposable PostgreSQL base URL.");
-    return { server: null, databaseUrl: disposableUrl(base) };
+    return { server: null, databaseUrl: disposableUrl(base), channelKey: key };
   }
 
   const base = process.env.DATABASE_URL;
@@ -103,6 +112,8 @@ export async function startServer(): Promise<ServerHandle> {
         // (dev-only; production never sets this).
         CHAT_STUB_MODEL: "1",
         EMBEDDING_TEST_STUB: "1",
+        // Test-only channel encryption key (P6); a real one is owner-managed.
+        CHANNEL_SECRET_ENCRYPTION_KEYS: key,
       },
       stdio: "inherit",
     },
@@ -111,11 +122,14 @@ export async function startServer(): Promise<ServerHandle> {
   if (!up) {
     throw new Error("The E2E API did not become healthy in time.");
   }
-  return { server, databaseUrl };
+  return { server, databaseUrl, channelKey: key };
 }
 
 /** Start the P2 worker (same codebase) on the disposable _test database. */
-export function startWorker(databaseUrl: string): ChildProcess {
+export function startWorker(
+  databaseUrl: string,
+  channelKey: string | null = null,
+): ChildProcess {
   const python = resolvePython();
   const worker = spawn(python, ["-m", "app.worker"], {
     cwd: API_DIR,
@@ -126,6 +140,8 @@ export function startWorker(databaseUrl: string): ChildProcess {
       CHAT_STUB_MODEL: "1",
       EMBEDDING_TEST_STUB: "1",
       WORKER_HEARTBEAT_FILE: "/tmp/chatbot-e2e-worker-heartbeat",
+      // Same test-only key as the API so inbound/outbound jobs can decrypt.
+      ...(channelKey ? { CHANNEL_SECRET_ENCRYPTION_KEYS: channelKey } : {}),
     },
     stdio: "inherit",
   });
@@ -139,7 +155,7 @@ export default async function globalSetup(): Promise<void> {
   process.env.E2E_DATABASE_URL = handle.databaseUrl;
   if (handle.server !== null) {
     // Only spawn a worker we own the API/database for (reuse runs keep theirs).
-    const worker = startWorker(handle.databaseUrl);
+    const worker = startWorker(handle.databaseUrl, handle.channelKey);
     (globalThis as unknown as { __e2eWorker?: unknown }).__e2eWorker = worker;
   }
   // Share the child process with the teardown module through globalThis.

@@ -1617,3 +1617,51 @@ dialog .action-row {
     grid-template-columns: 1fr 1fr;
   }
 }
+/* P6-05 staff channels and client channel surfaces */
+.platform-channels > section {
+  margin-block: 2rem;
+}
+.platform-channels ul.channel-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 0.9rem;
+}
+.platform-channels ul.channel-list > li {
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  padding: 1rem 1.2rem;
+  display: grid;
+  gap: 0.45rem;
+}
+.platform-channels ul.channel-list small {
+  color: var(--muted);
+}
+.platform-channels [data-testid="channels-create"] label {
+  display: grid;
+  gap: 0.3rem;
+  max-inline-size: 26rem;
+}
+.platform-channels .action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+}
+.platform-channels [data-testid="channel-secret-reveal"] {
+  border: 2px solid var(--staff);
+  border-radius: 0.75rem;
+  padding: 1rem 1.2rem;
+  margin-block-start: 1rem;
+  overflow-wrap: anywhere;
+}
+.platform-channels [data-testid="channel-secret-reveal"] code {
+  display: block;
+  font-size: 0.8rem;
+  margin-block: 0.6rem 0.9rem;
+}
+.channels-overview-list li {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.7rem 0;
+}

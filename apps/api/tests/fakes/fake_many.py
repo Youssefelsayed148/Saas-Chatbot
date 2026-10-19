@@ -20,8 +20,12 @@ class FakeMany:
         self.requests: list[dict[str, Any]] = []
         self.headers: list[httpx.Headers] = []
         self.deliveries: dict[str, str] = {}
+        self.health_requests: list[httpx.Headers] = []
+        self.health_responses: deque[int | Exception | str] = deque()
 
     def handle(self, request: httpx.Request) -> httpx.Response:
+        if request.method == "GET" and "/api/saas/connections/" in request.url.path:
+            return self.handle_health(request)
         assert request.method == "POST"
         assert request.url.path.endswith("/api/saas/messages")
         assert request.headers["X-Osiris-Connection"] == self.connection_id
@@ -54,6 +58,35 @@ class FakeMany:
         key = payload["message_id"]
         many_id = self.deliveries.setdefault(key, f"many-{len(self.deliveries) + 1}")
         return httpx.Response(202, stream=httpx.ByteStream(json.dumps({"id": many_id}).encode()))
+
+    def handle_health(self, request: httpx.Request) -> httpx.Response:
+        """§5.2 health endpoint: GET, signed over an empty body."""
+        assert request.method == "GET"
+        assert request.url.path.endswith(f"/api/saas/connections/{self.connection_id}/health")
+        assert request.headers["X-Osiris-Connection"] == self.connection_id
+        verified = verify(
+            self.secret,
+            request.headers["X-Osiris-Timestamp"],
+            b"",
+            request.headers["X-Osiris-Signature"],
+        )
+        assert verified
+        assert request.content == b""
+        assert request.headers["Host"] == "many.example.test"
+        assert request.url.host == "93.184.216.34"
+        assert request.extensions["sni_hostname"] == "many.example.test"
+        assert request.extensions["timeout"]["connect"] == 5
+        assert request.extensions["timeout"]["read"] == 15
+        self.health_requests.append(request.headers)
+        outcome = self.health_responses.popleft() if self.health_responses else "healthy"
+        if isinstance(outcome, Exception):
+            raise outcome
+        if isinstance(outcome, int):
+            return httpx.Response(outcome, stream=httpx.ByteStream(b""))
+        return httpx.Response(
+            200,
+            stream=httpx.ByteStream(json.dumps({"status": outcome}).encode()),
+        )
 
     def client(self) -> httpx.Client:
         return httpx.Client(
