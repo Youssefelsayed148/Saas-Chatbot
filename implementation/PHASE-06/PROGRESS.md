@@ -108,3 +108,11 @@ Total: **102 passed**. No existing website tests or fixtures were changed.
 | `test_widget_appearance.py` | 3 passed |
 
 Total: **102 passed**.
+
+## Clean restart (2026-10-19) - Step 1 gate BLOCKED
+
+Unattended decisions:
+- The previous session is void. Trusted state is the committed history of `feature/phase-6-channels` (HEAD 9c0b1cc at restart).
+- The worktree had 14 modified and 4 untracked uncommitted files from the voided session (P6-05 health work: `channels/health.py`, migration `0020_channel_health_poll.py`, `test_channel_health.py`, `apps/web/app/platform/channels/`, plus edits to config/inbound/outbound/router/runner/fake_many/tests/web files). They were backed up outside the repo and set aside with `git stash push -u -m "voided-session P6-05 WIP (unverified)"` (stash@{0}). Nothing was deleted or applied. They are not evidence of anything and P6-05 will be rebuilt from the plan.
+- Shell: the worktree `.git` file points to a WSL path (`/mnt/d/...`), so git works only from WSL; the only venv (`.venv\Scripts\python.exe`) is a Windows venv. Git commands were run through `wsl`; test runs need the Windows venv.
+- Gate result: NOT RUN. The disposable test database `saas-test-db` is not listening on 127.0.0.1:55462 (TCP connect refused from Windows and WSL). Starting it needs docker, which is forbidden for the agent. No test counts are recorded for this restart.
