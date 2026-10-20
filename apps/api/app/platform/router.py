@@ -47,6 +47,7 @@ from app.db.models import (
     UsageEvent,
     User,
 )
+from app.db.models.knowledge import KnowledgeRevision, Source
 from app.db.session import get_session
 from app.jobs.queue import request_cancel, requeue_for_retry
 from app.platform.staff import PlatformStaffDep
@@ -62,6 +63,48 @@ CsrfOk = Annotated[None, Depends(cookies.require_csrf)]
 
 class PlatformBotCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
+
+
+class OrganizationCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    plan_label: str = "starter"
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def trimmed_name(cls, value: Any) -> Any:
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("plan_label")
+    @classmethod
+    def valid_plan(cls, value: str) -> str:
+        if value not in PLAN_LABELS:
+            raise ValueError("Unknown plan.")
+        return value
+
+
+class OrganizationUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    plan_label: str | None = None
+    status: str | None = None
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def trimmed_optional_name(cls, value: Any) -> Any:
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("plan_label")
+    @classmethod
+    def valid_optional_plan(cls, value: str | None) -> str | None:
+        if value is not None and value not in PLAN_LABELS:
+            raise ValueError("Unknown plan.")
+        return value
+
+    @field_validator("status")
+    @classmethod
+    def valid_status(cls, value: str | None) -> str | None:
+        if value is not None and value not in ("active", "archived"):
+            raise ValueError("Unknown status.")
+        return value
 
 
 class ReasonAction(BaseModel):
@@ -176,6 +219,81 @@ def platform_tenants(
             }
         )
     return {"tenants": clients, "total": total}
+
+
+@router.post("/tenants", status_code=201)
+def platform_create_organization(
+    payload: OrganizationCreate, staff: PlatformStaffDep, db: DbSession, _: CsrfOk
+) -> dict[str, Any]:
+    from app.tenants.service import TenantService
+
+    tenant = Tenant(
+        id=uuid4(),
+        name=payload.name,
+        slug=TenantService(db)._unique_slug(payload.name),
+        plan_label=payload.plan_label,
+        status="active",
+        quota_overrides={},
+    )
+    db.add(tenant)
+    record_audit(
+        db,
+        action="platform.organization.created",
+        tenant_id=tenant.id,
+        actor_user_id=staff.id,
+        target_type="tenant",
+        target_id=str(tenant.id),
+        metadata={"name": tenant.name, "plan_label": tenant.plan_label},
+    )
+    db.commit()
+    return {
+        "id": str(tenant.id),
+        "name": tenant.name,
+        "slug": tenant.slug,
+        "plan_label": tenant.plan_label,
+        "status": tenant.status,
+        "created_at": tenant.created_at.isoformat(),
+    }
+
+
+@router.patch("/tenants/{tenant_id}")
+def platform_update_organization(
+    tenant_id: UUID,
+    payload: OrganizationUpdate,
+    staff: PlatformStaffDep,
+    db: DbSession,
+    _: CsrfOk,
+) -> dict[str, Any]:
+    tenant = db.get(Tenant, tenant_id)
+    if tenant is None:
+        raise ApiError(404, "NOT_FOUND", "Resource not found.")
+    changes = {
+        key: value
+        for key, value in payload.model_dump(exclude_unset=True).items()
+        if getattr(tenant, key) != value
+    }
+    if changes:
+        before = {key: getattr(tenant, key) for key in changes}
+        for key, value in changes.items():
+            setattr(tenant, key, value)
+        record_audit(
+            db,
+            action="platform.organization.updated",
+            tenant_id=tenant.id,
+            actor_user_id=staff.id,
+            target_type="tenant",
+            target_id=str(tenant.id),
+            metadata={"before": before, "after": changes, "fields": list(changes)},
+        )
+        db.commit()
+    return {
+        "id": str(tenant.id),
+        "name": tenant.name,
+        "slug": tenant.slug,
+        "plan_label": tenant.plan_label,
+        "status": tenant.status,
+        "created_at": tenant.created_at.isoformat(),
+    }
 
 
 @router.get("/operations/jobs")
@@ -455,17 +573,58 @@ def platform_tenant_detail(
     tenant = db.get(Tenant, tenant_id)
     if tenant is None:
         raise ApiError(404, "NOT_FOUND", "Resource not found.")
-    bots = [
-        {
-            "id": str(bot.id),
-            "name": bot.name,
-            "status": bot.status,
-            "published": bot.published_revision_id is not None,
-        }
-        for bot in db.execute(
-            select(Bot).where(Bot.tenant_id == tenant.id).order_by(Bot.created_at.desc())
-        ).scalars()
-    ]
+    bots = []
+    for bot in db.execute(
+        select(Bot).where(Bot.tenant_id == tenant.id).order_by(Bot.created_at.desc())
+    ).scalars():
+        source_count = int(
+            db.scalar(
+                select(func.count())
+                .select_from(Source)
+                .where(Source.tenant_id == tenant.id, Source.bot_id == bot.id)
+            )
+            or 0
+        )
+        latest_ingestion = db.execute(
+            select(Job)
+            .where(
+                Job.tenant_id == tenant.id,
+                Job.bot_id == bot.id,
+                Job.type == "ingest_batch",
+            )
+            .order_by(Job.created_at.desc())
+            .limit(1)
+        ).scalar_one_or_none()
+        published = (
+            db.execute(
+                select(KnowledgeRevision).where(
+                    KnowledgeRevision.id == bot.published_revision_id,
+                    KnowledgeRevision.tenant_id == tenant.id,
+                    KnowledgeRevision.bot_id == bot.id,
+                )
+            ).scalar_one_or_none()
+            if bot.published_revision_id
+            else None
+        )
+        bots.append(
+            {
+                "id": str(bot.id),
+                "name": bot.name,
+                "status": bot.status,
+                "published": bot.published_revision_id is not None,
+                "widget_state": "configured" if bot.widget_locator else "not_configured",
+                "source_count": source_count,
+                "last_ingestion_job_status": latest_ingestion.status
+                if latest_ingestion
+                else None,
+                "published_revision_id": str(bot.published_revision_id)
+                if bot.published_revision_id
+                else None,
+                "published_at": published.published_at.isoformat()
+                if published and published.published_at
+                else None,
+            }
+        )
     failed_jobs = [
         {"id": str(job.id), "type": job.type, "error": job.error}
         for job in db.execute(
@@ -480,6 +639,7 @@ def platform_tenant_detail(
             "user_id": str(member.id),
             "email": str(member.email),
             "role": membership.role,
+            "status": membership.status,
         }
         for membership, member in db.execute(
             select(Membership, User)
@@ -501,6 +661,8 @@ def platform_tenant_detail(
             select(func.count()).select_from(UsageEvent).where(UsageEvent.tenant_id == tenant.id)
         ).scalar_one()
     )
+    from app.quotas.service import usage_snapshot
+
     return {
         "tenant": {
             "id": str(tenant.id),
@@ -508,8 +670,10 @@ def platform_tenant_detail(
             "slug": tenant.slug,
             "status": tenant.status,
             "plan_label": tenant.plan_label,
+            "created_at": tenant.created_at.isoformat(),
         },
         "bots": bots,
+        "counts": {"members": len(members), "bots": len(bots)},
         "failed_jobs": failed_jobs,
         "members": members,
         "pending_invitations": [
@@ -535,6 +699,7 @@ def platform_tenant_detail(
             for row in audit_rows
         ],
         "usage_events": usage,
+        "quota": usage_snapshot(db, tenant),
     }
 
 
