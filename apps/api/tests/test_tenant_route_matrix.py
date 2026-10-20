@@ -201,6 +201,9 @@ def test_every_openapi_route_role_and_cross_tenant(
                 }
                 if template.endswith("/invitations"):
                     body = {"email": f"invite-{uuid4().hex}@example.com", "role": "viewer"}
+                    # Existing-account prerequisite; retain the route/RBAC assertions.
+                    db.add(User(id=uuid4(), email=body["email"], password_hash="fixture"))
+                    db.commit()
                 if template.endswith("/invitations/{invitation_id}/resend"):
                     body = {}
                 if template.endswith("/members/{user_id}"):

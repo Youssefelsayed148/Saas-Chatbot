@@ -139,6 +139,12 @@ def test_registration_when_signup_off_requires_valid_matching_active_invite(
 
     users = seeded_tenant(app, db, prefix="signup-invite")
     token, invitation = make_invitation(users, "invited@example.com", "admin")
+    # Preserve the legacy pre-S2 invitation registration contract. New invites
+    # require existing users; this fixture represents an outstanding old invite.
+    from sqlalchemy import delete
+
+    db.execute(delete(User).where(User.email == "invited@example.com"))
+    db.commit()
     app.dependency_overrides[get_settings] = lambda: build_test_settings(self_serve_signup=False)
     guest = TestClient(app)
     try:
