@@ -76,10 +76,12 @@ for (const item of confirmations) {
   }) => {
     const state = await safetyFixture(page, item.platform);
     await page.goto(item.path);
-    if (item.platform)
+    if (item.platform) {
+      await page.getByRole("tab", { name: "Bots", exact: true }).click();
       await page
         .getByLabel("Reason", { exact: true })
         .fill("Owner requested pause");
+    }
     const trigger = page.getByRole("button", {
       name: item.trigger,
       exact: true,
