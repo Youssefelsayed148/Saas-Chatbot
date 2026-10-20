@@ -4,7 +4,7 @@ Status: targeted verification green; full backend verification in progress. This
 completion or phase sign-off. Browser execution is deferred until the combined
 run after S4. No branch has been merged, pushed or deployed.
 
-Branch: `feature/staff-members`. Base: S1 commit `49710c7`, with owner approval
+Branch: `feature/staff-members`. Base: finalized S1 commit `bb2e847`, with owner approval
 to work before S1's verification/merge. Isolated worktree:
 `.worktrees/staff-members`. The S1 and Phase 6 checkouts are untouched.
 
@@ -81,7 +81,8 @@ commands or database/startup/worker safety-guard changes were made.
 ## Deviations and preserved behavior
 
 - The base is unmerged S1, rather than main after S1 merge, as subsequently
-  authorized by the owner. Main remains untouched by this work.
+  authorized by the owner. Started at `49710c7` and incorporated finalized S1 by
+  local rebase onto `bb2e847`. Main remains untouched by this work.
 - Existing invitation fixture setup provisions accounts first. `logged_in` can
   log in to those provisioned fixture accounts. Existing assertions remain; direct
   invitation/route-matrix setups add the existing-account prerequisite. The legacy

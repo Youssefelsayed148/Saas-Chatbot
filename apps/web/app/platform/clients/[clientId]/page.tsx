@@ -303,6 +303,7 @@ export default function PlatformClientPage() {
                         <th>Email</th>
                         <th>Role</th>
                         <th>Status</th>
+                        <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -376,6 +377,24 @@ export default function PlatformClientPage() {
                   {detail.pending_invitations.map((invite) => (
                     <li key={invite.id}>
                       {invite.email} — {invite.role} (pending invite)
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void api
+                            .revokeInvitation(clientId, invite.id)
+                            .then(() => api.platformTenantDetail(clientId))
+                            .then(setDetail)
+                            .catch((caught) =>
+                              setError(
+                                caught instanceof Error
+                                  ? caught.message
+                                  : "Could not revoke invitation.",
+                              ),
+                            );
+                        }}
+                      >
+                        Revoke invitation
+                      </button>
                     </li>
                   ))}
                 </ul>

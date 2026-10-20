@@ -3,8 +3,9 @@
 ## 2026-10-20 — S2 staff members (in progress; NOT verified)
 
 Owner authorized working before S1 verification finishes and reviewing S1/S2/S3
-together. Isolated branch `feature/staff-members` starts at S1 commit `49710c7`
-instead of merged main; S1's checkout and Phase 6 worktree are untouched. Worktree:
+together. Isolated branch `feature/staff-members` initially started at S1 commit
+`49710c7` instead of merged main, then rebased onto finalized S1 `bb2e847` after
+its verification commits arrived. S1's checkout and Phase 6 worktree are untouched. Worktree:
 `.worktrees/staff-members`. Its ignored local `apps/web/node_modules` junction
 reuses existing dependencies; no dependencies or lockfiles were changed.
 
@@ -90,6 +91,36 @@ tests/test_auth.py tests/test_tenant_route_matrix.py tests/test_quotas.py
 The owner's later "dont stop" instruction is applied to repairing S2's failures;
 S3 remains gated on successful S2 verification. Both initial failures and fixes
 are retained in this record rather than represented as an initially green run.
+
+Initial full S2 result: exit 1, **434 passed, 3 failed, 1 skipped**, one existing
+warning, 1374.94s. Raw tail:
+`3 failed, 434 passed, 1 skipped, 1 warning in 1374.94s (0:22:54)`.
+Two failures were cp1252 UnicodeDecodeError in the existing Arabic evaluation
+tests. The third was FileNotFoundError saving a fixture under the long nested
+worktree temp path (over the classic Windows path limit). New S2 cases passed.
+The skipped case is tests/test_knowledge_parsers.py:52 (POSIX process groups,
+Windows unverified). Raw log: `.test-storage-s2/full-1.log`.
+
+After that run, incorporated S1's finalized commits (only its verification notes,
+platform analytics label and browser tab locator changed since the original base).
+S1's newly committed notes document PYTHONUTF8=1 for these existing Windows
+encoding failures. No tests or guards were changed to fix the runtime environment.
+Per-process UTF-8 plus a shorter root-workspace temp directory resolved all three:
+`python -u -m pytest -q --tb=short -p no:cacheprovider
+tests/test_rag_evaluation.py::test_two_mode_retrieval_eval_is_entirely_offline
+tests/test_rag_gate.py::test_stage0_raw_fts_gate_measurements
+tests/test_rag_stage0_baseline.py::test_real_fts_pipeline_checkpoints_and_never_replays
+--basetemp=<workspace>/.test-storage-s2/encoding`: exit 0,
+raw tail `3 passed, 1 warning in 8.49s`. Log: encoding-proof.log.
+
+The required pair of full runs now uses PYTHONUTF8=1 with the same test/stub
+environment, TEMP and TMP pointing at `<workspace>/.test-storage-s2/t`, and this
+identical Python command in both processes:
+`python -u -m pytest -q --tb=short -p no:cacheprovider
+--ignore=tests/test_startup_guard.py
+--basetemp=<workspace>/.test-storage-s2/f
+--junitxml=../../.test-storage-s2/full-utf8.xml`.
+Run 1 is in progress; raw logs are full-utf8-1.log and full-utf8-2.log.
 
 ## 2026-10-14 — P7-03 Playwright repair and fictional demo seed
 

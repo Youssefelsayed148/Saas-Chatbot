@@ -210,31 +210,15 @@ export function OrganizationMembers({
   const [role, setRole] = useState<api.ClientRole>("viewer");
   const [users, setUsers] = useState<api.StaffUser[]>([]);
   const [selected, setSelected] = useState("");
-  const [invites, setInvites] = useState<api.Invitation[]>([]);
   const [link, setLink] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  useEffect(() => {
-    let alive = true;
-    void api.listInvitations(organization).then(
-      (rows) => {
-        if (alive) setInvites(rows);
-      },
-      () => {
-        if (alive) setError("Could not load invitations.");
-      },
-    );
-    return () => {
-      alive = false;
-    };
-  }, [organization]);
   async function perform(action: () => Promise<unknown>) {
     setBusy(true);
     setError("");
     try {
       await action();
       await refresh();
-      setInvites(await api.listInvitations(organization));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not update members.");
     } finally {
@@ -310,20 +294,6 @@ export function OrganizationMembers({
           <button onClick={() => setLink("")}>Dismiss invitation</button>
         </p>
       )}
-      <h3>Manage pending invitations</h3>
-      {invites.map((i) => (
-        <div key={i.id}>
-          {i.email} · {i.role}
-          <button
-            disabled={busy}
-            onClick={() => {
-              void perform(() => api.revokeInvitation(organization, i.id));
-            }}
-          >
-            Revoke invitation
-          </button>
-        </div>
-      ))}
     </section>
   );
 }
