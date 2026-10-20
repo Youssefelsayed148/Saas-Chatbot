@@ -17,9 +17,13 @@ test("staff create and manage an organization across its four tabs", async ({
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
     "New Org",
   );
-  await page.getByRole("combobox", { name: "Plan" }).selectOption("pro");
-  await page.getByRole("button", { name: "Save changes" }).click();
-  await expect(page.getByText("Organization updated.")).toBeVisible();
+  await page.getByLabel("Plan label").fill("pro");
+  await page
+    .getByLabel("Reason", { exact: true })
+    .fill("Organization plan reviewed by staff");
+  await page.getByRole("button", { name: "Save plan", exact: true }).click();
+  await expect(page.getByText("Changes saved.")).toBeVisible();
+  await expect(page.getByLabel("Plan label")).toHaveValue("pro");
   for (const label of ["Overview", "Members", "Bots", "Knowledge"] as const) {
     await page.getByRole("tab", { name: label }).click();
     await expect(page.getByRole("tabpanel", { name: label })).toBeVisible();

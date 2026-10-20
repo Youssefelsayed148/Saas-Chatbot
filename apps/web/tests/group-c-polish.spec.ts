@@ -142,6 +142,7 @@ test("all audit views render historical owner and current admin actions", async 
   for (const [path, region] of [
     [`${base}/settings/data`, "Tenant audit review"],
     ["/platform/operations", "Audit review"],
+    [`/platform/clients/${tenant}`, "Recent audit"],
   ]) {
     await page.goto(path);
     const audit = page.getByRole("region", { name: region, exact: true });

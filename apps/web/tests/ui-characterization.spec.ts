@@ -168,17 +168,67 @@ test("platform operations: reason gates retry and cancel, audit search keeps its
   await search;
 });
 
-test("platform organization overview exposes only name, plan and status editing", async ({
+test("platform client mutations preserve plan, quota and pause reason payloads", async ({
   page,
 }) => {
   const { tenantId } = await staff(page);
+  const bots = await (
+    await page.request.get(`/api/v1/tenants/${tenantId}/bots`)
+  ).json();
+  const botId = bots[0].id as string;
+  const actions: { url: string; body: unknown }[] = [];
+  await page.route("**/api/v1/platform/**", async (route) => {
+    if (["PATCH", "POST"].includes(route.request().method())) {
+      actions.push({
+        url: new URL(route.request().url()).pathname,
+        body: route.request().postDataJSON(),
+      });
+      await route.fulfill({
+        json: {
+          tenant_id: tenantId,
+          plan_label: "starter",
+          bot_id: botId,
+          status: "paused",
+        },
+      });
+    } else await route.continue();
+  });
   await page.goto(`/platform/clients/${tenantId}`);
-  await expect(page.getByRole("tabpanel", { name: "Overview" })).toContainText(
-    "Plan",
-  );
-  await expect(page.getByLabel("Status")).toHaveValue("active");
-  await expect(page.getByLabel("Quota overrides (JSON)")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Pause bot" })).toHaveCount(0);
+  await page.getByRole("tab", { name: "Bots", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Pause bot" })).toBeDisabled();
+  await page.getByRole("tab", { name: "Overview", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Save override with reason" }),
+  ).toBeDisabled();
+  await page.getByLabel("Reason", { exact: true }).fill("Reviewed by staff");
+  await page.getByLabel("Plan label").fill("starter");
+  await page.getByRole("button", { name: "Save plan" }).click();
+  await expect.poll(() => actions.length).toBe(1);
+  await page.getByLabel("Quota overrides (JSON)").fill('{"bots":5}');
+  await page.getByRole("button", { name: "Save override with reason" }).click();
+  await expect.poll(() => actions.length).toBe(2);
+  await page.getByRole("tab", { name: "Bots", exact: true }).click();
+  await page.getByRole("button", { name: "Pause bot" }).click();
+  await page
+    .getByRole("dialog", { name: "Pause bot?" })
+    .getByRole("button", { name: "Confirm", exact: true })
+    .click();
+  await expect.poll(() => actions.length).toBe(3);
+  expect(actions).toEqual([
+    {
+      url: `/api/v1/platform/tenants/${tenantId}/plan`,
+      body: { plan_label: "starter", reason: "Reviewed by staff" },
+    },
+    {
+      url: `/api/v1/platform/tenants/${tenantId}/quota-overrides`,
+      body: { limits: { bots: 5 }, reason: "Reviewed by staff" },
+    },
+    {
+      url: `/api/v1/platform/bots/${botId}/pause`,
+      body: { reason: "Reviewed by staff" },
+    },
+  ]);
+  await expect(page.getByTestId("client-detail-bots")).toContainText("paused");
 });
 
 test("inbox viewer cannot mutate AI, human or resolved conversations", async ({

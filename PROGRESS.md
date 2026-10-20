@@ -2151,17 +2151,16 @@ Final backend and local integration readiness:
   fix/group-c-polish -m "Merge Group C safety and polish"`, then
   `git branch -d fix/group-c-polish`; leave main clean. This maintenance merge
   does not sign off unrelated roadmap phases, hosting or billing decisions.
-## S1 — Staff organizations (2026-10-20)
+## S1 - Staff organizations (2026-10-20; initial submission rejected, repair pending runtime checks)
 
-- Branch: `feature/staff-organizations` from `main`; local only, not merged.
-- Implemented staff organization create/update/detail API, audit events, organization list/create UI, four detail tabs, and Playwright coverage. Kept `/platform/clients/<id>` and `/api/v1/platform/tenants` paths. Old onboarding flow remains available.
-- The organization endpoints return 403 for unauthenticated and authenticated non-staff callers, matching the requested staff-only response contract.
-- `apps/web`: `npm run lint` — exit 0; raw tail: `ESLint found too many warnings` was absent; command output ended after the `eslint . --max-warnings 0` invocation with no findings.
-- `apps/web`: `npm run typecheck` — exit 0; raw tail: `Generating route types...` / `✓ Types generated successfully`.
-- `apps/web`: `npx playwright test --list tests/organizations.spec.ts` — exit 0; raw tail: `Total: 2 tests in 1 file` (listed only; not executed).
-- `apps/api`: `python -m py_compile app/platform/router.py tests/test_platform.py` — exit 0; no output.
-- Initial backend commands through the system Python could not start because that interpreter lacks pytest (`No module named pytest`). The repository `.venv` has pytest 9.1.1. `Test-NetConnection -ComputerName 127.0.0.1 -Port 55462 -InformationLevel Quiet` returned `False` (PostgreSQL is not listening).
-- The only pytest command attempted through `.venv` was `python -m pytest tests/test_database_guard.py -q` with process-only `TEST_DATABASE_URL` set to the requested DB. Result: **0 passed, 6 errors**, all at fixture setup while trying to connect/create the test database; raw tail: `3 warnings, 6 errors in 0.14s`. Targeted feature tests, full backend, startup guard, and Playwright were not run because the database listener is unavailable.
-- The Playwright and backend fixtures now select the explicitly requested `saas-test-db` name without deriving another database. No Docker commands were run.
-- Backend runtime checks remain outstanding until PostgreSQL is listening at the requested disposable database endpoint.
-
+- Branch: `feature/staff-organizations`; local commits only, no merge or push.
+- Restored existing controls within the new tabs: Overview has reason-required plan assignment, quota overrides, organization data/deletion link, recent audit and usage; Bots has reason-required pause; Members has member rows and pending invitations; Knowledge retains ingestion failures and per-bot knowledge links.
+- Restored the original deletion E2E journey, plan/quota/pause payload assertions, pending-invitation assertion and Recent audit check from `main`. Only tab navigation was added to those journeys; the organization title expectation reflects the S1 label rename. No assertion was replaced by an absence assertion.
+- There is one plan-edit path: existing `PATCH /api/v1/platform/tenants/{id}/plan`, with required reason and existing `platform.tenant.plan_assigned` audit. New organization PATCH accepts name/status only and rejects `plan_label`. Added regression coverage for the rejected bypass and required reason/audit.
+- Restored existing `PlatformStaffDep`: unauthenticated requests return 401 and authenticated non-staff return 403. Removed the custom organization staff dependency introduced by f2d92dd.
+- Worker guard, backend fixtures, database guard tests and Playwright database-name derivation are restored exactly to `main`. The only E2E setup change is `TEST_DATABASE_URL ?? DATABASE_URL`. No database-name allowlist remains. The user will provide the base URL and confirm server reachability; it will be set per process only and never persisted. Tests must not target the base database.
+- Repair static checks: `npm run lint` in `apps/web` exited 0; raw output tail: `> eslint . --max-warnings 0` (no findings). `npm run typecheck` in `apps/web` exited 0; raw output tail: `Generating route types...` / `Types generated successfully`.
+- Repair syntax check: repository `.venv` Python `-m py_compile apps/api/app/platform/router.py apps/api/tests/test_platform.py` exited 0 with no output.
+- No tests or server-connectivity probes have run during this repair, per the owner's instruction. Targeted platform tests, full backend, startup guard in its own process without either stub variable, and the five touched Playwright specs remain pending explicit server confirmation. Current repair has no runtime pass/fail/skip counts.
+- Historical rejected-submission evidence only: the initial system-Python commands failed before collection (`No module named pytest`). The prior `.venv` database guard run reported `3 warnings, 6 errors in 0.14s`; these were fixture setup assertion errors caused by the invalid database-name allowlisting, not successful tests or confirmed database connection failures. Those changes are reverted. Earlier static passes do not verify this repaired implementation.
+- No edits under `docs/`, credential-file reads, Docker commands, Phase 6 worktree changes, pushes, tags, deployments or merges.
