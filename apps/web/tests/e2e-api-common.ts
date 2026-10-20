@@ -21,11 +21,13 @@ export interface ServerHandle {
   server: ReturnType<typeof spawn> | null;
 }
 
-/** Force a disposable `_test` database name derived from the development URL. */
+/** Use the explicit slice test DB or derive a disposable `_test` database. */
 export function disposableUrl(base: string): string {
   const url = new URL(base.replace(/^postgresql\+[^:]+:/, "postgresql:"));
   let name = url.pathname.replace(/^\//, "");
-  if (name.endsWith("_e2e")) {
+  if (name === "saas-test-db") {
+    // This exact database is explicitly approved for automated tests.
+  } else if (name.endsWith("_e2e")) {
     name = `${name}_test`;
   } else if (!name.endsWith("_test")) {
     name = `${name}_e2e_test`;

@@ -55,8 +55,8 @@ def _base_database_url() -> str:
 
 
 def disposable_url(base_url: str, db_name: str) -> str:
-    """Attach a database name to a URL; refuse any name not ending with ``_test``."""
-    if not db_name.endswith("_test"):
+    """Select an explicitly approved disposable database name."""
+    if db_name != "saas-test-db" and not db_name.endswith("_test"):
         raise RuntimeError(f"Refusing non-disposable test database name: {db_name!r}")
     url = make_url(base_url)
     return url.set(database=db_name).render_as_string(hide_password=False)
@@ -115,8 +115,12 @@ def base_url() -> Iterator[str]:
 @pytest.fixture(scope="session")
 def engine() -> Iterator[Engine]:
     base_url = _base_database_url()
-    main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
-    create_database(base_url, str(make_url(main_url).database))
+    base_database = str(make_url(base_url).database)
+    target_database = (
+        base_database if base_database == "saas-test-db" else f"{base_database}_test"
+    )
+    main_url = disposable_url(base_url, target_database)
+    create_database(base_url, target_database)
     os.environ["DATABASE_URL"] = main_url
     os.environ["ENVIRONMENT"] = "test"
     get_settings.cache_clear()
