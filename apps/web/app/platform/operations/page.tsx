@@ -118,7 +118,7 @@ export default function PlatformOperationsPage() {
             <table>
               <thead>
                 <tr>
-                  <th>Client</th>
+                  <th>Organization</th>
                   <th>Plan</th>
                   <th>Measured usage</th>
                 </tr>
