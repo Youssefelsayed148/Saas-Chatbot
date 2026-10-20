@@ -25,7 +25,7 @@ def _client_bot_out(context: TenantContext, bot: object) -> BotOut:
 
 @router.post("/api/v1/tenants/{tenant_id}/bots", response_model=BotOut, status_code=201)
 def create_bot(bot: BotCreateRequest, context: TenantContextDep, _: CsrfOk) -> BotOut:
-    """Tenant members cannot create bots; use platform onboarding."""
+    """Only platform staff create bots; the platform Bots section uses the shared factory."""
     context.require_operator()
     return BotOut.model_validate(BotService(context.db).create_bot(context, bot))
 

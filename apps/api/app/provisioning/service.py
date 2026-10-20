@@ -392,29 +392,18 @@ class ProvisioningService:
         *,
         self_service: bool = False,
     ) -> Any:
-        from app.db.models import Bot
+        from app.bots.factory import create_bot_record
 
-        bot = Bot(
-            id=uuid4(),
-            tenant_id=tenant_id,
-            name=bot_name.strip(),
-            config={},
-            widget_locator="w" + secrets.token_hex(16),
-        )
-        self.db.add(bot)
-        self.db.flush()
-        record_audit(
+        return create_bot_record(
             self.db,
-            action=(
+            tenant_id=tenant_id,
+            name=bot_name,
+            actor=actor,
+            audit_action=(
                 "self_service.bot_created" if self_service else "platform.onboarding.bot_created"
             ),
-            tenant_id=tenant_id,
-            actor_user_id=actor.id,
-            target_type="bot",
-            target_id=str(bot.id),
             metadata={"request_id": str(request_id)},
         )
-        return bot
 
     def _store_files(
         self, *, tenant_id: UUID, files: Sequence[tuple[str, bytes]]

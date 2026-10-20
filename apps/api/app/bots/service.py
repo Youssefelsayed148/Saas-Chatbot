@@ -8,10 +8,9 @@ by tenant input, and NOT a secret (docs/09) — it only names the bot; all
 authority stays server-side.
 """
 
-import secrets
 from collections.abc import Sequence
 from datetime import UTC, datetime
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
@@ -21,7 +20,6 @@ from app.core.audit import record_audit
 from app.core.errors import ApiError
 from app.core.tenancy import TenantContext
 from app.db.models import Bot
-from app.quotas.service import lock_tenant, require_capacity
 
 ALLOWED_STATUS_TRANSITIONS = {
     "draft": {"active"},
@@ -52,25 +50,14 @@ class BotService:
         self.db = db
 
     def create_bot(self, context: TenantContext, body: BotCreateRequest) -> Bot:
-        tenant = lock_tenant(self.db, context.tenant_id)
-        require_capacity(self.db, tenant, "bots")
-        bot = Bot(
-            id=uuid4(),
-            tenant_id=context.tenant_id,
-            name=body.name.strip(),
-            status="draft",
-            config={},
-            widget_locator="w" + secrets.token_hex(16),
-        )
-        self.db.add(bot)
-        self.db.flush()  # bots row must exist before its audit event
-        record_audit(
+        from app.bots.factory import create_bot_record
+
+        bot = create_bot_record(
             self.db,
-            action="bot.created",
             tenant_id=context.tenant_id,
-            actor_user_id=context.user.id,
-            target_type="bot",
-            target_id=str(bot.id),
+            name=body.name,
+            actor=context.user,
+            audit_action="bot.created",
         )
         self.db.commit()
         return bot
