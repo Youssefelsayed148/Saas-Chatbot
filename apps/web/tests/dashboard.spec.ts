@@ -138,6 +138,11 @@ test("team management: admin invites, invitee accepts, viewer sees read-only bot
   // Invite an editor and a viewer.
   await admin.goto(`/app/${tenantId}/settings/members`);
   const editorEmail = uniqueEmail("editor");
+  const provisionEditor = await admin.request.post("/api/v1/platform/users", {
+    headers: { "X-CSRF-Token": csrf },
+    data: { email: editorEmail, password: PASSWORD },
+  });
+  expect(provisionEditor.status()).toBe(201);
   await admin.getByLabel("Email", { exact: true }).fill(editorEmail);
   await admin.getByRole("combobox", { name: "Role" }).selectOption("editor");
   await admin.getByRole("button", { name: "Create invite link" }).click();
@@ -145,18 +150,26 @@ test("team management: admin invites, invitee accepts, viewer sees read-only bot
   expect(inviteCode).toContain("/accept-invite?token=");
 
   const viewerEmail = uniqueEmail("viewer");
+  const provisionViewer = await admin.request.post("/api/v1/platform/users", {
+    headers: { "X-CSRF-Token": csrf },
+    data: { email: viewerEmail, password: PASSWORD },
+  });
+  expect(provisionViewer.status()).toBe(201);
   await admin.getByLabel("Email", { exact: true }).fill(viewerEmail);
   await admin.getByRole("combobox", { name: "Role" }).selectOption("viewer");
   await admin.getByRole("button", { name: "Create invite link" }).click();
 
-  // The editor registers with the invited address, lands back on the link, accepts.
+  // The existing editor signs in with the invited address and accepts.
   const second = await browser.newContext();
   const editor = await second.newPage();
   await editor.goto(inviteCode);
-  await editor.getByRole("link", { name: "Register" }).first().click();
+  await editor
+    .getByRole("link", { name: "Sign in", exact: true })
+    .first()
+    .click();
   await editor.getByLabel("Email").fill(editorEmail);
   await editor.getByLabel("Password", { exact: true }).fill(PASSWORD);
-  await editor.getByRole("button", { name: "Create account" }).click();
+  await editor.getByRole("button", { name: "Sign in", exact: true }).click();
   await editor.getByRole("button", { name: "Accept invitation" }).click();
   await expect(editor.getByRole("status")).toContainText(/Welcome aboard/i);
   await editor.getByRole("link", { name: /Go to your dashboard/i }).click();

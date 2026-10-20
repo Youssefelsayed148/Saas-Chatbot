@@ -1013,6 +1013,82 @@ export async function platformMe(): Promise<Me> {
   return api<Me>("platform/me");
 }
 
+export type ClientRole = "admin" | "editor" | "viewer";
+export interface StaffUser {
+  id: string;
+  email: string;
+  phone: string | null;
+  is_active: boolean;
+  created_at: string;
+  memberships: Array<{
+    organization_id: string;
+    organization_name: string;
+    role: ClientRole;
+    status: string;
+  }>;
+}
+export interface PasswordChoice {
+  password?: string;
+  generate?: boolean;
+}
+export interface IssuedUser {
+  user: StaffUser;
+  generated_password: string | null;
+}
+export function platformUsers(query = "") {
+  return api<{ users: StaffUser[]; total: number }>(`platform/users?${query}`);
+}
+export function platformUser(id: string) {
+  return api<StaffUser>(`platform/users/${id}`);
+}
+export function platformCreateUser(
+  body: PasswordChoice & {
+    email: string;
+    phone?: string;
+    organization_id?: string;
+    role?: ClientRole;
+  },
+) {
+  return api<IssuedUser>("platform/users", { method: "POST", body });
+}
+export function platformAssignUser(
+  id: string,
+  organization_id: string,
+  role: ClientRole,
+) {
+  return api<StaffUser>(`platform/users/${id}/memberships`, {
+    method: "POST",
+    body: { organization_id, role },
+  });
+}
+export function platformUserRole(
+  id: string,
+  organization: string,
+  role: ClientRole,
+) {
+  return api<StaffUser>(`platform/users/${id}/memberships/${organization}`, {
+    method: "PATCH",
+    body: { role },
+  });
+}
+export function platformRemoveUser(id: string, organization: string) {
+  return api<void>(`platform/users/${id}/memberships/${organization}`, {
+    method: "DELETE",
+  });
+}
+export function platformResetPassword(id: string, body: PasswordChoice) {
+  return api<IssuedUser>(`platform/users/${id}/password`, {
+    method: "POST",
+    body,
+  });
+}
+export function platformUserActive(id: string, active: boolean) {
+  return api<StaffUser>(
+    `platform/users/${id}/${active ? "reactivate" : "deactivate"}`,
+    { method: "POST" },
+  );
+}
+
 export async function platformTenants(query: string): Promise<{
   tenants: PlatformTenantRow[];
   total: number;

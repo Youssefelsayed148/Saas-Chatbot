@@ -1,5 +1,55 @@
 # Execution checkpoint
 
+## 2026-10-20 — S2 staff members (in progress; NOT verified)
+
+Owner authorized working before S1 verification finishes and reviewing S1/S2/S3
+together. Isolated branch `feature/staff-members` starts at S1 commit `49710c7`
+instead of merged main; S1's checkout and Phase 6 worktree are untouched. Worktree:
+`.worktrees/staff-members`. Its ignored local `apps/web/node_modules` junction
+reuses existing dependencies; no dependencies or lockfiles were changed.
+
+Implemented account phone/is_active migration, staff account lifecycle endpoints,
+session revocation and shared login eligibility, existing-user-only invitations,
+Members screens and organization membership controls. Typed passwords are not
+returned by the API; the UI shows its submitted password once. Generated passwords
+are returned once and kept only in component state. Staff user endpoints send
+`Cache-Control: no-store`; tenant response schemas expose no phone.
+
+Regression setup adaptations: invitation helpers provision existing accounts
+before invitation creation; logged_in can log in to such an account; direct
+invitation and route-matrix fixtures create prerequisite users. Assertions are
+retained. The closed-registration regression removes its fixture account to
+represent a legacy outstanding invitation and preserve registration assertions.
+Browser invitation fixtures provision accounts first; the dashboard journey
+signs in rather than registering the already-provisioned invitee. These setup
+changes are necessary for the requested existing-users-only contract.
+
+Commands run from the isolated worktree (Python is the root
+`.venv/Scripts/python.exe`):
+
+- `npm.cmd run typecheck` in apps/web: initially failed resolving @types/node;
+  Next's automatic install attempt failed offline. Reusing installed dependencies
+  resolved this. A subsequent run found an optional invitation link type, fixed
+  before repeating. Final run exit 0, route generation and TypeScript successful.
+- `npm.cmd run lint` in apps/web: exit 0, no warnings.
+- `npm.cmd run test -- --list` in apps/web: exit 0, **66 tests in 21 files**;
+  no browser tests executed. One combined Playwright execution remains deferred
+  until after S4, per owner instruction.
+- `python -m ruff check` over changed backend files: initial formatting/import
+  findings fixed; subsequent checks exit 0, `All checks passed!`.
+- `python -m mypy --follow-imports=silent app/platform/users.py app/auth/service.py
+  app/tenants/service.py tests/test_staff_members.py
+  tests/test_staff_members_migration.py`: exit 0, no issues in five source files.
+- `TEST_DATABASE_URL=postgresql://test:test@127.0.0.1:55462/postgres python -m pytest
+  --collect-only -q -p no:cacheprovider tests/test_staff_members.py
+  tests/test_staff_members_migration.py`: exit 0, **15 tests collected in 0.27s**
+  at that checkpoint; additional cases have since been added. Collection did not
+  execute database fixtures. Existing Starlette/httpx deprecation warning only.
+
+Database execution is pending. S1 is running its repeated full suite against
+the same derived `postgres_test` database. S2 must not migrate/truncate that
+database concurrently. No database/startup/worker safety guard was changed.
+
 ## 2026-10-14 — P7-03 Playwright repair and fictional demo seed
 
 Built: `registerOwner` verifies register 201 and the tenant bots landing; all eight specs reuse the provisioned bot, with Starter assigned through staff API for dashboard editor second-bot/seats and knowledge's 10 MB limit. Invite signup blocks compared unchanged; owner's conversations bubble re-open fix preserved and committed. Guarded offline demo seed + 21 tests added, with four DB-dependent regressions; no product UI changed, no phase sign-off, push or deployment.
