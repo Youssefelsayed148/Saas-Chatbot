@@ -1401,16 +1401,6 @@ progress::-webkit-progress-value {
 .platform-clients > [data-testid="platform-search"] > button {
   align-self: end;
 }
-[data-testid="onboarding-form"] form {
-  max-inline-size: none;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-}
-[data-testid="onboarding-form"] form > button {
-  justify-self: start;
-  align-self: end;
-}
 .platform-client-detail > [data-testid="client-detail-status"] {
   background: var(--staff-soft);
   border: 1px solid var(--border);
@@ -1461,8 +1451,7 @@ progress::-webkit-progress-value {
 }
 @media (max-width: 760px) {
   .contacts-page > form,
-  .contact-profile > form,
-  [data-testid="onboarding-form"] form {
+  .contact-profile > form {
     grid-template-columns: 1fr;
   }
   .handoff-analytics {

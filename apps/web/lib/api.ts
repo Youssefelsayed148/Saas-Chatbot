@@ -464,19 +464,6 @@ export async function platformPauseBot(
   });
 }
 
-export interface PlatformOnboardingResult {
-  request_id: string;
-  status: string;
-  result?: {
-    tenant_id?: string;
-    tenant_slug?: string;
-    bot_id?: string | null;
-    admin_invite?: { link_path?: string };
-    files?: Array<{ display?: string; bot_id?: string }>;
-  };
-  replayed?: boolean;
-}
-
 export interface ConversationDetailResponse {
   conversation: Conversation;
   messages: Array<{
@@ -1013,6 +1000,28 @@ export async function platformMe(): Promise<Me> {
   return api<Me>("platform/me");
 }
 
+export interface PlatformBotRow {
+  id: string;
+  name: string;
+  organization: { id: string; name: string };
+  status: string;
+  widget_state: string;
+  source_count: number;
+  last_ingestion_job_status: string | null;
+  published_revision_id: string | null;
+}
+export function platformBots(query = "") {
+  return api<{ bots: PlatformBotRow[]; total: number }>(
+    `platform/bots?${query}`,
+  );
+}
+export function platformCreateBot(organization_id: string, name: string) {
+  return api<Bot>("platform/bots", {
+    method: "POST",
+    body: { organization_id, name },
+  });
+}
+
 export type ClientRole = Role;
 export interface StaffUser {
   id: string;
@@ -1151,43 +1160,6 @@ export async function allPlatformTenants(): Promise<PlatformTenantRow[]> {
     if (page.tenants.length === 0) break;
   } while (tenants.length < total);
   return tenants;
-}
-
-export async function platformOnboard(
-  payload: {
-    client_name: string;
-    admin_email: string;
-    bot_name: string | null;
-  },
-  idempotencyKey: string,
-  files: FileList | null,
-): Promise<PlatformOnboardingResult> {
-  const form = new FormData();
-  form.set("client_name", payload.client_name);
-  form.set("admin_email", payload.admin_email);
-  if (payload.bot_name) form.set("bot_name", payload.bot_name);
-  if (files) Array.from(files).forEach((file) => form.append("files", file));
-  const headerValue = readCookie(CSRF_COOKIE) ?? csrfToken;
-  const response = await fetch(`/api/v1/platform/onboarding`, {
-    method: "POST",
-    headers: {
-      "Idempotency-Key": idempotencyKey,
-      ...(headerValue ? { "X-CSRF-Token": headerValue } : {}),
-    },
-    credentials: "same-origin",
-    body: form,
-  });
-  if (!response.ok) {
-    const errorPayload = (await response.json().catch(() => null)) as {
-      error?: { code?: string; message?: string };
-    } | null;
-    throw new ApiError(
-      errorPayload?.error?.code ?? "UNKNOWN_ERROR",
-      response.status,
-      errorPayload?.error?.message ?? `Onboarding failed (${response.status}).`,
-    );
-  }
-  return (await response.json()) as PlatformOnboardingResult;
 }
 
 export async function listMembers(tenantId: string): Promise<Member[]> {

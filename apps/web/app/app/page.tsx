@@ -70,12 +70,10 @@ export default function OrgSelectorPage() {
       <main>
         <h1>All organizations</h1>
         <p className="page-purpose">
-          Open a client workspace or onboard a new organization.
+          Open a client workspace or create an organization.
         </p>
         <p>
-          <Link href="/platform#onboard-client">
-            Create / Onboard organization
-          </Link>
+          <Link href="/platform#create-organization">Create organization</Link>
           {" · "}
           <Link href="/platform">Platform admin</Link>
         </p>
@@ -91,7 +89,7 @@ export default function OrgSelectorPage() {
         )}
         {staffOrganizations?.length === 0 && (
           <Empty>
-            No organizations yet. Onboard your first client to get started.
+            No organizations yet. Create your first organization to get started.
           </Empty>
         )}
         {!!staffOrganizations?.length && (

@@ -1,5 +1,76 @@
 # Execution checkpoint
 
+## 2026-10-20 — S3 staff Bots (targeted green; full verification in progress)
+
+Branch `feature/staff-bots` is stacked on completed S2 `df826b5`, in isolated
+`.worktrees/staff-bots`. S2 completed 75 targeted passes, identical full runs
+437 passed/1 skipped, and 7 standalone startup-guard passes before S3 began.
+No branches were merged or pushed; S1/main/Phase 6 source checkouts are untouched.
+
+Implemented a single `app/bots/factory.py::create_bot_record` for every runtime
+API/provisioning bot creation path. It trims/validates the name, locks an active
+tenant, enforces the existing bot quota, creates the draft/default config and
+public widget locator, and records the caller's audit action in the transaction.
+BotService, the existing staff tenant-bot endpoint, the new global endpoint and
+ProvisioningService._make_bot delegate to it. The latter is the only change to
+ProvisioningService, as approved to reconcile the prompt's single-factory rule
+with its instruction to preserve self-service provisioning.
+
+Added staff-only typed global bot list/create with search/organization filter,
+tenant-and-bot-scoped source/job/revision summaries, and shared summary rendering
+for organization detail. Existing strict update contracts reject organization
+changes, verified for both organization_id and tenant_id. Added global Bots UI,
+one shared creation form with a locked organization variant, Knowledge/Settings
+links, read-only organization text in Settings, and preserved Pause controls.
+
+Removed only staff onboarding POST/UI/client function/unused interface/styles;
+historical GET status and CSV remain and are tested. Historical owner/admin
+audit labels and fixtures remain because they still describe immutable records.
+The old workspace link now targets the real organization creation section.
+
+Regression replacements: staff setup and widget reachability use the real new
+organization/user/invitation/bot endpoints. Durable duplicate-submit/conflict,
+legacy fingerprint/result translation, and optional historical file staging
+exercise the retained service directly, with actual service results/exceptions;
+no fake HTTP responses. The retired missing-header HTTP case now verifies 404/405.
+Platform browser setup uses organization and shared bot forms plus user/invitation
+API calls; search/detail/audit/access/deletion assertions remain. The old durable
+request UI assertion is replaced by actual creation feedback; durable behavior
+remains covered in service regressions. No existing test was deleted.
+
+Targeted command in apps/api (per-process owner test URL, ENVIRONMENT=test,
+PYTHONUTF8=1, both model stubs=true; TEMP/TMP root `.test-storage-s3/t`):
+`python -u -m pytest -q --tb=short -p no:cacheprovider tests/test_staff_bots.py
+tests/test_platform.py tests/test_group_c_polish.py tests/test_self_service_signup.py
+tests/test_tenant_route_matrix.py tests/test_quotas.py tests/test_staff_members.py
+tests/test_staff_members_migration.py --basetemp=<workspace>/.test-storage-s3/q
+--junitxml=../../.test-storage-s3/targeted.xml`.
+Exit 0; raw tail: `77 passed, 1 warning in 173.29s (0:02:53)` (0 failed/0 skipped).
+Includes S2's schema upgrade/downgrade test. Log: `.test-storage-s3/targeted.log`.
+
+Static commands:
+- `python -m ruff check` on changed backend files: initial import/line-length
+  findings fixed before testing; final exit 0, `All checks passed!`.
+- `python -m mypy --follow-imports=silent app/bots/factory.py app/bots/service.py
+  app/bots/router.py app/platform/bots.py app/platform/router.py app/main.py
+  app/provisioning/service.py tests/test_staff_bots.py tests/test_platform.py
+  tests/test_group_c_polish.py`: exit 0, no issues in 10 source files.
+- apps/web `npm.cmd run lint`, `npm.cmd run typecheck`: exit 0.
+- apps/web `npm.cmd run test -- --list`: exit 0, **68 tests in 22 files**.
+  Browser execution remains deferred to one combined run after S4.
+- Root `python -m unittest discover -s scripts -p test_dev_compose.py`: exit 0,
+  raw tail `Ran 7 tests in 0.006s` / `OK`. Static Compose/seed wiring only.
+  The seed uses deterministic fixtures and existing RAG endpoints, never the
+  removed onboarding endpoint, so seed source is unchanged. No Docker/seed run.
+
+The full backend pair uses this identical command in separate processes:
+`python -u -m pytest -q --tb=short -p no:cacheprovider
+--ignore=tests/test_startup_guard.py --basetemp=<workspace>/.test-storage-s3/f
+--junitxml=../../.test-storage-s3/full.xml` with the same per-process environment.
+Run 1 is in progress. Logs: `.test-storage-s3/full-1.log` and `full-2.log`.
+No full result or standalone startup result is claimed yet. No paid API calls,
+credential-file reads or safety-guard edits occurred.
+
 ## 2026-10-20 — S2 staff members (backend/static verification complete)
 
 Owner authorized working before S1 verification finishes and reviewing S1/S2/S3
