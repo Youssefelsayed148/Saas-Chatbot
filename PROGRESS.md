@@ -1,6 +1,6 @@
 # Execution checkpoint
 
-## 2026-10-20 — S2 staff members (in progress; NOT verified)
+## 2026-10-20 — S2 staff members (backend/static verification complete)
 
 Owner authorized working before S1 verification finishes and reviewing S1/S2/S3
 together. Isolated branch `feature/staff-members` initially started at S1 commit

@@ -189,6 +189,7 @@ Base: `bb2e847` (final S1).
 git log --oneline bb2e847..HEAD
 
 ```text
+691382c fix: align Members pages with existing main landmarks
 df826b5 docs: record completed S2 verification and review evidence
 0c192f0 fix: reuse organization invitation list and record verification setup
 a6d6bac fix: include archived organizations in staff member filters
@@ -228,8 +229,8 @@ git diff --stat bb2e847
  apps/web/tests/dashboard.spec.ts                   |  19 +-
  apps/web/tests/group-a-members.spec.ts             |  29 +-
  apps/web/tests/staff-members.spec.ts               | 112 +++++++
- implementation/STAFF-S2-REPORT.md                  | 266 ++++++++++++++++
- 28 files changed, 2227 insertions(+), 35 deletions(-)
+ implementation/STAFF-S2-REPORT.md                  | 267 ++++++++++++++++
+ 28 files changed, 2228 insertions(+), 35 deletions(-)
 ```
 
 git diff --numstat bb2e847
@@ -262,5 +263,5 @@ git diff --numstat bb2e847
 16	3	apps/web/tests/dashboard.spec.ts
 19	10	apps/web/tests/group-a-members.spec.ts
 112	0	apps/web/tests/staff-members.spec.ts
-266	0	implementation/STAFF-S2-REPORT.md
+267	0	implementation/STAFF-S2-REPORT.md
 ```
