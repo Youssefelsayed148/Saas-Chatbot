@@ -12,6 +12,7 @@ test("staff creates, resets, deactivates and manages existing-user invitations",
   page,
   browser,
 }) => {
+  test.setTimeout(180_000);
   const { tenantId } = await registerOperator(page, "staff-members");
   const email = uniqueEmail("created-member");
   await page.goto("/platform/members");

@@ -2,6 +2,7 @@
 
 import re
 import secrets
+from collections.abc import Iterator
 from datetime import datetime
 from typing import Annotated, Self
 from uuid import UUID, uuid4
@@ -9,7 +10,7 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, Query, Response
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 from sqlalchemy import func, select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session as Db
 
 from app.auth.cookies import require_csrf
@@ -33,9 +34,25 @@ def prevent_caching(response: Response) -> None:
 
 
 router = APIRouter(
-    prefix="/users", tags=["platform users"], dependencies=[Depends(prevent_caching)]
+    prefix="/api/v1/platform/users",
+    tags=["platform users"],
+    dependencies=[Depends(prevent_caching)],
 )
-Database = Annotated[Db, Depends(get_session)]
+
+
+def user_database(db: Annotated[Db, Depends(get_session)]) -> Iterator[Db]:
+    try:
+        yield db
+    except SQLAlchemyError:
+        # Statement errors can include bound phone/password-hash values. Convert
+        # before ServerErrorMiddleware/Uvicorn can log an exception traceback.
+        db.rollback()
+        raise ApiError(
+            503, "SERVICE_UNAVAILABLE", "Account service is temporarily unavailable."
+        ) from None
+
+
+Database = Annotated[Db, Depends(user_database)]
 Csrf = Annotated[None, Depends(require_csrf)]
 
 

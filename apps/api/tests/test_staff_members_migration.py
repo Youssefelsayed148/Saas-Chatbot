@@ -16,9 +16,9 @@ def test_staff_members_migration_preserves_existing_users(base_url: str) -> None
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "INSERT INTO users(id,email,password_hash) VALUES "
+                    "INSERT INTO users(id,email,password_hash,created_at) VALUES "
                     "('11111111-1111-4111-8111-111111111111',"
-                    "'migration@example.com','fixture')"
+                    "'migration@example.com','fixture',CURRENT_TIMESTAMP)"
                 )
             )
         run_migrations(url)

@@ -19,6 +19,7 @@ from app.inbox.listing import router as inbox_listing_router
 from app.inbox.router import router as inbox_router
 from app.knowledge.router import router as knowledge_router
 from app.platform.router import router as platform_router
+from app.platform.users import router as platform_users_router
 from app.provisioning.router import router as provisioning_router
 from app.tenants.changes import router as changes_router
 from app.tenants.data import router as tenant_data_router
@@ -72,7 +73,7 @@ def create_app() -> FastAPI:
                 raise RuntimeError(f"Inconsistent route roles: {route.path}")
             route.openapi_extra = {**(route.openapi_extra or {}), "x-minimum-role": minimums.pop()}
 
-    for source_router in (platform_router, changes_router):
+    for source_router in (platform_router, platform_users_router, changes_router):
         for route in source_router.routes:
             if isinstance(route, APIRoute) and route.path.startswith("/api/v1/platform"):
                 route.openapi_extra = {
@@ -98,6 +99,7 @@ def create_app() -> FastAPI:
     application.include_router(handoff_analytics_router)
     application.include_router(widget_router)
     application.include_router(platform_router)
+    application.include_router(platform_users_router)
     application.include_router(provisioning_router)
     install_error_handlers(application)
     return application

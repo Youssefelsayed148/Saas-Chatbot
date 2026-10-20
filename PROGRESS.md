@@ -50,9 +50,46 @@ Commands run from the isolated worktree (Python is the root
   `tests/test_staff_member_revocation_race.py` appended exited 0:
   **31 tests collected in 0.25s**. No database tests have executed yet.
 
-Database execution is pending. S1 is running its repeated full suite against
-the same derived `postgres_test` database. S2 must not migrate/truncate that
-database concurrently. No database/startup/worker safety guard was changed.
+Database execution began only after elevated process checks confirmed that S1's
+pytest processes had exited, then confirmed no new run after a 30-second wait.
+The originally prescribed disposable database URL is used. The optional request
+to use a separate database was not acted on. No safety guard was changed.
+
+S2 targeted command in apps/api (per-process TEST_DATABASE_URL supplied, ENVIRONMENT=test,
+CHAT_STUB_MODEL=true, EMBEDDING_TEST_STUB=true):
+`python -u -m pytest -q --tb=short -p no:cacheprovider tests/test_staff_members.py
+tests/test_staff_members_migration.py tests/test_staff_member_revocation_race.py
+tests/test_staff_member_errors.py tests/test_invitations.py tests/test_self_service_signup.py
+tests/test_auth.py tests/test_tenant_route_matrix.py tests/test_quotas.py
+--basetemp=../../.test-storage-s2/targeted-host
+--junitxml=../../.test-storage-s2/targeted-host.xml`.
+
+- Initial sandbox run used `--basetemp=../../.test-storage-s2/targeted` without
+  JUnit output. Exit 1: progress showed failures/errors, then pytest session cleanup
+  crashed with WinError 5 reading its own temporary directory. There is no reliable
+  final passed/failed/skipped summary for this run. Raw output: targeted.log.
+- Corrected the NEW migration test's raw INSERT to supply required created_at.
+  No existing test assertions or safety guards were removed to address this.
+- Repeated with host permissions and JUnit output to get complete diagnostics:
+  exit 1, raw tail `1 failed, 74 passed, 1 warning in 47.10s`.
+  Failure: existing platform route-matrix check reported missing x-minimum-role
+  metadata on the nested users router. Authorization checks themselves passed.
+- Registered the users router through the existing top-level application path,
+  so the unchanged metadata assignment covers it. Startup validation and all
+  permission checks remain intact. Added safe handling of database statement
+  errors so bound phone/password-hash parameters cannot escape into tracebacks.
+- Final targeted repeat: exit 0, raw tail:
+  `75 passed, 1 warning in 49.85s` (0 failed, 0 skipped).
+  Raw output: `.test-storage-s2/targeted-final.log`; JUnit: targeted-host.xml.
+- The subsequent full backend run is in progress, using
+  `python -u -m pytest -q --tb=short -p no:cacheprovider
+  --ignore=tests/test_startup_guard.py --basetemp=../../.test-storage-s2/full-host
+  --junitxml=../../.test-storage-s2/full-host.xml` with the same per-process
+  environment. Log: `.test-storage-s2/full-1.log`. No full-suite result yet.
+
+The owner's later "dont stop" instruction is applied to repairing S2's failures;
+S3 remains gated on successful S2 verification. Both initial failures and fixes
+are retained in this record rather than represented as an initially green run.
 
 ## 2026-10-14 — P7-03 Playwright repair and fictional demo seed
 

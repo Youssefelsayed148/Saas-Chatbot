@@ -51,13 +51,11 @@ from app.db.models.knowledge import KnowledgeRevision, Source
 from app.db.session import get_session
 from app.jobs.queue import request_cancel, requeue_for_retry
 from app.platform.staff import PlatformStaffDep
-from app.platform.users import router as users_router
 from app.provisioning.service import ProvisioningPayload, ProvisioningService
 from app.quotas.service import PLACEHOLDER_PLAN_LIMITS, PLAN_LABELS
 
 router = APIRouter(prefix="/api/v1/platform")
 
-router.include_router(users_router)
 
 DbSession = Annotated[OrmSession, Depends(get_session)]
 CurrentSettings = Annotated[Settings, Depends(get_settings)]

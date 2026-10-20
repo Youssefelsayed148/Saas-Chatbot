@@ -30,10 +30,12 @@ export function OrganizationSelect({
   value,
   onChange,
   optional = false,
+  emptyLabel,
 }: {
   value: string;
   onChange: (id: string) => void;
   optional?: boolean;
+  emptyLabel?: string;
 }) {
   const [organizations, setOrganizations] = useState<api.PlatformTenantRow[]>(
     [],
@@ -68,7 +70,8 @@ export function OrganizationSelect({
           onChange={(e) => onChange(e.target.value)}
         >
           <option value="">
-            {optional ? "No organization" : "Choose organization"}
+            {emptyLabel ??
+              (optional ? "No organization" : "Choose organization")}
           </option>
           {organizations.map((org) => (
             <option key={org.id} value={org.id}>
@@ -99,11 +102,14 @@ export function PasswordPanel({
       <button
         type="button"
         onClick={() => {
-          void navigator.clipboard.writeText(password).then(
-            () => setCopied(true),
-            () =>
-              setError("Copy failed. Select and copy the password manually."),
-          );
+          void (async () => {
+            try {
+              await navigator.clipboard.writeText(password);
+              setCopied(true);
+            } catch {
+              setError("Copy failed. Select and copy the password manually.");
+            }
+          })();
         }}
       >
         Copy password
