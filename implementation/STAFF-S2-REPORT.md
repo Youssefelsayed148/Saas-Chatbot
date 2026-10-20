@@ -1,7 +1,6 @@
 # S2 — staff Members
 
-Status: targeted verification green; full backend verification in progress. This is not a
-completion or phase sign-off. Browser execution is deferred until the combined
+Status: S2 backend and static verification complete. Browser execution is deferred until the combined
 run after S4. No branch has been merged, pushed or deployed.
 
 Branch: `feature/staff-members`. Base: finalized S1 commit `bb2e847`, with owner approval
@@ -74,9 +73,47 @@ permission metadata on nested routes. Moving registration to the existing
 top-level application path fixed it. Full commands and intermediate failures
 are recorded in PROGRESS.md; raw logs are in the ignored `.test-storage-s2/`.
 
-Two identical full-suite runs and the standalone startup guard remain pending.
-No results are claimed for unexecuted checks. No paid provider calls, Docker
-commands or database/startup/worker safety-guard changes were made.
+Two identical full-suite runs passed (0 failed in both):
+
+```text
+437 passed, 1 skipped, 1 warning in 1425.32s (0:23:45)
+437 passed, 1 skipped, 1 warning in 1335.86s (0:22:15)
+```
+
+The one skip is the pre-existing POSIX process-group parser integration on Windows.
+The first full attempt before Windows environment correction reported
+`3 failed, 434 passed, 1 skipped, 1 warning in 1374.94s (0:22:54)`:
+two cp1252 decoding errors and one fixture path over the classic Windows limit.
+Process-only PYTHONUTF8=1 and a short workspace temporary path fixed these;
+the three affected cases separately passed (`3 passed, 1 warning in 8.49s`).
+Neither tests nor safety guards were weakened.
+
+Standalone startup guard, in its own process with BOTH stub variables removed:
+
+```text
+7 passed, 1 warning in 0.63s
+```
+
+Final changed-Python Ruff and mypy checks exited 0:
+
+```text
+All checks passed!
+Success: no issues found in 15 source files
+```
+
+Full Python command (both runs, same arguments; only the Tee output filename changed):
+
+```powershell
+& 'D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.venv\Scripts\python.exe' -u -m pytest -q --tb=short -p no:cacheprovider --ignore=tests/test_startup_guard.py --basetemp='D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage-s2\f' --junitxml=../../.test-storage-s2/full-utf8.xml
+```
+
+Working directory is this worktree's apps/api. Per-process environment:
+owner-supplied TEST_DATABASE_URL, ENVIRONMENT=test, PYTHONUTF8=1, both model stubs=true,
+TEMP/TMP at the root workspace's `.test-storage-s2/t`. Full logs are
+`.test-storage-s2/full-utf8-1.log` and `full-utf8-2.log`; startup log is
+`startup-guard.log`. Test-generated evaluation timestamps were restored, and
+no evaluation/retrieval source was changed. No paid provider calls, Docker
+commands, merges, pushes or deployments were made.
 
 ## Deviations and preserved behavior
 
@@ -96,6 +133,16 @@ commands or database/startup/worker safety-guard changes were made.
   and are not echoed by the API. They are not stored in browser storage or URLs.
 - The initial worktree typecheck could not resolve installed TypeScript packages;
   an ignored local dependency junction resolved this without changing dependencies.
+- The legacy batch-onboarding path is unchanged in S2 and is retired in S3, as
+  explicitly scoped. Existing-user enforcement here applies to tenant invitation
+  creation; S3 removes the legacy staff invitation-creation path.
+- Later owner instruction "dont stop" was applied to repairing S2 failures before
+  advancing. Initial red results and the environment corrections are recorded,
+  rather than omitted. No S3 implementation began before S2 was green.
+
+Deployment consideration: apply Alembic 0017 before running the S2 code against a
+deployment database. Its downgrade drops the newly added phone/active fields.
+Only disposable databases were migrated here; production migration is not authorized.
 
 Self-service settings, password-change pages, Google login, email changes, deletion,
 bulk import, onboarding retirement, knowledge behavior and docs under `docs/` were
@@ -129,4 +176,87 @@ not changed in S2.
 - Review the pre-existing revoked-only-account login rule when designing future
   invitation/rejoining behavior; this slice preserves it.
 
-Git log, final diff/numstat and executed test tails will be added after verification.
+The Git snapshot below is captured immediately before the final verification-report
+commit. No existing test was deleted; fixture/journey adaptations are described above.
+
+## Git review
+
+Base: `bb2e847` (final S1).
+
+git log --oneline bb2e847..HEAD
+
+```text
+0c192f0 fix: reuse organization invitation list and record verification setup
+a6d6bac fix: include archived organizations in staff member filters
+76973a0 fix: register staff routes with permission metadata and protect account errors
+e98dd14 test: cover staff session revocation races
+b9a2d28 feat: add platform Members screens and organization member controls
+e8b686d feat: add staff account lifecycle and membership administration
+```
+
+git diff --stat bb2e847
+
+```text
+ PROGRESS.md                                        | 144 +++++++++
+ apps/api/alembic/versions/0017_staff_members.py    |  22 ++
+ apps/api/app/auth/cookies.py                       |   2 +-
+ apps/api/app/auth/service.py                       |  39 ++-
+ apps/api/app/db/models/core.py                     |   4 +
+ apps/api/app/main.py                               |   4 +-
+ apps/api/app/platform/router.py                    |   1 +
+ apps/api/app/platform/users.py                     | 335 +++++++++++++++++++++
+ apps/api/app/tenants/service.py                    |  28 +-
+ apps/api/tests/helpers.py                          |  13 +-
+ apps/api/tests/test_invitations.py                 |   2 +
+ apps/api/tests/test_self_service_signup.py         |   6 +
+ apps/api/tests/test_staff_member_errors.py         |  37 +++
+ .../api/tests/test_staff_member_revocation_race.py |  54 ++++
+ apps/api/tests/test_staff_members.py               | 311 +++++++++++++++++++
+ apps/api/tests/test_staff_members_migration.py     |  39 +++
+ apps/api/tests/test_tenant_route_matrix.py         |   3 +
+ apps/web/app/platform/clients/[clientId]/page.tsx  |  79 ++++-
+ apps/web/app/platform/members/[userId]/page.tsx    | 120 ++++++++
+ apps/web/app/platform/members/page.tsx             | 211 +++++++++++++
+ apps/web/lib/api.ts                                |  76 +++++
+ apps/web/lib/app-header.tsx                        |   1 +
+ apps/web/lib/page-title.tsx                        |   2 +
+ apps/web/lib/staff-members.tsx                     | 299 ++++++++++++++++++
+ apps/web/tests/dashboard.spec.ts                   |  19 +-
+ apps/web/tests/group-a-members.spec.ts             |  29 +-
+ apps/web/tests/staff-members.spec.ts               | 112 +++++++
+ implementation/STAFF-S2-REPORT.md                  | 262 ++++++++++++++++
+ 28 files changed, 2219 insertions(+), 35 deletions(-)
+```
+
+git diff --numstat bb2e847
+
+```text
+144	0	PROGRESS.md
+22	0	apps/api/alembic/versions/0017_staff_members.py
+1	1	apps/api/app/auth/cookies.py
+27	12	apps/api/app/auth/service.py
+4	0	apps/api/app/db/models/core.py
+3	1	apps/api/app/main.py
+1	0	apps/api/app/platform/router.py
+335	0	apps/api/app/platform/users.py
+22	6	apps/api/app/tenants/service.py
+12	1	apps/api/tests/helpers.py
+2	0	apps/api/tests/test_invitations.py
+6	0	apps/api/tests/test_self_service_signup.py
+37	0	apps/api/tests/test_staff_member_errors.py
+54	0	apps/api/tests/test_staff_member_revocation_race.py
+311	0	apps/api/tests/test_staff_members.py
+39	0	apps/api/tests/test_staff_members_migration.py
+3	0	apps/api/tests/test_tenant_route_matrix.py
+78	1	apps/web/app/platform/clients/[clientId]/page.tsx
+120	0	apps/web/app/platform/members/[userId]/page.tsx
+211	0	apps/web/app/platform/members/page.tsx
+76	0	apps/web/lib/api.ts
+1	0	apps/web/lib/app-header.tsx
+2	0	apps/web/lib/page-title.tsx
+299	0	apps/web/lib/staff-members.tsx
+16	3	apps/web/tests/dashboard.spec.ts
+19	10	apps/web/tests/group-a-members.spec.ts
+112	0	apps/web/tests/staff-members.spec.ts
+262	0	implementation/STAFF-S2-REPORT.md
+```
