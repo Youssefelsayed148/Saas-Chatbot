@@ -2155,6 +2155,7 @@ Final backend and local integration readiness:
 
 - Branch: `feature/staff-organizations` from `main`; local only, not merged.
 - Implemented staff organization create/update/detail API, audit events, organization list/create UI, four detail tabs, and Playwright coverage. Kept `/platform/clients/<id>` and `/api/v1/platform/tenants` paths. Old onboarding flow remains available.
+- The organization endpoints return 403 for unauthenticated and authenticated non-staff callers, matching the requested staff-only response contract.
 - `apps/web`: `npm run lint` — exit 0; raw tail: `ESLint found too many warnings` was absent; command output ended after the `eslint . --max-warnings 0` invocation with no findings.
 - `apps/web`: `npm run typecheck` — exit 0; raw tail: `Generating route types...` / `✓ Types generated successfully`.
 - `apps/web`: `npx playwright test --list tests/organizations.spec.ts` — exit 0; raw tail: `Total: 2 tests in 1 file` (listed only; not executed).

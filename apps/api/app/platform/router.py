@@ -22,6 +22,7 @@ from fastapi import (
     Form,
     Header,
     Query,
+    Request,
     Response,
     UploadFile,
 )
@@ -59,6 +60,25 @@ router = APIRouter(prefix="/api/v1/platform")
 DbSession = Annotated[OrmSession, Depends(get_session)]
 CurrentSettings = Annotated[Settings, Depends(get_settings)]
 CsrfOk = Annotated[None, Depends(cookies.require_csrf)]
+
+
+def get_platform_organization_staff(
+    request: Request, db: DbSession, settings: CurrentSettings
+) -> User:
+    try:
+        user = cookies.get_current_user(request, db, settings)
+    except ApiError as error:
+        if error.status_code == 401:
+            raise ApiError(403, "FORBIDDEN", "Platform staff access required.") from error
+        raise
+    if not user.is_platform_staff:
+        raise ApiError(403, "FORBIDDEN", "Platform staff access required.")
+    return user
+
+
+PlatformOrganizationStaffDep = Annotated[
+    User, Depends(get_platform_organization_staff)
+]
 
 
 class PlatformBotCreate(BaseModel):
@@ -223,7 +243,10 @@ def platform_tenants(
 
 @router.post("/tenants", status_code=201)
 def platform_create_organization(
-    payload: OrganizationCreate, staff: PlatformStaffDep, db: DbSession, _: CsrfOk
+    payload: OrganizationCreate,
+    staff: PlatformOrganizationStaffDep,
+    db: DbSession,
+    _: CsrfOk,
 ) -> dict[str, Any]:
     from app.tenants.service import TenantService
 
@@ -260,7 +283,7 @@ def platform_create_organization(
 def platform_update_organization(
     tenant_id: UUID,
     payload: OrganizationUpdate,
-    staff: PlatformStaffDep,
+    staff: PlatformOrganizationStaffDep,
     db: DbSession,
     _: CsrfOk,
 ) -> dict[str, Any]:
@@ -567,7 +590,7 @@ def platform_audit_review(
 @router.get("/tenants/{tenant_id}")
 def platform_tenant_detail(
     tenant_id: UUID,
-    staff: PlatformStaffDep,
+    staff: PlatformOrganizationStaffDep,
     db: DbSession,
 ) -> dict[str, Any]:
     tenant = db.get(Tenant, tenant_id)

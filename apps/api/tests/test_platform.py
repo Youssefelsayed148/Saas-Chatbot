@@ -335,14 +335,14 @@ def test_organization_endpoints_are_staff_only_and_detail_scoped(
         assert platform_call(user, "PATCH", path, json={"name": "No"}).status_code == 403
         assert platform_call(user, "GET", path).status_code == 403
     with TestClient(app) as anonymous:
-        assert anonymous.post("/api/v1/platform/tenants", json={"name": "No"}).status_code == 401
+        assert anonymous.post("/api/v1/platform/tenants", json={"name": "No"}).status_code == 403
         assert (
             anonymous.patch(
                 f"/api/v1/platform/tenants/{a.tenant_id}", json={"name": "No"}
             ).status_code
-            == 401
+            == 403
         )
-        assert anonymous.get(f"/api/v1/platform/tenants/{a.tenant_id}").status_code == 401
+        assert anonymous.get(f"/api/v1/platform/tenants/{a.tenant_id}").status_code == 403
 
 
 def test_staff_onboarded_bot_has_widget_locator_and_public_config_is_reachable(
