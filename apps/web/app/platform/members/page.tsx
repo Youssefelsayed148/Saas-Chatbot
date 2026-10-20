@@ -67,7 +67,7 @@ export default function MembersPage() {
     }
   }
   return (
-    <>
+    <main>
       <h1>Members</h1>
       {error && <Notice tone="error" message={error} />}
       <section aria-label="Filter members">
@@ -206,6 +206,6 @@ export default function MembersPage() {
       {issued && (
         <PasswordPanel password={issued} onDismiss={() => setIssued("")} />
       )}
-    </>
+    </main>
   );
 }

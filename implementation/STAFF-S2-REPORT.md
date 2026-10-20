@@ -133,6 +133,9 @@ commands, merges, pushes or deployments were made.
   and are not echoed by the API. They are not stored in browser storage or URLs.
 - The initial worktree typecheck could not resolve installed TypeScript packages;
   an ignored local dependency junction resolved this without changing dependencies.
+- The Members pages use the existing main landmark/wrapper convention. Final
+  markup-only alignment passed repeated web lint/typecheck; backend source and
+  the recorded full-suite command/results are unchanged.
 - The legacy batch-onboarding path is unchanged in S2 and is retired in S3, as
   explicitly scoped. Existing-user enforcement here applies to tenant invitation
   creation; S3 removes the legacy staff invitation-creation path.
@@ -186,6 +189,7 @@ Base: `bb2e847` (final S1).
 git log --oneline bb2e847..HEAD
 
 ```text
+df826b5 docs: record completed S2 verification and review evidence
 0c192f0 fix: reuse organization invitation list and record verification setup
 a6d6bac fix: include archived organizations in staff member filters
 76973a0 fix: register staff routes with permission metadata and protect account errors
@@ -197,7 +201,7 @@ e8b686d feat: add staff account lifecycle and membership administration
 git diff --stat bb2e847
 
 ```text
- PROGRESS.md                                        | 144 +++++++++
+ PROGRESS.md                                        | 148 +++++++++
  apps/api/alembic/versions/0017_staff_members.py    |  22 ++
  apps/api/app/auth/cookies.py                       |   2 +-
  apps/api/app/auth/service.py                       |  39 ++-
@@ -224,14 +228,14 @@ git diff --stat bb2e847
  apps/web/tests/dashboard.spec.ts                   |  19 +-
  apps/web/tests/group-a-members.spec.ts             |  29 +-
  apps/web/tests/staff-members.spec.ts               | 112 +++++++
- implementation/STAFF-S2-REPORT.md                  | 262 ++++++++++++++++
- 28 files changed, 2219 insertions(+), 35 deletions(-)
+ implementation/STAFF-S2-REPORT.md                  | 266 ++++++++++++++++
+ 28 files changed, 2227 insertions(+), 35 deletions(-)
 ```
 
 git diff --numstat bb2e847
 
 ```text
-144	0	PROGRESS.md
+148	0	PROGRESS.md
 22	0	apps/api/alembic/versions/0017_staff_members.py
 1	1	apps/api/app/auth/cookies.py
 27	12	apps/api/app/auth/service.py
@@ -258,5 +262,5 @@ git diff --numstat bb2e847
 16	3	apps/web/tests/dashboard.spec.ts
 19	10	apps/web/tests/group-a-members.spec.ts
 112	0	apps/web/tests/staff-members.spec.ts
-262	0	implementation/STAFF-S2-REPORT.md
+266	0	implementation/STAFF-S2-REPORT.md
 ```

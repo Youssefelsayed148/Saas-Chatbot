@@ -53,7 +53,7 @@ export default function MemberPage() {
     }
   }
   return (
-    <>
+    <main>
       {error && <Notice tone="error" message={error} />}
       {user ? (
         <>
@@ -115,6 +115,6 @@ export default function MemberPage() {
       ) : (
         <Loading />
       )}
-    </>
+    </main>
   );
 }
