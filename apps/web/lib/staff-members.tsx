@@ -31,11 +31,13 @@ export function OrganizationSelect({
   onChange,
   optional = false,
   emptyLabel,
+  activeOnly = true,
 }: {
   value: string;
   onChange: (id: string) => void;
   optional?: boolean;
   emptyLabel?: string;
+  activeOnly?: boolean;
 }) {
   const [organizations, setOrganizations] = useState<api.PlatformTenantRow[]>(
     [],
@@ -47,7 +49,7 @@ export function OrganizationSelect({
       const all: api.PlatformTenantRow[] = [];
       for (let offset = 0; ; offset += 100) {
         const result = await api.platformTenants(
-          `status=active&limit=100&offset=${offset}`,
+          `${activeOnly ? "status=active&" : ""}limit=100&offset=${offset}`,
         );
         all.push(...result.tenants);
         if (all.length >= result.total || result.tenants.length === 0) break;
@@ -59,7 +61,7 @@ export function OrganizationSelect({
     return () => {
       alive = false;
     };
-  }, []);
+  }, [activeOnly]);
   return (
     <>
       <label>

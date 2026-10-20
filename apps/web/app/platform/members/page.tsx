@@ -84,6 +84,7 @@ export default function MembersPage() {
         <OrganizationSelect
           optional
           emptyLabel="All organizations"
+          activeOnly={false}
           value={filterOrg}
           onChange={(id) => {
             setFilterOrg(id);

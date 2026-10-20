@@ -1013,7 +1013,7 @@ export async function platformMe(): Promise<Me> {
   return api<Me>("platform/me");
 }
 
-export type ClientRole = "admin" | "editor" | "viewer";
+export type ClientRole = Role;
 export interface StaffUser {
   id: string;
   email: string;
