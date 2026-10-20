@@ -3,7 +3,8 @@
 ## 2026-10-20 — S3 staff Bots (backend/static verification complete)
 
 Branch `feature/staff-bots` initially stacked on S2 `df826b5`, then incorporated
-S2's final markup-only follow-up `691382c` by local rebase. It remains isolated in
+S2's markup follow-up `691382c` and final documentation status `5bbd9cd` by local
+rebase. It remains isolated in
 `.worktrees/staff-bots`. S2 completed 75 targeted passes, identical full runs
 437 passed/1 skipped, and 7 standalone startup-guard passes before S3 began.
 No branches were merged or pushed; S1/main/Phase 6 source checkouts are untouched.
@@ -86,7 +87,13 @@ Final markup follow-up aligns the new pages with the existing main wrapper.
 Members markup and review records, so backend source remained identical during
 both full runs and final restacking. Only S3's own generated evaluation timestamp
 was restored. Final Ruff/mypy checks still pass on all 10 changed Python files;
-final web lint/typecheck/list run after restacking is recorded below.
+final web lint/typecheck/list run after restacking exited 0: **68 tests in 22
+files** listed, no browser execution. The last restack from 691382c to 5bbd9cd
+changed documentation only (`git diff 691382c 5bbd9cd -- apps` is empty).
+The documentation-only rebase conflict retained both S3 history and S2's verified
+status heading. Final source/test guards are unchanged, with no conflict markers.
+S2 and S3 are complete for backend/static review; the one combined Playwright
+execution remains deferred until S4. No merge, push, tag, deployment or Docker run.
 
 ## 2026-10-20 — S2 staff members (backend/static verification complete)
 

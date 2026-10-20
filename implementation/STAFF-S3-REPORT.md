@@ -2,7 +2,7 @@
 
 Status: backend and static verification complete. Browser execution is deferred
 to one combined pass after S4.
-Branch `feature/staff-bots` is STACKED on S2 `691382c`, not main. Local commits
+Branch `feature/staff-bots` is STACKED on final S2 `5bbd9cd`, not main. Local commits
 only; no merge, push, deployment, Docker or paid API calls.
 
 ## Changes
@@ -100,6 +100,10 @@ TEMP/TMP at root `.test-storage-s3/t`. Logs: `.test-storage-s3/full-1.log`,
   its final main-landmark markup alignment. The diff between those S2 bases under
   apps/api is empty; backend source stayed identical during both full runs and
   final restacking. Web checks were repeated on the final stacked source.
+  The final S2 status-heading/report commit is `5bbd9cd`; restacking onto it changed
+  documentation only (the diff from 691382c under apps is empty). A PROGRESS.md-only
+  rebase conflict was resolved by retaining both verification histories and the
+  correct S2 verified heading. No source/test conflict occurred.
 - Retained provisioning-specific assertions run against the real service because
   the new separate endpoints intentionally have no batch-onboarding idempotency,
   fingerprint or file-staging contract. Duplicate submit still proves one tenant
@@ -173,3 +177,75 @@ These commands were not executed here and no credential file was opened.
 
 The Git snapshot below is captured immediately before this final verification
 report commit. No existing test file was deleted; replacements are mapped above.
+
+## Git review
+
+Base: `5bbd9cd` (final S2).
+
+git log --oneline 5bbd9cd..HEAD
+
+```text
+a1f406d docs: record green S3 backend verification
+2fd6467 fix: align Bots page with existing main landmark and record first full result
+75ee015 feat: add platform Bots screens and replace staff onboarding workflow
+fbaef0a feat: add staff bot directory and share bot creation while retiring onboarding POST
+```
+
+git diff --stat 5bbd9cd
+
+```text
+ PROGRESS.md                                        |  95 ++++++++
+ apps/api/app/bots/factory.py                       |  49 ++++
+ apps/api/app/bots/router.py                        |   2 +-
+ apps/api/app/bots/service.py                       |  27 +--
+ apps/api/app/main.py                               |   9 +-
+ apps/api/app/platform/bots.py                      | 138 +++++++++++
+ apps/api/app/platform/router.py                    | 121 +---------
+ apps/api/app/provisioning/service.py               |  23 +-
+ apps/api/tests/test_group_c_polish.py              |  32 +--
+ apps/api/tests/test_platform.py                    | 178 ++++++++-------
+ apps/api/tests/test_staff_bots.py                  | 160 +++++++++++++
+ .../app/[tenant]/bots/[botId]/settings/page.tsx    |   8 +-
+ apps/web/app/app/page.tsx                          |   8 +-
+ apps/web/app/globals.css                           |  13 +-
+ apps/web/app/platform/bots/page.tsx                | 107 +++++++++
+ apps/web/app/platform/clients/[clientId]/page.tsx  |   8 +
+ apps/web/app/platform/page.tsx                     |  99 +-------
+ apps/web/lib/api.ts                                |  72 ++----
+ apps/web/lib/app-header.tsx                        |   1 +
+ apps/web/lib/staff-bots.tsx                        |  97 ++++++++
+ apps/web/tests/group-a-operator.spec.ts            |   6 +-
+ apps/web/tests/platform.spec.ts                    |  49 ++--
+ apps/web/tests/staff-bots.spec.ts                  |  74 ++++++
+ implementation/STAFF-S3-REPORT.md                  | 251 +++++++++++++++++++++
+ 24 files changed, 1192 insertions(+), 435 deletions(-)
+```
+
+git diff --numstat 5bbd9cd
+
+```text
+95	0	PROGRESS.md
+49	0	apps/api/app/bots/factory.py
+1	1	apps/api/app/bots/router.py
+7	20	apps/api/app/bots/service.py
+8	1	apps/api/app/main.py
+138	0	apps/api/app/platform/bots.py
+9	112	apps/api/app/platform/router.py
+6	17	apps/api/app/provisioning/service.py
+10	22	apps/api/tests/test_group_c_polish.py
+99	79	apps/api/tests/test_platform.py
+160	0	apps/api/tests/test_staff_bots.py
+7	1	apps/web/app/app/[tenant]/bots/[botId]/settings/page.tsx
+3	5	apps/web/app/app/page.tsx
+1	12	apps/web/app/globals.css
+107	0	apps/web/app/platform/bots/page.tsx
+8	0	apps/web/app/platform/clients/[clientId]/page.tsx
+1	98	apps/web/app/platform/page.tsx
+22	50	apps/web/lib/api.ts
+1	0	apps/web/lib/app-header.tsx
+97	0	apps/web/lib/staff-bots.tsx
+3	3	apps/web/tests/group-a-operator.spec.ts
+35	14	apps/web/tests/platform.spec.ts
+74	0	apps/web/tests/staff-bots.spec.ts
+251	0	implementation/STAFF-S3-REPORT.md
+```
