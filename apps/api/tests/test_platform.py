@@ -277,21 +277,37 @@ def test_staff_can_create_and_update_organization_without_provisioning(
         ).scalar_one()
         assert count == 0
     invalid_name = platform_call(staff, "POST", "/tenants", json={"name": "x" * 201})
-    invalid_plan = platform_call(staff, "POST", "/tenants", json={"name": "Valid", "plan_label": "mystery"})
+    invalid_plan = platform_call(
+        staff, "POST", "/tenants", json={"name": "Valid", "plan_label": "mystery"}
+    )
     assert invalid_name.status_code == invalid_plan.status_code == 422
     updated = platform_call(
         staff,
         "PATCH",
         f"/tenants/{org['id']}",
-        json={"name": "Acme Updated", "plan_label": "business", "status": "archived"},
+        json={"name": "Acme Updated", "status": "archived"},
     )
     assert updated.status_code == 200, updated.text
     assert (updated.json()["name"], updated.json()["plan_label"], updated.json()["status"]) == (
         "Acme Updated",
-        "business",
+        "pro",
         "archived",
     )
-    assert platform_call(staff, "PATCH", f"/tenants/{org['id']}", json={"status": "suspended"}).status_code == 422
+    assert (
+        platform_call(
+            staff, "PATCH", f"/tenants/{org['id']}", json={"status": "suspended"}
+        ).status_code
+        == 422
+    )
+    assert (
+        platform_call(
+            staff, "PATCH", f"/tenants/{org['id']}", json={"plan_label": "business"}
+        ).status_code
+        == 422
+    )
+    assert (
+        platform_call(staff, "GET", f"/tenants/{org['id']}").json()["tenant"]["plan_label"] == "pro"
+    )
     audit = db.execute(
         text(
             "select action, actor_user_id, metadata_json from audit_events "
@@ -299,19 +315,57 @@ def test_staff_can_create_and_update_organization_without_provisioning(
         ),
         {"id": org["id"]},
     ).all()
-    assert [row[0] for row in audit] == ["platform.organization.created", "platform.organization.updated"]
+    assert [row[0] for row in audit] == [
+        "platform.organization.created",
+        "platform.organization.updated",
+    ]
     actor_id = db.execute(text("select id from users where email='staff@example.com'")).scalar_one()
     assert all(row[1] == actor_id for row in audit)
-    assert audit[-1][2]["fields"] == ["name", "plan_label", "status"]
+    assert audit[-1][2]["fields"] == ["name", "status"]
     assert audit[-1][2]["before"] == {
         "name": "Acme Labs",
-        "plan_label": "pro",
         "status": "active",
     }
     assert audit[-1][2]["after"] == {
         "name": "Acme Updated",
-        "plan_label": "business",
         "status": "archived",
+    }
+
+
+def test_organization_plan_changes_require_existing_reason_and_audit(
+    app: Any, db: Any, corpus: dict[str, Any]
+) -> None:
+    staff = staff_login(app, db)
+    created = platform_call(staff, "POST", "/tenants", json={"name": "Plan review"})
+    assert created.status_code == 201
+    org_id = created.json()["id"]
+    path = f"/tenants/{org_id}"
+    assert platform_call(staff, "PATCH", path, json={"plan_label": "pro"}).status_code == 422
+    for payload in ({"plan_label": "pro"}, {"plan_label": "pro", "reason": "   "}):
+        assert platform_call(staff, "PATCH", f"{path}/plan", json=payload).status_code == 422
+    assert platform_call(staff, "GET", path).json()["tenant"]["plan_label"] == "starter"
+    assigned = platform_call(
+        staff,
+        "PATCH",
+        f"{path}/plan",
+        json={"plan_label": "pro", "reason": "Reviewed organization capacity"},
+    )
+    assert assigned.status_code == 200
+    assert platform_call(staff, "GET", path).json()["tenant"]["plan_label"] == "pro"
+    rows = db.execute(
+        text(
+            "SELECT actor_user_id, metadata_json FROM audit_events "
+            "WHERE tenant_id=:id AND action='platform.tenant.plan_assigned'"
+        ),
+        {"id": org_id},
+    ).all()
+    actor = db.execute(text("SELECT id FROM users WHERE email='staff@example.com'")).scalar_one()
+    assert len(rows) == 1
+    assert rows[0][0] == actor
+    assert rows[0][1] == {
+        "from": "starter",
+        "to": "pro",
+        "reason": "Reviewed organization capacity",
     }
 
 
@@ -326,23 +380,25 @@ def test_organization_endpoints_are_staff_only_and_detail_scoped(
     path = f"/tenants/{a.tenant_id}"
     detail = platform_call(staff, "GET", path).json()
     assert "password_hash" not in str(detail)
-    assert {m["email"] for m in detail["members"]} == {u["email"] for u in a.users.values()}
+    assert {m["email"] for m in detail["members"]} == {
+        a.users[role]["email"] for role in ("admin", "editor", "viewer")
+    }
     assert [bot["name"] for bot in detail["bots"]] == ["A private bot"]
     assert detail["counts"] == {"members": 3, "bots": 1}
-    for role in ("admin", "viewer"):
+    for role in ("admin", "editor", "viewer"):
         user = a.as_user(role)
         assert platform_call(user, "POST", "/tenants", json={"name": "No"}).status_code == 403
         assert platform_call(user, "PATCH", path, json={"name": "No"}).status_code == 403
         assert platform_call(user, "GET", path).status_code == 403
     with TestClient(app) as anonymous:
-        assert anonymous.post("/api/v1/platform/tenants", json={"name": "No"}).status_code == 403
+        assert anonymous.post("/api/v1/platform/tenants", json={"name": "No"}).status_code == 401
         assert (
             anonymous.patch(
                 f"/api/v1/platform/tenants/{a.tenant_id}", json={"name": "No"}
             ).status_code
-            == 403
+            == 401
         )
-        assert anonymous.get(f"/api/v1/platform/tenants/{a.tenant_id}").status_code == 403
+        assert anonymous.get(f"/api/v1/platform/tenants/{a.tenant_id}").status_code == 401
 
 
 def test_staff_onboarded_bot_has_widget_locator_and_public_config_is_reachable(

@@ -1045,7 +1045,7 @@ export async function platformCreateOrganization(payload: {
 
 export async function platformUpdateOrganization(
   tenantId: string,
-  payload: { name: string; plan_label: string; status: string },
+  payload: { name: string; status: string },
 ): Promise<{
   id: string;
   name: string;
