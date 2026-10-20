@@ -1,8 +1,9 @@
 # Execution checkpoint
 
-## 2026-10-20 — S3 staff Bots (targeted green; full verification in progress)
+## 2026-10-20 — S3 staff Bots (backend/static verification complete)
 
-Branch `feature/staff-bots` is stacked on completed S2 `df826b5`, in isolated
+Branch `feature/staff-bots` initially stacked on S2 `df826b5`, then incorporated
+S2's final markup-only follow-up `691382c` by local rebase. It remains isolated in
 `.worktrees/staff-bots`. S2 completed 75 targeted passes, identical full runs
 437 passed/1 skipped, and 7 standalone startup-guard passes before S3 began.
 No branches were merged or pushed; S1/main/Phase 6 source checkouts are untouched.
@@ -70,9 +71,22 @@ The full backend pair uses this identical command in separate processes:
 Run 1 exited 0; raw tail:
 `449 passed, 1 skipped, 1 warning in 1335.63s (0:22:15)` (0 failed).
 The skip is the existing POSIX process-group parser integration on Windows.
-Run 2 is in progress, using the identical command. Logs: `.test-storage-s3/full-1.log`
-and `full-2.log`. No second-full or standalone startup result is claimed yet. No paid API calls,
-credential-file reads or safety-guard edits occurred.
+Run 2 exited 0 with identical counts; raw tail:
+`449 passed, 1 skipped, 1 warning in 1335.95s (0:22:15)` (0 failed).
+Logs: `.test-storage-s3/full-1.log` and `full-2.log`.
+Standalone startup guard removed BOTH stub variables before launching its own
+Python process, with the owner test URL and PYTHONUTF8=1:
+`python -u -m pytest -q --tb=short -p no:cacheprovider tests/test_startup_guard.py
+--basetemp=<workspace>/.test-storage-s3/s`: exit 0,
+raw tail `7 passed, 1 warning in 0.66s` (0 failed/0 skipped).
+No paid API calls, credential-file reads or safety-guard edits occurred.
+
+Final markup follow-up aligns the new pages with the existing main wrapper.
+`git diff df826b5 691382c -- apps/api` is empty: the S2 follow-up changes only
+Members markup and review records, so backend source remained identical during
+both full runs and final restacking. Only S3's own generated evaluation timestamp
+was restored. Final Ruff/mypy checks still pass on all 10 changed Python files;
+final web lint/typecheck/list run after restacking is recorded below.
 
 ## 2026-10-20 — S2 staff members (backend/static verification complete)
 

@@ -1,8 +1,8 @@
 # S3 — staff Bots and onboarding retirement
 
-Status: targeted and static checks green; full backend pair and standalone startup
-guard pending. Browser execution is deferred to one combined pass after S4.
-Branch `feature/staff-bots` is STACKED on S2 `df826b5`, not main. Local commits
+Status: backend and static verification complete. Browser execution is deferred
+to one combined pass after S4.
+Branch `feature/staff-bots` is STACKED on S2 `691382c`, not main. Local commits
 only; no merge, push, deployment, Docker or paid API calls.
 
 ## Changes
@@ -68,14 +68,38 @@ Full run 1 exited 0 (0 failed):
 ```
 
 The skip is the existing POSIX process-group parser integration on Windows.
-The identical repeat is in progress; it and the standalone startup guard have
-no results yet. No unexecuted check is represented as passed.
+The identical repeat also exited 0 (0 failed), confirming reproducible counts:
+
+```text
+449 passed, 1 skipped, 1 warning in 1335.95s (0:22:15)
+```
+
+Standalone startup guard, in its own process with BOTH stub variables removed:
+
+```text
+7 passed, 1 warning in 0.66s
+```
+
+Full Python command, identical in both runs (only Tee log filename changed):
+
+```powershell
+& 'D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.venv\Scripts\python.exe' -u -m pytest -q --tb=short -p no:cacheprovider --ignore=tests/test_startup_guard.py --basetemp='D:\Projects\Work Projects\The Osiris Labs\SAAS-chats-ai\.test-storage-s3\f' --junitxml=../../.test-storage-s3/full.xml
+```
+
+Working directory is this worktree's apps/api. Environment is supplied per process:
+owner-provided TEST_DATABASE_URL, ENVIRONMENT=test, PYTHONUTF8=1, both model stubs=true,
+TEMP/TMP at root `.test-storage-s3/t`. Logs: `.test-storage-s3/full-1.log`,
+`full-2.log`, `targeted.log`, `startup-guard.log`. No new S3 test is skipped.
 
 ## Deviations and regression mapping
 
 - Owner approved a minimal ProvisioningService._make_bot delegation to reconcile
   the two conflicting instructions: one creation function and preservation of the
   provisioning service. Every other provisioning method remains unchanged.
+- Initially stacked on S2 `df826b5`, then restacked onto `691382c` to incorporate
+  its final main-landmark markup alignment. The diff between those S2 bases under
+  apps/api is empty; backend source stayed identical during both full runs and
+  final restacking. Web checks were repeated on the final stacked source.
 - Retained provisioning-specific assertions run against the real service because
   the new separate endpoints intentionally have no batch-onboarding idempotency,
   fingerprint or file-staging contract. Duplicate submit still proves one tenant
@@ -147,4 +171,5 @@ These commands were not executed here and no credential file was opened.
   historical/service compatibility review. Shared self-service helpers remain active.
 - Batch global directory summary queries if operator volume warrants it.
 
-Git history/stat/numstat and final full-suite tails will be added after verification.
+The Git snapshot below is captured immediately before this final verification
+report commit. No existing test file was deleted; replacements are mapped above.
