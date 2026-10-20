@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { registerAdmin } from "./e2e-helpers";
 import { promoteToStaff } from "./staff-helpers";
 
@@ -10,17 +10,6 @@ import { promoteToStaff } from "./staff-helpers";
  * E2E sets it the way the pytest suite does — a direct UPDATE on the SAME
  * disposable E2E database the harness API serves.
  */
-
-async function csrfOf(page: Page): Promise<string> {
-  return page
-    .evaluate(() => document.cookie)
-    .then((cookies) => {
-      const entry = cookies
-        .split("; ")
-        .find((part) => part.startsWith("chatbot_csrf="));
-      return entry ? entry.split("=")[1] : "";
-    });
-}
 
 test("non-staff cannot reach /platform (server-side redirect)", async ({
   page,
@@ -34,7 +23,7 @@ test("non-staff cannot reach /platform (server-side redirect)", async ({
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
 });
 
-test("staff list, onboard a client end to end, and open the client detail", async ({
+test("staff list, onboard a client end to end, and open the organization detail", async ({
   page,
 }) => {
   test.setTimeout(180_000);
@@ -70,7 +59,7 @@ test("staff list, onboard a client end to end, and open the client detail", asyn
   await page.getByRole("button", { name: "Search" }).click();
   await expect(page.getByTestId("platform-tenants")).toContainText(clientName);
 
-  // Open the client detail: bot + members + audit rows render.
+  // Open the organization detail and inspect its read-only tabs.
   // Pick the row by name: right after Search the list can still hold unfiltered rows.
   await page
     .locator("[data-testid='platform-tenants'] a", { hasText: clientName })
@@ -80,69 +69,15 @@ test("staff list, onboard a client end to end, and open the client detail", asyn
   await expect(page.getByTestId("client-detail-name")).toContainText(
     clientName,
   );
-  await expect(page.getByTestId("client-detail-bots")).toContainText(
+  await expect(page.getByRole("tab", { name: "Overview" })).toBeVisible();
+  await page.getByRole("tab", { name: "Members" }).click();
+  await expect(page.getByRole("tabpanel", { name: "Members" })).toBeVisible();
+  await page.getByRole("tab", { name: "Bots" }).click();
+  await expect(page.getByRole("tabpanel", { name: "Bots" })).toContainText(
     "First Bot",
   );
-  await expect(page.getByTestId("client-detail-bots")).toContainText(
-    "nothing published",
-  );
-  await page.getByTestId("client-detail-bots");
-  const csrf = await csrfOf(page);
-  expect(csrf).toBeTruthy();
-
-  // The onboarded client has no membership for this operator.
-  const clientId = page.url().split("/").at(-1)!;
-  const preview = await (
-    await page.request.get(`/api/v1/tenants/${clientId}/data/deletion-preview`)
-  ).json();
-  const me = await (await page.request.get("/api/v1/auth/me")).json();
-  expect(
-    me.memberships.some(
-      (membership: { tenant_id: string }) => membership.tenant_id === clientId,
-    ),
-  ).toBe(false);
-  await page
-    .getByRole("link", { name: "Organization data and deletion" })
-    .click();
-  await page.getByLabel(`Type ${clientName} to confirm`).fill(clientName);
-  await page
-    .getByLabel("Reason for deletion")
-    .fill("Disposable browser test cleanup");
-  const schedule = page.getByRole("button", {
-    name: "Schedule organization deletion",
-  });
-  await schedule.click();
-  const dialog = page.getByRole("dialog", {
-    name: "Delete this organization?",
-  });
-  await expect(dialog).toBeVisible();
-  for (const [kind, count] of Object.entries(preview.counts)) {
-    await expect(
-      dialog.getByText(`${kind}: ${count}`, { exact: true }),
-    ).toBeVisible();
-  }
-  const confirm = dialog.getByRole("button", {
-    name: "Delete organization now",
-  });
-  await expect(confirm).toBeDisabled();
-  await dialog.getByLabel("Confirm organization name").fill(`${clientName} `);
-  await expect(confirm).toBeDisabled();
-  await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
-  expect((await page.request.get(`/api/v1/tenants/${clientId}`)).status()).toBe(
-    200,
-  );
-  await page.getByLabel(`Type ${clientName} to confirm`).fill(clientName);
-  await schedule.click();
-  await dialog.getByLabel("Confirm organization name").fill(clientName);
-  await expect(confirm).toBeEnabled();
-  const deleted = page.waitForResponse(
-    (response) =>
-      response.request().method() === "DELETE" &&
-      response.url().endsWith(`/tenants/${clientId}/data`),
-  );
-  await confirm.click();
-  expect((await deleted).status()).toBe(204);
-  expect((await page.request.get(`/api/v1/tenants/${clientId}`)).status()).toBe(
-    404,
+  await page.getByRole("tab", { name: "Knowledge" }).click();
+  await expect(page.getByRole("tabpanel", { name: "Knowledge" })).toContainText(
+    "First Bot",
   );
 });

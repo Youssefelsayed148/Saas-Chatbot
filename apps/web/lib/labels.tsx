@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 const LABELS: Record<string, string> = {
+  client: "Organization",
+  clients: "Organizations",
   bots: "Assistants",
   seats: "Team members",
   pages_per_bot: "Content pages",
