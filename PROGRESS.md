@@ -2151,3 +2151,16 @@ Final backend and local integration readiness:
   fix/group-c-polish -m "Merge Group C safety and polish"`, then
   `git branch -d fix/group-c-polish`; leave main clean. This maintenance merge
   does not sign off unrelated roadmap phases, hosting or billing decisions.
+## S1 — Staff organizations (2026-10-20)
+
+- Branch: `feature/staff-organizations` from `main`; local only, not merged.
+- Implemented staff organization create/update/detail API, audit events, organization list/create UI, four detail tabs, and Playwright coverage. Kept `/platform/clients/<id>` and `/api/v1/platform/tenants` paths. Old onboarding flow remains available.
+- `apps/web`: `npm run lint` — exit 0; raw tail: `ESLint found too many warnings` was absent; command output ended after the `eslint . --max-warnings 0` invocation with no findings.
+- `apps/web`: `npm run typecheck` — exit 0; raw tail: `Generating route types...` / `✓ Types generated successfully`.
+- `apps/web`: `npx playwright test --list tests/organizations.spec.ts` — exit 0; raw tail: `Total: 2 tests in 1 file` (listed only; not executed).
+- `apps/api`: `python -m py_compile app/platform/router.py tests/test_platform.py` — exit 0; no output.
+- Initial backend commands through the system Python could not start because that interpreter lacks pytest (`No module named pytest`). The repository `.venv` has pytest 9.1.1. `Test-NetConnection -ComputerName 127.0.0.1 -Port 55462 -InformationLevel Quiet` returned `False` (PostgreSQL is not listening).
+- The only pytest command attempted through `.venv` was `python -m pytest tests/test_database_guard.py -q` with process-only `TEST_DATABASE_URL` set to the requested DB. Result: **0 passed, 6 errors**, all at fixture setup while trying to connect/create the test database; raw tail: `3 warnings, 6 errors in 0.14s`. Targeted feature tests, full backend, startup guard, and Playwright were not run because the database listener is unavailable.
+- The Playwright and backend fixtures now select the explicitly requested `saas-test-db` name without deriving another database. No Docker commands were run.
+- Backend runtime checks remain outstanding until PostgreSQL is listening at the requested disposable database endpoint.
+
