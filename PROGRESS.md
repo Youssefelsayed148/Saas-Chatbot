@@ -40,11 +40,15 @@ Commands run from the isolated worktree (Python is the root
 - `python -m mypy --follow-imports=silent app/platform/users.py app/auth/service.py
   app/tenants/service.py tests/test_staff_members.py
   tests/test_staff_members_migration.py`: exit 0, no issues in five source files.
-- `TEST_DATABASE_URL=postgresql://test:test@127.0.0.1:55462/postgres python -m pytest
+- With the owner-supplied TEST_DATABASE_URL set per process, `python -m pytest
   --collect-only -q -p no:cacheprovider tests/test_staff_members.py
   tests/test_staff_members_migration.py`: exit 0, **15 tests collected in 0.27s**
   at that checkpoint; additional cases have since been added. Collection did not
   execute database fixtures. Existing Starlette/httpx deprecation warning only.
+- After adding validation, atomic rollback, filtering and concurrent revocation
+  cases, the same collection command with
+  `tests/test_staff_member_revocation_race.py` appended exited 0:
+  **31 tests collected in 0.25s**. No database tests have executed yet.
 
 Database execution is pending. S1 is running its repeated full suite against
 the same derived `postgres_test` database. S2 must not migrate/truncate that
