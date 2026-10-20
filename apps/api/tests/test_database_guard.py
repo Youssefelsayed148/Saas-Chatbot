@@ -17,11 +17,6 @@ def test_guard_accepts_preexisting_test_db_name() -> None:
     assert url.endswith("/chatbot_dev_migration_test")
 
 
-def test_guard_accepts_explicit_slice_test_database() -> None:
-    url = disposable_url("postgresql://u:p@localhost:55462/saas-test-db", "saas-test-db")
-    assert url.endswith("/saas-test-db")
-
-
 @pytest.mark.parametrize("bad_name", ["chatbot_dev", "chatbot_dev_test_copy", "main"])
 def test_guard_refuses_non_test_names(bad_name: str) -> None:
     with pytest.raises(RuntimeError, match="non-disposable"):

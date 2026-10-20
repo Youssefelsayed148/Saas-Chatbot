@@ -31,9 +31,7 @@ def _check_database_guard() -> None:
         print("worker: DATABASE_URL is not configured.", file=sys.stderr)
         raise SystemExit(1)
     database = (settings.database_url.get_secret_value().rsplit("/", 1)[-1]).split("?")[0]
-    if settings.worker_allow_only_test_db and not (
-        database.endswith("_test") or database == "saas-test-db"
-    ):
+    if settings.worker_allow_only_test_db and not database.endswith("_test"):
         print(
             "worker: refusing to run against a non-_test database "
             f"(WORKER_ALLOW_ONLY_TEST_DB is set): {database}",
