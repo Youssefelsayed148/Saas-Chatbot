@@ -32,7 +32,7 @@ export default function BotsPage() {
     return () => clearTimeout(timer);
   }, [load]);
   return (
-    <>
+    <main>
       <h1>Bots</h1>
       {error && <Notice tone="error" message={error} />}
       <section aria-label="Filter bots">
@@ -102,6 +102,6 @@ export default function BotsPage() {
         Next
       </button>
       <CreateBotForm onCreated={load} />
-    </>
+    </main>
   );
 }

@@ -67,8 +67,11 @@ The full backend pair uses this identical command in separate processes:
 `python -u -m pytest -q --tb=short -p no:cacheprovider
 --ignore=tests/test_startup_guard.py --basetemp=<workspace>/.test-storage-s3/f
 --junitxml=../../.test-storage-s3/full.xml` with the same per-process environment.
-Run 1 is in progress. Logs: `.test-storage-s3/full-1.log` and `full-2.log`.
-No full result or standalone startup result is claimed yet. No paid API calls,
+Run 1 exited 0; raw tail:
+`449 passed, 1 skipped, 1 warning in 1335.63s (0:22:15)` (0 failed).
+The skip is the existing POSIX process-group parser integration on Windows.
+Run 2 is in progress, using the identical command. Logs: `.test-storage-s3/full-1.log`
+and `full-2.log`. No second-full or standalone startup result is claimed yet. No paid API calls,
 credential-file reads or safety-guard edits occurred.
 
 ## 2026-10-20 — S2 staff members (backend/static verification complete)

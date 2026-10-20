@@ -61,8 +61,15 @@ Ran 7 tests in 0.006s
 OK
 ```
 
-Full run 1 is in progress; full run 2 and standalone startup guard have no results
-yet. No unexecuted check is represented as passed.
+Full run 1 exited 0 (0 failed):
+
+```text
+449 passed, 1 skipped, 1 warning in 1335.63s (0:22:15)
+```
+
+The skip is the existing POSIX process-group parser integration on Windows.
+The identical repeat is in progress; it and the standalone startup guard have
+no results yet. No unexecuted check is represented as passed.
 
 ## Deviations and regression mapping
 
