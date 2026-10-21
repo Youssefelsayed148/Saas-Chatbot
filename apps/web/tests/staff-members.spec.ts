@@ -20,12 +20,18 @@ test("staff creates, resets, deactivates and manages existing-user invitations",
   await create.getByLabel("Email", { exact: true }).fill(email);
   await create.getByRole("button", { name: "Generate password" }).click();
   await create
-    .getByLabel("Organization", { exact: true })
+    .getByRole("combobox", { name: "Organization" })
     .selectOption(tenantId);
   await create
     .getByRole("button", { name: "Create user", exact: true })
     .click();
   const password = await page.getByTestId("issued-password").innerText();
+  // The directory is oldest-first with 25 per page; filter to the new user so
+  // their link is on the first page even with accumulated fixture users.
+  await page.getByLabel("Search email").fill(email);
+  await expect(
+    page.getByRole("link", { name: email, exact: true }),
+  ).toBeVisible();
   const context = await browser.newContext();
   const member = await context.newPage();
   try {
@@ -77,7 +83,9 @@ test("staff creates, resets, deactivates and manages existing-user invitations",
     });
     await manage.getByLabel("Search email").fill(email);
     await manage.getByRole("button", { name: "Search users" }).click();
-    await manage.getByLabel("Existing user").selectOption({ label: email });
+    await manage
+      .getByRole("combobox", { name: "Existing user" })
+      .selectOption({ label: email });
     await manage
       .getByRole("button", { name: "Add existing user", exact: true })
       .click();

@@ -146,6 +146,17 @@ test("viewer cannot access knowledge", async ({ browser }) => {
     ),
   );
   const viewerEmail = uniqueEmail("viewer");
+  // S2: invitations target existing users; create the viewer account first in
+  // an isolated context so the admin session (shared jar) is not replaced.
+  const regContext = await browser.newContext();
+  expect(
+    (
+      await regContext.request.post("/api/v1/auth/register", {
+        data: { email: viewerEmail, password: PASSWORD },
+      })
+    ).status(),
+  ).toBe(201);
+  await regContext.close();
   await admin.getByLabel("Email", { exact: true }).fill(viewerEmail);
   await admin.getByRole("combobox", { name: "Role" }).selectOption("viewer");
   await admin.getByRole("button", { name: "Create invite link" }).click();
@@ -155,10 +166,11 @@ test("viewer cannot access knowledge", async ({ browser }) => {
   const second = await browser.newContext();
   const viewer = await second.newPage();
   await viewer.goto(inviteCode);
-  await viewer.getByRole("link", { name: "Register" }).first().click();
+  // S2: the account exists, so the link flow is sign in, then accept.
+  await viewer.getByRole("link", { name: "Sign in" }).click();
   await viewer.getByLabel("Email").fill(viewerEmail);
   await viewer.getByLabel("Password", { exact: true }).fill(PASSWORD);
-  await viewer.getByRole("button", { name: "Create account" }).click();
+  await viewer.getByRole("button", { name: "Sign in", exact: true }).click();
   await viewer.getByRole("button", { name: "Accept invitation" }).click();
   await viewer.getByRole("link", { name: /Go to your dashboard/i }).click();
   await viewer.waitForURL("/app");
