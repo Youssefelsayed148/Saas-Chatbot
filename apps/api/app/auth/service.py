@@ -9,7 +9,7 @@ logged; only Argon2id hashes and SHA-256 token hashes are stored
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session as OrmSession
 
 from app.auth.security import (
@@ -92,20 +92,10 @@ class AuthService:
 
     def login(self, email: str, password: str, *, rotate_token: str | None) -> tuple[User, str]:
         """Verify credentials, issue a fresh session and rotate the presented one."""
-        user = self.get_user_by_email(email.strip())
+        user = self.db.scalar(select(User).where(User.email == email.strip()).with_for_update())
         if user is None or not verify_password(password, user.password_hash):
             # Same error for unknown email and wrong password: no account enumeration.
             raise ApiError(401, "INVALID_CREDENTIALS", "Email or password is incorrect.")
-        if not user.is_platform_staff:
-            statuses = set(
-                self.db.scalars(
-                    select(Membership.status)
-                    .join(Tenant, Tenant.id == Membership.tenant_id)
-                    .where(Membership.user_id == user.id, Tenant.status == "active")
-                )
-            )
-            if statuses == {"revoked"}:
-                raise ApiError(401, "INVALID_CREDENTIALS", "Email or password is incorrect.")
         session_row, token = self._create_session(user)
         if rotate_token:
             self._revoke_token(rotate_token)
@@ -121,6 +111,9 @@ class AuthService:
     # --- internals --------------------------------------------------------
 
     def _create_session(self, user: User) -> tuple[Session, str]:
+        # Serialize session issuance against password reset and deactivation.
+        self.db.refresh(user, with_for_update=True)
+        self.require_login_eligible(user)
         token = generate_session_token()
         session_row = Session(
             id=uuid4(),
@@ -130,6 +123,28 @@ class AuthService:
         )
         self.db.add(session_row)
         return session_row, token
+
+    def require_login_eligible(self, user: User) -> None:
+        """Shared eligibility check for every present and future login path."""
+        if not user.is_active:
+            raise ApiError(401, "INVALID_CREDENTIALS", "Email or password is incorrect.")
+        if not user.is_platform_staff:
+            statuses = set(
+                self.db.scalars(
+                    select(Membership.status)
+                    .join(Tenant, Tenant.id == Membership.tenant_id)
+                    .where(Membership.user_id == user.id, Tenant.status == "active")
+                )
+            )
+            if statuses == {"revoked"}:
+                raise ApiError(401, "INVALID_CREDENTIALS", "Email or password is incorrect.")
+
+    def revoke_all_sessions(self, user: User) -> None:
+        self.db.execute(
+            update(Session)
+            .where(Session.user_id == user.id, Session.revoked_at.is_(None))
+            .values(revoked_at=datetime.now(UTC))
+        )
 
     def _revoke_token(self, token: str) -> None:
         row = self.db.execute(

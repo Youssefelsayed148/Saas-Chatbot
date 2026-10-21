@@ -178,6 +178,8 @@ def test_admin_cannot_mint_owner_invitation_and_viewer_blocked(app: Any, db: Orm
         )
         assert editor_blocked.status_code == 403
 
+        # S2 invitations target an account provisioned before the invitation.
+        logged_in(app, "admin-invite@example.com")[0].close()
         created_by_admin = users.call(
             "admin",
             "POST",

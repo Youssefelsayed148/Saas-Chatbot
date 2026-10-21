@@ -65,6 +65,7 @@ export function AppShell({
       : `${base}/conversations`;
   const links: Destination[] = platform
     ? [
+        { label: "Members", href: "/platform/members", symbol: "M" },
         { label: "Organizations", href: "/platform", symbol: "◈" },
         {
           label: "Change requests",

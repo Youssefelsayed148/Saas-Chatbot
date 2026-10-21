@@ -3,6 +3,8 @@
 import { usePathname } from "next/navigation";
 
 const ROUTES: [RegExp, string][] = [
+  [/^\/platform\/members\/[^/]+$/, "Member details"],
+  [/^\/platform\/members$/, "Members"],
   [/^\/$/, "Welcome"],
   [/^\/login$/, "Sign in"],
   [/^\/register$/, "Create account"],

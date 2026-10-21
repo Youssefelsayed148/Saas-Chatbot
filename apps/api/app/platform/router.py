@@ -56,6 +56,7 @@ from app.quotas.service import PLACEHOLDER_PLAN_LIMITS, PLAN_LABELS
 
 router = APIRouter(prefix="/api/v1/platform")
 
+
 DbSession = Annotated[OrmSession, Depends(get_session)]
 CurrentSettings = Annotated[Settings, Depends(get_settings)]
 CsrfOk = Annotated[None, Depends(cookies.require_csrf)]

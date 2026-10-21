@@ -1,5 +1,153 @@
 # Execution checkpoint
 
+## 2026-10-20 — S2 staff members (backend/static verification complete)
+
+Owner authorized working before S1 verification finishes and reviewing S1/S2/S3
+together. Isolated branch `feature/staff-members` initially started at S1 commit
+`49710c7` instead of merged main, then rebased onto finalized S1 `bb2e847` after
+its verification commits arrived. S1's checkout and Phase 6 worktree are untouched. Worktree:
+`.worktrees/staff-members`. Its ignored local `apps/web/node_modules` junction
+reuses existing dependencies; no dependencies or lockfiles were changed.
+
+Implemented account phone/is_active migration, staff account lifecycle endpoints,
+session revocation and shared login eligibility, existing-user-only invitations,
+Members screens and organization membership controls. Typed passwords are not
+returned by the API; the UI shows its submitted password once. Generated passwords
+are returned once and kept only in component state. Staff user endpoints send
+`Cache-Control: no-store`; tenant response schemas expose no phone.
+
+Regression setup adaptations: invitation helpers provision existing accounts
+before invitation creation; logged_in can log in to such an account; direct
+invitation and route-matrix fixtures create prerequisite users. Assertions are
+retained. The closed-registration regression removes its fixture account to
+represent a legacy outstanding invitation and preserve registration assertions.
+Browser invitation fixtures provision accounts first; the dashboard journey
+signs in rather than registering the already-provisioned invitee. These setup
+changes are necessary for the requested existing-users-only contract.
+
+Commands run from the isolated worktree (Python is the root
+`.venv/Scripts/python.exe`):
+
+- `npm.cmd run typecheck` in apps/web: initially failed resolving @types/node;
+  Next's automatic install attempt failed offline. Reusing installed dependencies
+  resolved this. A subsequent run found an optional invitation link type, fixed
+  before repeating. Final run exit 0, route generation and TypeScript successful.
+- `npm.cmd run lint` in apps/web: exit 0, no warnings.
+- `npm.cmd run test -- --list` in apps/web: exit 0, **66 tests in 21 files**;
+  no browser tests executed. One combined Playwright execution remains deferred
+  until after S4, per owner instruction.
+- `python -m ruff check` over changed backend files: initial formatting/import
+  findings fixed; subsequent checks exit 0, `All checks passed!`.
+- `python -m mypy --follow-imports=silent app/platform/users.py app/auth/service.py
+  app/tenants/service.py tests/test_staff_members.py
+  tests/test_staff_members_migration.py`: exit 0, no issues in five source files.
+- With the owner-supplied TEST_DATABASE_URL set per process, `python -m pytest
+  --collect-only -q -p no:cacheprovider tests/test_staff_members.py
+  tests/test_staff_members_migration.py`: exit 0, **15 tests collected in 0.27s**
+  at that checkpoint; additional cases have since been added. Collection did not
+  execute database fixtures. Existing Starlette/httpx deprecation warning only.
+- After adding validation, atomic rollback, filtering and concurrent revocation
+  cases, the same collection command with
+  `tests/test_staff_member_revocation_race.py` appended exited 0:
+  **31 tests collected in 0.25s**. No database tests have executed yet.
+
+Database execution began only after elevated process checks confirmed that S1's
+pytest processes had exited, then confirmed no new run after a 30-second wait.
+The originally prescribed disposable database URL is used. The optional request
+to use a separate database was not acted on. No safety guard was changed.
+
+S2 targeted command in apps/api (per-process TEST_DATABASE_URL supplied, ENVIRONMENT=test,
+CHAT_STUB_MODEL=true, EMBEDDING_TEST_STUB=true):
+`python -u -m pytest -q --tb=short -p no:cacheprovider tests/test_staff_members.py
+tests/test_staff_members_migration.py tests/test_staff_member_revocation_race.py
+tests/test_staff_member_errors.py tests/test_invitations.py tests/test_self_service_signup.py
+tests/test_auth.py tests/test_tenant_route_matrix.py tests/test_quotas.py
+--basetemp=../../.test-storage-s2/targeted-host
+--junitxml=../../.test-storage-s2/targeted-host.xml`.
+
+- Initial sandbox run used `--basetemp=../../.test-storage-s2/targeted` without
+  JUnit output. Exit 1: progress showed failures/errors, then pytest session cleanup
+  crashed with WinError 5 reading its own temporary directory. There is no reliable
+  final passed/failed/skipped summary for this run. Raw output: targeted.log.
+- Corrected the NEW migration test's raw INSERT to supply required created_at.
+  No existing test assertions or safety guards were removed to address this.
+- Repeated with host permissions and JUnit output to get complete diagnostics:
+  exit 1, raw tail `1 failed, 74 passed, 1 warning in 47.10s`.
+  Failure: existing platform route-matrix check reported missing x-minimum-role
+  metadata on the nested users router. Authorization checks themselves passed.
+- Registered the users router through the existing top-level application path,
+  so the unchanged metadata assignment covers it. Startup validation and all
+  permission checks remain intact. Added safe handling of database statement
+  errors so bound phone/password-hash parameters cannot escape into tracebacks.
+- Final targeted repeat: exit 0, raw tail:
+  `75 passed, 1 warning in 49.85s` (0 failed, 0 skipped).
+  Raw output: `.test-storage-s2/targeted-final.log`; JUnit: targeted-host.xml.
+- The subsequent full backend run is in progress, using
+  `python -u -m pytest -q --tb=short -p no:cacheprovider
+  --ignore=tests/test_startup_guard.py --basetemp=../../.test-storage-s2/full-host
+  --junitxml=../../.test-storage-s2/full-host.xml` with the same per-process
+  environment. Log: `.test-storage-s2/full-1.log`. No full-suite result yet.
+
+The owner's later "dont stop" instruction is applied to repairing S2's failures;
+S3 remains gated on successful S2 verification. Both initial failures and fixes
+are retained in this record rather than represented as an initially green run.
+
+Initial full S2 result: exit 1, **434 passed, 3 failed, 1 skipped**, one existing
+warning, 1374.94s. Raw tail:
+`3 failed, 434 passed, 1 skipped, 1 warning in 1374.94s (0:22:54)`.
+Two failures were cp1252 UnicodeDecodeError in the existing Arabic evaluation
+tests. The third was FileNotFoundError saving a fixture under the long nested
+worktree temp path (over the classic Windows path limit). New S2 cases passed.
+The skipped case is tests/test_knowledge_parsers.py:52 (POSIX process groups,
+Windows unverified). Raw log: `.test-storage-s2/full-1.log`.
+
+After that run, incorporated S1's finalized commits (only its verification notes,
+platform analytics label and browser tab locator changed since the original base).
+S1's newly committed notes document PYTHONUTF8=1 for these existing Windows
+encoding failures. No tests or guards were changed to fix the runtime environment.
+Per-process UTF-8 plus a shorter root-workspace temp directory resolved all three:
+`python -u -m pytest -q --tb=short -p no:cacheprovider
+tests/test_rag_evaluation.py::test_two_mode_retrieval_eval_is_entirely_offline
+tests/test_rag_gate.py::test_stage0_raw_fts_gate_measurements
+tests/test_rag_stage0_baseline.py::test_real_fts_pipeline_checkpoints_and_never_replays
+--basetemp=<workspace>/.test-storage-s2/encoding`: exit 0,
+raw tail `3 passed, 1 warning in 8.49s`. Log: encoding-proof.log.
+
+The required pair of full runs now uses PYTHONUTF8=1 with the same test/stub
+environment, TEMP and TMP pointing at `<workspace>/.test-storage-s2/t`, and this
+identical Python command in both processes:
+`python -u -m pytest -q --tb=short -p no:cacheprovider
+--ignore=tests/test_startup_guard.py
+--basetemp=<workspace>/.test-storage-s2/f
+--junitxml=../../.test-storage-s2/full-utf8.xml`.
+Both corrected full runs exited 0 with identical counts:
+
+```text
+437 passed, 1 skipped, 1 warning in 1425.32s (0:23:45)
+437 passed, 1 skipped, 1 warning in 1335.86s (0:22:15)
+```
+
+The one skip is the existing POSIX process-group parser integration on Windows;
+there are no new skipped cases. Logs: full-utf8-1.log and full-utf8-2.log.
+Standalone startup command removed both stub variables before launching its own
+Python process, with the same explicit test URL and PYTHONUTF8=1:
+`python -u -m pytest -q --tb=short -p no:cacheprovider tests/test_startup_guard.py
+--basetemp=<workspace>/.test-storage-s2/s`: exit 0,
+raw tail `7 passed, 1 warning in 0.63s` (0 failed, 0 skipped).
+No test/worker/startup/database-name guards were modified.
+
+Final Ruff check over all 15 changed Python files: exit 0, `All checks passed!`.
+`python -m mypy --follow-imports=silent` over the same 15 files: exit 0,
+`Success: no issues found in 15 source files`. Final web lint, typecheck and
+Playwright --list also exit 0 (66 tests in 21 files, browser execution deferred).
+Only the evaluation timestamp regenerated by S2's own suite was restored to HEAD;
+the original S1 checkout was not altered. S2 backend/static verification is green.
+S3 may now be built stacked on this branch; no merge/push/deployment performed.
+Final UI consistency follow-up: Members list/detail now use the existing page
+main landmark/wrapper. This is markup only; backend/test source is unchanged.
+Repeated web lint/typecheck both exit 0. S3 will incorporate this local follow-up
+before its final review report; backend verification counts above remain applicable.
+
 ## 2026-10-14 — P7-03 Playwright repair and fictional demo seed
 
 Built: `registerOwner` verifies register 201 and the tenant bots landing; all eight specs reuse the provisioned bot, with Starter assigned through staff API for dashboard editor second-bot/seats and knowledge's 10 MB limit. Invite signup blocks compared unchanged; owner's conversations bubble re-open fix preserved and committed. Guarded offline demo seed + 21 tests added, with four DB-dependent regressions; no product UI changed, no phase sign-off, push or deployment.

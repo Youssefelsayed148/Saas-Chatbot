@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { auditActionLabel } from "@/lib/labels";
 import * as api from "@/lib/api";
 import { ConfirmAction, Loading, Notice } from "@/lib/ui";
+import { OrganizationMembers } from "@/lib/staff-members";
 
 /** Client detail (P4-06, docs/11): bots + status, failed jobs, members and
  * roles, recent audit rows, usage. Read-only staff view (no impersonation). */
@@ -287,6 +288,12 @@ export default function PlatformClientPage() {
           )}
           {tab === "Members" && (
             <div role="tabpanel" aria-label="Members">
+              <OrganizationMembers
+                organization={clientId}
+                refresh={async () =>
+                  setDetail(await api.platformTenantDetail(clientId))
+                }
+              />
               <section aria-label="Members" data-testid="client-detail-members">
                 <h2>Members</h2>
                 {detail.members.length ? (
@@ -296,14 +303,66 @@ export default function PlatformClientPage() {
                         <th>Email</th>
                         <th>Role</th>
                         <th>Status</th>
+                        <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {detail.members.map((member) => (
                         <tr key={member.user_id}>
                           <td>{member.email}</td>
-                          <td>{member.role}</td>
+                          <td>
+                            <select
+                              aria-label={`Role for ${member.email}`}
+                              value={member.role}
+                              onChange={(event) => {
+                                void api
+                                  .platformUserRole(
+                                    member.user_id,
+                                    clientId,
+                                    event.target.value as api.ClientRole,
+                                  )
+                                  .then(() =>
+                                    api.platformTenantDetail(clientId),
+                                  )
+                                  .then(setDetail)
+                                  .catch((caught) =>
+                                    setError(
+                                      caught instanceof Error
+                                        ? caught.message
+                                        : "Role update failed.",
+                                    ),
+                                  );
+                              }}
+                            >
+                              {["admin", "editor", "viewer"].map((role) => (
+                                <option key={role}>{role}</option>
+                              ))}
+                            </select>
+                          </td>
                           <td>{member.status}</td>
+                          <td>
+                            <ConfirmAction
+                              title="Remove membership"
+                              description={`Remove ${member.email} from this organization?`}
+                              onConfirm={() => {
+                                void api
+                                  .platformRemoveUser(member.user_id, clientId)
+                                  .then(() =>
+                                    api.platformTenantDetail(clientId),
+                                  )
+                                  .then(setDetail)
+                                  .catch((caught) =>
+                                    setError(
+                                      caught instanceof Error
+                                        ? caught.message
+                                        : "Removal failed.",
+                                    ),
+                                  );
+                              }}
+                            >
+                              Remove membership
+                            </ConfirmAction>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -318,6 +377,24 @@ export default function PlatformClientPage() {
                   {detail.pending_invitations.map((invite) => (
                     <li key={invite.id}>
                       {invite.email} — {invite.role} (pending invite)
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void api
+                            .revokeInvitation(clientId, invite.id)
+                            .then(() => api.platformTenantDetail(clientId))
+                            .then(setDetail)
+                            .catch((caught) =>
+                              setError(
+                                caught instanceof Error
+                                  ? caught.message
+                                  : "Could not revoke invitation.",
+                              ),
+                            );
+                        }}
+                      >
+                        Revoke invitation
+                      </button>
                     </li>
                   ))}
                 </ul>

@@ -13,6 +13,13 @@ test("revoked members are absent from client Team and platform detail; pending i
     )!.value,
   };
   const revokedEmail = uniqueEmail("revoked-fixture");
+  const memberContext = await browser.newContext();
+  const member = await memberContext.newPage();
+  // Account exists before invitation; all registration/accept/removal assertions remain.
+  const registration = await member.request.post("/api/v1/auth/register", {
+    data: { email: revokedEmail, password: "Str0ngPass!" },
+  });
+  expect(registration.status()).toBe(201);
   const invitation = await page.request.post(
     `/api/v1/tenants/${tenantId}/invitations`,
     {
@@ -25,18 +32,8 @@ test("revoked members are absent from client Team and platform detail; pending i
     (await invitation.json()).link_path,
     "http://localhost",
   ).searchParams.get("token")!;
-  const memberContext = await browser.newContext();
   const staffContext = await browser.newContext();
   try {
-    const member = await memberContext.newPage();
-    const registration = await member.request.post("/api/v1/auth/register", {
-      data: {
-        email: revokedEmail,
-        password: "Str0ngPass!",
-        invite_token: token,
-      },
-    });
-    expect(registration.status()).toBe(201);
     const userId = (await registration.json()).id;
     const memberHeaders = {
       "X-CSRF-Token": (await memberContext.cookies()).find(
@@ -60,6 +57,18 @@ test("revoked members are absent from client Team and platform detail; pending i
       ).status(),
     ).toBe(204);
     const pendingEmail = uniqueEmail("pending-fixture");
+    const pendingContext = await browser.newContext();
+    try {
+      expect(
+        (
+          await pendingContext.request.post("/api/v1/auth/register", {
+            data: { email: pendingEmail, password: "Str0ngPass!" },
+          })
+        ).status(),
+      ).toBe(201);
+    } finally {
+      await pendingContext.close();
+    }
     expect(
       (
         await page.request.post(`/api/v1/tenants/${tenantId}/invitations`, {
