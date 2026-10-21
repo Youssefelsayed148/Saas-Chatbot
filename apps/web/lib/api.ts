@@ -801,6 +801,18 @@ export async function logout(): Promise<void> {
   }
 }
 
+export async function changePassword(
+  currentPassword: string,
+  newPassword: string,
+): Promise<void> {
+  // On success the API rotates this session (fresh cookie) and revokes every
+  // other session of the user; this context stays signed in.
+  await api<unknown>("auth/change-password", {
+    method: "POST",
+    body: { current_password: currentPassword, new_password: newPassword },
+  });
+}
+
 export async function me(): Promise<Me> {
   return api<Me>("auth/me", { tolerate401: true });
 }
