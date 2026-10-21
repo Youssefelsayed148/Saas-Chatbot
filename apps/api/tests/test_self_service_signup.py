@@ -189,3 +189,25 @@ def test_registration_when_signup_off_requires_valid_matching_active_invite(
     finally:
         guest.close()
         users.cleanup()
+
+
+def test_register_without_invite_token_is_invitation_required_when_signup_off(
+    app: Any, db: Any
+) -> None:
+    """S6 contract check: with self-service signup OFF, POST /auth/register
+    without a valid invite token returns 403 INVITATION_REQUIRED and creates
+    no account (the message must stay safe, with no internals)."""
+    from app.db.models import User
+
+    app.dependency_overrides[get_settings] = lambda: build_test_settings(self_serve_signup=False)
+    guest = TestClient(app)
+    try:
+        response = guest.post(
+            "/api/v1/auth/register",
+            json={"email": "ghost@example.com", "password": PASSWORD},
+        )
+        assert response.status_code == 403
+        assert response.json()["error"]["code"] == "INVITATION_REQUIRED"
+        assert db.execute(select(User)).scalars().all() == []
+    finally:
+        guest.close()

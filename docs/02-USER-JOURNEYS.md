@@ -1,8 +1,8 @@
 # User journeys and exception paths
-## Self-service
-Visitor registers, verifies identity as configured, creates organization, chooses bot, uploads knowledge files (documents, Q&A CSV, or the folder prepared from their website by staff), observes queued/running/failed/completed processing, previews extracted pages, publishes, tests bot, copies embed code, observes sessions. Errors must be actionable and retryable.
-## Admin-managed
-Platform operator creates an onboarding request for a customer with audited actor identity, invites a client admin, and uses the SAME provisioning service and job/state handling. Customer can subsequently log in and administer only their own tenant. Admin cannot silently impersonate the customer.
+## Self-service (flag-gated, off by default)
+When `self_serve_signup` is explicitly enabled: visitor registers, creates organization, chooses bot, uploads knowledge files (documents, Q&A CSV, or the folder prepared from their website by staff), observes queued/running/failed/completed processing, previews extracted pages, publishes, tests bot, copies embed code, observes sessions. With the flag off (the committed default), registration is closed: the login screen shows no Register link and only invited existing users can join; staff-managed onboarding below is the built path.
+## Admin-managed (built, S1–S3)
+Platform operator opens /platform and creates the organization (audited), creates the user with a staff-set or generated password (shown once), assigns organization and role, creates the bot, uploads knowledge through the bot's Knowledge tab, ingests and publishes, sets allowed domains, tests the chat and hands over the embed snippet. The user signs in with the staff-set password and should replace it on their Account page. Customer can subsequently log in and administer only their own tenant. Admin cannot silently impersonate the customer. No email provider: one-time invitation links and generated passwords are copied and sent by the operator; account recovery is a staff password reset (all sessions revoked), not an email flow.
 ## Bot lifecycle
 Draft → configured → ingestion ready → published/active → paused/archived. Bot may have no knowledge yet; widget should display controlled unavailable behavior, not hallucinate.
 ## Source lifecycle

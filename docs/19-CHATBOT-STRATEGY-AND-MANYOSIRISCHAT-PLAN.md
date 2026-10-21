@@ -112,6 +112,8 @@ Counts: grounded 15, paraphrase 8, Arabic 6, mixed-language 3, follow-up 4 (with
 
 Note on real-world PDFs: public policy PDFs found by search were generic templates full of placeholders and have no known right answers, so they were rejected as test data.
 
+Built note (2026-10-21, S1–S4): the demo client is now onboarded through the new staff flow — platform staff create the organization, create the user (staff-set or generated password) and assign the role, create the bot, then upload and manage this corpus through the bot's Knowledge tab (upload, ingest, publish) in the organization workspace. The old single-form staff onboarding route is retired.
+
 ## 6. ManyOsirisChat findings (repo inspected read-only on 2026-10-17)
 
 How Many's AI works today:

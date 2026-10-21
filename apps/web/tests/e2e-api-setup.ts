@@ -103,6 +103,11 @@ export async function startServer(): Promise<ServerHandle> {
         // (dev-only; production never sets this).
         CHAT_STUB_MODEL: "1",
         EMBEDDING_TEST_STUB: "1",
+        // Every Playwright request shares one client IP, so the per-IP login
+        // limiter's 10/300s window counts the WHOLE suite's logins together.
+        // The product default (10/300s) and its unit tests are untouched; the
+        // limiter code path is still exercised by pytest with its own settings.
+        LOGIN_RATE_LIMIT_ATTEMPTS: "1000",
       },
       stdio: "inherit",
     },

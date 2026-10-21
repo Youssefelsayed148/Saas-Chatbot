@@ -111,6 +111,17 @@ test("all client roles cannot obtain snippets or enter bot-control surfaces", as
   )!.value;
   for (const role of ["editor", "viewer"]) {
     const email = uniqueEmail(role);
+    // S2: invitations target existing users; register the account first in an
+    // isolated context so the admin session (shared jar) is not replaced.
+    const regContext = await browser.newContext();
+    expect(
+      (
+        await regContext.request.post("/api/v1/auth/register", {
+          data: { email, password: "Str0ngPass!" },
+        })
+      ).status(),
+    ).toBe(201);
+    await regContext.close();
     const invited = await page.request.post(
       `/api/v1/tenants/${tenantId}/invitations`,
       { headers: { "X-CSRF-Token": csrf }, data: { email, role } },
@@ -120,13 +131,15 @@ test("all client roles cannot obtain snippets or enter bot-control surfaces", as
     const token = new URL(link, "http://localhost").searchParams.get("token")!;
     const context = await browser.newContext();
     const member = await context.newPage();
+    // S2: invitations target existing users; sign in with the pre-registered
+    // account and accept the invitation with that session.
     expect(
       (
-        await member.request.post("/api/v1/auth/register", {
-          data: { email, password: "Str0ngPass!", invite_token: token },
+        await member.request.post("/api/v1/auth/login", {
+          data: { email, password: "Str0ngPass!" },
         })
       ).status(),
-    ).toBe(201);
+    ).toBe(200);
     const memberCsrf = (await context.cookies()).find(
       (cookie) => cookie.name === "chatbot_csrf",
     )!.value;

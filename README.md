@@ -56,6 +56,25 @@ Seed creates/reuses the demo, creates/updates staff using `PLATFORM_STAFF_PASSWO
 sets premium through the staff API, queues backfill, and prints staff email/web URL.
 Embedding completion is asynchronous; check bot RAG status or worker logs.
 
+### Creating the first organization, user and bot (platform admin)
+
+Sign in at http://localhost:3000/login with the seeded staff account
+(`PLATFORM_STAFF_EMAIL` / `PLATFORM_STAFF_PASSWORD`). Registration is closed by
+default (`self_serve_signup=false`): the login screen has no Register link.
+Then, from `/platform`:
+
+1. **Organizations** → create the client's organization (name + plan label).
+2. **Members** → create the user (email, optional phone, staff-set password or
+   `"generate"` — the password is shown once), then assign the organization and
+   role (admin/editor/viewer).
+3. **Bots** → create the bot in that organization, open the organization
+   workspace, upload knowledge in the bot's Knowledge tab, ingest, publish,
+   then set allowed domains in bot Settings.
+4. The user signs in with the staff-set password and can replace it on their
+   **Account** page (header link); a password change signs out every other
+   session of that account. Staff can reset a password or deactivate an account
+   from **Members** at any time (deactivation revokes all sessions).
+
 PostgreSQL is internal, defaults to `saas_dev` / user `saas` with a development-only
 password. `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` overrides must match an
 existing volume; passwords must be URL-safe. Seed requires a `_dev` / `_demo` database.
