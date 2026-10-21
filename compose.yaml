@@ -48,6 +48,29 @@ services:
       db:
         condition: service_healthy
 
+  # One-shot: creates/updates the platform-admin (staff) account so the stack is
+  # usable right after `up`. Skips quietly when PLATFORM_STAFF_PASSWORD is unset.
+  staff:
+    <<: *api-image
+    command:
+      - sh
+      - -c
+      - |
+        if [ -n "$$PLATFORM_STAFF_PASSWORD" ]; then
+          python -m scripts.create_platform_staff
+        else
+          echo "PLATFORM_STAFF_PASSWORD not set; skipping staff bootstrap."
+        fi
+    restart: "no"
+    environment:
+      <<: *database-environment
+      STORAGE_ROOT: /data/storage
+      PLATFORM_STAFF_EMAIL: ${PLATFORM_STAFF_EMAIL:-staff@example.com}
+      PLATFORM_STAFF_PASSWORD: ${PLATFORM_STAFF_PASSWORD:-}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
   api:
     <<: *api-image
     environment: *app-environment

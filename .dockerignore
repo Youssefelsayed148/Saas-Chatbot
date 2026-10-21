@@ -12,3 +12,10 @@
 reference
 .npm-cache
 .cache
+.worktrees
+.test-storage*
+.pytest-tmp*
+docs
+implementation
+.claude
+.github

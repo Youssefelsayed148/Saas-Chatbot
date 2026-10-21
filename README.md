@@ -52,6 +52,8 @@ each command above. Wrappers select that file and disable implicit `.env` loadin
 `.\scripts\dev_down.ps1`. The down command preserves both volumes.
 
 Open http://localhost:3000; API readiness is http://127.0.0.1:8000/ready.
+If `PLATFORM_STAFF_PASSWORD` is set, the one-shot `staff` service creates/updates the platform admin on every `up` (otherwise it skips); no extra command is needed to sign in.
+A `Makefile` wraps the day-to-day commands (`make help`); it reads `.env.local` when present.
 Seed creates/reuses the demo, creates/updates staff using `PLATFORM_STAFF_PASSWORD`,
 sets premium through the staff API, queues backfill, and prints staff email/web URL.
 Embedding completion is asynchronous; check bot RAG status or worker logs.
