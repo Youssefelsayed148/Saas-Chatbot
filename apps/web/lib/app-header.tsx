@@ -271,6 +271,9 @@ export function AppShell({
               {me.is_platform_staff && staffOrganizationsError && (
                 <span role="alert">{staffOrganizationsError}</span>
               )}
+              <Link className="quiet-button" href="/account">
+                Account
+              </Link>
               <button
                 className="quiet-button"
                 type="button"

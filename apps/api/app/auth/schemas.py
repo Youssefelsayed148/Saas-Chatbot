@@ -21,6 +21,15 @@ class LoginRequest(BaseModel):
     password: str = Field(min_length=1, max_length=200)
 
 
+class ChangePasswordRequest(BaseModel):
+    """Self-service password change (S4). The new password shares the exact
+    registration policy (PASSWORD_MIN_LENGTH) used at signup and by staff."""
+
+    model_config = ConfigDict(extra="forbid")
+    current_password: str = Field(min_length=1, max_length=200)
+    new_password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=200)
+
+
 class MembershipOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     tenant_id: UUID
