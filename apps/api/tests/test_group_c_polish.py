@@ -10,7 +10,7 @@ from app.core.audit import record_audit
 from app.db.models import AuditEvent, ProvisioningRequest
 from app.provisioning.service import ProvisioningPayload, _hash_payload
 from tests.helpers import seeded_tenant
-from tests.test_platform import ONBOARD_FORM, platform_call, staff_login
+from tests.test_platform import ONBOARD_FORM, legacy_onboard, staff_login
 
 ACTIONS = {
     "platform.onboarding.owner_invited",
@@ -64,14 +64,8 @@ def test_legacy_onboarding_retry_keeps_fingerprint_and_returns_admin_contract(
     app: Any, db: Any
 ) -> None:
     client = staff_login(app, db, "legacy-retry@example.com")
-    first = platform_call(
-        client,
-        "POST",
-        "/onboarding",
-        data=ONBOARD_FORM,
-        headers={"Idempotency-Key": "legacy-retry"},
-    )
-    assert first.status_code == 201
+    first = legacy_onboard(app, db, client, ONBOARD_FORM, "legacy-retry")
+    assert first["status"] == "ready"
     row = db.scalar(
         select(ProvisioningRequest).where(ProvisioningRequest.idempotency_key == "legacy-retry")
     )
@@ -87,21 +81,15 @@ def test_legacy_onboarding_retry_keeps_fingerprint_and_returns_admin_contract(
     )
     row.payload_hash = hashlib.sha256(old_json.encode()).hexdigest()
     row.result = {
-        "owner_invite": first.json()["result"]["admin_invite"],
-        "tenant_id": first.json()["result"]["tenant_id"],
+        "owner_invite": first["result"]["admin_invite"],
+        "tenant_id": first["result"]["tenant_id"],
     }
     db.commit()
     assert _hash_payload(ProvisioningPayload(**ONBOARD_FORM), []) == row.payload_hash
-    retry = platform_call(
-        client,
-        "POST",
-        "/onboarding",
-        data=ONBOARD_FORM,
-        headers={"Idempotency-Key": "legacy-retry"},
-    )
-    assert retry.status_code == 201
-    assert retry.json()["replayed"] is True
-    assert retry.json()["result"]["admin_invite"] == first.json()["result"]["admin_invite"]
-    assert "owner_invite" not in retry.json()["result"]
+    retry = legacy_onboard(app, db, client, ONBOARD_FORM, "legacy-retry")
+    assert retry["status"] == "ready"
+    assert retry["replayed"] is True
+    assert retry["result"]["admin_invite"] == first["result"]["admin_invite"]
+    assert "owner_invite" not in retry["result"]
     db.expire_all()
     assert "owner_invite" in db.get(ProvisioningRequest, row.id).result

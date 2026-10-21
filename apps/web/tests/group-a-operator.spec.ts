@@ -78,8 +78,8 @@ test("staff /app and switcher load every org without memberships", async ({
     page.getByText("Your account needs an invitation to join an organization."),
   ).toHaveCount(0);
   await expect(
-    page.getByRole("link", { name: "Create / Onboard organization" }),
-  ).toHaveAttribute("href", "/platform#onboard-client");
+    page.getByRole("link", { name: "Create organization" }),
+  ).toHaveAttribute("href", "/platform#create-organization");
   await expect(
     page.getByRole("link", { name: "Open Client 0", exact: true }),
   ).toHaveAttribute("href", `/app/${tenantId}`);
@@ -110,7 +110,7 @@ test("non-staff /app keeps invitation empty state and membership switcher", asyn
     page.getByRole("table", { name: "All organizations" }),
   ).toHaveCount(0);
   await expect(
-    page.getByRole("link", { name: "Create / Onboard organization" }),
+    page.getByRole("link", { name: "Create organization" }),
   ).toHaveCount(0);
   await session(page, false, [
     {

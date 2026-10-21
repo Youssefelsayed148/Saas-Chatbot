@@ -7,6 +7,7 @@ import { auditActionLabel } from "@/lib/labels";
 import * as api from "@/lib/api";
 import { ConfirmAction, Loading, Notice } from "@/lib/ui";
 import { OrganizationMembers } from "@/lib/staff-members";
+import { BotLinks, CreateBotForm } from "@/lib/staff-bots";
 
 /** Client detail (P4-06, docs/11): bots + status, failed jobs, members and
  * roles, recent audit rows, usage. Read-only staff view (no impersonation). */
@@ -403,6 +404,12 @@ export default function PlatformClientPage() {
           )}
           {tab === "Bots" && (
             <div role="tabpanel" aria-label="Bots">
+              <CreateBotForm
+                organization={{ id: clientId, name: detail.tenant.name }}
+                onCreated={async () =>
+                  setDetail(await api.platformTenantDetail(clientId))
+                }
+              />
               <label>
                 Reason{" "}
                 <input
@@ -442,6 +449,7 @@ export default function PlatformClientPage() {
                               : "nothing published"}
                           </td>
                           <td>
+                            <BotLinks organization={clientId} bot={bot.id} />
                             {bot.status !== "paused" &&
                               bot.status !== "archived" && (
                                 <ConfirmAction

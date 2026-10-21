@@ -18,14 +18,6 @@ export default function PlatformHomePage() {
   const [plan, setPlan] = useState("starter");
   const [pending, setPending] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [clientName, setClientName] = useState("");
-  const [adminEmail, setAdminEmail] = useState("");
-  const [botName, setBotName] = useState("Website assistant");
-  const [files, setFiles] = useState<FileList | null>(null);
-  const [oldSubmitting, setOldSubmitting] = useState(false);
-  const [inviteLink, setInviteLink] = useState<string | null>(null);
-  const [requestId, setRequestId] = useState<string | null>(null);
-
   const load = useCallback(async () => {
     try {
       const params = new URLSearchParams();
@@ -62,32 +54,6 @@ export default function PlatformHomePage() {
       );
     } finally {
       setPending(false);
-    }
-  }
-
-  async function onboard(event: React.FormEvent) {
-    event.preventDefault();
-    setFormError(null);
-    setOldSubmitting(true);
-    try {
-      const result = await api.platformOnboard(
-        {
-          client_name: clientName.trim(),
-          admin_email: adminEmail.trim(),
-          bot_name: botName.trim() || null,
-        },
-        crypto.randomUUID(),
-        files,
-      );
-      setInviteLink(result.result?.admin_invite?.link_path ?? null);
-      setRequestId(result.request_id);
-      await Promise.all([load(), refresh()]);
-    } catch (caught) {
-      setFormError(
-        caught instanceof Error ? caught.message : "Onboarding failed.",
-      );
-    } finally {
-      setOldSubmitting(false);
     }
   }
 
@@ -180,7 +146,7 @@ export default function PlatformHomePage() {
         aria-label="Create an organization"
         data-testid="organization-form"
       >
-        <h2>New organization</h2>
+        <h2 id="create-organization">New organization</h2>
         <form onSubmit={(event) => void create(event)}>
           <label>
             Organization name
@@ -213,69 +179,6 @@ export default function PlatformHomePage() {
             {pending ? "Creating…" : "Create organization"}
           </button>
         </form>
-      </section>
-      <section aria-label="Onboard a new client" data-testid="onboarding-form">
-        <h2 id="onboard-client">Onboard a new client</h2>
-        <form onSubmit={(event) => void onboard(event)}>
-          <label>
-            Client name
-            <input
-              data-testid="ob-client-name"
-              required
-              maxLength={200}
-              value={clientName}
-              onChange={(e) => setClientName(e.target.value)}
-            />
-          </label>
-          <label>
-            Admin email (one-time invite link, no email)
-            <input
-              data-testid="ob-admin-email"
-              type="email"
-              required
-              value={adminEmail}
-              onChange={(e) => setAdminEmail(e.target.value)}
-            />
-          </label>
-          <label>
-            Bot name
-            <input
-              data-testid="ob-bot-name"
-              required
-              maxLength={100}
-              value={botName}
-              onChange={(e) => setBotName(e.target.value)}
-            />
-          </label>
-          <label>
-            Website-to-knowledge skill output (optional files)
-            <input
-              data-testid="ob-files"
-              type="file"
-              multiple
-              accept=".md,.txt,.csv,.pdf,.docx"
-              onChange={(e) => setFiles(e.target.files)}
-            />
-          </label>
-          {formError && <Notice message={formError} tone="error" />}
-          <button
-            type="submit"
-            data-testid="ob-submit"
-            disabled={oldSubmitting}
-          >
-            {oldSubmitting ? "Provisioning…" : "Onboard client"}
-          </button>
-        </form>
-        {inviteLink && (
-          <div data-testid="ob-invite-link">
-            <p>
-              Admin one-time invite link (copy and send it yourself; shown
-              once):
-            </p>
-            <code>{inviteLink}</code>
-            {requestId && <p className="muted">Durable request: {requestId}</p>}
-          </div>
-        )}
       </section>
     </main>
   );

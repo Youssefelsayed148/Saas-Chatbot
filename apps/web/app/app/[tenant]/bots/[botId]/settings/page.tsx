@@ -16,7 +16,7 @@ export default function BotSettingsPage() {
   const params = useParams<{ tenant: string; botId: string }>();
   const tenantId = params.tenant;
   const botId = params.botId;
-  const { me } = useSession();
+  const { me, staffOrganizations } = useSession();
   const canEdit = !!me?.is_platform_staff;
 
   const [bot, setBot] = useState<Bot | null>(null);
@@ -170,6 +170,12 @@ export default function BotSettingsPage() {
     <main>
       <BotWorkspaceNav tenantId={tenantId} botId={botId} />
       <h1>{bot.name} — settings</h1>
+      <p>
+        Organization:{" "}
+        {staffOrganizations?.find((org) => org.id === tenantId)?.name ??
+          "Current organization"}{" "}
+        (read-only)
+      </p>
       <p className="page-purpose">
         Configure your assistant, appearance and website access. Save settings
         applies appearance changes live.

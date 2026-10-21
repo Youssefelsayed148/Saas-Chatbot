@@ -1,16 +1,14 @@
 """Platform admin console API (P4-06, docs/11, ADR-018).
 
 Guarded server-side by users.is_platform_staff (never a tenant role); no
-impersonation, actor attribution on every staff action. Client list and
-detail are read views; onboarding goes through the SHARED ProvisioningService
-with a REQUIRED Idempotency-Key and returns the admin one-time invite link
-(shown once). Non-staff calls reach 403 FORBIDDEN.
+impersonation, actor attribution on every staff action. Dedicated organization,
+user and bot endpoints replace batch staff onboarding. Historical provisioning
+status and CSV readers remain available. Non-staff calls reach 403 FORBIDDEN.
 """
 
 import csv
 import io
 import json
-import secrets
 from datetime import UTC, datetime
 from typing import Annotated, Any
 from uuid import UUID, uuid4
@@ -18,18 +16,15 @@ from uuid import UUID, uuid4
 from fastapi import (
     APIRouter,
     Depends,
-    File,
-    Form,
-    Header,
     Query,
     Response,
-    UploadFile,
 )
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session as OrmSession
 
 from app.auth import cookies
+from app.bots.factory import create_bot_record
 from app.bots.schemas import BotOut
 from app.core.audit import audit_action_matches, record_audit
 from app.core.config import Settings, get_settings
@@ -47,11 +42,10 @@ from app.db.models import (
     UsageEvent,
     User,
 )
-from app.db.models.knowledge import KnowledgeRevision, Source
 from app.db.session import get_session
 from app.jobs.queue import request_cancel, requeue_for_retry
+from app.platform.bots import bot_summary
 from app.platform.staff import PlatformStaffDep
-from app.provisioning.service import ProvisioningPayload, ProvisioningService
 from app.quotas.service import PLACEHOLDER_PLAN_LIMITS, PLAN_LABELS
 
 router = APIRouter(prefix="/api/v1/platform")
@@ -426,20 +420,8 @@ def platform_create_bot(
     db: DbSession,
     _: CsrfOk,
 ) -> BotOut:
-    from app.quotas.service import lock_tenant, require_capacity
-
-    tenant = lock_tenant(db, tenant_id)
-    require_capacity(db, tenant, "bots")
-    bot = Bot(
-        id=uuid4(), tenant_id=tenant.id, name=payload.name.strip(), status="draft",
-        config={}, widget_locator="w" + secrets.token_hex(16),
-    )
-    db.add(bot)
-    db.flush()
-    record_audit(
-        db, action="platform.bot.created", tenant_id=tenant.id, actor_user_id=staff.id,
-        target_type="bot", target_id=str(bot.id),
-    )
+    bot = create_bot_record(db, tenant_id=tenant_id, name=payload.name, actor=staff,
+                            audit_action="platform.bot.created")
     db.commit()
     return BotOut.model_validate(bot)
 
@@ -574,58 +556,8 @@ def platform_tenant_detail(
     tenant = db.get(Tenant, tenant_id)
     if tenant is None:
         raise ApiError(404, "NOT_FOUND", "Resource not found.")
-    bots = []
-    for bot in db.execute(
-        select(Bot).where(Bot.tenant_id == tenant.id).order_by(Bot.created_at.desc())
-    ).scalars():
-        source_count = int(
-            db.scalar(
-                select(func.count())
-                .select_from(Source)
-                .where(Source.tenant_id == tenant.id, Source.bot_id == bot.id)
-            )
-            or 0
-        )
-        latest_ingestion = db.execute(
-            select(Job)
-            .where(
-                Job.tenant_id == tenant.id,
-                Job.bot_id == bot.id,
-                Job.type == "ingest_batch",
-            )
-            .order_by(Job.created_at.desc())
-            .limit(1)
-        ).scalar_one_or_none()
-        published = (
-            db.execute(
-                select(KnowledgeRevision).where(
-                    KnowledgeRevision.id == bot.published_revision_id,
-                    KnowledgeRevision.tenant_id == tenant.id,
-                    KnowledgeRevision.bot_id == bot.id,
-                )
-            ).scalar_one_or_none()
-            if bot.published_revision_id
-            else None
-        )
-        bots.append(
-            {
-                "id": str(bot.id),
-                "name": bot.name,
-                "status": bot.status,
-                "published": bot.published_revision_id is not None,
-                "widget_state": "configured" if bot.widget_locator else "not_configured",
-                "source_count": source_count,
-                "last_ingestion_job_status": latest_ingestion.status
-                if latest_ingestion
-                else None,
-                "published_revision_id": str(bot.published_revision_id)
-                if bot.published_revision_id
-                else None,
-                "published_at": published.published_at.isoformat()
-                if published and published.published_at
-                else None,
-            }
-        )
+    bots = [bot_summary(db, bot) for bot in db.scalars(
+        select(Bot).where(Bot.tenant_id == tenant.id).order_by(Bot.created_at.desc()))]
     failed_jobs = [
         {"id": str(job.id), "type": job.type, "error": job.error}
         for job in db.execute(
@@ -764,38 +696,3 @@ def platform_provisioning_csv(
         ["request_id", "mode", "status", "tenant_id", "actor", "payload", "error", "created_at"],
         rows,
     )
-
-
-@router.post("/onboarding", status_code=201)
-async def platform_onboarding(
-    staff: PlatformStaffDep,
-    db: DbSession,
-    settings: CurrentSettings,
-    client_name: Annotated[str, Form(min_length=1, max_length=200)],
-    admin_email: Annotated[str, Form()],
-    bot_name: Annotated[str, Form(min_length=1, max_length=100)] = "Website assistant",
-    plan_label: Annotated[str, Form(max_length=40)] = "starter",
-    notes: Annotated[str | None, Form(max_length=500)] = None,
-    files: Annotated[list[UploadFile], File()] | None = None,
-    idempotency_key: Annotated[str | None, Header()] = None,
-) -> dict[str, Any]:
-    """Staff onboarding through the SHARED ProvisioningService. Idempotency-Key
-    REQUIRED (a replay re-reads the durable row and returns it). The actor is
-    the staff user; the admin one-time invite link is returned once."""
-    if not idempotency_key or not idempotency_key.strip():
-        raise ApiError(400, "VALIDATION_ERROR", "Idempotency-Key header is required.")
-    payload = ProvisioningPayload(
-        client_name=client_name,
-        admin_email=admin_email,
-        bot_name=bot_name,
-        plan_label=plan_label or "starter",
-        notes=notes,
-    )
-    uploads: list[tuple[str, Any]] = [
-        (file.filename or f"upload-{index}", file.file) for index, file in enumerate(files or [])
-    ]
-    service = ProvisioningService(db, settings)
-    result = service.onboard_platform_client(
-        actor=staff, payload=payload, idempotency_key=idempotency_key.strip(), files=uploads
-    )
-    return dict(result)
