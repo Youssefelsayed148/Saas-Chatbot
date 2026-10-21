@@ -17,6 +17,10 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Registration is closed by default: the self-serve signup flag comes from
+  // /auth/config, as on /register. While unknown or on fetch failure the link
+  // stays hidden (fail closed).
+  const [selfServeSignup, setSelfServeSignup] = useState(false);
   const next = searchParams.get("next") ?? "";
 
   // The session-expired redirect lands here with the original path preserved.
@@ -24,6 +28,10 @@ function LoginForm() {
     next.startsWith("/") && !next.startsWith("//") ? next : "/app";
 
   useEffect(() => {
+    void api
+      .authConfig()
+      .then((features) => setSelfServeSignup(features.self_serve_signup))
+      .catch(() => setSelfServeSignup(false));
     void api.me().then((existing) => {
       if (existing) router.replace("/app");
     });
@@ -87,9 +95,11 @@ function LoginForm() {
           {submitting ? "Signing in…" : "Sign in"}
         </button>
       </form>
-      <p>
-        No account yet? <Link href="/register">Register</Link>
-      </p>
+      {selfServeSignup && (
+        <p>
+          No account yet? <Link href="/register">Register</Link>
+        </p>
+      )}
     </main>
   );
 }
