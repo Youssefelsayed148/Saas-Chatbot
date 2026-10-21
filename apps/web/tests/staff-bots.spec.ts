@@ -28,7 +28,9 @@ test("staff creates bots from the directory and locked organization form", async
   ).toBe(200);
   await page.goto("/platform/bots");
   const form = page.getByRole("region", { name: "Create bot", exact: true });
-  await form.getByLabel("Organization", { exact: true }).selectOption(tenantId);
+  await form
+    .getByRole("combobox", { name: "Organization" })
+    .selectOption(tenantId);
   const name = `Directory bot ${Date.now()}`;
   await form.getByLabel("Bot name", { exact: true }).fill(name);
   await form.getByRole("button", { name: "Create bot", exact: true }).click();
