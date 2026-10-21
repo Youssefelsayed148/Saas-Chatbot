@@ -65,14 +65,14 @@ export function AppShell({
       : `${base}/conversations`;
   const links: Destination[] = platform
     ? [
-        { label: "Clients", href: "/platform", symbol: "◈" },
+        { label: "Organizations", href: "/platform", symbol: "◈" },
         {
           label: "Change requests",
           href: "/platform/change-requests",
           symbol: <ChangeRequestIcon />,
         },
         { label: "Operations", href: "/platform/operations", symbol: "▥" },
-        { label: "Client workspaces", href: "/app", symbol: "↗" },
+        { label: "Organization workspaces", href: "/app", symbol: "↗" },
       ]
     : tenantId
       ? [
@@ -223,7 +223,7 @@ export function AppShell({
             {platform
               ? "Platform admin"
               : tenantId
-                ? `Client workspace · ${organizationName ?? "Workspace"} · ${role ?? "Checking access"}`
+                ? `Organization workspace · ${organizationName ?? "Workspace"} · ${role ?? "Checking access"}`
                 : "Your organizations"}
           </span>
           <button

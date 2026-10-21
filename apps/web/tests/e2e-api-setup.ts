@@ -31,13 +31,13 @@ export async function startServer(): Promise<ServerHandle> {
     console.log(
       `[e2e] Reusing an already-running API at ${HEALTH_URL} (forced).`,
     );
-    const base = process.env.DATABASE_URL;
+    const base = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL;
     if (!base)
       throw new Error("Set DATABASE_URL to a disposable PostgreSQL base URL.");
     return { server: null, databaseUrl: disposableUrl(base) };
   }
 
-  const base = process.env.DATABASE_URL;
+  const base = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL;
   if (!base) {
     throw new Error("Set DATABASE_URL to a disposable PostgreSQL base URL.");
   }

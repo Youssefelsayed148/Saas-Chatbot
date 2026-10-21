@@ -194,7 +194,9 @@ test("platform client mutations preserve plan, quota and pause reason payloads",
     } else await route.continue();
   });
   await page.goto(`/platform/clients/${tenantId}`);
+  await page.getByRole("tab", { name: "Bots", exact: true }).click();
   await expect(page.getByRole("button", { name: "Pause bot" })).toBeDisabled();
+  await page.getByRole("tab", { name: "Overview", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Save override with reason" }),
   ).toBeDisabled();
@@ -205,6 +207,7 @@ test("platform client mutations preserve plan, quota and pause reason payloads",
   await page.getByLabel("Quota overrides (JSON)").fill('{"bots":5}');
   await page.getByRole("button", { name: "Save override with reason" }).click();
   await expect.poll(() => actions.length).toBe(2);
+  await page.getByRole("tab", { name: "Bots", exact: true }).click();
   await page.getByRole("button", { name: "Pause bot" }).click();
   await page
     .getByRole("dialog", { name: "Pause bot?" })

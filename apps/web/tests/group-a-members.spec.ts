@@ -93,6 +93,7 @@ test("revoked members are absent from client Team and platform detail; pending i
     await expect(staff.getByTestId("client-detail-name")).toContainText(
       "Group A members",
     );
+    await staff.getByRole("tab", { name: "Members", exact: true }).click();
     await expect(
       staff.getByRole("region", { name: "Pending invitations", exact: true }),
     ).toContainText(pendingEmail);

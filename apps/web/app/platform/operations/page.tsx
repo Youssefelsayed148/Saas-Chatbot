@@ -68,7 +68,7 @@ export default function PlatformOperationsPage() {
         Review measured platform activity, job health and audited operations.
       </p>
       <p>
-        <a href="/platform">Back to clients</a>
+        <a href="/platform">Back to Organizations</a>
       </p>
       {error && <Notice message={error} tone="error" />}
       {notice && <Notice message={notice} />}
@@ -118,7 +118,7 @@ export default function PlatformOperationsPage() {
             <table>
               <thead>
                 <tr>
-                  <th>Client</th>
+                  <th>Organization</th>
                   <th>Plan</th>
                   <th>Measured usage</th>
                 </tr>

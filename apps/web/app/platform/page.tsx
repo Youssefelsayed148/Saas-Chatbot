@@ -1,35 +1,29 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-
+import { useRouter } from "next/navigation";
 import * as api from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { Loading, Notice } from "@/lib/ui";
 
-/** Staff onboarding form (P4-06, docs/11): one form → ProvisioningService
- * (tenant + admin one-time invite link + optional bot + skill-output files).
- * Idempotency-Key is generated per submit; a retry reuses the SAME key so the
- * durable record cannot be duplicated. The invite link is shown ONCE. */
-
 export default function PlatformHomePage() {
+  const router = useRouter();
   const { refresh } = useSession();
   const [rows, setRows] = useState<api.PlatformTenantRow[] | null>(null);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("");
-  const [search, setSearch] = useState<{ q: string; status: string }>({
-    q: "",
-    status: "",
-  });
+  const [search, setSearch] = useState({ q: "", status: "" });
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
+  const [name, setName] = useState("");
+  const [plan, setPlan] = useState("starter");
+  const [pending, setPending] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const [clientName, setClientName] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
   const [botName, setBotName] = useState("Website assistant");
   const [files, setFiles] = useState<FileList | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [oldSubmitting, setOldSubmitting] = useState(false);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
-  const [formError, setFormError] = useState<string | null>(null);
   const [requestId, setRequestId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -37,18 +31,12 @@ export default function PlatformHomePage() {
       const params = new URLSearchParams();
       if (search.q) params.set("q", search.q);
       if (search.status) params.set("status", search.status);
-      const payload = await api.platformTenants(params.toString());
-      setRows(payload.tenants);
+      setRows((await api.platformTenants(params.toString())).tenants);
       setError(null);
-    } catch (caught) {
-      setError(
-        caught instanceof Error ? caught.message : "Could not load clients.",
-      );
-    } finally {
-      setLoading(false);
+    } catch {
+      setError("Could not load organizations.");
     }
   }, [search]);
-
   useEffect(() => {
     const timer = setTimeout(() => {
       void load();
@@ -56,11 +44,31 @@ export default function PlatformHomePage() {
     return () => clearTimeout(timer);
   }, [load]);
 
-  async function submit(event: React.FormEvent) {
+  async function create(event: React.FormEvent) {
+    event.preventDefault();
+    if (pending) return;
+    setPending(true);
+    setFormError(null);
+    try {
+      const created = await api.platformCreateOrganization({
+        name: name.trim(),
+        plan_label: plan,
+      });
+      await Promise.all([load(), refresh()]);
+      router.push(`/platform/clients/${created.id}`);
+    } catch {
+      setFormError(
+        "Could not create the organization. Check the name and plan, then try again.",
+      );
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function onboard(event: React.FormEvent) {
     event.preventDefault();
     setFormError(null);
-    setSubmitting(true);
-    const key = crypto.randomUUID();
+    setOldSubmitting(true);
     try {
       const result = await api.platformOnboard(
         {
@@ -68,7 +76,7 @@ export default function PlatformHomePage() {
           admin_email: adminEmail.trim(),
           bot_name: botName.trim() || null,
         },
-        key,
+        crypto.randomUUID(),
         files,
       );
       setInviteLink(result.result?.admin_invite?.link_path ?? null);
@@ -79,16 +87,14 @@ export default function PlatformHomePage() {
         caught instanceof Error ? caught.message : "Onboarding failed.",
       );
     } finally {
-      setSubmitting(false);
+      setOldSubmitting(false);
     }
   }
 
   return (
     <main className="platform-clients">
-      <h1>Platform — clients</h1>
-      <p className="page-purpose">
-        Find client workspaces and onboard a new organization.
-      </p>
+      <h1>Platform — Organizations</h1>
+      <p className="page-purpose">Find and manage organizations.</p>
       <p className="eyebrow" data-testid="platform-staff-badge">
         Platform staff console
       </p>
@@ -97,9 +103,8 @@ export default function PlatformHomePage() {
           Operations, analytics, and audit review
         </a>
       </p>
-
       <form
-        aria-label="Client search"
+        aria-label="Organization search"
         data-testid="platform-search"
         onSubmit={(event) => {
           event.preventDefault();
@@ -111,7 +116,7 @@ export default function PlatformHomePage() {
           <input
             data-testid="platform-query"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(e) => setQuery(e.target.value)}
             placeholder="name, slug…"
           />
         </label>
@@ -120,7 +125,7 @@ export default function PlatformHomePage() {
           <select
             data-testid="platform-status"
             value={status}
-            onChange={(event) => setStatus(event.target.value)}
+            onChange={(e) => setStatus(e.target.value)}
           >
             <option value="">All</option>
             <option value="active">active</option>
@@ -129,18 +134,17 @@ export default function PlatformHomePage() {
         </label>
         <button type="submit">Search</button>
       </form>
-
       {error && <Notice message={error} tone="error" />}
-      <section aria-label="Clients" data-testid="platform-tenants">
-        {rows === null && loading ? (
-          <Loading label="Loading clients…" />
-        ) : (rows ?? []).length === 0 ? (
-          <p className="muted">No clients match.</p>
+      <section aria-label="Organizations" data-testid="platform-tenants">
+        {rows === null ? (
+          <Loading label="Loading organizations…" />
+        ) : rows.length === 0 ? (
+          <p className="muted">No organizations match.</p>
         ) : (
           <table>
             <thead>
               <tr>
-                <th>Client</th>
+                <th>Organization</th>
                 <th>Plan</th>
                 <th>Status</th>
                 <th>Bots</th>
@@ -150,7 +154,7 @@ export default function PlatformHomePage() {
               </tr>
             </thead>
             <tbody>
-              {(rows ?? []).map((row) => (
+              {rows.map((row) => (
                 <tr key={row.id}>
                   <td>
                     <a
@@ -172,10 +176,47 @@ export default function PlatformHomePage() {
           </table>
         )}
       </section>
-
+      <section
+        aria-label="Create an organization"
+        data-testid="organization-form"
+      >
+        <h2>New organization</h2>
+        <form onSubmit={(event) => void create(event)}>
+          <label>
+            Organization name
+            <input
+              data-testid="organization-name"
+              required
+              maxLength={200}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </label>
+          <label>
+            Plan
+            <select
+              data-testid="organization-plan"
+              value={plan}
+              onChange={(e) => setPlan(e.target.value)}
+            >
+              {["free", "starter", "pro", "business"].map((value) => (
+                <option key={value}>{value}</option>
+              ))}
+            </select>
+          </label>
+          {formError && <Notice message={formError} tone="error" />}
+          <button
+            type="submit"
+            data-testid="organization-submit"
+            disabled={pending}
+          >
+            {pending ? "Creating…" : "Create organization"}
+          </button>
+        </form>
+      </section>
       <section aria-label="Onboard a new client" data-testid="onboarding-form">
         <h2 id="onboard-client">Onboard a new client</h2>
-        <form onSubmit={(event) => void submit(event)}>
+        <form onSubmit={(event) => void onboard(event)}>
           <label>
             Client name
             <input
@@ -183,7 +224,7 @@ export default function PlatformHomePage() {
               required
               maxLength={200}
               value={clientName}
-              onChange={(event) => setClientName(event.target.value)}
+              onChange={(e) => setClientName(e.target.value)}
             />
           </label>
           <label>
@@ -193,7 +234,7 @@ export default function PlatformHomePage() {
               type="email"
               required
               value={adminEmail}
-              onChange={(event) => setAdminEmail(event.target.value)}
+              onChange={(e) => setAdminEmail(e.target.value)}
             />
           </label>
           <label>
@@ -203,7 +244,7 @@ export default function PlatformHomePage() {
               required
               maxLength={100}
               value={botName}
-              onChange={(event) => setBotName(event.target.value)}
+              onChange={(e) => setBotName(e.target.value)}
             />
           </label>
           <label>
@@ -213,12 +254,16 @@ export default function PlatformHomePage() {
               type="file"
               multiple
               accept=".md,.txt,.csv,.pdf,.docx"
-              onChange={(event) => setFiles(event.target.files)}
+              onChange={(e) => setFiles(e.target.files)}
             />
           </label>
           {formError && <Notice message={formError} tone="error" />}
-          <button type="submit" data-testid="ob-submit" disabled={submitting}>
-            {submitting ? "Provisioning…" : "Onboard client"}
+          <button
+            type="submit"
+            data-testid="ob-submit"
+            disabled={oldSubmitting}
+          >
+            {oldSubmitting ? "Provisioning…" : "Onboard client"}
           </button>
         </form>
         {inviteLink && (

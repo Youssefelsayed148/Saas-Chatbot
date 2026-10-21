@@ -80,6 +80,7 @@ test("staff list, onboard a client end to end, and open the client detail", asyn
   await expect(page.getByTestId("client-detail-name")).toContainText(
     clientName,
   );
+  await page.getByRole("tab", { name: "Bots", exact: true }).click();
   await expect(page.getByTestId("client-detail-bots")).toContainText(
     "First Bot",
   );
@@ -89,6 +90,7 @@ test("staff list, onboard a client end to end, and open the client detail", asyn
   await page.getByTestId("client-detail-bots");
   const csrf = await csrfOf(page);
   expect(csrf).toBeTruthy();
+  await page.getByRole("tab", { name: "Overview", exact: true }).click();
 
   // The onboarded client has no membership for this operator.
   const clientId = page.url().split("/").at(-1)!;

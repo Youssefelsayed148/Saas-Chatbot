@@ -2151,3 +2151,156 @@ Final backend and local integration readiness:
   fix/group-c-polish -m "Merge Group C safety and polish"`, then
   `git branch -d fix/group-c-polish`; leave main clean. This maintenance merge
   does not sign off unrelated roadmap phases, hosting or billing decisions.
+## S1 - Staff organizations (2026-10-20; initial submission rejected, repaired and verified below)
+
+- Branch: `feature/staff-organizations`; local commits only, no merge or push.
+- Restored existing controls within the new tabs: Overview has reason-required plan assignment, quota overrides, organization data/deletion link, recent audit and usage; Bots has reason-required pause; Members has member rows and pending invitations; Knowledge retains ingestion failures and per-bot knowledge links.
+- Restored the original deletion E2E journey, plan/quota/pause payload assertions, pending-invitation assertion and Recent audit check from `main`. Only tab navigation was added to those journeys; the organization title expectation reflects the S1 label rename. No assertion was replaced by an absence assertion.
+- There is one plan-edit path: existing `PATCH /api/v1/platform/tenants/{id}/plan`, with required reason and existing `platform.tenant.plan_assigned` audit. New organization PATCH accepts name/status only and rejects `plan_label`. Added regression coverage for the rejected bypass and required reason/audit.
+- Restored existing `PlatformStaffDep`: unauthenticated requests return 401 and authenticated non-staff return 403. Removed the custom organization staff dependency introduced by f2d92dd.
+- Worker guard, backend fixtures, database guard tests and Playwright database-name derivation are restored exactly to `main`. The only E2E setup change is `TEST_DATABASE_URL ?? DATABASE_URL`. No database-name allowlist remains. The user will provide the base URL and confirm server reachability; it will be set per process only and never persisted. Tests must not target the base database.
+- Repair static checks: `npm run lint` in `apps/web` exited 0; raw output tail: `> eslint . --max-warnings 0` (no findings). `npm run typecheck` in `apps/web` exited 0; raw output tail: `Generating route types...` / `Types generated successfully`.
+- Repair syntax check: repository `.venv` Python `-m py_compile apps/api/app/platform/router.py apps/api/tests/test_platform.py` exited 0 with no output.
+- No tests or server-connectivity probes have run during this repair, per the owner's instruction. Targeted platform tests, full backend, startup guard in its own process without either stub variable, and the five touched Playwright specs remain pending explicit server confirmation. Current repair has no runtime pass/fail/skip counts.
+- Historical rejected-submission evidence only: the initial system-Python commands failed before collection (`No module named pytest`). The prior `.venv` database guard run reported `3 warnings, 6 errors in 0.14s`; these were fixture setup assertion errors caused by the invalid database-name allowlisting, not successful tests or confirmed database connection failures. Those changes are reverted. Earlier static passes do not verify this repaired implementation.
+- No edits under `docs/`, credential-file reads, Docker commands, Phase 6 worktree changes, pushes, tags, deployments or merges.
+
+## S1 verification rerun (2026-10-20; owner-approved disposable server)
+
+- Owner authorized verification against the supplied loopback test server. Windows port probe `Test-NetConnection -ComputerName 127.0.0.1 -Port 55462 -InformationLevel Quiet` returned `True`.
+- Connection values were assigned only in each test process, never written to a file. Backend fixtures derived their disposable test database; browser setup reported `/postgres_e2e_test`. No Docker commands, credential-file access, guard/allowlist changes, base-database test execution, Phase 6 changes, merge or push.
+- The command records below omit the connection assignment to honor the no-URL-in-files rule; the final chat report supplies the exact commands. Backend cwd: `apps/api`; browser/static cwd: `apps/web`. All backend test commands used repository `.venv`, `-u -m pytest`, `-q --tb=short -p no:cacheprovider`, process-only workspace TEMP/TMP and basetemp. Model stubs were enabled except in the separate startup-guard process.
+- Initial restricted-sandbox targeted run: 18 passed, 16 setup errors, 1 warning in 19.07s (12 KNOWLEDGE_EMPTY parser/temp restrictions, four Windows temporary-directory permission errors). A workspace-basetemp retry still failed at session cleanup with WinError 5 and no reliable final count. Running the same checks with host permissions resolved these environment failures; no application, fixture, guard or test assertions changed.
+- Targeted backend: `tests/test_platform.py tests/test_platform_ops.py tests/test_quotas.py tests/test_tenant_route_matrix.py --basetemp=../../.test-storage-s1/pytest-host`: **34 passed, 0 failed, 0 skipped**.
+- Initial full backend without UTF-8 mode: **402 passed, 3 failed, 1 skipped** in 1342.39s. All three failures were default Windows cp1252 decoding of Arabic evaluation outputs. The exact same three selected tests failed on both S1 (3 failed, 6.44s) and main `5c4d253` (3 failed, 7.88s): `test_rag_evaluation.py::test_two_mode_retrieval_eval_is_entirely_offline`, `test_rag_gate.py::test_stage0_raw_fts_gate_measurements`, `test_rag_stage0_baseline.py::test_real_fts_pipeline_checkpoints_and_never_replays`. Each reported `UnicodeDecodeError: 'charmap' codec can't decode byte 0x81`, respectively at positions 2399, 265 and 51. Set process-only `PYTHONUTF8=1`; all three then passed (8.38s). No test source changes.
+- Final full backend ran the **identical command twice**, with `PYTHONUTF8=1`, both model stubs, `--ignore=tests/test_startup_guard.py --basetemp=../../.test-storage-s1/full-host`: **405 passed, 0 failed, 1 skipped** each (1352.44s / 1350.10s). Startup guard is excluded here because it ran separately as required.
+- Startup guard: explicitly removed both `CHAT_STUB_MODEL` and `EMBEDDING_TEST_STUB` in its own process; `tests/test_startup_guard.py --basetemp=../../.test-storage-s1/startup-host`: **7 passed, 0 failed, 0 skipped**, 0.66s.
+- Backend warning: existing Starlette/httpx TestClient deprecation. Sole full-suite skip: POSIX parser process-group integration on Windows.
+- Initial five-spec browser run: **20 passed, 2 failed, 0 skipped (2.9m)**. The S1 platform-pause confirmation test was missing navigation to the Bots tab; added only the tab click and braces, preserving every confirmation assertion (commit `0932ce9`). The other timeout was the unchanged operations reason/cancel test: Cancel remained disabled while the previous retry asynchronously cleared the reason. An identical isolated command passed unchanged on S1 (1 passed, 45.2s) and main (1 passed, 48.5s). This does not prove a pre-existing baseline failure; record it as an observed transient with no assertion or product changes.
+- Static checks after the tab fix: `npm run typecheck` exit 0; `npm run lint` exit 0; `git diff --check main...HEAD` exit 0.
+- Test-line deletion review versus main: no tests or assertions removed. `e2e-api-setup.ts`: two assignments replaced by TEST_DATABASE_URL fallback. `group-c-fixtures.ts`: one `bots: [bot]` line expanded to the new response contract. `group-c-polish.spec.ts`: one unbraced if replaced with braces for the tab click, one title expectation renamed Client to Organization. All other changed test files have zero deleted lines.
+
+Raw backend/static output tails:
+
+```text
+34 passed, 1 warning in 149.71s (0:02:29)
+
+FAILED tests/test_rag_evaluation.py::test_two_mode_retrieval_eval_is_entirely_offline
+FAILED tests/test_rag_gate.py::test_stage0_raw_fts_gate_measurements - Unicod...
+FAILED tests/test_rag_stage0_baseline.py::test_real_fts_pipeline_checkpoints_and_never_replays
+3 failed, 1 warning in 7.88s
+
+3 passed, 1 warning in 8.38s
+
+SKIPPED [1] tests\test_knowledge_parsers.py:52: POSIX process group integration; Windows unverified
+405 passed, 1 skipped, 1 warning in 1352.44s (0:22:32)
+
+SKIPPED [1] tests\test_knowledge_parsers.py:52: POSIX process group integration; Windows unverified
+405 passed, 1 skipped, 1 warning in 1350.10s (0:22:30)
+
+7 passed, 1 warning in 0.66s
+
+> @chatbot/web@0.1.0 typecheck
+> next typegen && tsc --noEmit
+
+Generating route types...
+✓ Types generated successfully
+
+> @chatbot/web@0.1.0 lint
+> eslint . --max-warnings 0
+```
+
+Verification command catalog (only the owner-supplied connection value is redacted; no URL persisted):
+
+Targeted sandbox attempt:
+
+```powershell
+$env:TEST_DATABASE_URL='<owner-supplied base URL; process only>'; $env:CHAT_STUB_MODEL='1'; $env:EMBEDDING_TEST_STUB='1'; & ..\..\.venv\Scripts\python.exe -u -m pytest tests/test_platform.py tests/test_platform_ops.py tests/test_quotas.py tests/test_tenant_route_matrix.py -q --tb=short -p no:cacheprovider
+```
+
+Targeted sandbox basetemp retry:
+
+```powershell
+$env:TEST_DATABASE_URL='<owner-supplied base URL; process only>'; $env:CHAT_STUB_MODEL='1'; $env:EMBEDDING_TEST_STUB='1'; $env:TEMP=(Join-Path (Get-Location) '..\..\.test-storage-s1\temp'); $env:TMP=$env:TEMP; New-Item -ItemType Directory -Force -Path $env:TEMP | Out-Null; & ..\..\.venv\Scripts\python.exe -u -m pytest tests/test_platform.py tests/test_platform_ops.py tests/test_quotas.py tests/test_tenant_route_matrix.py -q --tb=short -p no:cacheprovider --basetemp=../../.test-storage-s1/pytest-tmp
+```
+
+Targeted host verification:
+
+```powershell
+$env:TEST_DATABASE_URL='<owner-supplied base URL; process only>'; $env:CHAT_STUB_MODEL='1'; $env:EMBEDDING_TEST_STUB='1'; $env:TEMP=(Join-Path (Get-Location) '..\..\.test-storage-s1\temp'); $env:TMP=$env:TEMP; New-Item -ItemType Directory -Force -Path $env:TEMP | Out-Null; & ..\..\.venv\Scripts\python.exe -u -m pytest tests/test_platform.py tests/test_platform_ops.py tests/test_quotas.py tests/test_tenant_route_matrix.py -q --tb=short -p no:cacheprovider --basetemp=../../.test-storage-s1/pytest-host
+```
+
+Initial full, without UTF-8:
+
+```powershell
+$env:TEST_DATABASE_URL='<owner-supplied base URL; process only>'; $env:CHAT_STUB_MODEL='1'; $env:EMBEDDING_TEST_STUB='1'; $env:TEMP=(Join-Path (Get-Location) '..\..\.test-storage-s1\temp'); $env:TMP=$env:TEMP; New-Item -ItemType Directory -Force -Path $env:TEMP | Out-Null; & ..\..\.venv\Scripts\python.exe -u -m pytest -q --tb=short -p no:cacheprovider --ignore=tests/test_startup_guard.py --basetemp=../../.test-storage-s1/full-host
+```
+
+Same selected encoding tests on S1 and main:
+
+```powershell
+$env:TEST_DATABASE_URL='<owner-supplied base URL; process only>'; $env:CHAT_STUB_MODEL='1'; $env:EMBEDDING_TEST_STUB='1'; $env:TEMP=(Join-Path (Get-Location) '..\..\.test-storage-s1\temp'); $env:TMP=$env:TEMP; New-Item -ItemType Directory -Force -Path $env:TEMP | Out-Null; & ..\..\.venv\Scripts\python.exe -u -m pytest tests/test_rag_evaluation.py::test_two_mode_retrieval_eval_is_entirely_offline tests/test_rag_gate.py::test_stage0_raw_fts_gate_measurements tests/test_rag_stage0_baseline.py::test_real_fts_pipeline_checkpoints_and_never_replays -q --tb=short -p no:cacheprovider --basetemp=../../.test-storage-s1/encoding-proof
+```
+
+Selected encoding tests with UTF-8:
+
+```powershell
+$env:PYTHONUTF8='1'; $env:TEST_DATABASE_URL='<owner-supplied base URL; process only>'; $env:CHAT_STUB_MODEL='1'; $env:EMBEDDING_TEST_STUB='1'; $env:TEMP=(Join-Path (Get-Location) '..\..\.test-storage-s1\temp'); $env:TMP=$env:TEMP; New-Item -ItemType Directory -Force -Path $env:TEMP | Out-Null; & ..\..\.venv\Scripts\python.exe -u -m pytest tests/test_rag_evaluation.py::test_two_mode_retrieval_eval_is_entirely_offline tests/test_rag_gate.py::test_stage0_raw_fts_gate_measurements tests/test_rag_stage0_baseline.py::test_real_fts_pipeline_checkpoints_and_never_replays -q --tb=short -p no:cacheprovider --basetemp=../../.test-storage-s1/encoding-proof
+```
+
+Final full, identical command executed twice:
+
+```powershell
+$env:PYTHONUTF8='1'; $env:TEST_DATABASE_URL='<owner-supplied base URL; process only>'; $env:CHAT_STUB_MODEL='1'; $env:EMBEDDING_TEST_STUB='1'; $env:TEMP=(Join-Path (Get-Location) '..\..\.test-storage-s1\temp'); $env:TMP=$env:TEMP; New-Item -ItemType Directory -Force -Path $env:TEMP | Out-Null; & ..\..\.venv\Scripts\python.exe -u -m pytest -q --tb=short -p no:cacheprovider --ignore=tests/test_startup_guard.py --basetemp=../../.test-storage-s1/full-host
+```
+
+Startup guard, own process:
+
+```powershell
+$env:TEST_DATABASE_URL='<owner-supplied base URL; process only>'; $env:PYTHONUTF8='1'; Remove-Item Env:CHAT_STUB_MODEL -ErrorAction SilentlyContinue; Remove-Item Env:EMBEDDING_TEST_STUB -ErrorAction SilentlyContinue; $env:TEMP=(Join-Path (Get-Location) '..\..\.test-storage-s1\temp'); $env:TMP=$env:TEMP; New-Item -ItemType Directory -Force -Path $env:TEMP | Out-Null; & ..\..\.venv\Scripts\python.exe -u -m pytest tests/test_startup_guard.py -q --tb=short -p no:cacheprovider --basetemp=../../.test-storage-s1/startup-host
+```
+
+Five browser specs, same command for initial and both subsequent runs:
+
+```powershell
+$env:TEST_DATABASE_URL='<owner-supplied base URL; process only>'; $env:DATABASE_URL=$env:TEST_DATABASE_URL; $env:ENVIRONMENT='test'; $env:PYTHONUTF8='1'; $env:CHAT_STUB_MODEL='1'; $env:EMBEDDING_TEST_STUB='1'; $env:E2E_API_PORT='18062'; $env:API_PROXY_TARGET='http://127.0.0.1:18062'; $env:PLATFORM_GUARD_ORIGIN='http://127.0.0.1:18062'; $env:E2E_REUSE_API='0'; $env:NEXT_TELEMETRY_DISABLED='1'; $env:TEMP=(Join-Path (Get-Location) '..\..\.test-storage-s1\temp'); $env:TMP=$env:TEMP; $env:STORAGE_ROOT=(Join-Path (Get-Location) '..\..\.test-storage-s1\e2e-storage'); $env:E2E_PYTHON=(Resolve-Path '..\..\.venv\Scripts\python.exe').Path; npx playwright test tests/organizations.spec.ts tests/platform.spec.ts tests/ui-characterization.spec.ts tests/group-a-members.spec.ts tests/group-c-polish.spec.ts --reporter=line
+```
+
+Operations browser check, identical command on S1 and main:
+
+```powershell
+$env:TEST_DATABASE_URL='<owner-supplied base URL; process only>'; $env:DATABASE_URL=$env:TEST_DATABASE_URL; $env:ENVIRONMENT='test'; $env:PYTHONUTF8='1'; $env:CHAT_STUB_MODEL='1'; $env:EMBEDDING_TEST_STUB='1'; $env:E2E_API_PORT='18062'; $env:API_PROXY_TARGET='http://127.0.0.1:18062'; $env:PLATFORM_GUARD_ORIGIN='http://127.0.0.1:18062'; $env:E2E_REUSE_API='0'; $env:NEXT_TELEMETRY_DISABLED='1'; $env:TEMP=(Join-Path (Get-Location) '..\..\.test-storage-s1\temp'); $env:TMP=$env:TEMP; $env:STORAGE_ROOT=(Join-Path (Get-Location) '..\..\.test-storage-s1\e2e-storage'); $env:E2E_PYTHON=(Resolve-Path '..\..\.venv\Scripts\python.exe').Path; npx playwright test tests/ui-characterization.spec.ts --grep "platform operations: reason gates" --reporter=line
+```
+
+Final verification outcome:
+- Both subsequent five-spec browser commands: **22 passed, 0 failed, 0 skipped (1.7m)** each. The last run rebuilt commit `ead6e4a`, including the remaining analytics table heading rename to Organization. All original deletion, pending-invitation, recent-audit and reason-payload assertions passed.
+- `npm run typecheck` and `npm run lint` passed again after the final label change. `git diff --check` passed. No backend source or tests changed after the two identical 405/0/1 backend runs.
+- Confirmed zero diff versus main for worker guard, backend conftest/database guard tests, E2E database derivation helper and all of `docs/`. Restored only the evaluation report's generated timestamp after backend tests; no evaluation report change retained.
+- Browser/API/worker test processes completed their normal teardown. Stopped on the feature branch for owner review; no merge, push or deployment.
+- Deliberately retained existing routes, onboarding, reason-required plan/quota/pause actions, deletion flow and audit history. No new user/bot/invitation/deletion workflows, quota override UI, tables, migrations or statuses.
+- Post-MVP follow-ups only: investigate the intermittent unchanged operations reason/cancel timing; make baseline evaluation-output file encoding explicit. Neither was changed in this slice.
+
+Raw browser output tails:
+
+```text
+  2 failed
+    [chromium] › tests\group-c-polish.spec.ts:74:7 › platform pause: Cancel and Escape do not write; Confirm writes once
+    [chromium] › tests\ui-characterization.spec.ts:107:5 › platform operations: reason gates retry and cancel, audit search keeps its query
+  20 passed (2.9m)
+
+[e2e] Stopped the E2E API server.
+[e2e] Stopped the E2E worker.
+  1 passed (45.2s)
+
+[e2e] Stopped the E2E API server.
+[e2e] Stopped the E2E worker.
+  1 passed (48.5s)
+
+[e2e] Stopped the E2E API server.
+[e2e] Stopped the E2E worker.
+  22 passed (1.7m)
+
+[e2e] Stopped the E2E API server.
+[e2e] Stopped the E2E worker.
+  22 passed (1.7m)
+```

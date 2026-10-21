@@ -308,10 +308,33 @@ export interface PlatformTenantDetail {
     slug: string;
     status: string;
     plan_label: string;
+    created_at: string;
   };
-  bots: Array<{ id: string; name: string; status: string; published: boolean }>;
+  counts: { members: number; bots: number };
+  quota: {
+    placeholder: true;
+    plan: string;
+    usage: Record<string, number>;
+    limits: Record<string, number>;
+  };
+  bots: Array<{
+    id: string;
+    name: string;
+    status: string;
+    published: boolean;
+    widget_state: string;
+    source_count: number;
+    last_ingestion_job_status: string | null;
+    published_revision_id: string | null;
+    published_at: string | null;
+  }>;
   failed_jobs: Array<{ id: string; type: string; error: string | null }>;
-  members: Array<{ user_id: string; email: string; role: string }>;
+  members: Array<{
+    user_id: string;
+    email: string;
+    role: string;
+    status: string;
+  }>;
   pending_invitations: Array<{ id: string; email: string; role: string }>;
   recent_audit: Array<{
     action: string;
@@ -1004,6 +1027,41 @@ export async function platformTenantDetail(
   tenantId: string,
 ): Promise<PlatformTenantDetail> {
   return api<PlatformTenantDetail>(`platform/tenants/${tenantId}`);
+}
+
+export async function platformCreateOrganization(payload: {
+  name: string;
+  plan_label: string;
+}): Promise<{
+  id: string;
+  name: string;
+  slug: string;
+  plan_label: string;
+  status: string;
+  created_at: string;
+}> {
+  return api("platform/tenants", { method: "POST", body: payload });
+}
+
+export async function platformUpdateOrganization(
+  tenantId: string,
+  payload: { name: string; status: string },
+): Promise<{
+  id: string;
+  name: string;
+  slug: string;
+  plan_label: string;
+  status: string;
+  created_at: string;
+}> {
+  return api(`platform/tenants/${tenantId}`, {
+    method: "PATCH",
+    body: payload,
+  });
+}
+
+export async function platformPlanOptions(): Promise<PlatformQuotaPlans> {
+  return api("platform/quotas");
 }
 
 /** Fetch every staff-visible organization, including those beyond the API page cap. */

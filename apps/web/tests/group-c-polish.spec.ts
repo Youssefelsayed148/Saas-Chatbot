@@ -76,10 +76,12 @@ for (const item of confirmations) {
   }) => {
     const state = await safetyFixture(page, item.platform);
     await page.goto(item.path);
-    if (item.platform)
+    if (item.platform) {
+      await page.getByRole("tab", { name: "Bots", exact: true }).click();
       await page
         .getByLabel("Reason", { exact: true })
         .fill("Owner requested pause");
+    }
     const trigger = page.getByRole("button", {
       name: item.trigger,
       exact: true,
@@ -163,7 +165,7 @@ test("titles update on navigation; change requests use an SVG; contact dropdown 
     [`${base}/settings/members`, "Team"],
     [`${botBase}/settings`, "Bot settings"],
     ["/platform/operations", "Platform operations"],
-    [`/platform/clients/${tenant}`, "Client details"],
+    [`/platform/clients/${tenant}`, "Organization details"],
   ]) {
     await page.goto(path);
     await expect(page).toHaveTitle(`${title} · Website Chatbot SaaS`);
