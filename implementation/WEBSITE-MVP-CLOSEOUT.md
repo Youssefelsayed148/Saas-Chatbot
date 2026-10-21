@@ -114,19 +114,31 @@ Exit: drill passes; runbook committed.
 - Owner decides whether to tag `mvp-website-complete`. No tag without an explicit owner instruction.
 Exit: owner signs off. Only then start the ManyOsirisChat phase (docs/19 section 7).
 
-## 5. Timed onboarding runbook (target to measure in Stage 6)
+## 5. Timed onboarding runbook (target to measure in Stage 6; rewritten 2026-10-21 for the built staff flow, S1–S4)
 
-Target: a new client live on their website in 15 minutes of operator time, excluding document preparation and ingestion wait. These budgets are targets, not measurements; the drill replaces them with real numbers.
+Target: a new client live on their website in 15 minutes of operator time, excluding document preparation and ingestion wait. This is a TARGET, not a measurement — the timed drill replaces these budgets with real numbers, and `implementation/ONBOARDING-RUNBOOK.md` is written after that timed run (P-S6).
+
+The operator signs in to /platform (platform staff; the staff account is created by the seed or by a platform admin) and then, in order:
+
+1. **Create the organization** (Organizations → new, name + plan label).
+2. **Create the user and assign them** (Members → new user: email, optional phone, staff-set or generated password shown once; then assign the organization and role — or send the user a one-time invitation afterwards).
+3. **Create the bot** (Bots → new bot in that organization; or from the organization detail).
+4. **Upload knowledge** (open the organization workspace → the bot's Knowledge tab → upload the prepared files/Q&A CSV).
+5. **Ingest** (start the ingestion job; watch queued → running → succeeded in the same tab; retry on failure).
+6. **Publish** the revision once the preview looks right.
+7. **Set allowed domains** (bot Settings → allowed domains) and persona/appearance as needed.
+8. **Test chat** in the Playground with real questions, including one unanswerable case.
+9. **Embed the widget**: copy the install snippet, paste it on the client site, load the page and test the chat from the real domain.
 
 | Step | Target |
 |---|---|
-| Create org, invite client admin | 2 min |
-| Create bot, set tier and limits | 1 min |
+| Create organization, create user and assign | 3 min |
+| Create bot | 1 min |
 | Upload documents | 2 min |
 | Ingestion wait, review preview, publish | 3 min (plus wait) |
 | Persona, tone, language, support contact, handoff rules | 3 min |
-| Appearance and allowed domains | 2 min |
-| Install snippet on the client site, test chat from the real domain | 2 min |
+| Allowed domains | 1 min |
+| Test chat, install snippet on the client site, test from the real domain | 2 min |
 
 ## 6. Known issues to classify in Stage 7 (from implementation/KNOWN-ISSUES.md)
 

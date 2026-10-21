@@ -22,6 +22,7 @@ Change a decision only by adding a dated entry below with rationale, alternative
 | ADR-017 | ManyOsirisChat channel contract: HMAC-SHA256 signed JSON both ways, per-connection secret, timestamp window, idempotent event ids, async processing via jobs. Many owns Meta tokens, webhook verification, 24-hour window and templates; the SaaS owns bot, conversation, inbox and CRM for linked connections. Mapping (tenant+bot to Many channel) is explicit and staff-created. Many must run linked connections in "delegated" mode (no bot or takeover of its own). Spec in docs/14 §18 and docs/17 | Approved 2026-10-12 (delegated-mode assumption to confirm when Many's side is designed) |
 | ADR-018 | Two dashboards: (1) client dashboard per chatbot (overview, inbox, contacts, knowledge, playground, settings, install, channels, follow-ups, team) and (2) platform admin console for staff to manage all clients. A basic admin console (client list, client detail, staff onboarding through the shared ProvisioningService) is built in P4 so first clients can be onboarded; quotas, platform analytics, connection health and audit review follow in P7 | Approved 2026-10-12 |
 | ADR-019 | Hybrid RAG retrieval, embeddings and relevance gate; docs/RAG-PLAN-v2.md plus execution overrides | Approved RAG phase; renumbered 2026-10-16 by owner request |
+| ADR-021 | Staff-managed accounts: registration closed by default (`self_serve_signup=false`), invitations for existing users only, staff-set/generated passwords, self-service change-password with session revocation, no email/SMS/WhatsApp reset, Google sign-in deferred (ADR-020 reserved by Phase 6) | Approved 2026-10-21 (website MVP account slices S1–S4) |
 
 ## 2026-10-12 — ADR-003 approval
 Approver: product owner. Rationale: one standalone deployment with clear module boundaries and tenant isolation, minimal infrastructure. Alternatives: historical multi-service control plane and cross-product architecture rejected for MVP. Impact: `apps/web`, `apps/api`, local Compose PostgreSQL.
@@ -64,3 +65,13 @@ and minimum matched content terms, and never applies recommendations automatical
 Alternatives: unavailable local Ollama as default and threshold inheritance across
 models rejected. Impact: runtime defaults, demo corpus and owner calibration tooling;
 no real calls, merge, tag, deployment or hosting/billing decision authorized.
+
+## 2026-10-21 — ADR-021: Staff-managed accounts (website MVP account slices S1–S4)
+Approver: product owner (slice prompts S1–S4, "GO" confirmations 2026-10-21). Decision:
+- Registration is CLOSED by default: `self_serve_signup=false` hides the Register link on /login, `/register` states registration is by invitation only, and `POST /auth/register` without a valid invitation token returns 403 `INVITATION_REQUIRED`. The P7 self-service provisioning path remains in the codebase, exercisable only with the flag explicitly on.
+- Invitations target EXISTING users only (`404 USER_NOT_FOUND` otherwise); platform staff create client accounts with staff-set or generated passwords (shown once at issuance).
+- Any signed-in user changes their own password (`POST /auth/change-password`): current password verified (400 `INVALID_CURRENT_PASSWORD`), same-as-current rejected (400 `PASSWORD_UNCHANGED`), shared 8–200 policy (422), failed current-password attempts throttled per user (5 per 300 s window → 429); success revokes all OTHER sessions, rotates the current one, and audits `auth.password_changed`.
+- Staff password reset and account deactivation revoke ALL of the user's sessions; deactivation blocks further sign-in until reactivation.
+- NO email/SMS/WhatsApp password reset or recovery code exists anywhere; no email provider.
+Rejected alternatives: open self-service signup as the default (rejected: the product sells staff-onboarded clients); email/SMS/WhatsApp reset (rejected: no provider, Many owns Meta channels); keeping the old pre-S2 register-with-invite flow for new invites (superseded: staff-created accounts first). Impact: docs/02, 04, 05, 11, 12, 14 §19, 15, 18; staff flows in /platform.
+Deferred with design on record — Google sign-in (S5): account linking while logged in, matching by Google `sub` claim; no Google UI or placeholder was built in the MVP. ADR-020 is reserved by the Phase 6 channels branch; the next free number after this entry is ADR-022.
