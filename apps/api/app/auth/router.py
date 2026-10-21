@@ -1,4 +1,4 @@
-"""Auth router: register / login / logout / me (docs/05 phase-1 frozen contract)."""
+"""Auth router: register / login / logout / me / change-password (docs/05)."""
 
 from typing import Annotated
 
@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session as OrmSession
 
 from app.auth import cookies
 from app.auth.schemas import (
+    ChangePasswordRequest,
     LoginRequest,
     MembershipOut,
     MeResponse,
@@ -86,6 +87,35 @@ def login(
     )
     cookies.ensure_csrf_cookie(request, response, settings)
     return _me_response(service, user)
+
+
+@router.post("/change-password", response_model=OkResponse)
+def change_password(
+    body: ChangePasswordRequest,
+    response: Response,
+    request: Request,
+    db: DbSession,
+    settings: CurrentSettings,
+    user: CurrentUser,
+    _: CsrfOk,
+) -> OkResponse:
+    """Signed-in password change (S4). Cookie-authenticated write ⇒ CSRF-checked.
+
+    Verifies the current password, stores the new hash, revokes every OTHER
+    session of the user and rotates the presented session so the caller stays
+    signed in. Audit: auth.password_changed (actor = the user)."""
+    service = AuthService(db, settings)
+    token = service.change_password(
+        user,
+        current_password=body.current_password,
+        new_password=body.new_password,
+        presented_token=cookies.read_session_token(request, settings) or "",
+    )
+    cookies.set_session_cookie(
+        response, settings, token=token, max_age_seconds=settings.session_lifetime_seconds
+    )
+    cookies.ensure_csrf_cookie(request, response, settings)
+    return OkResponse()
 
 
 @router.post("/logout", response_model=OkResponse)

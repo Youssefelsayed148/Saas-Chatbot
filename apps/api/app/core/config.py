@@ -41,6 +41,11 @@ class Settings(BaseSettings):
     login_rate_limit_attempts: int = Field(default=10, ge=1, le=1000)
     login_rate_limit_window_seconds: int = Field(default=300, ge=1, le=86400)
 
+    # Change-password throttling (S4): only FAILED current-password attempts
+    # count, per user, in the same Postgres-backed fixed-window service.
+    change_password_rate_limit_attempts: int = Field(default=5, ge=1, le=1000)
+    change_password_rate_limit_window_seconds: int = Field(default=300, ge=1, le=86400)
+
     # --- P2 knowledge ingestion (docs/14 §3–§5 defaults; composable via env) ---
     # Local-disk storage root for uploaded files (shared volume in Compose).
     storage_root: str = str(_DEFAULT_STORAGE_ROOT)

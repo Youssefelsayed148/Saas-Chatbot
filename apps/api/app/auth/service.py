@@ -19,8 +19,10 @@ from app.auth.security import (
     session_expiry,
     verify_password,
 )
+from app.core.audit import record_audit
 from app.core.config import Settings
 from app.core.errors import ApiError
+from app.core.ratelimit import rate_limit
 from app.db.models import Invitation, Membership, Session, Tenant, User
 
 
@@ -107,6 +109,77 @@ class AuthService:
         if token:
             self._revoke_token(token)
         self.db.commit()
+
+    def change_password(
+        self,
+        user: User,
+        *,
+        current_password: str,
+        new_password: str,
+        presented_token: str,
+    ) -> str:
+        """Signed-in password change (S4): verify the current password, store
+        the new hash, revoke every OTHER session and rotate the presented one
+        so the user stays signed in. Returns the fresh cookie token.
+
+        Works for platform staff and client users alike (no role logic).
+        Failed current-password attempts are throttled per user; the counter
+        commits independently so failures are never silently rolled back.
+        """
+        self.db.refresh(user, with_for_update=True)
+        self.require_login_eligible(user)
+        if not verify_password(current_password, user.password_hash):
+            self._throttle_failed_change(user)
+            # Same safe message regardless of throttling state; no account detail.
+            raise ApiError(400, "INVALID_CURRENT_PASSWORD", "Current password is incorrect.")
+        if new_password == current_password:
+            raise ApiError(
+                400,
+                "PASSWORD_UNCHANGED",
+                "The new password must differ from the current password.",
+            )
+        user.password_hash = hash_password(new_password)
+        self.db.add(user)
+        # autoflush=False in this codebase: flush the hash now so the locked
+        # re-read in _create_session sees the new value instead of discarding it.
+        self.db.flush()
+        # Revoke every other live session of this user (staff reset semantics
+        # from S2, minus the presented session).
+        self.db.execute(
+            update(Session)
+            .where(
+                Session.user_id == user.id,
+                Session.token_hash != hash_token(presented_token),
+                Session.revoked_at.is_(None),
+            )
+            .values(revoked_at=datetime.now(UTC))
+        )
+        # Rotation (the login pattern): new session, then revoke the presented one.
+        _session_row, token = self._create_session(user)
+        self._revoke_token(presented_token)
+        record_audit(
+            self.db,
+            action="auth.password_changed",
+            tenant_id=None,
+            actor_user_id=user.id,
+            target_type="user",
+            target_id=str(user.id),
+            metadata={},
+        )
+        self.db.commit()
+        return token
+
+    def _throttle_failed_change(self, user: User) -> None:
+        """Per-user fixed-window counter for FAILED current-password checks only."""
+        count, _remaining = rate_limit(
+            self.db,
+            key=f"change-password:{user.id}",
+            limit=self.settings.change_password_rate_limit_attempts,
+            window_seconds=self.settings.change_password_rate_limit_window_seconds,
+        )
+        self.db.commit()
+        if count > self.settings.change_password_rate_limit_attempts:
+            raise ApiError(429, "RATE_LIMITED", "Too many attempts. Try again later.")
 
     # --- internals --------------------------------------------------------
 
