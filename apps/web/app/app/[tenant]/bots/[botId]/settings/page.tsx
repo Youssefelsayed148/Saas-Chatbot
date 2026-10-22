@@ -13,6 +13,7 @@ import { ConfirmAction, Loading, Notice } from "@/lib/ui";
 import BotWorkspaceNav from "@/lib/bot-workspace-nav";
 import RagTierControl from "@/lib/rag-tier-control";
 import BotToneField from "@/lib/bot-tone-field";
+import BotReadinessCard from "@/lib/bot-readiness-card";
 
 /** API field paths (dotted, without the body root) → form input keys.
  * Unmatched fields render in the form-level error area instead. */
@@ -59,6 +60,7 @@ export default function BotSettingsPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
+  const [readinessKey, setReadinessKey] = useState(0);
   const [transitioning, setTransitioning] = useState(false);
 
   const [assistantName, setAssistantName] = useState("");
@@ -161,6 +163,7 @@ export default function BotSettingsPage() {
       setBot(updated);
       setSaved(true);
       await load();
+      setReadinessKey((key) => key + 1);
     } catch (caught) {
       if (caught instanceof api.ApiError && caught.fieldErrors.length > 0) {
         // Field details go inline under the matching input; fields without a
@@ -274,6 +277,13 @@ export default function BotSettingsPage() {
           </div>
         )}
       </div>
+      {canEdit && (
+        <BotReadinessCard
+          tenantId={tenantId}
+          botId={botId}
+          refreshKey={readinessKey}
+        />
+      )}
       {bot.widget_locator && (
         <p className="muted">
           Widget locator:{" "}
@@ -327,6 +337,7 @@ export default function BotSettingsPage() {
         <label>
           Welcome message (EN)
           <input
+            id="field-welcome_en"
             name="welcome_en"
             disabled={!canEdit}
             maxLength={500}
@@ -377,6 +388,7 @@ export default function BotSettingsPage() {
         <label>
           Support email
           <input
+            id="field-support_email"
             name="support_email"
             type="email"
             disabled={!canEdit}
@@ -446,6 +458,7 @@ export default function BotSettingsPage() {
           Allowed domains (one per line, max 50)
           <textarea
             dir="auto"
+            id="field-allowed_domains"
             name="allowed_domains"
             disabled={!canEdit}
             rows={3}
@@ -470,7 +483,11 @@ export default function BotSettingsPage() {
           </button>
         )}
       </form>
-      {canEdit && <RagTierControl tenantId={tenantId} botId={botId} />}
+      {canEdit && (
+        <div id="settings-ai-tier">
+          <RagTierControl tenantId={tenantId} botId={botId} />
+        </div>
+      )}
       {bot.status === "archived" && <Notice message="This bot is archived." />}
     </main>
   );

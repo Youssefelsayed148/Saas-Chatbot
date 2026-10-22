@@ -8,3 +8,32 @@
   color: var(--button-text);
   border-color: transparent;
 }
+
+/* C.4: launch readiness checklist. */
+.readiness-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+.readiness-status {
+  display: inline-block;
+  min-inline-size: 4.5rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  font-size: 0.8rem;
+  font-weight: 650;
+  text-align: center;
+}
+.readiness-ok {
+  color: var(--success, var(--text));
+}
+.readiness-todo {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.readiness-warning {
+  color: var(--warning, var(--text));
+}

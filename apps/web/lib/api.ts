@@ -914,6 +914,25 @@ export async function patchBot(
   });
 }
 
+export type ReadinessStatus = "ok" | "todo" | "warning";
+export interface ReadinessItem {
+  id: string;
+  label: string;
+  status: ReadinessStatus;
+  detail: string;
+  section: "contact" | "messages" | "access" | "knowledge" | "tier";
+}
+export interface Readiness {
+  ready: boolean;
+  items: ReadinessItem[];
+}
+export async function getBotReadiness(
+  tenantId: string,
+  botId: string,
+): Promise<Readiness> {
+  return api<Readiness>(`tenants/${tenantId}/bots/${botId}/readiness`);
+}
+
 export async function archiveBot(
   tenantId: string,
   botId: string,
