@@ -11,6 +11,7 @@ or emit the localized busy message (never a stack trace).
 import json
 import re
 from abc import ABC, abstractmethod
+from collections.abc import Iterator
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 
@@ -28,9 +29,22 @@ class ChatModel(ABC):
     def complete(self, messages: list[dict[str, str]], *, json_mode: bool, max_tokens: int) -> str:
         """One synchronous completion."""
 
+    def stream_complete(self, messages: list[dict[str, str]], *, max_tokens: int) -> Iterator[str]:
+        """Yield the JSON-mode completion as text fragments (S.1).
+
+        Same model/fallback/blocked rules as ``complete``. Providers that
+        cannot stream raise ``StreamUnsupported`` before yielding anything so
+        the caller falls back to the buffered ``complete``. Closing the
+        iterator releases the provider connection (client disconnect)."""
+        raise StreamUnsupported("This provider cannot stream.")
+
 
 class ProviderError(Exception):
     """The provider chain failed for this turn (timeout/rate limit/network/HTTP)."""
+
+
+class StreamUnsupported(Exception):
+    """The model cannot stream; use the buffered ``complete`` path instead."""
 
 
 @dataclass
@@ -153,14 +167,136 @@ class OpenAICompatibleModel(ChatModel):
                 return content
         raise ProviderError("All configured models failed.")
 
+    def stream_complete(self, messages: list[dict[str, str]], *, max_tokens: int) -> Iterator[str]:
+        """Streamed JSON-mode completion (OpenAI-compatible SSE).
+
+        Mirrors ``complete``: one attempt per model, at most the next model as
+        fallback, auth/quota responses block the instance. A model is only
+        abandoned for the next one while NO text was yielded yet; a failure
+        after text started raises ``ProviderError`` (the caller must not
+        replay a different model's text on top of released output)."""
+        if self.blocked:
+            raise ProviderError("Provider unavailable for this turn.")
+        self.last_cost_usd = None
+        body: dict[str, object] = {
+            "messages": messages,
+            "temperature": self.temperature,
+            "max_tokens": max_tokens,
+            "response_format": {"type": "json_object"},
+            "stream": True,
+            "stream_options": {"include_usage": True},
+        }
+        with httpx.Client(
+            base_url=self.base_url,
+            headers={"Authorization": f"Bearer {self._api_key}"},
+            timeout=self.timeout_seconds,
+            transport=self.transport,
+            follow_redirects=False,
+        ) as client:
+            for model in [self.model, *self.fallback_models[:1]]:
+                body["model"] = model
+                self.requests_used += 1
+                yielded = False
+                try:
+                    with client.stream("POST", "chat/completions", json=body) as response:
+                        if response.status_code in (401, 402, 403, 429):
+                            self.blocked = True
+                            raise ProviderError("Provider unavailable for this turn.")
+                        if response.status_code != 200:
+                            continue
+                        for line in response.iter_lines():
+                            fragment = self._stream_line(line)
+                            if fragment is None:
+                                continue
+                            yielded = True
+                            self.model_used = model
+                            yield fragment
+                        if yielded:
+                            return
+                        self.ambiguous_attempts += 1
+                        continue
+                except (httpx.ConnectError, httpx.ConnectTimeout):
+                    continue
+                except httpx.HTTPError as error:
+                    self.ambiguous_attempts += 1
+                    if yielded:
+                        raise ProviderError("The stream was interrupted.") from error
+                    continue
+        raise ProviderError("All configured models failed.")
+
+    def _stream_line(self, line: str) -> str | None:
+        """One SSE line -> a content fragment, or None (comments, usage, done)."""
+        if not line.startswith("data:"):
+            return None
+        data = line[5:].strip()
+        if not data or data == "[DONE]":
+            return None
+        try:
+            payload = json.loads(data)
+        except ValueError:
+            return None
+        if not isinstance(payload, dict):
+            return None
+        usage = payload.get("usage")
+        if isinstance(usage, dict):
+            self._record_usage(usage)
+        choices = payload.get("choices")
+        if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):
+            return None
+        delta = choices[0].get("delta")
+        content = delta.get("content") if isinstance(delta, dict) else None
+        return content if isinstance(content, str) and content else None
+
+    def _record_usage(self, usage: dict[str, object]) -> None:
+        try:
+            cost = Decimal(str(usage.get("cost")))
+            if cost.is_finite() and cost >= 0:
+                self.last_cost_usd = cost
+        except InvalidOperation:
+            pass
+        measured = {
+            key: value
+            for key, value in usage.items()
+            if key in ("prompt_tokens", "completion_tokens", "total_tokens")
+            and isinstance(value, int)
+            and not isinstance(value, bool)
+            and value >= 0
+        }
+        if measured:
+            totals = self.usage_totals or {}
+            self.usage_totals = {key: totals.get(key, 0) + value for key, value in measured.items()}
+
 
 class FakeChatModel(ChatModel):
     """Deterministic model for unit tests and the evaluation suite."""
 
-    def __init__(self, responses: list[str] | None = None, *, raises: bool = False) -> None:
+    def __init__(
+        self,
+        responses: list[str] | None = None,
+        *,
+        raises: bool = False,
+        stream_chunks: list[list[str]] | None = None,
+    ) -> None:
         self.responses = list(responses or [])
         self.calls: list[tuple[list[dict[str, str]], bool, int]] = []
         self._raises = raises
+        # Streaming scripts, consumed one per stream_complete call. The
+        # fragment "!error" raises ProviderError at that point of the stream.
+        self.stream_chunks = list(stream_chunks or [])
+        self.stream_closed = False
+
+    def stream_complete(self, messages: list[dict[str, str]], *, max_tokens: int) -> Iterator[str]:
+        self.calls.append((messages, True, max_tokens))
+        if not self.stream_chunks:
+            raise StreamUnsupported("fake model without a stream script")
+        script = self.stream_chunks.pop(0)
+        try:
+            for fragment in script:
+                if fragment == "!error":
+                    raise ProviderError("stream failed (fake)")
+                yield fragment
+        finally:
+            self.stream_closed = True
 
     def complete(self, messages: list[dict[str, str]], *, json_mode: bool, max_tokens: int) -> str:
         self.calls.append((messages, json_mode, max_tokens))
@@ -178,6 +314,7 @@ __all__ = [
     "OpenAICompatibleModel",
     "ProviderChainAttempt",
     "ProviderError",
+    "StreamUnsupported",
 ]
 
 
@@ -196,6 +333,14 @@ class ExtractiveStubModel(ChatModel):
     def __init__(self) -> None:
         self.calls = []
 
+    def stream_complete(self, messages: list[dict[str, str]], *, max_tokens: int) -> Iterator[str]:
+        """Streams the deterministic JSON in small fragments (DEV/TEST only),
+        so the streaming pipeline runs offline without any paid provider."""
+        raw = self.complete(messages, json_mode=True, max_tokens=max_tokens)
+        step = 7
+        for start in range(0, len(raw), step):
+            yield raw[start : start + step]
+
     def complete(self, messages: list[dict[str, str]], *, json_mode: bool, max_tokens: int) -> str:
         self.calls.append((messages, json_mode, max_tokens))
         if not json_mode:
@@ -208,9 +353,9 @@ class ExtractiveStubModel(ChatModel):
         if not blocks:
             return json.dumps(
                 {
-                    "answer": "I have no data configured for this yet.",
                     "can_answer": False,
                     "sources": [],
+                    "answer": "I have no data configured for this yet.",
                 }
             )
         question_tokens = _question_token_set(messages)
@@ -239,9 +384,9 @@ class ExtractiveStubModel(ChatModel):
         if all_uncovered or weekday_gap:
             return json.dumps(
                 {
-                    "answer": "I cannot confirm that from the information I have.",
                     "can_answer": False,
                     "sources": [],
+                    "answer": "I cannot confirm that from the information I have.",
                 }
             )
 
@@ -253,7 +398,7 @@ class ExtractiveStubModel(ChatModel):
         best = max(blocks, key=score)
         chunk_id, chunk_text = best
         answer = chunk_text.strip().split("\n")[0][:300]
-        return json.dumps({"answer": answer, "can_answer": True, "sources": [chunk_id]})
+        return json.dumps({"can_answer": True, "sources": [chunk_id], "answer": answer})
 
 
 _WEEKDAY_TOKENS = frozenset(
