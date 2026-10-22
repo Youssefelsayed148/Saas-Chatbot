@@ -9,7 +9,9 @@ or emit the localized busy message (never a stack trace).
 """
 
 import json
+import os
 import re
+import time
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -337,8 +339,16 @@ class ExtractiveStubModel(ChatModel):
         """Streams the deterministic JSON in small fragments (DEV/TEST only),
         so the streaming pipeline runs offline without any paid provider."""
         raw = self.complete(messages, json_mode=True, max_tokens=max_tokens)
+        # DEV/TEST knob: STUB_STREAM_DELAY_MS slows the stub so browser tests
+        # can observe progressive rendering through the real proxy.
+        try:
+            delay = max(0.0, float(os.environ.get("STUB_STREAM_DELAY_MS", "0"))) / 1000
+        except ValueError:
+            delay = 0.0
         step = 7
         for start in range(0, len(raw), step):
+            if delay:
+                time.sleep(delay)
             yield raw[start : start + step]
 
     def complete(self, messages: list[dict[str, str]], *, json_mode: bool, max_tokens: int) -> str:

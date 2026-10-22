@@ -475,3 +475,25 @@ def test_relay_closing_the_generator_flags_the_worker_to_cancel(
 
     asyncio.run(go())
     assert seen_cancel.wait(timeout=5)
+
+
+def test_stub_stream_delay_knob_is_read_from_the_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import time
+
+    monkeypatch.setenv("STUB_STREAM_DELAY_MS", "20")
+    system = prompts.system_prompt(
+        assistant_name="A",
+        business_name="B",
+        business_description="",
+        support_contact="x",
+        language="en",
+        evidence_block=prompts.evidence_block([(ID_A, "Hours", "Open daily.")]),
+    )
+    msgs = [{"role": "system", "content": system}, {"role": "user", "content": "open daily"}]
+    started = time.perf_counter()
+    fragments = list(ExtractiveStubModel().stream_complete(msgs, max_tokens=10))
+    assert time.perf_counter() - started >= 0.02 * (len(fragments) - 1)
+    monkeypatch.setenv("STUB_STREAM_DELAY_MS", "not-a-number")
+    assert list(ExtractiveStubModel().stream_complete(msgs, max_tokens=10))  # ignored, no delay
