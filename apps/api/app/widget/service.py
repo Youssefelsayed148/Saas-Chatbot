@@ -142,8 +142,8 @@ def origin_allowed(bot: Bot, page_origin: str | None) -> bool:
     """Configured domains vs the PAGE origin the loader script sends (not the
     iframe origin). Empty/absent configuration keeps the check inactive; the
     session capability and rate limits still bound abuse (docs/09)."""
-    allowed = bot.config.get("allowed_domains") if isinstance(bot.config, dict) else None
-    if not isinstance(allowed, list) or not allowed:
+    allowed = _allowed_domain_list(bot)
+    if not allowed:
         return True
     origin = (page_origin or "").strip().lower()
     if not origin:
@@ -151,7 +151,44 @@ def origin_allowed(bot: Bot, page_origin: str | None) -> bool:
     host = _host_of(origin)
     if host is None:
         return False
-    return any(host == str(entry) or host.endswith("." + str(entry)) for entry in allowed)
+    return any(host == entry or host.endswith("." + entry) for entry in allowed)
+
+
+def _allowed_domain_list(bot: Bot) -> list[str]:
+    configured = bot.config.get("allowed_domains") if isinstance(bot.config, dict) else None
+    if not isinstance(configured, list):
+        return []
+    return [str(entry).strip().lower() for entry in configured if str(entry).strip()]
+
+
+def frame_ancestors(bot: Bot, environment: str) -> str:
+    """The Content-Security-Policy ``frame-ancestors`` value for the widget
+    frame page (#33): the browser-enforced half of domain enforcement. This
+    value is public by nature (any browser can read the frame's headers), so
+    it discloses no secret the session endpoint does not already expose.
+
+    Empty/absent configuration stays permissive (``http: https:``) so
+    unconfigured bots keep working; a non-empty list only allows the listed
+    hosts in both http(s) forms plus their subdomains (matching
+    ``origin_allowed``). ``localhost`` entries get the port wildcard outside
+    production, where development and test embeds live on arbitrary ports;
+    other hostnames use the CSP default-port rule.
+    """
+    allowed = _allowed_domain_list(bot)
+    if not allowed:
+        return "http: https:"
+    sources: list[str] = []
+    for domain in allowed:
+        schemes = ("http", "https")
+        for scheme in schemes:
+            if domain == "localhost" and environment != "production":
+                sources.append(f"{scheme}://localhost:*")
+            else:
+                sources.append(f"{scheme}://{domain}")
+        if domain != "localhost":
+            for scheme in schemes:
+                sources.append(f"{scheme}://*.{domain}")
+    return " ".join(sources)
 
 
 # --- widget config (safe fields only, docs/09) ------------------------------
