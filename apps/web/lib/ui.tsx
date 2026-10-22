@@ -155,6 +155,7 @@ export function Field({
   label,
   hint,
   error,
+  errorTestId,
   required,
   className,
   children,
@@ -163,6 +164,8 @@ export function Field({
   label: ReactNode;
   hint?: ReactNode;
   error?: ReactNode;
+  /** data-testid for the inline error element (existing specs key on it). */
+  errorTestId?: string;
   required?: boolean;
   children: (control: FieldControlProps) => ReactNode;
 }) {
@@ -198,7 +201,12 @@ export function Field({
         </p>
       )}
       {error && (
-        <p id={errorId} className="field-error" role="alert">
+        <p
+          id={errorId}
+          className="field-error"
+          role="alert"
+          data-testid={errorTestId}
+        >
           {error}
         </p>
       )}
