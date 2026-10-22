@@ -131,6 +131,9 @@ services:
     depends_on:
       api:
         condition: service_healthy
+      # Not a runtime need: lets `up --wait` treat the exited one-shot as done, not failed.
+      staff:
+        condition: service_completed_successfully
     healthcheck:
       test:
         [
