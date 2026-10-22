@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import * as api from "@/lib/api";
 import type { TierTarget } from "@/lib/api";
 import { ConfirmAction, Notice } from "@/lib/ui";
+import "@/app/bot-settings-c.css";
 
 function TierTargetRow({
   label,
@@ -59,6 +60,10 @@ export default function RagTierControl({
     }
   }
   const backfill = status?.backfill;
+  // Nothing to backfill once every chunk has the active embedding model (#13).
+  const needsBackfill = status ? !status.embedding_ready : false;
+  const backfillRunning =
+    backfill?.status === "pending" || backfill?.status === "running";
   return (
     <section
       aria-label="Staff AI tier"
@@ -124,21 +129,29 @@ export default function RagTierControl({
                 : "never run"}
             </dd>
           </dl>
-          <ConfirmAction
-            title="Start embedding backfill?"
-            description={
-              "A background job will generate embeddings for published knowledge. This can use embedding tokens and incur provider costs within configured limits."
-            }
-            disabled={busy}
-            onConfirm={() =>
-              void run(
-                () => api.startRagBackfill(tenantId, botId),
-                "Backfill requested.",
-              )
-            }
-          >
-            Start embedding backfill
-          </ConfirmAction>
+          {needsBackfill ? (
+            <div className="backfill-action" data-testid="rag-backfill-action">
+              <ConfirmAction
+                title="Start embedding backfill?"
+                description={
+                  "A background job will generate embeddings for published knowledge. This can use embedding tokens and incur provider costs within configured limits."
+                }
+                disabled={busy || backfillRunning}
+                onConfirm={() =>
+                  void run(
+                    () => api.startRagBackfill(tenantId, botId),
+                    "Backfill requested.",
+                  )
+                }
+              >
+                Start embedding backfill
+              </ConfirmAction>
+            </div>
+          ) : (
+            <p className="muted" data-testid="rag-backfill-uptodate">
+              Embeddings are up to date. Nothing to backfill.
+            </p>
+          )}
         </>
       )}
     </section>

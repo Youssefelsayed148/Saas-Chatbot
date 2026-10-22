@@ -1,0 +1,10 @@
+/* Batch C: bot behaviour and settings screens (own file; shared tokens only). */
+
+/* C.5: the backfill trigger is a normal action, not a danger one. The confirm
+ * dialog buttons stay danger-styled. ConfirmAction always renders the trigger
+ * with the danger class, so it is re-skinned from the wrapper. */
+.backfill-action > .danger-button {
+  background: var(--button);
+  color: var(--button-text);
+  border-color: transparent;
+}
