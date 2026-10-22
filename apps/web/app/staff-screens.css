@@ -1,0 +1,220 @@
+/* Batch E: staff (platform) screens. Tokens only; logical properties for RTL. */
+
+.staff-page > * + * {
+  margin-block-start: var(--space-5);
+}
+.staff-page > .page-header,
+.staff-page > .form-section,
+.staff-page > section {
+  margin-block-end: 0;
+}
+.staff-page .page-header .page-purpose,
+.staff-page .page-header p {
+  margin-block-end: 0;
+}
+
+/* Filter bar: fields in a wrapping row; the submit button aligns to controls. */
+.filter-bar {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-4);
+  max-inline-size: none;
+}
+.filter-bar > .field {
+  flex: 1 1 14rem;
+}
+.filter-bar > button {
+  flex: 0 0 auto;
+}
+.filter-bar :is(input, select),
+.inline-form :is(input, select) {
+  inline-size: 100%;
+  block-size: var(--control-height);
+}
+
+/* Pager under a table: count at the start, buttons at the end. */
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.pager p {
+  margin: 0;
+  color: var(--muted);
+}
+
+/* Table cells. */
+.num {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+.mono {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: var(--text-xs);
+  overflow-wrap: normal;
+  white-space: nowrap;
+  unicode-bidi: isolate;
+}
+.chip-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+.chip-list li {
+  min-inline-size: 12rem;
+}
+.table-scroll td ul {
+  margin: 0;
+}
+
+/* Two controls on one row (country code + phone). */
+.phone-row {
+  display: grid;
+  grid-template-columns: minmax(6rem, 9rem) minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: start;
+}
+@media (max-width: 480px) {
+  .phone-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Short forms laid out as a wrapping row. */
+.inline-form {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-4);
+  max-inline-size: none;
+}
+.form-section > .inline-form {
+  max-inline-size: none;
+}
+.inline-form > .field {
+  flex: 1 1 14rem;
+}
+
+.membership-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-4);
+  padding-block-end: var(--space-4);
+  border-block-end: 1px solid var(--border);
+}
+.membership-row > p {
+  flex: 1 1 100%;
+  margin: 0;
+  font-weight: 600;
+}
+.membership-row > .field {
+  flex: 0 1 14rem;
+}
+
+.password-panel code {
+  display: block;
+  padding: var(--space-3) var(--space-4);
+  margin-block-end: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  font-size: var(--text-md);
+}
+.invitation-link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+}
+.bot-created {
+  padding: var(--space-4);
+  border: 1px solid var(--success);
+  border-radius: var(--radius-sm);
+  background: var(--success-soft);
+}
+.bot-created h3,
+.bot-created p {
+  margin-block: 0 var(--space-2);
+}
+.bot-links {
+  white-space: nowrap;
+}
+.form-section > form {
+  max-inline-size: var(--form-max);
+}
+
+/* Organization detail. */
+.status-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.cell-note {
+  display: block;
+  margin-block-start: var(--space-1);
+  max-inline-size: 18rem;
+  color: var(--muted);
+  white-space: normal;
+}
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.plain-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.plain-list > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-block: var(--space-3);
+  border-block-end: 1px solid var(--border);
+}
+.platform-client-detail .form-section ul:not(.plain-list) {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.platform-client-detail .form-section ul:not(.plain-list) > li {
+  padding-block: var(--space-2);
+  border-block-end: 1px solid var(--border);
+}
+.ui-tabs + [role="tabpanel"] > * + * {
+  margin-block-start: var(--space-5);
+}
+
+.password-panel .action-row,
+.form-section > .action-row {
+  justify-content: flex-start;
+}
+.filter-bar > .notice,
+.inline-form > .notice {
+  flex: 1 1 100%;
+}
+.staff-page > section[data-testid="platform-tenants"] {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+th.num {
+  white-space: nowrap;
+}
+.page-header-actions .status-badge {
+  align-self: center;
+}

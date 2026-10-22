@@ -7,7 +7,16 @@ import {
   PasswordPanel,
   RoleSelect,
 } from "@/lib/staff-members";
-import { Notice } from "@/lib/ui";
+import {
+  Button,
+  DataTable,
+  Field,
+  FormSection,
+  Notice,
+  PageHeader,
+  StatusBadge,
+} from "@/lib/ui";
+import "@/app/staff-screens.css";
 
 const COMMON_COUNTRY_CODES = [
   "+20",
@@ -121,20 +130,25 @@ export default function MembersPage() {
     }
   }
   return (
-    <main>
-      <h1>Members</h1>
+    <main className="staff-page">
+      <PageHeader
+        title="Members"
+        purpose="Every user across all organizations. Search, filter and create accounts."
+      />
       {error && <Notice tone="error" message={error} />}
-      <section aria-label="Filter members">
-        <label>
-          Search email
-          <input
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setOffset(0);
-            }}
-          />
-        </label>
+      <section aria-label="Filter members" className="filter-bar">
+        <Field label="Search email">
+          {(control) => (
+            <input
+              {...control}
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setOffset(0);
+              }}
+            />
+          )}
+        </Field>
         <OrganizationSelect
           optional
           emptyLabel="All organizations"
@@ -145,126 +159,179 @@ export default function MembersPage() {
             setOffset(0);
           }}
         />
-        <label>
-          Status
-          <select
-            value={status}
-            onChange={(e) => {
-              setStatus(e.target.value);
-              setOffset(0);
-            }}
-          >
-            <option value="">All</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
-        </label>
+        <Field label="Status">
+          {(control) => (
+            <select
+              {...control}
+              value={status}
+              onChange={(e) => {
+                setStatus(e.target.value);
+                setOffset(0);
+              }}
+            >
+              <option value="">All</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          )}
+        </Field>
       </section>
-      <table>
-        <thead>
-          <tr>
-            <th>Email</th>
-            <th>Phone</th>
-            <th>Status</th>
-            <th>Organizations</th>
-            <th>Created</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((user) => (
-            <tr key={user.id}>
-              <td>
-                <Link href={`/platform/members/${user.id}`}>{user.email}</Link>
-              </td>
-              <td>{user.phone ?? "—"}</td>
-              <td>{user.is_active ? "Active" : "Inactive"}</td>
-              <td>
-                {user.memberships
-                  .map((m) => `${m.organization_name}: ${m.role} (${m.status})`)
-                  .join(", ")}
-              </td>
-              <td>{new Date(user.created_at).toLocaleDateString()}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <p>{total} members</p>
-      <button disabled={!offset} onClick={() => setOffset(offset - 25)}>
-        Previous
-      </button>
-      <button
-        disabled={offset + 25 >= total}
-        onClick={() => setOffset(offset + 25)}
+      <DataTable
+        caption="Member directory"
+        rows={users}
+        rowKey={(user) => user.id}
+        columns={[
+          {
+            key: "email",
+            header: "Email",
+            cell: (user) => (
+              <Link href={`/platform/members/${user.id}`}>
+                <bdi dir="ltr">{user.email}</bdi>
+              </Link>
+            ),
+          },
+          {
+            key: "phone",
+            header: "Phone",
+            cell: (user) =>
+              user.phone ? <bdi dir="ltr">{user.phone}</bdi> : "—",
+          },
+          {
+            key: "status",
+            header: "Status",
+            cell: (user) => (
+              <StatusBadge
+                value={user.is_active ? "active" : "inactive"}
+                tone={user.is_active ? "success" : "neutral"}
+              >
+                {user.is_active ? "Active" : "Inactive"}
+              </StatusBadge>
+            ),
+          },
+          {
+            key: "organizations",
+            header: "Organizations",
+            cell: (user) => (
+              <ul className="chip-list">
+                {user.memberships.map((m) => (
+                  <li key={m.organization_id}>
+                    {`${m.organization_name}: ${m.role} (${m.status})`}
+                  </li>
+                ))}
+              </ul>
+            ),
+          },
+          {
+            key: "created",
+            header: "Created",
+            cell: (user) => new Date(user.created_at).toLocaleDateString(),
+          },
+        ]}
+      />
+      <div className="pager">
+        <p>{total} members</p>
+        <div className="action-row">
+          <Button
+            variant="quiet"
+            disabled={!offset}
+            onClick={() => setOffset(offset - 25)}
+          >
+            Previous
+          </Button>
+          <Button
+            variant="quiet"
+            disabled={offset + 25 >= total}
+            onClick={() => setOffset(offset + 25)}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
+      <FormSection
+        title="Create user"
+        description="Creates an account staff can hand over. Add an organization to give access straight away."
       >
-        Next
-      </button>
-      <section aria-label="Create user">
-        <h2>Create user</h2>
         <form
           onSubmit={(e) => {
             void create(e);
           }}
         >
-          <label>
-            Email
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </label>
-          {emailFieldError && (
-            <p role="alert" data-testid="email-field-error">
-              {emailFieldError}
-            </p>
-          )}
-          <span>
-            <label>
-              Country code
-              <select
-                value={countryCode}
-                disabled={busy}
-                onChange={(e) => setCountryCode(e.target.value)}
-              >
-                {COMMON_COUNTRY_CODES.map((code) => (
-                  <option key={code} value={code}>
-                    {code}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Phone
+          <Field
+            label="Email"
+            error={emailFieldError}
+            errorTestId="email-field-error"
+          >
+            {(control) => (
               <input
-                type="tel"
-                value={phone}
-                disabled={busy}
-                onChange={(e) => setPhone(e.target.value)}
+                {...control}
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
-            </label>
-          </span>
-          <p className="muted">Enter the number without the leading 0.</p>
-          {phoneFieldError && (
-            <p role="alert" data-testid="phone-field-error">
-              {phoneFieldError}
-            </p>
-          )}
-          <label>
-            Password
-            <input
-              type="password"
-              autoComplete="new-password"
-              required={!generate}
-              disabled={generate}
-              minLength={8}
-              maxLength={200}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </label>
-          <button
+            )}
+          </Field>
+          <div className="phone-row">
+            <Field label="Country code">
+              {(control) => (
+                <select
+                  {...control}
+                  value={countryCode}
+                  dir="ltr"
+                  disabled={busy}
+                  onChange={(e) => setCountryCode(e.target.value)}
+                >
+                  {COMMON_COUNTRY_CODES.map((code) => (
+                    <option key={code} value={code}>
+                      {code}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </Field>
+            <Field
+              label="Phone"
+              hint="Enter the number without the leading 0."
+              error={phoneFieldError}
+              errorTestId="phone-field-error"
+            >
+              {(control) => (
+                <input
+                  {...control}
+                  type="tel"
+                  dir="ltr"
+                  value={phone}
+                  disabled={busy}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
+              )}
+            </Field>
+          </div>
+          <Field
+            label="Password"
+            hint={
+              generate
+                ? "A strong password will be generated when the user is created."
+                : "At least 8 characters."
+            }
+          >
+            {(control) => (
+              <input
+                {...control}
+                type="password"
+                autoComplete="new-password"
+                required={!generate}
+                disabled={generate}
+                minLength={8}
+                maxLength={200}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            )}
+          </Field>
+          <Button
             type="button"
+            variant="quiet"
             aria-pressed={generate}
             onClick={() => {
               setGenerate(!generate);
@@ -272,19 +339,18 @@ export default function MembersPage() {
             }}
           >
             {generate ? "Use typed password" : "Generate password"}
-          </button>
-          {generate && (
-            <p>A strong password will be generated when the user is created.</p>
-          )}
+          </Button>
           <OrganizationSelect
             optional
             value={organization}
             onChange={setOrganization}
           />
           {organization && <RoleSelect value={role} onChange={setRole} />}
-          <button disabled={busy}>Create user</button>
+          <Button type="submit" disabled={busy}>
+            Create user
+          </Button>
         </form>
-      </section>
+      </FormSection>
       {issued && (
         <PasswordPanel password={issued} onDismiss={() => setIssued("")} />
       )}
