@@ -7,6 +7,7 @@ import * as api from "@/lib/api";
 import BotWorkspaceNav from "@/lib/bot-workspace-nav";
 import { roleSatisfies, useSession } from "@/lib/session";
 import { Empty, Loading, Notice } from "@/lib/ui";
+import { Icon } from "@/lib/icons";
 
 /** Overview (P4-05, docs/14 §9 / docs/10): MEASURED numbers only — usage
  * events and real conversations; playground threads never count. Date range
@@ -196,7 +197,9 @@ export default function OverviewPage() {
               </li>
               <li data-test="leads_summary">Leads: {summary.leads}</li>
               <li data-test="thumbs">
-                👍 {summary.thumbs_up} · 👎 {summary.thumbs_down}
+                <Icon name="thumbs-up" label="Thumbs up" /> {summary.thumbs_up}{" "}
+                · <Icon name="thumbs-down" label="Thumbs down" />{" "}
+                {summary.thumbs_down}
               </li>
             </ul>
           </section>

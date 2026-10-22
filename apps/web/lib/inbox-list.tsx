@@ -9,6 +9,7 @@ import * as api from "@/lib/api";
 import type { InboxConversation } from "@/lib/api";
 import { roleSatisfies, useSession } from "@/lib/session";
 import { Empty, Loading, Notice } from "@/lib/ui";
+import { Icon } from "./icons";
 
 export function InboxList({
   compact = false,
@@ -273,7 +274,7 @@ export function InboxList({
                   </p>
                   <div className="inbox-row-meta">
                     <span className="channel-label" title={row.channel}>
-                      <span aria-hidden="true">◎</span>{" "}
+                      <Icon name="contacts" size={14} />{" "}
                       {humanLabel(row.channel)}
                     </span>
                     <LabelBadge value={row.status} />
@@ -282,7 +283,7 @@ export function InboxList({
                         className="unread-count"
                         aria-label={`${row.unread_count} unread`}
                       >
-                        <span aria-hidden="true">●</span> {row.unread_count}
+                        <Icon name="dot" size={14} /> {row.unread_count}
                       </span>
                     )}
                   </div>

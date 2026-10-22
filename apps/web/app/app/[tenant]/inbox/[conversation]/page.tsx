@@ -10,6 +10,7 @@ import * as api from "@/lib/api";
 import type { InboxThread, Member } from "@/lib/api";
 import { roleSatisfies, useSession } from "@/lib/session";
 import { Loading, Notice } from "@/lib/ui";
+import { Icon } from "@/lib/icons";
 
 export default function InboxConversationPage() {
   const params = useParams<{ tenant: string; conversation: string }>();
@@ -88,7 +89,7 @@ export default function InboxConversationPage() {
           <Link
             href={`/app/${tenantId}/inbox${search.toString() ? `?${search.toString()}` : ""}`}
           >
-            ← Inbox
+            <Icon name="arrow-left" /> Inbox
           </Link>
         </p>
         {error ? (
@@ -126,7 +127,7 @@ export default function InboxConversationPage() {
           <Link
             href={`/app/${tenantId}/inbox${search.toString() ? `?${search.toString()}` : ""}`}
           >
-            ← Back to inbox
+            <Icon name="arrow-left" /> Back to inbox
           </Link>
         </p>
         <h1>Conversation</h1>

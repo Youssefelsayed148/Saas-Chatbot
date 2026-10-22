@@ -8,6 +8,7 @@ import { PasswordField } from "@/lib/password-field";
 import { ThemeToggle } from "@/lib/theme";
 import * as api from "@/lib/api";
 import { useSession } from "@/lib/session";
+import { Icon } from "@/lib/icons";
 
 function LoginForm() {
   const router = useRouter();
@@ -56,7 +57,7 @@ function LoginForm() {
     <main className="auth-page">
       <div className="auth-brand">
         <span className="brand-mark" aria-hidden="true">
-          ✧
+          <Icon name="sparkle" size={22} />
         </span>
         <span>Website Chatbot SaaS</span>
         <ThemeToggle />

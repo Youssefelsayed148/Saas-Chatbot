@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { useSession } from "./session";
+import { Icon } from "./icons";
 const ThemeContext = createContext<{ theme: string; toggle: () => void }>({
   theme: "dark",
   toggle: () => {},
@@ -66,7 +67,7 @@ export function ThemeToggle() {
       onClick={toggle}
       data-testid="theme-toggle"
     >
-      {theme === "dark" ? "☀" : "☾"}
+      <Icon name={theme === "dark" ? "sun" : "moon"} />
       <span>Appearance</span>
     </button>
   );

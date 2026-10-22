@@ -381,6 +381,9 @@ td button {
   font-size: 0.78rem;
   overflow-wrap: anywhere;
 }
+.search-trigger .search-icon {
+  display: none;
+}
 .search-trigger {
   margin-inline-start: auto;
   font-size: 0.75rem;
@@ -570,9 +573,8 @@ dialog::backdrop {
     margin: 0;
     padding: 0.3rem 0.6rem;
   }
-  .search-trigger::after {
-    content: "\2315";
-    font-size: 1.3rem;
+  .search-trigger .search-icon {
+    display: inline-block;
   }
   .account-nav {
     inline-size: 100%;
