@@ -6,8 +6,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends
 
 from app.auth import cookies
-from app.bots.schemas import BotCreateRequest, BotOut, BotUpdateRequest, ToneOut
-from app.bots.service import BotService
+from app.bots.schemas import BotCreateRequest, BotOut, BotUpdateRequest, ReadinessOut, ToneOut
+from app.bots.service import BotService, readiness_items
 from app.core.tenancy import TenantContext, TenantContextDep
 
 router = APIRouter(tags=["bots"])
@@ -49,6 +49,15 @@ def get_tone_and_rules(bot_id: UUID, context: TenantContextDep) -> ToneOut:
     context.require_operator()
     bot = BotService(context.db).get_bot(context, bot_id)
     return ToneOut(tone_and_rules=bot.tone_and_rules)
+
+
+@router.get("/api/v1/tenants/{tenant_id}/bots/{bot_id}/readiness", response_model=ReadinessOut)
+def get_readiness(bot_id: UUID, context: TenantContextDep) -> ReadinessOut:
+    """Staff-only, read-only launch checklist computed from the bot's real state."""
+    context.require_operator()
+    bot = BotService(context.db).get_bot(context, bot_id)
+    items = readiness_items(bot)
+    return ReadinessOut(ready=all(item.status != "todo" for item in items), items=items)
 
 
 @router.patch("/api/v1/tenants/{tenant_id}/bots/{bot_id}", response_model=BotOut)

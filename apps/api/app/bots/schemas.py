@@ -5,6 +5,7 @@ validated by a Pydantic schema."""
 
 import re
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
@@ -147,6 +148,22 @@ class BotUpdateRequest(BaseModel):
 
 class ToneOut(BaseModel):
     tone_and_rules: str | None = None
+
+
+class ReadinessItem(BaseModel):
+    """One readiness check. `section` names where in the dashboard to fix it."""
+
+    id: str
+    label: str
+    status: Literal["ok", "todo", "warning"]
+    detail: str
+    section: Literal["contact", "messages", "access", "knowledge", "tier"]
+
+
+class ReadinessOut(BaseModel):
+    # True when no item is "todo" (warnings do not block).
+    ready: bool
+    items: list[ReadinessItem]
 
 
 class BotOut(BaseModel):

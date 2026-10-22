@@ -34,6 +34,7 @@ TENANT_ROUTE_ROLES: dict[tuple[str, str], str] = {
     ("GET", "/api/v1/tenants/{tenant_id}/bots/{bot_id}"): "viewer",
     ("PATCH", "/api/v1/tenants/{tenant_id}/bots/{bot_id}"): "platform_staff_only",
     ("GET", "/api/v1/tenants/{tenant_id}/bots/{bot_id}/tone-and-rules"): "platform_staff_only",
+    ("GET", "/api/v1/tenants/{tenant_id}/bots/{bot_id}/readiness"): "platform_staff_only",
     ("DELETE", "/api/v1/tenants/{tenant_id}/bots/{bot_id}"): "platform_staff_only",
     ("GET", "/api/v1/tenants/{tenant_id}/bots/{bot_id}/sources"): "platform_staff_only",
     ("GET", "/api/v1/tenants/{tenant_id}/bots/{bot_id}/sources/qa-template"): "platform_staff_only",
