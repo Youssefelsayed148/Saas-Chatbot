@@ -1,5 +1,89 @@
 # Execution checkpoint
 
+## 2026-10-22 — A2 widget embedding & domain enforcement batch (branch fix/a2-widget-embedding, created from main)
+
+Commits (local only, no push/tag/merge): 5493fbb A2.1 loader host forwarding +
+`_host_of` bare-hostname support; 69cd2d0 A2.2 per-bot `frame-ancestors` via
+proxy; fbe4b7f A2.3 defaults (hello_default welcome, bottom-right position);
+e3f9f19 A2.4 Playwright domain-enforcement spec. All commit messages carry the
+required trailer.
+
+Implementation choices:
+- A2.1: `packages/widget/src/loader.js` (canonical) was edited and both copies
+  regenerated with `node packages/widget/scripts/sync-loader.mjs`; the frame URL
+  now carries `host=<location.hostname of the EMBEDDING page>`. The frame page
+  (`apps/web/app/widget/frame/page.tsx`) reads `host` from its own query and
+  posts it as `page_origin` (API field existed, max 300 kept).
+- A2.2: `headers()` in next.config is static and a page cannot set its own
+  response headers, so the per-bot value is computed where the pipeline can:
+  the existing `apps/web/proxy.ts` was extended with the `/widget/frame` matcher
+  and fetches the new locator-addressed endpoint
+  `GET /api/public/v1/widgets/{locator}/frame-ancestors` (compiled CSP value
+  only; a bot's unknown locator 404s). This is the smallest change: no route
+  split, no restructuring of the (client) frame page, no config contract change
+  — the endpoint exposes exactly the value the frame HTTP header shows any
+  browser anyway. Empty list → permissive `http: https:`; non-empty → listed
+  hosts in http+https plus subdomains (matching `origin_allowed` semantics);
+  `localhost` gets `:<port-wildcard>` outside production. Unknown locator /
+  API outage → falls back to the static permissive rule while the session
+  endpoint still denies unlisted page origins. Dashboard CSP untouched, the
+  sandbox attribute unchanged, and the security position is unchanged: the
+  `host`/`page_origin` value is a spoofable defence signal sent by the page —
+  NOT authentication — and `frame-ancestors` is what stops browsers from
+  framing the widget on unlisted sites.
+
+Verification environment: Windows venv (`.venv/Scripts/python.exe`, driven from
+WSL, as in earlier sessions) and Windows node (`node.exe`, `cmd.exe`).
+
+Commands and outcomes:
+- `cmp apps/web/public/widget/v1/loader.js packages/widget/src/loader.js` after
+  `node packages/widget/scripts/sync-loader.mjs` → identical, `diff` exit 0;
+  both copies gained the same 6 lines (host param + comment).
+- `python -m ruff check` on every touched API file per commit — All checks
+  passed!; `python -m ruff format --check` on the touched test files, service
+  and router — formatted (one PRE-EXISTING formatting drift remains in
+  `app/widget/router.py` at the old `ai_message=(...)` block, flagged by
+  `--check` on HEAD before this batch too; left untouched per batch scope).
+- `python -m mypy --follow-imports=silent app/widget/service.py
+  app/widget/router.py` — Success, no issues.
+- `cmd.exe /c npm run typecheck` (next typegen + tsc --noEmit), `eslint` on
+  `proxy.ts`, the frame page, the settings page and `widget-domain.spec.ts`
+  with `--max-warnings 0` — clean.
+- `cmd.exe /c npm run build` (Next 16.4.0) — succeeded, Proxy(Middleware)
+  compiled; `cmd.exe /c npm run check:public-asset` — OK.
+- Header behaviour verified WITHOUT the disposable DB: the web build ran on
+  127.0.0.1:3100 against a THROWAWAY stub API (local Python script on
+  127.0.0.1:8004, no containers, since the owner's dev API listens on 8000 and
+  was left alone; both processes were closed afterwards):
+  `/widget/frame?locator=…` → single header
+  `content-security-policy: frame-ancestors http://localhost:* https://localhost:* …`;
+  `/widget/frame` without locator and with an UNKNOWN locator → falls back to
+  `frame-ancestors http: https:`; `/login` keeps `frame-ancestors 'none'`.
+
+NOT verified (blocked, no fabrication):
+- Disposable test DB `saas-test-db` on 127.0.0.1:55462 kept refusing/timing out
+  connections (psycopg ConnectionTimeout, two runs: 23 errors / 44 errors, ALL
+  at session-scoped fixture setup, zero assertion failures). NO pytest and NO
+  Playwright run completed in this session. Written-but-unverified tests:
+  `tests/test_allowed_domains.py` `test_host_of` cases,
+  `tests/test_widget_public.py` bare-hostname + frame-ancestors tests,
+  `tests/test_widget_appearance.py` hello_default fallback test, the Playwright
+  spec `tests/widget-domain.spec.ts`, and the real end-to-end CSP enforcement
+  inside Chrome. Owner reruns:
+  `cd apps/api && TEST_DATABASE_URL=postgresql://test:test@127.0.0.1:55462/postgres ENVIRONMENT=test PYTHONUTF8=1 python -m pytest tests/test_allowed_domains.py tests/test_widget_public.py tests/test_widget_appearance.py`
+  then `cd apps/web && TEST_DATABASE_URL=… npx playwright test`.
+- A2.4 runtime risk tracked for that run: Chrome treats a missing port in a CSP
+  host-source as the scheme's default port only, which is why the spec pins the
+  ALLOWED site to `localhost` (emitted as `localhost:*` outside production) and
+  the DENIED site to 127.0.0.1.
+- Known pre-existing behaviour observed but NOT changed (outside batch scope,
+  for the owner): `restoreSession` keys the widget session in the frame's own
+  localStorage, so a token minted on an allowed site survives a later load
+  behind `allow-same-origin` even if the unlisted site's homepage would
+  otherwise be denied; with A2.2 that site cannot frame the widget at all, so
+  the reuse path is unreachable for foreign sites in browser clients.
+
+
 ## 2026-10-20 — S3 staff Bots (backend/static verification complete)
 
 Branch `feature/staff-bots` initially stacked on S2 `df826b5`, then incorporated
