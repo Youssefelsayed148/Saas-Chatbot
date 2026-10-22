@@ -405,7 +405,7 @@ kbd {
   min-block-size: 35px;
 }
 .workspace-content {
-  max-inline-size: 1560px;
+  max-inline-size: var(--content-max);
   margin-inline: auto;
   padding: 1.7rem 2.4rem 4rem;
   min-inline-size: 0;
@@ -429,15 +429,17 @@ kbd {
   color: var(--muted);
   text-decoration: none;
 }
-.platform-shell {
-  --accent: var(--staff);
-  --accent-soft: var(--staff-soft);
-}
-.platform-shell .context-badge {
-  color: var(--staff);
-  background: var(--staff-soft);
-  padding: 0.3rem 0.7rem;
+/* Staff areas keep the single blue accent; the shell shows a badge instead. */
+.platform-shell .context-badge,
+.staff-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 0.25rem 0.7rem;
   border-radius: 999px;
+  font-weight: 650;
 }
 .mobile-menu {
   display: none;
@@ -1402,7 +1404,7 @@ progress::-webkit-progress-value {
   align-self: end;
 }
 .platform-client-detail > [data-testid="client-detail-status"] {
-  background: var(--staff-soft);
+  background: var(--accent-soft);
   border: 1px solid var(--border);
   padding: 0.7rem 1rem;
   border-radius: var(--radius-sm);
@@ -1421,7 +1423,7 @@ progress::-webkit-progress-value {
   font-size: 0.75rem;
 }
 .platform-operations > [data-testid="platform-analytics"] {
-  border-block-start: 3px solid var(--staff);
+  border-block-start: 3px solid var(--accent);
 }
 .platform-operations [data-testid="platform-audit-review"] ul {
   list-style: none;
