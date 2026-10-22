@@ -21,14 +21,14 @@ export default function BotToneField({
       data-testid="tone-and-rules-section"
       className="bot-tone"
     >
-      <h2>Tone and rules (platform staff only)</h2>
+      <h3>Tone and rules (platform staff only)</h3>
       <p className="muted">
         Short notes on how the assistant should sound, for example &ldquo;Warm,
         brief, use the customer&rsquo;s name&rdquo;. These notes only change
         wording and style. They cannot override the grounding, safety or answer
         format rules, and customers and organization members never see them.
       </p>
-      <label>
+      <label className="field">
         Tone and rules
         <textarea
           dir="auto"
@@ -50,7 +50,11 @@ export default function BotToneField({
         {value.length} / {TONE_MAX} characters
       </p>
       {error && (
-        <p role="alert" data-testid="field-error-tone_and_rules">
+        <p
+          role="alert"
+          className="field-error"
+          data-testid="field-error-tone_and_rules"
+        >
           {error}
         </p>
       )}
