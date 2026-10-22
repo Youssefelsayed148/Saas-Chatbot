@@ -9,6 +9,37 @@ import {
 } from "@/lib/staff-members";
 import { Notice } from "@/lib/ui";
 
+const COMMON_COUNTRY_CODES = [
+  "+20",
+  "+966",
+  "+971",
+  "+974",
+  "+968",
+  "+965",
+  "+973",
+  "+962",
+  "+961",
+  "+90",
+  "+44",
+  "+49",
+  "+33",
+  "+34",
+  "+39",
+  "+1",
+];
+
+function joinedPhone(countryCode: string, national: string): string {
+  // Digits only: the API normalizes separators too, but keep the payload clean.
+  const value = national.trim().replace(/[\s().-]/g, "");
+  if (!value) return "";
+  // Already international → send as typed (the API still validates E.164).
+  if (value.startsWith("+")) return value;
+  // A country is always selected (default +20): a pasted national number
+  // starting with 0 loses that trunk prefix.
+  const digits = value.replace(/^0+/, "");
+  return digits ? `${countryCode}${digits}` : "";
+}
+
 export default function MembersPage() {
   const [users, setUsers] = useState<api.StaffUser[]>([]);
   const [total, setTotal] = useState(0);
@@ -17,6 +48,7 @@ export default function MembersPage() {
   const [status, setStatus] = useState("");
   const [offset, setOffset] = useState(0);
   const [email, setEmail] = useState("");
+  const [countryCode, setCountryCode] = useState("+20");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [generate, setGenerate] = useState(false);
@@ -55,7 +87,7 @@ export default function MembersPage() {
     try {
       const result = await api.platformCreateUser({
         email,
-        phone: phone || undefined,
+        phone: joinedPhone(countryCode, phone) || undefined,
         ...(generate ? { generate: true } : { password }),
         ...(organization ? { organization_id: organization, role } : {}),
       });
@@ -69,10 +101,16 @@ export default function MembersPage() {
         // Field details go inline under the matching input; anything without a
         // matching input stays in the form-level error area.
         const phone = e.fieldErrors.find((entry) => entry.field === "phone");
-        const emailEntry = e.fieldErrors.find((entry) => entry.field === "email");
+        const emailEntry = e.fieldErrors.find(
+          (entry) => entry.field === "email",
+        );
         if (phone) setPhoneFieldError(phone.message);
         if (emailEntry) setEmailFieldError(emailEntry.message);
-        if (e.fieldErrors.some((entry) => entry.field !== "phone" && entry.field !== "email")) {
+        if (
+          e.fieldErrors.some(
+            (entry) => entry.field !== "phone" && entry.field !== "email",
+          )
+        ) {
           setError(e.message);
         }
       } else {
@@ -181,14 +219,32 @@ export default function MembersPage() {
               {emailFieldError}
             </p>
           )}
-          <label>
-            Phone
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-            />
-          </label>
+          <span>
+            <label>
+              Country code
+              <select
+                value={countryCode}
+                disabled={busy}
+                onChange={(e) => setCountryCode(e.target.value)}
+              >
+                {COMMON_COUNTRY_CODES.map((code) => (
+                  <option key={code} value={code}>
+                    {code}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Phone
+              <input
+                type="tel"
+                value={phone}
+                disabled={busy}
+                onChange={(e) => setPhone(e.target.value)}
+              />
+            </label>
+          </span>
+          <p className="muted">Enter the number without the leading 0.</p>
           {phoneFieldError && (
             <p role="alert" data-testid="phone-field-error">
               {phoneFieldError}

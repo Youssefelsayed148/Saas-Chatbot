@@ -116,16 +116,43 @@ test("invalid phone shows an inline error without echoing the value", async ({
   const { tenantId } = await registerOperator(page, "phone-error");
   await page.goto("/platform/members");
   const create = page.getByRole("region", { name: "Create user", exact: true });
-  await create.getByLabel("Email", { exact: true }).fill(uniqueEmail("phone-error"));
+  const email = uniqueEmail("phone-error");
+  await create.getByLabel("Email", { exact: true }).fill(email);
   await create.getByRole("button", { name: "Generate password" }).click();
   await create.getByLabel("Phone", { exact: true }).fill("0123 not a phone");
-  await create.getByRole("combobox", { name: "Organization" }).selectOption(tenantId);
-  await create.getByRole("button", { name: "Create user", exact: true }).click();
+  await create
+    .getByRole("combobox", { name: "Organization" })
+    .selectOption(tenantId);
+  await create
+    .getByRole("button", { name: "Create user", exact: true })
+    .click();
   const inline = page.getByTestId("phone-field-error");
   await expect(inline).toBeVisible();
   await expect(inline).toContainText("international");
   // The submitted value itself is never echoed back.
   await expect(inline).not.toContainText("0123 not a phone");
+});
+
+test("phone joins the country code and strips a pasted leading 0", async ({
+  page,
+}) => {
+  const { tenantId } = await registerOperator(page, "phone-join");
+  await page.goto("/platform/members");
+  const create = page.getByRole("region", { name: "Create user", exact: true });
+  const email = uniqueEmail("phone-join");
+  await create.getByLabel("Email", { exact: true }).fill(email);
+  await create.getByRole("button", { name: "Generate password" }).click();
+  await expect(create.getByLabel("Country code")).toHaveValue("+20");
+  // Pasted national number with the trunk 0: stripped before sending.
+  await create.getByLabel("Phone", { exact: true }).fill("01012345678");
+  await create
+    .getByRole("combobox", { name: "Organization" })
+    .selectOption(tenantId);
+  await create
+    .getByRole("button", { name: "Create user", exact: true })
+    .click();
+  await page.getByLabel("Search email").fill(email);
+  await expect(page.getByText("+201012345678", { exact: true })).toBeVisible();
 });
 
 test("non-staff cannot access the Members list or details", async ({
