@@ -234,7 +234,19 @@ export interface Bot {
     handoff_enabled?: boolean;
     allowed_domains?: string[];
     avatar?: string;
+    /** Widget colour slots and preset id (#14); absent = default look. */
+    theme?: {
+      preset?: string;
+      header?: string;
+      send_button?: string;
+      user_bubble?: string;
+      bot_bubble?: string;
+      text?: string;
+      launcher?: string;
+    };
   };
+  /** Staff-only; the API blanks it for members (#15). */
+  tone_and_rules?: string | null;
   widget_locator?: string;
   created_at: string;
   updated_at: string;
@@ -903,12 +915,32 @@ export async function patchBot(
     name?: string;
     status?: "active" | "paused";
     config?: Record<string, unknown>;
+    tone_and_rules?: string | null;
   },
 ): Promise<Bot> {
   return api<Bot>(`tenants/${tenantId}/bots/${botId}`, {
     method: "PATCH",
     body: patch,
   });
+}
+
+export type ReadinessStatus = "ok" | "todo" | "warning";
+export interface ReadinessItem {
+  id: string;
+  label: string;
+  status: ReadinessStatus;
+  detail: string;
+  section: "contact" | "messages" | "access" | "knowledge" | "tier";
+}
+export interface Readiness {
+  ready: boolean;
+  items: ReadinessItem[];
+}
+export async function getBotReadiness(
+  tenantId: string,
+  botId: string,
+): Promise<Readiness> {
+  return api<Readiness>(`tenants/${tenantId}/bots/${botId}/readiness`);
 }
 
 export async function archiveBot(

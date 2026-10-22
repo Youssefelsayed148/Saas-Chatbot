@@ -204,7 +204,14 @@ export async function safetyFixture(page: Page, platform = false) {
         usage: {},
         backfill: null,
         retrieval_mode: "keyword",
+        embedding_ready: false,
+        tier_targets: {
+          standard: { provider: "openrouter", model: null },
+          premium: { provider: "openai", model: "gpt-4.1-nano" },
+        },
       });
+    if (suffix === `/bots/${botId}/readiness`)
+      return reply({ ready: false, items: [] });
     if (suffix.endsWith("/rag/costs")) return reply({ costs: [] });
     if (suffix.endsWith("/rag/limits"))
       return reply({ limits: {}, effective_limits: {}, usage: {} });

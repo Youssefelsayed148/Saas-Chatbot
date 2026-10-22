@@ -160,6 +160,9 @@ class Bot(Base):
     generation_model: Mapped[str | None] = mapped_column(Text)
     tier: Mapped[str] = mapped_column(Text, default="standard", server_default="standard")
     rag_limits: Mapped[dict[str, int | None] | None] = mapped_column(JSONB)
+    # Staff-only tone and style notes (#15); fenced into the prompt after the
+    # fixed rules. NULL = none. Never exposed to tenant members.
+    tone_and_rules: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utcnow
     )
@@ -173,6 +176,10 @@ class Bot(Base):
             "generation_provider IN ('openrouter','openai')", name="ck_bots_generation_provider"
         ),
         CheckConstraint("tier IN ('standard','premium')", name="ck_bots_tier"),
+        CheckConstraint(
+            "tone_and_rules IS NULL OR char_length(tone_and_rules) <= 2000",
+            name="ck_bots_tone_and_rules_length",
+        ),
         CheckConstraint(
             "status IN ('draft', 'active', 'paused', 'archived')", name="ck_bots_status"
         ),

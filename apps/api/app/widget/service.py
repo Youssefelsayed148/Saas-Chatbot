@@ -20,6 +20,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session as OrmSession
 
+from app.bots.schemas import HEX_RE, THEME_PRESET_IDS, THEME_SLOTS, normalize_hex
 from app.chat.conversations import (
     get_or_create_conversation_for_session,
     record_usage_event,
@@ -195,6 +196,23 @@ def frame_ancestors(bot: Bot, environment: str) -> str:
 # --- widget config (safe fields only, docs/09) ------------------------------
 
 
+def _public_theme(config: dict[str, Any]) -> dict[str, str] | None:
+    """The validated theme slots (#14), or None when nothing is configured so
+    the default payload and the default look stay unchanged."""
+    raw = config.get("theme")
+    if not isinstance(raw, dict):
+        return None
+    theme: dict[str, str] = {}
+    preset = raw.get("preset")
+    if isinstance(preset, str) and preset in THEME_PRESET_IDS:
+        theme["preset"] = preset
+    for slot in THEME_SLOTS:
+        value = raw.get(slot)
+        if isinstance(value, str) and HEX_RE.fullmatch(value):
+            theme[slot] = normalize_hex(value)
+    return theme or None
+
+
 def widget_config(bot: Bot) -> dict[str, Any]:
     """Safe public fields only: branding, greeting, opening questions,
     appearance, language. Internal config stays internal: support contact,
@@ -207,7 +225,8 @@ def widget_config(bot: Bot) -> dict[str, Any]:
         config.get("default_language") if config.get("default_language") in ("en", "ar") else "en"
     )
     name = str(config.get("assistant_name") or bot.name)[:100]
-    return {
+    theme = _public_theme(config)
+    payload: dict[str, Any] = {
         "bot_name": name,
         "business_name": str(config.get("business_name") or "")[:100],
         "assistant_name": name,
@@ -228,6 +247,9 @@ def widget_config(bot: Bot) -> dict[str, Any]:
         "default_language": language,
         "dir": "rtl" if language == "ar" else "ltr",
     }
+    if theme is not None:
+        payload["theme"] = theme
+    return payload
 
 
 # --- visitor sessions --------------------------------------------------------

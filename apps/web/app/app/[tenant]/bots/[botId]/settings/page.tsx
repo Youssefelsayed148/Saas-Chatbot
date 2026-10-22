@@ -12,6 +12,12 @@ import { useSession } from "@/lib/session";
 import { ConfirmAction, Loading, Notice } from "@/lib/ui";
 import BotWorkspaceNav from "@/lib/bot-workspace-nav";
 import RagTierControl from "@/lib/rag-tier-control";
+import BotToneField from "@/lib/bot-tone-field";
+import BotReadinessCard from "@/lib/bot-readiness-card";
+import WidgetThemeEditor, { type ThemeDraft } from "@/lib/widget-theme-editor";
+import WidgetPreview from "@/lib/widget-preview";
+import { THEME_SLOTS, isHex, type ThemeSlots } from "@/lib/widget-theme";
+import "@/app/bot-settings-c.css";
 
 /** API field paths (dotted, without the body root) → form input keys.
  * Unmatched fields render in the form-level error area instead. */
@@ -31,6 +37,8 @@ const FIELD_KEYS = new Set([
   "position",
   "handoff_enabled",
   "allowed_domains",
+  "tone_and_rules",
+  "theme",
 ]);
 
 function inlineFieldKey(field: string): string | null {
@@ -38,7 +46,11 @@ function inlineFieldKey(field: string): string | null {
   const parts = key.split(".");
   // List entries validate per item ("allowed_domains.0"); show under the list.
   if (/^\d+$/.test(parts[parts.length - 1])) parts.pop();
+  // Theme slot errors ("theme.header") show under the appearance editor.
+  if (parts[0] === "theme") parts.length = 1;
   key = parts.join(".");
+  // One name field (#9): a bot-name error shows under "Assistant name".
+  if (key === "name") key = "assistant_name";
   return FIELD_KEYS.has(key) ? key : null;
 }
 
@@ -55,11 +67,15 @@ export default function BotSettingsPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
+  const [readinessKey, setReadinessKey] = useState(0);
   const [transitioning, setTransitioning] = useState(false);
 
-  const [name, setName] = useState("");
   const [assistantName, setAssistantName] = useState("");
-  const [businessName, setBusinessName] = useState("");
+  // null = not edited: the field then shows the organization name (#9).
+  const [businessNameEdit, setBusinessNameEdit] = useState<string | null>(null);
+  const organizationName =
+    staffOrganizations?.find((org) => org.id === tenantId)?.name ?? "";
+  const businessName = businessNameEdit ?? organizationName;
   const [businessDescription, setBusinessDescription] = useState("");
   const [welcomeEn, setWelcomeEn] = useState("");
   const [welcomeAr, setWelcomeAr] = useState("");
@@ -72,14 +88,22 @@ export default function BotSettingsPage() {
   const [position, setPosition] = useState<"left" | "right">("right");
   const [handoffEnabled, setHandoffEnabled] = useState(true);
   const [allowedDomains, setAllowedDomains] = useState("");
+  const [toneAndRules, setToneAndRules] = useState("");
+  const [themeDraft, setThemeDraft] = useState<ThemeDraft>({
+    preset: "classic",
+    slots: {},
+  });
+  // Only send a theme when staff changed it or the bot already had one, so an
+  // untouched bot keeps the exact default payload.
+  const [themeActive, setThemeActive] = useState(false);
 
   const load = useCallback(async () => {
     try {
       const loaded = await api.getBot(tenantId, botId);
       setBot(loaded);
-      setName(loaded.name);
-      setAssistantName(loaded.config.assistant_name ?? "");
-      setBusinessName(loaded.config.business_name ?? "");
+      // One name field (#9): the legacy bot name is the fallback.
+      setAssistantName(loaded.config.assistant_name || loaded.name);
+      setBusinessNameEdit(loaded.config.business_name || null);
       setBusinessDescription(loaded.config.business_description ?? "");
       setWelcomeEn(loaded.config.welcome_message?.en ?? "");
       setWelcomeAr(loaded.config.welcome_message?.ar ?? "");
@@ -92,6 +116,20 @@ export default function BotSettingsPage() {
       setPosition(loaded.config.position ?? "right");
       setHandoffEnabled(loaded.config.handoff_enabled ?? true);
       setAllowedDomains((loaded.config.allowed_domains ?? []).join("\n"));
+      setToneAndRules(loaded.tone_and_rules ?? "");
+      const storedTheme = loaded.config.theme;
+      const slots: ThemeSlots = {};
+      for (const slot of THEME_SLOTS) {
+        const value = storedTheme?.[slot];
+        if (isHex(value)) slots[slot] = value;
+      }
+      setThemeDraft({
+        preset:
+          storedTheme?.preset ??
+          (Object.keys(slots).length > 0 ? "custom" : "classic"),
+        slots,
+      });
+      setThemeActive(!!storedTheme);
       setLoadError(null);
     } catch (caught) {
       setLoadError(
@@ -117,7 +155,7 @@ export default function BotSettingsPage() {
     setSaving(true);
     try {
       const config: Record<string, unknown> = {};
-      if (assistantName) config.assistant_name = assistantName;
+      config.assistant_name = assistantName;
       if (businessName) config.business_name = businessName;
       if (businessDescription)
         config.business_description = businessDescription;
@@ -140,16 +178,22 @@ export default function BotSettingsPage() {
       if (avatar) config.avatar = avatar;
       if (position) config.position = position;
       config.handoff_enabled = handoffEnabled;
+      if (themeActive) {
+        config.theme = { preset: themeDraft.preset, ...themeDraft.slots };
+      }
       if (allowedDomains) {
         config.allowed_domains = normalizeDomainLines(allowedDomains);
       }
       const updated = await api.patchBot(tenantId, botId, {
-        name,
+        // The stored bot name follows the single Assistant name field.
+        name: assistantName,
         config,
+        tone_and_rules: toneAndRules,
       });
       setBot(updated);
       setSaved(true);
       await load();
+      setReadinessKey((key) => key + 1);
     } catch (caught) {
       if (caught instanceof api.ApiError && caught.fieldErrors.length > 0) {
         // Field details go inline under the matching input; fields without a
@@ -263,6 +307,13 @@ export default function BotSettingsPage() {
           </div>
         )}
       </div>
+      {canEdit && (
+        <BotReadinessCard
+          tenantId={tenantId}
+          botId={botId}
+          refreshKey={readinessKey}
+        />
+      )}
       {bot.widget_locator && (
         <p className="muted">
           Widget locator:{" "}
@@ -274,22 +325,11 @@ export default function BotSettingsPage() {
       )}
       <form onSubmit={onSave}>
         <label>
-          Bot name
-          <input
-            name="name"
-            disabled={!canEdit}
-            required
-            maxLength={100}
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-          />
-        </label>
-        {fieldError("name")}
-        <label>
           Assistant name
           <input
             name="assistant_name"
             disabled={!canEdit}
+            required
             maxLength={100}
             value={assistantName}
             onChange={(event) => setAssistantName(event.target.value)}
@@ -303,9 +343,13 @@ export default function BotSettingsPage() {
             disabled={!canEdit}
             maxLength={100}
             value={businessName}
-            onChange={(event) => setBusinessName(event.target.value)}
+            onChange={(event) => setBusinessNameEdit(event.target.value)}
           />
         </label>
+        <p className="muted">
+          Defaults to the organization name; edit it if customers know the
+          business by another name.
+        </p>
         {fieldError("business_name")}
         <label>
           Business description
@@ -323,6 +367,7 @@ export default function BotSettingsPage() {
         <label>
           Welcome message (EN)
           <input
+            id="field-welcome_en"
             name="welcome_en"
             disabled={!canEdit}
             maxLength={500}
@@ -373,6 +418,7 @@ export default function BotSettingsPage() {
         <label>
           Support email
           <input
+            id="field-support_email"
             name="support_email"
             type="email"
             disabled={!canEdit}
@@ -427,6 +473,36 @@ export default function BotSettingsPage() {
           </select>
         </label>
         {fieldError("position")}
+        <section
+          aria-label="Widget appearance"
+          className="theme-appearance"
+          data-testid="widget-appearance"
+        >
+          <div>
+            <h2>Widget appearance</h2>
+            <p className="muted">
+              Pick a preset, then adjust any colour. The preview shows the
+              widget exactly as visitors will see it; Save settings applies it.
+            </p>
+            <WidgetThemeEditor
+              draft={themeDraft}
+              brand={colour}
+              disabled={!canEdit}
+              onChange={(next) => {
+                setThemeDraft(next);
+                setThemeActive(true);
+              }}
+            />
+            {fieldError("theme")}
+          </div>
+          <WidgetPreview
+            theme={{ preset: themeDraft.preset, ...themeDraft.slots }}
+            colour={colour}
+            lang={defaultLanguage}
+            name={assistantName || bot.name}
+            welcome={defaultLanguage === "ar" ? welcomeAr : welcomeEn}
+          />
+        </section>
         <label>
           Human handoff enabled
           <input
@@ -442,6 +518,7 @@ export default function BotSettingsPage() {
           Allowed domains (one per line, max 50)
           <textarea
             dir="auto"
+            id="field-allowed_domains"
             name="allowed_domains"
             disabled={!canEdit}
             rows={3}
@@ -450,6 +527,14 @@ export default function BotSettingsPage() {
           />
         </label>
         {fieldError("allowed_domains")}
+        {canEdit && (
+          <BotToneField
+            value={toneAndRules}
+            onChange={setToneAndRules}
+            disabled={!canEdit}
+            error={fieldErrors["tone_and_rules"] ?? null}
+          />
+        )}
         {saveError && <Notice message={saveError} tone="error" />}
         {saved && <Notice message="Settings saved." />}
         {canEdit && (
@@ -458,7 +543,11 @@ export default function BotSettingsPage() {
           </button>
         )}
       </form>
-      {canEdit && <RagTierControl tenantId={tenantId} botId={botId} />}
+      {canEdit && (
+        <div id="settings-ai-tier">
+          <RagTierControl tenantId={tenantId} botId={botId} />
+        </div>
+      )}
       {bot.status === "archived" && <Notice message="This bot is archived." />}
     </main>
   );

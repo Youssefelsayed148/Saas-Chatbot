@@ -15,7 +15,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
-from app.bots.schemas import BotConfig, BotCreateRequest, BotUpdateRequest
+from app.bots.schemas import BotConfig, BotCreateRequest, BotUpdateRequest, ReadinessItem
 from app.core.audit import record_audit
 from app.core.errors import ApiError
 from app.core.tenancy import TenantContext
@@ -43,6 +43,72 @@ def validate_status_transition(current: str, requested: str) -> str:
             f"Status cannot change from {current} to {requested}.",
         )
     return requested
+
+
+def readiness_items(bot: Bot) -> list[ReadinessItem]:
+    """Read-only checklist computed from the bot's real state (#26)."""
+    config = bot.config if isinstance(bot.config, dict) else {}
+
+    def text(key: str) -> str:
+        value = config.get(key)
+        return value.strip() if isinstance(value, str) else ""
+
+    welcome_raw = config.get("welcome_message")
+    welcome = welcome_raw if isinstance(welcome_raw, dict) else {}
+    has_welcome = any(isinstance(v, str) and v.strip() for v in welcome.values())
+    domains_raw = config.get("allowed_domains")
+    domains = (
+        [d for d in domains_raw if isinstance(d, str) and d.strip()]
+        if isinstance(domains_raw, list)
+        else []
+    )
+    has_contact = bool(text("support_email") or text("support_phone"))
+    published = bot.published_revision_id is not None
+    return [
+        ReadinessItem(
+            id="support_contact",
+            label="Support email or phone",
+            status="ok" if has_contact else "todo",
+            detail="Shown when the assistant cannot answer."
+            if has_contact
+            else "Add a support email or phone so visitors know where to go.",
+            section="contact",
+        ),
+        ReadinessItem(
+            id="welcome_message",
+            label="Welcome message",
+            status="ok" if has_welcome else "todo",
+            detail="Custom welcome message set."
+            if has_welcome
+            else "Not set: the widget uses a generic greeting.",
+            section="messages",
+        ),
+        ReadinessItem(
+            id="allowed_domains",
+            label="Allowed websites",
+            status="ok" if domains else "warning",
+            detail=f"{len(domains)} website(s) can embed the widget."
+            if domains
+            else "Open: any website can embed this widget. Add the client's domains.",
+            section="access",
+        ),
+        ReadinessItem(
+            id="knowledge_published",
+            label="Knowledge published",
+            status="ok" if published else "todo",
+            detail="A knowledge revision is published."
+            if published
+            else "Nothing is published yet: the assistant has no knowledge to answer from.",
+            section="knowledge",
+        ),
+        ReadinessItem(
+            id="tier",
+            label="AI tier",
+            status="ok" if bot.tier in ("standard", "premium") else "todo",
+            detail=f"{bot.tier.capitalize()} tier selected.",
+            section="tier",
+        ),
+    ]
 
 
 class BotService:
@@ -86,6 +152,11 @@ class BotService:
         if body.name is not None and body.name.strip() != bot.name:
             bot.name = body.name.strip()
             changes.append("name")
+        if "tone_and_rules" in body.model_fields_set:
+            tone = (body.tone_and_rules or "").strip() or None
+            if tone != bot.tone_and_rules:
+                bot.tone_and_rules = tone
+                changes.append("tone_and_rules")  # field name only, never the text
         if body.config is not None:
             bot.config = self._merge_config(bot, body.config)
             changes.append("config")
