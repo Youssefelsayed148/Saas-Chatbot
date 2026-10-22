@@ -47,6 +47,25 @@ def model_from_settings(settings: Settings, bot: Bot | None = None) -> ChatModel
     return None
 
 
+def tier_targets(settings: Settings) -> dict[str, dict[str, str | None]]:
+    """What each tier maps to, for staff display (ADR-013).
+
+    Read-only: the patch endpoint keeps writing provider/model itself and the
+    answering pipeline is unchanged. Standard shows the first model of the
+    free OpenRouter chain; Premium the configured OpenAI model."""
+    chain = list(settings.chat_free_model_chain)
+    return {
+        "standard": {
+            "provider": "openrouter",
+            "model": chain[0] if chain else None,
+        },
+        "premium": {
+            "provider": "openai",
+            "model": settings.chat_openai_model or None,
+        },
+    }
+
+
 def default_model(bot: Bot | None = None) -> ChatModel | None:
     """Request-time model (built per call; construction is cheap)."""
     return model_from_settings(get_settings(), bot)

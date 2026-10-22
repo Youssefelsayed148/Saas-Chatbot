@@ -1603,9 +1603,14 @@ export async function patchRagLimits(
   });
 }
 export type RagTier = "standard" | "premium";
+export interface TierTarget {
+  provider: string;
+  model: string | null;
+}
 export interface RagStatus {
   retrieval_mode: string;
   tier: RagTier;
+  tier_targets: { standard: TierTarget; premium: TierTarget };
   active_embedding_model: string | null;
   embedding_ready: boolean;
   backfill: {
