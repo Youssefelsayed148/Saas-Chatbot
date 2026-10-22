@@ -202,6 +202,20 @@ def _parse_reply(raw: str, evidence: list[RetrievedChunk]) -> tuple[str, bool, l
     return answer.strip(), can_answer, kept
 
 
+def _provider_status(model: ChatModel) -> str:
+    """Blocked vs failed, read from the underlying client.
+
+    TracedModel and MeteredChatModel wrap the real client; walk down to the
+    wrapper that owns the ``blocked`` state (auth/quota) if there is one."""
+    current = model
+    while not hasattr(current, "blocked"):
+        deeper = getattr(current, "inner", None)
+        if deeper is None:
+            break
+        current = deeper
+    return "blocked" if getattr(current, "blocked", False) else "failed"
+
+
 def chat_answer(
     db: OrmSession,
     *,
@@ -402,6 +416,19 @@ def chat_answer(
                 parsed = None
     except ProviderError:
         parsed = None
+        # Staff-visible failure detail (Playground trace): status + model name
+        # only — never a key, header, prompt or provider response body.
+        status = _provider_status(model)
+        detail = {"status": status, "model": trace.get("model")}
+        trace["provider_error"] = detail
+        logger.warning(
+            "chat.provider_failure tenant=%s bot=%s model=%s status=%s tier=%s",
+            tenant_id,
+            bot.id,
+            detail["model"],
+            status,
+            getattr(bot, "tier", None),
+        )
     if parsed is None:
         return ChatReply(
             answer=prompts.canned("busy", language, support_contact=contact),

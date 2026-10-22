@@ -2,7 +2,27 @@
 
 import { useCallback, useEffect, useState } from "react";
 import * as api from "@/lib/api";
+import type { TierTarget } from "@/lib/api";
 import { ConfirmAction, Notice } from "@/lib/ui";
+
+function TierTargetRow({
+  label,
+  target,
+}: {
+  label: string;
+  target: TierTarget;
+}) {
+  return (
+    <>
+      <dt>{label}</dt>
+      <dd>
+        {target.model
+          ? `${target.provider} ${target.model}`
+          : `${target.provider} — not configured`}
+      </dd>
+    </>
+  );
+}
 
 // Rendered only for platform staff; the API enforces the same rule.
 export default function RagTierControl({
@@ -72,6 +92,20 @@ export default function RagTierControl({
               <option value="premium">Premium</option>
             </select>
           </label>
+          {/* Provider/model each tier maps to — read from the API (ADR-013). */}
+          <dl data-testid="rag-tier-targets">
+            <TierTargetRow
+              label="Standard maps to"
+              target={status.tier_targets.standard}
+            />
+            <TierTargetRow
+              label="Premium maps to"
+              target={status.tier_targets.premium}
+            />
+          </dl>
+          <p className="muted">
+            Standard uses free models and may be slower or unavailable.
+          </p>
           <dl>
             <dt>Retrieval mode</dt>
             <dd data-testid="rag-retrieval-mode">{status.retrieval_mode}</dd>

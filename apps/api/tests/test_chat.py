@@ -4,6 +4,7 @@ canned replies. Retrieval runs over the real pipeline-ingested corpus so the
 citation validation is exercised end to end."""
 
 import json
+import logging
 import re
 from typing import Any
 from uuid import UUID, uuid4
@@ -12,6 +13,7 @@ import pytest
 from sqlalchemy.orm import Session as OrmSession
 
 import tests.retrieval_helpers as _rh  # noqa: F401 — registers the corpus fixture
+from app.chat import prompts
 from app.chat.providers import FakeChatModel, OpenAICompatibleModel, ProviderError
 from app.chat.service import chat_answer, condense
 from app.core.errors import ApiError
@@ -80,6 +82,7 @@ def answer(
     *,
     history: list[str] | None = None,
     config: dict[str, object] | None = None,
+    tier: str | None = None,
 ) -> Any:
     users = chat_corpus["users_a"]
     bot = Bot(
@@ -88,6 +91,7 @@ def answer(
         name="Main",
         status="active",
         config=config if config is not None else bot_config(),
+        tier=tier,
         published_revision_id=UUID(
             published_revision_id(db, users.tenant_id, str(chat_corpus["bot_main"]))
         ),
@@ -266,6 +270,53 @@ def test_provider_failure_becomes_busy_not_trace(
     assert reply.kind == "busy"
     assert "support@acme.example.com" in reply.answer
     assert "Traceback" not in reply.answer
+
+
+def test_provider_failure_is_visible_in_trace_and_logs(
+    app: Any, db: OrmSession, corpus: dict[str, Any], caplog: Any
+) -> None:
+    """A provider failure keeps the distinct busy message, adds provider_error
+    to the staff trace, and logs status/model/tier without any prompt or key."""
+    marker = "visitor-secret-marker-0xdeadbeef"
+    with caplog.at_level(logging.WARNING):
+        reply = answer(
+            db,
+            corpus,
+            FakeChatModel(responses=[], raises=True),
+            f"What are your hours? {marker}",
+            tier="standard",
+        )
+    assert reply.kind == "busy"
+    assert reply.answer != prompts.canned(
+        "cannot_confirm", "en", support_contact="support@acme.example.com / +966500000000"
+    )
+    detail = reply.trace["provider_error"]
+    assert detail["status"] == "failed"
+    assert detail["model"] == "mock:unmeasured"
+    warnings = [
+        record
+        for record in caplog.records
+        if record.getMessage().startswith("chat.provider_failure")
+    ]
+    assert len(warnings) == 1
+    message = warnings[0].getMessage()
+    assert "status=failed" in message
+    assert "model=mock:unmeasured" in message
+    assert "tier=standard" in message
+    # Never log the visitor prompt, keys or auth headers.
+    for secret in (marker, "Bearer", "api_key", "Authorization"):
+        assert secret not in caplog.text
+
+
+def test_provider_block_status_reaches_the_trace(
+    app: Any, db: OrmSession, corpus: dict[str, Any]
+) -> None:
+    class Blocked(FakeChatModel):
+        blocked = True  # mirrors the OpenAI-compatible client's auth/quota state
+
+    reply = answer(db, corpus, Blocked(responses=[], raises=True), "What are your hours?")
+    assert reply.kind == "busy"
+    assert reply.trace["provider_error"]["status"] == "blocked"
 
 
 def test_zero_hit_retrieval_is_cannot_confirm(

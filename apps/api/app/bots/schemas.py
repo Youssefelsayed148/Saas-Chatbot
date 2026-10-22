@@ -9,9 +9,42 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
+from app.core.config import get_settings
+
 NAME_MAX_LENGTH = 100
 COLOUR_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
 QUESTION_MAX_LENGTH = 120
+
+
+def normalize_domain(value: str) -> str:
+    """Reduce a user-supplied domain entry to a bare lowercase hostname.
+
+    Accepts pasted URLs such as ``http://localhost:5500/``: trim, lowercase,
+    strip the http(s) scheme, credentials, path/query/fragment, port and any
+    trailing dot. Mirrors the client-side normalization in apps/web/lib/domains.
+    """
+    entry = value.strip().lower()
+    if entry.startswith("http://"):
+        entry = entry[len("http://") :]
+    elif entry.startswith("https://"):
+        entry = entry[len("https://") :]
+    # Credentials before the host never belong in the allow-list.
+    if "@" in entry:
+        entry = entry.rsplit("@", 1)[-1]
+    # Everything from the first path/query/fragment marker is not the host.
+    marker = next((position for position, char in enumerate(entry) if char in "/?#"), None)
+    if marker is not None:
+        entry = entry[:marker]
+    # Bare IPv6 keeps its brackets; everything else drops a numeric port.
+    if entry.startswith("[") and "]" in entry:
+        entry = entry[1 : entry.index("]")]
+    else:
+        host, separator, port = entry.rpartition(":")
+        if separator and port.isdigit():
+            entry = host
+    while entry.endswith("."):
+        entry = entry[:-1]
+    return entry
 
 
 class WelcomeMessage(BaseModel):
@@ -78,11 +111,20 @@ class BotConfig(BaseModel):
         host_re = re.compile(
             r"^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$"
         )
-        lowered = [domain.strip().lower() for domain in value]
-        for domain in lowered:
-            if not domain or "." not in domain or not host_re.fullmatch(domain):
+        normalized: list[str] = []
+        for entry in value:
+            domain = normalize_domain(entry)
+            if not domain or domain in normalized:
+                continue  # empty entries and duplicates collapse away
+            if domain == "localhost":
+                # Localhost is a development aid (docs/14 §7): never part of a
+                # production allow-list, same style of rejection either way.
+                if get_settings().environment == "production":
+                    raise ValueError("Allowed domains must be hostnames like example.com.")
+            elif "." not in domain or not host_re.fullmatch(domain):
                 raise ValueError("Allowed domains must be hostnames like example.com.")
-        return lowered
+            normalized.append(domain)
+        return normalized
 
 
 class BotCreateRequest(BaseModel):
