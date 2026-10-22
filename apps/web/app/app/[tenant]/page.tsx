@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { humanLabel } from "@/lib/labels";
 import * as api from "@/lib/api";
 import { useSession } from "@/lib/session";
-import { Empty, Loading, Notice } from "@/lib/ui";
+import { Empty, Loading, Notice, PageHeader } from "@/lib/ui";
 import { Icon } from "@/lib/icons";
 export default function TenantOverview() {
   const { tenant } = useParams<{ tenant: string }>();
@@ -56,18 +56,16 @@ export default function TenantOverview() {
   const base = `/app/${tenant}`;
   return (
     <main>
-      <div className="page-heading">
-        <div>
-          <p className="eyebrow">YOUR WORKSPACE AT A GLANCE</p>
-          <h1>Overview</h1>
-          <p className="page-purpose">
-            See what needs attention and keep your assistant ready to help.
-          </p>
-        </div>
-        <Link className="primary-link" href={`${base}/inbox`}>
-          Open inbox <Icon name="external" />
-        </Link>
-      </div>
+      <PageHeader
+        eyebrow="YOUR WORKSPACE AT A GLANCE"
+        title="Overview"
+        purpose="See what needs attention and keep your assistant ready to help."
+        actions={
+          <Link className="primary-link" href={`${base}/inbox`}>
+            Open inbox <Icon name="external" />
+          </Link>
+        }
+      />
       {error && (
         <Notice message={error} tone="error" onRetry={() => void load()} />
       )}
