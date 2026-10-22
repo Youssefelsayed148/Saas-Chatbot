@@ -49,6 +49,52 @@ def normalize_domain(value: str) -> str:
     return entry
 
 
+# Widget theme (#14). Slots are optional hex colours; an unset slot keeps
+# today's look (the base `colour` for header/send/user bubble/launcher, the
+# design tokens for bot bubble and text). Preset ids must match the curated
+# list in apps/web/lib/widget-theme.ts (a test keeps the two in step).
+THEME_SLOTS = ("header", "send_button", "user_bubble", "bot_bubble", "text", "launcher")
+THEME_PRESET_IDS = ("classic", "ocean", "sunset", "forest", "midnight-glass", "custom")
+HEX_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
+
+
+def normalize_hex(value: str) -> str:
+    """Lowercase 6-digit form of a validated #rgb / #rrggbb colour."""
+    colour = value.strip().lower()
+    if len(colour) == 4:
+        colour = "#" + "".join(ch * 2 for ch in colour[1:])
+    return colour
+
+
+class WidgetTheme(BaseModel):
+    """Per-slot widget colours plus the preset they started from."""
+
+    model_config = ConfigDict(extra="forbid")
+    preset: str | None = None
+    header: str | None = None
+    send_button: str | None = None
+    user_bubble: str | None = None
+    bot_bubble: str | None = None
+    text: str | None = None
+    launcher: str | None = None
+
+    @field_validator("preset")
+    @classmethod
+    def preset_known(cls, value: str | None) -> str | None:
+        if value is not None and value not in THEME_PRESET_IDS:
+            raise ValueError("Unknown theme preset.")
+        return value
+
+    @field_validator(*THEME_SLOTS)
+    @classmethod
+    def slot_is_hex(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        if not HEX_RE.fullmatch(value.strip()):
+            raise ValueError("Theme colours must be hex values like #1a2b3c.")
+        return normalize_hex(value)
+
+
 class WelcomeMessage(BaseModel):
     model_config = ConfigDict(extra="forbid")
     en: str | None = Field(default=None, max_length=500)
@@ -76,6 +122,7 @@ class BotConfig(BaseModel):
     handoff_keywords_en: list[str] | None = Field(default=None, max_length=20)
     handoff_keywords_ar: list[str] | None = Field(default=None, max_length=20)
     allowed_domains: list[str] | None = Field(default=None, max_length=50)
+    theme: WidgetTheme | None = None
 
     @field_validator("opening_questions")
     @classmethod
