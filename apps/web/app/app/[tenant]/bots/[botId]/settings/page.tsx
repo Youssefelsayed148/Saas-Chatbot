@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import { LabelBadge } from "@/lib/labels";
 import * as api from "@/lib/api";
 import type { Bot } from "@/lib/api";
+import { normalizeDomainLines } from "@/lib/domains";
 import { useSession } from "@/lib/session";
 import { ConfirmAction, Loading, Notice } from "@/lib/ui";
 import BotWorkspaceNav from "@/lib/bot-workspace-nav";
@@ -140,10 +141,7 @@ export default function BotSettingsPage() {
       if (position) config.position = position;
       config.handoff_enabled = handoffEnabled;
       if (allowedDomains) {
-        config.allowed_domains = allowedDomains
-          .split("\n")
-          .map((line) => line.trim().toLowerCase())
-          .filter(Boolean);
+        config.allowed_domains = normalizeDomainLines(allowedDomains);
       }
       const updated = await api.patchBot(tenantId, botId, {
         name,

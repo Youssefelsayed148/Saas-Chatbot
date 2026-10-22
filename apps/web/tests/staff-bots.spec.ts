@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { registerAdmin, registerOperator } from "./e2e-helpers";
+import { registerAdmin, registerAndPrepareBot, registerOperator } from "./e2e-helpers";
 
 test("staff creates bots from the directory and locked organization form", async ({
   page,
@@ -73,4 +73,26 @@ test("authenticated non-staff cannot reach the Bots section", async ({
   await expect(
     page.getByRole("region", { name: "Create bot", exact: true }),
   ).toHaveCount(0);
+});
+
+test("settings normalizes allowed domains and shows inline field errors", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  const { tenantId, botId } = await registerAndPrepareBot(page, "domains");
+  await page.goto(`/app/${tenantId}/bots/${botId}/settings`);
+  const domains = page.getByLabel(/Allowed domains/);
+  await domains.fill("not a domain");
+  await page.getByRole("button", { name: "Save settings" }).click();
+  const inline = page.getByTestId("field-error-allowed_domains");
+  await expect(inline).toBeVisible();
+  await expect(inline).toContainText("hostnames");
+  // The submitted value itself is never echoed back.
+  await expect(inline).not.toContainText("not a domain");
+  // Normalization: scheme, port, path, case and trailing dot reduce to
+  // bare hostnames; localhost stays accepted in the non-production harness.
+  await domains.fill("HTTP://Example.COM/\nhttp://localhost:5500/");
+  await page.getByRole("button", { name: "Save settings" }).click();
+  await expect(page.getByText("Settings saved.")).toBeVisible();
+  await expect(domains).toHaveValue("example.com\nlocalhost");
 });
