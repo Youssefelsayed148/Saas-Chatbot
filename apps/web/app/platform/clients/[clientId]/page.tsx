@@ -5,13 +5,39 @@ import { useEffect, useState } from "react";
 
 import { auditActionLabel } from "@/lib/labels";
 import * as api from "@/lib/api";
-import { ConfirmAction, Loading, Notice } from "@/lib/ui";
+import {
+  Button,
+  Card,
+  ConfirmAction,
+  DataTable,
+  Field,
+  Loading,
+  Notice,
+  PageHeader,
+  StatusBadge,
+  TabPanel,
+  Tabs,
+} from "@/lib/ui";
 import { OrganizationMembers } from "@/lib/staff-members";
 import { BotLinks, CreateBotForm } from "@/lib/staff-bots";
 import { Icon } from "@/lib/icons";
+import "@/app/staff-screens.css";
 
 /** Client detail (P4-06, docs/11): bots + status, failed jobs, members and
  * roles, recent audit rows, usage. Read-only staff view (no impersonation). */
+
+const TABS = ["Overview", "Members", "Bots", "Knowledge"] as const;
+
+/** Why a bot is still a draft, derived only from fields the API already
+ * returns (a draft bot is not answering visitors yet). */
+function draftNote(bot: api.PlatformTenantDetail["bots"][number]): string {
+  const missing: string[] = [];
+  if (!bot.published) missing.push("no published knowledge");
+  if (bot.widget_state !== "configured") missing.push("widget not configured");
+  return missing.length
+    ? `Not live yet: ${missing.join(", ")}.`
+    : "Not live yet: waiting to be activated.";
+}
 
 export default function PlatformClientPage() {
   const params = useParams<{ clientId: string }>();
@@ -19,7 +45,7 @@ export default function PlatformClientPage() {
   const [detail, setDetail] = useState<api.PlatformTenantDetail | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState("Overview");
+  const [tab, setTab] = useState<string>("Overview");
   const [name, setName] = useState("");
   const [status, setStatus] = useState("active");
   const [saving, setSaving] = useState(false);
@@ -123,138 +149,166 @@ export default function PlatformClientPage() {
   }
 
   return (
-    <main className="platform-client-detail">
-      <h1 data-testid="client-detail-name">
-        {detail?.tenant.name ?? "Organization"}
-      </h1>
-      <p className="page-purpose">
-        Inspect organization health and manage plans, quotas and bot
-        availability.
-      </p>
-      <p className="eyebrow">
-        <a href="/platform">
-          <Icon name="arrow-left" /> Back to Organizations
-        </a>
-      </p>
+    <main className="platform-client-detail staff-page">
+      <PageHeader
+        title={
+          <span data-testid="client-detail-name">
+            {detail?.tenant.name ?? "Organization"}
+          </span>
+        }
+        eyebrow={
+          <a href="/platform">
+            <Icon name="arrow-left" /> Back to Organizations
+          </a>
+        }
+        purpose="Inspect organization health and manage plans, quotas and bot availability."
+      />
       {error && <Notice message={error} tone="error" />}
       {notice && <Notice message={notice} />}
-      {!error && !detail && <Loading label="Loading organization?" />}
+      {!error && !detail && <Loading label="Loading organization…" />}
       {detail && (
         <>
-          <nav role="tablist" aria-label="Organization tabs">
-            {["Overview", "Members", "Bots", "Knowledge"].map((item) => (
-              <button
-                key={item}
-                role="tab"
-                aria-selected={tab === item}
-                onClick={() => setTab(item)}
-              >
-                {item}
-              </button>
-            ))}
-          </nav>
-          {tab === "Overview" && (
-            <div role="tabpanel" aria-label="Overview">
-              <p data-testid="client-detail-status">
-                {detail.tenant.slug} ?{" "}
-                <span data-status={detail.tenant.status}>
-                  {detail.tenant.status}
-                </span>{" "}
-                ? usage events: {detail.usage_events}
-              </p>
-              <p>
-                Created{" "}
-                {new Date(detail.tenant.created_at).toLocaleDateString()} ?{" "}
-                {detail.counts.members} members ? {detail.counts.bots} bots
-              </p>
-              <p>
-                <a href={`/app/${clientId}/bots`}>Operate bots</a> ?{" "}
-                <a href={`/app/${clientId}/settings/data`}>
-                  Organization data and deletion
-                </a>
-              </p>
+          <Tabs
+            aria-label="Organization tabs"
+            idPrefix="org"
+            tabs={TABS.map((item) => ({ id: item, label: item }))}
+            value={tab}
+            onChange={setTab}
+          />
+          <TabPanel idPrefix="org" tabId="Overview" active={tab === "Overview"}>
+            <p data-testid="client-detail-status" className="status-line">
+              {detail.tenant.slug} ·{" "}
+              <StatusBadge
+                value={detail.tenant.status}
+                data-status={detail.tenant.status}
+              />{" "}
+              · usage events: {detail.usage_events}
+            </p>
+            <p className="muted">
+              Created {new Date(detail.tenant.created_at).toLocaleDateString()}{" "}
+              · {detail.counts.members} members · {detail.counts.bots} bots
+            </p>
+            <p className="action-row">
+              <a className="primary-link" href={`/app/${clientId}/bots`}>
+                Operate bots
+              </a>
+              <a href={`/app/${clientId}/settings/data`}>
+                Organization data and deletion
+              </a>
+            </p>
+            <section className="form-section">
+              <header>
+                <h2>Organization settings</h2>
+              </header>
               <form
                 aria-label="Organization settings"
                 onSubmit={(event) => void saveOrganization(event)}
               >
-                <label>
-                  Name
-                  <input
-                    required
-                    maxLength={200}
-                    value={name}
-                    onChange={(event) => setName(event.target.value)}
-                  />
-                </label>
-                <label>
-                  Status
-                  <select
-                    value={status}
-                    onChange={(event) => setStatus(event.target.value)}
-                  >
-                    <option value="active">Active</option>
-                    <option value="archived">Archived</option>
-                  </select>
-                </label>
-                <button type="submit" disabled={saving}>
-                  {saving ? "Saving?" : "Save changes"}
-                </button>
+                <Field label="Name">
+                  {(control) => (
+                    <input
+                      {...control}
+                      required
+                      maxLength={200}
+                      value={name}
+                      onChange={(event) => setName(event.target.value)}
+                    />
+                  )}
+                </Field>
+                <Field label="Status">
+                  {(control) => (
+                    <select
+                      {...control}
+                      value={status}
+                      onChange={(event) => setStatus(event.target.value)}
+                    >
+                      <option value="active">Active</option>
+                      <option value="archived">Archived</option>
+                    </select>
+                  )}
+                </Field>
+                <Button type="submit" disabled={saving}>
+                  {saving ? "Saving…" : "Save changes"}
+                </Button>
               </form>
-              <section aria-label="Quota usage">
+            </section>
+            <section aria-label="Quota usage" className="form-section">
+              <header>
                 <h2>Quota usage</h2>
-                <table aria-label="Quota usage versus limits">
-                  <thead>
-                    <tr>
-                      <th>Quota</th>
-                      <th>Used</th>
-                      <th>Limit</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Object.entries(detail.quota.usage).map(([key, used]) => (
-                      <tr key={key}>
-                        <td>{key.replaceAll("_", " ")}</td>
-                        <td>{used}</td>
-                        <td>{detail.quota.limits[key]}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </section>
-              <section aria-label="Plan assignment" data-testid="client-plan">
+              </header>
+              <DataTable
+                caption="Quota usage versus limits"
+                rows={Object.entries(detail.quota.usage)}
+                rowKey={([key]) => key}
+                columns={[
+                  {
+                    key: "quota",
+                    header: "Quota",
+                    cell: ([key]) => key.replaceAll("_", " "),
+                  },
+                  {
+                    key: "used",
+                    header: "Used",
+                    className: "num",
+                    cell: ([, used]) => used,
+                  },
+                  {
+                    key: "limit",
+                    header: "Limit",
+                    className: "num",
+                    cell: ([key]) => detail.quota.limits[key],
+                  },
+                ]}
+              />
+            </section>
+            <section
+              aria-label="Plan assignment"
+              data-testid="client-plan"
+              className="form-section"
+            >
+              <header>
                 <h2>Plan assignment</h2>
                 <p>
                   Plan limits are provisional; pricing and final limits are
                   still under review.
                 </p>
-                <form onSubmit={(event) => void assignPlan(event)}>
-                  <label>
-                    Plan label{" "}
+              </header>
+              <Field
+                label="Reason"
+                hint="Required (3+ characters) for plan, quota and pause actions. It is recorded in the audit log."
+              >
+                {(control) => (
+                  <input
+                    {...control}
+                    value={reason}
+                    onChange={(event) => setReason(event.target.value)}
+                    minLength={3}
+                    maxLength={500}
+                    required
+                  />
+                )}
+              </Field>
+              <form onSubmit={(event) => void assignPlan(event)}>
+                <Field label="Plan label">
+                  {(control) => (
                     <input
+                      {...control}
                       value={planLabel || detail.tenant.plan_label}
                       onChange={(event) => setPlanLabel(event.target.value)}
                       maxLength={40}
                       required
                     />
-                  </label>
-                  <label>
-                    Reason{" "}
-                    <input
-                      value={reason}
-                      onChange={(event) => setReason(event.target.value)}
-                      minLength={3}
-                      maxLength={500}
-                      required
-                    />
-                  </label>
-                  <button type="submit" disabled={reason.trim().length < 3}>
-                    Save plan
-                  </button>
-                </form>
-                <form onSubmit={(event) => void saveQuotaOverrides(event)}>
-                  <label>
-                    Quota overrides (JSON)
+                  )}
+                </Field>
+                <Button type="submit" disabled={reason.trim().length < 3}>
+                  Save plan
+                </Button>
+              </form>
+              <form onSubmit={(event) => void saveQuotaOverrides(event)}>
+                <Field label="Quota overrides (JSON)">
+                  {(control) => (
                     <textarea
+                      {...control}
                       dir="auto"
                       value={quotaOverrides}
                       onChange={(event) =>
@@ -264,281 +318,340 @@ export default function PlatformClientPage() {
                       maxLength={1000}
                       required
                     />
-                  </label>
-                  <button type="submit" disabled={reason.trim().length < 3}>
-                    Save override with reason
-                  </button>
-                </form>
-              </section>
-              <section
-                aria-label="Recent audit"
-                data-testid="client-detail-audit"
-              >
+                  )}
+                </Field>
+                <Button type="submit" disabled={reason.trim().length < 3}>
+                  Save override with reason
+                </Button>
+              </form>
+            </section>
+            <section
+              aria-label="Recent audit"
+              data-testid="client-detail-audit"
+              className="form-section"
+            >
+              <header>
                 <h2>Recent audit</h2>
-                {detail.recent_audit.length === 0 ? (
-                  <p className="muted">No audit rows.</p>
-                ) : (
-                  <ul>
-                    {detail.recent_audit.map((row, index) => (
-                      <li key={`${row.at}-${index}`}>
-                        {row.at.slice(0, 19)} — {auditActionLabel(row.action)}
-                        {row.target ? ` (${row.target})` : ""}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
-            </div>
-          )}
-          {tab === "Members" && (
-            <div role="tabpanel" aria-label="Members">
-              <OrganizationMembers
-                organization={clientId}
-                refresh={async () =>
-                  setDetail(await api.platformTenantDetail(clientId))
-                }
-              />
-              <section aria-label="Members" data-testid="client-detail-members">
-                <h2>Members</h2>
-                {detail.members.length ? (
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Email</th>
-                        <th>Role</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {detail.members.map((member) => (
-                        <tr key={member.user_id}>
-                          <td>{member.email}</td>
-                          <td>
-                            <select
-                              aria-label={`Role for ${member.email}`}
-                              value={member.role}
-                              onChange={(event) => {
-                                void api
-                                  .platformUserRole(
-                                    member.user_id,
-                                    clientId,
-                                    event.target.value as api.ClientRole,
-                                  )
-                                  .then(() =>
-                                    api.platformTenantDetail(clientId),
-                                  )
-                                  .then(setDetail)
-                                  .catch((caught) =>
-                                    setError(
-                                      caught instanceof Error
-                                        ? caught.message
-                                        : "Role update failed.",
-                                    ),
-                                  );
-                              }}
-                            >
-                              {["admin", "editor", "viewer"].map((role) => (
-                                <option key={role}>{role}</option>
-                              ))}
-                            </select>
-                          </td>
-                          <td>{member.status}</td>
-                          <td>
-                            <ConfirmAction
-                              title="Remove membership"
-                              description={`Remove ${member.email} from this organization?`}
-                              onConfirm={() => {
-                                void api
-                                  .platformRemoveUser(member.user_id, clientId)
-                                  .then(() =>
-                                    api.platformTenantDetail(clientId),
-                                  )
-                                  .then(setDetail)
-                                  .catch((caught) =>
-                                    setError(
-                                      caught instanceof Error
-                                        ? caught.message
-                                        : "Removal failed.",
-                                    ),
-                                  );
-                              }}
-                            >
-                              Remove membership
-                            </ConfirmAction>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
-                  <p>No members yet.</p>
-                )}
-              </section>
-              <section aria-label="Pending invitations">
-                <h2>Pending invitations</h2>
-                <ul aria-label="Pending invitations">
-                  {detail.pending_invitations.map((invite) => (
-                    <li key={invite.id}>
-                      {invite.email} — {invite.role} (pending invite)
-                      <button
-                        type="button"
-                        onClick={() => {
-                          void api
-                            .revokeInvitation(clientId, invite.id)
-                            .then(() => api.platformTenantDetail(clientId))
-                            .then(setDetail)
-                            .catch((caught) =>
-                              setError(
-                                caught instanceof Error
-                                  ? caught.message
-                                  : "Could not revoke invitation.",
-                              ),
-                            );
-                        }}
-                      >
-                        Revoke invitation
-                      </button>
+              </header>
+              {detail.recent_audit.length === 0 ? (
+                <p className="muted">No audit rows.</p>
+              ) : (
+                <ul>
+                  {detail.recent_audit.map((row, index) => (
+                    <li key={`${row.at}-${index}`}>
+                      {row.at.slice(0, 19)} — {auditActionLabel(row.action)}
+                      {row.target ? ` (${row.target})` : ""}
                     </li>
                   ))}
                 </ul>
-              </section>
-            </div>
-          )}
-          {tab === "Bots" && (
-            <div role="tabpanel" aria-label="Bots">
-              <CreateBotForm
-                organization={{ id: clientId, name: detail.tenant.name }}
-                onCreated={async () =>
-                  setDetail(await api.platformTenantDetail(clientId))
-                }
-              />
-              <label>
-                Reason{" "}
-                <input
-                  value={reason}
-                  onChange={(event) => setReason(event.target.value)}
-                  minLength={3}
-                  maxLength={500}
-                  required
-                />
-              </label>
-              <section aria-label="Bots" data-testid="client-detail-bots">
-                <h2>Bots</h2>
-                {detail.bots.length ? (
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Name</th>
-                        <th>Status</th>
-                        <th>Widget</th>
-                        <th>Knowledge</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {detail.bots.map((bot) => (
-                        <tr key={bot.id}>
-                          <td>{bot.name}</td>
-                          <td data-status={bot.status}>{bot.status}</td>
-                          <td>
-                            {bot.widget_state === "configured"
-                              ? "Configured"
-                              : "Not configured"}
-                          </td>
-                          <td>
-                            {bot.published
-                              ? "knowledge published"
-                              : "nothing published"}
-                          </td>
-                          <td>
-                            <BotLinks organization={clientId} bot={bot.id} />
-                            {bot.status !== "paused" &&
-                              bot.status !== "archived" && (
-                                <ConfirmAction
-                                  title="Pause bot?"
-                                  description="The website widget will become unavailable and this bot will stop answering visitors until activated again."
-                                  disabled={reason.trim().length < 3}
-                                  onConfirm={() => void pauseBot(bot.id)}
-                                >
-                                  Pause bot
-                                </ConfirmAction>
-                              )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
-                  <p className="muted">No bots yet.</p>
-                )}
-              </section>
-            </div>
-          )}
-          {tab === "Knowledge" && (
-            <section aria-label="Knowledge" role="tabpanel">
-              <h2>Knowledge</h2>
-              <section
-                aria-label="Failed jobs"
-                data-testid="client-detail-jobs"
-              >
-                <h2>Knowledge/ingest failures</h2>
-                {detail.failed_jobs.length === 0 ? (
-                  <p className="muted">No failed jobs.</p>
-                ) : (
-                  <ul>
-                    {detail.failed_jobs.map((job) => (
-                      <li key={job.id}>
-                        {job.type}: {job.error ?? "failed"}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
-              {detail.bots.length ? (
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Bot</th>
-                      <th>Sources</th>
-                      <th>Last ingestion</th>
-                      <th>Published revision</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {detail.bots.map((bot) => (
-                      <tr key={bot.id}>
-                        <td>{bot.name}</td>
-                        <td>{bot.source_count}</td>
-                        <td>{bot.last_ingestion_job_status ?? "None"}</td>
-                        <td>
-                          {bot.published_revision_id ? (
-                            <>
-                              {bot.published_revision_id} ·{" "}
-                              {bot.published_at
-                                ? new Date(
-                                    bot.published_at,
-                                  ).toLocaleDateString()
-                                : "Date unavailable"}
-                            </>
-                          ) : (
-                            "None"
-                          )}
-                        </td>
-                        <td>
-                          <a href={`/app/${clientId}/bots/${bot.id}/knowledge`}>
-                            Open Knowledge
-                          </a>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <p>No bots in this organization yet.</p>
               )}
             </section>
-          )}
+          </TabPanel>
+          <TabPanel idPrefix="org" tabId="Members" active={tab === "Members"}>
+            <OrganizationMembers
+              organization={clientId}
+              refresh={async () =>
+                setDetail(await api.platformTenantDetail(clientId))
+              }
+            />
+            <section
+              aria-label="Members"
+              data-testid="client-detail-members"
+              className="form-section"
+            >
+              <header>
+                <h2>Members</h2>
+              </header>
+              {detail.members.length ? (
+                <DataTable
+                  caption="Organization members"
+                  rows={detail.members}
+                  rowKey={(member) => member.user_id}
+                  columns={[
+                    {
+                      key: "email",
+                      header: "Email",
+                      cell: (member) => member.email,
+                    },
+                    {
+                      key: "role",
+                      header: "Role",
+                      cell: (member) => (
+                        <select
+                          aria-label={`Role for ${member.email}`}
+                          value={member.role}
+                          onChange={(event) => {
+                            void api
+                              .platformUserRole(
+                                member.user_id,
+                                clientId,
+                                event.target.value as api.ClientRole,
+                              )
+                              .then(() => api.platformTenantDetail(clientId))
+                              .then(setDetail)
+                              .catch((caught) =>
+                                setError(
+                                  caught instanceof Error
+                                    ? caught.message
+                                    : "Role update failed.",
+                                ),
+                              );
+                          }}
+                        >
+                          {["admin", "editor", "viewer"].map((role) => (
+                            <option key={role}>{role}</option>
+                          ))}
+                        </select>
+                      ),
+                    },
+                    {
+                      key: "status",
+                      header: "Status",
+                      cell: (member) => <StatusBadge value={member.status} />,
+                    },
+                    {
+                      key: "actions",
+                      header: "Actions",
+                      cell: (member) => (
+                        <ConfirmAction
+                          title="Remove membership"
+                          description={`Remove ${member.email} from this organization?`}
+                          onConfirm={() => {
+                            void api
+                              .platformRemoveUser(member.user_id, clientId)
+                              .then(() => api.platformTenantDetail(clientId))
+                              .then(setDetail)
+                              .catch((caught) =>
+                                setError(
+                                  caught instanceof Error
+                                    ? caught.message
+                                    : "Removal failed.",
+                                ),
+                              );
+                          }}
+                        >
+                          Remove membership
+                        </ConfirmAction>
+                      ),
+                    },
+                  ]}
+                />
+              ) : (
+                <p>No members yet.</p>
+              )}
+            </section>
+            <section aria-label="Pending invitations" className="form-section">
+              <header>
+                <h2>Pending invitations</h2>
+              </header>
+              <ul aria-label="Pending invitations" className="plain-list">
+                {detail.pending_invitations.map((invite) => (
+                  <li key={invite.id}>
+                    <span>
+                      {invite.email} — {invite.role} (pending invite)
+                    </span>
+                    <Button
+                      variant="quiet"
+                      onClick={() => {
+                        void api
+                          .revokeInvitation(clientId, invite.id)
+                          .then(() => api.platformTenantDetail(clientId))
+                          .then(setDetail)
+                          .catch((caught) =>
+                            setError(
+                              caught instanceof Error
+                                ? caught.message
+                                : "Could not revoke invitation.",
+                            ),
+                          );
+                      }}
+                    >
+                      Revoke invitation
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          </TabPanel>
+          <TabPanel idPrefix="org" tabId="Bots" active={tab === "Bots"}>
+            <CreateBotForm
+              organization={{ id: clientId, name: detail.tenant.name }}
+              onCreated={async () =>
+                setDetail(await api.platformTenantDetail(clientId))
+              }
+            />
+            <section
+              aria-label="Bots"
+              data-testid="client-detail-bots"
+              className="form-section"
+            >
+              <header>
+                <h2>Bots</h2>
+              </header>
+              <Field
+                label="Reason"
+                hint="Required (3+ characters) to pause a bot. It is recorded in the audit log."
+              >
+                {(control) => (
+                  <input
+                    {...control}
+                    value={reason}
+                    onChange={(event) => setReason(event.target.value)}
+                    minLength={3}
+                    maxLength={500}
+                    required
+                  />
+                )}
+              </Field>
+              {detail.bots.length ? (
+                <DataTable
+                  caption="Organization bots"
+                  rows={detail.bots}
+                  rowKey={(bot) => bot.id}
+                  columns={[
+                    {
+                      key: "name",
+                      header: "Name",
+                      cell: (bot) => bot.name,
+                    },
+                    {
+                      key: "status",
+                      header: "Status",
+                      cell: (bot) => (
+                        <>
+                          <StatusBadge
+                            value={bot.status}
+                            data-status={bot.status}
+                          />
+                          {bot.status === "draft" && (
+                            <small className="cell-note">
+                              {draftNote(bot)}
+                            </small>
+                          )}
+                        </>
+                      ),
+                    },
+                    {
+                      key: "widget",
+                      header: "Widget",
+                      cell: (bot) =>
+                        bot.widget_state === "configured"
+                          ? "Configured"
+                          : "Not configured",
+                    },
+                    {
+                      key: "knowledge",
+                      header: "Knowledge",
+                      cell: (bot) =>
+                        bot.published
+                          ? "knowledge published"
+                          : "nothing published",
+                    },
+                    {
+                      key: "actions",
+                      header: "Actions",
+                      cell: (bot) => (
+                        <div className="row-actions">
+                          <BotLinks organization={clientId} bot={bot.id} />
+                          {bot.status !== "paused" &&
+                            bot.status !== "archived" && (
+                              <ConfirmAction
+                                title="Pause bot?"
+                                description="The website widget will become unavailable and this bot will stop answering visitors until activated again."
+                                disabled={reason.trim().length < 3}
+                                onConfirm={() => void pauseBot(bot.id)}
+                              >
+                                Pause bot
+                              </ConfirmAction>
+                            )}
+                        </div>
+                      ),
+                    },
+                  ]}
+                />
+              ) : (
+                <p className="muted">No bots yet.</p>
+              )}
+            </section>
+          </TabPanel>
+          <TabPanel
+            idPrefix="org"
+            tabId="Knowledge"
+            active={tab === "Knowledge"}
+          >
+            <section
+              aria-label="Failed jobs"
+              data-testid="client-detail-jobs"
+              className="form-section"
+            >
+              <header>
+                <h2>Knowledge/ingest failures</h2>
+              </header>
+              {detail.failed_jobs.length === 0 ? (
+                <p className="muted">No failed jobs.</p>
+              ) : (
+                <ul className="plain-list">
+                  {detail.failed_jobs.map((job) => (
+                    <li key={job.id}>
+                      {job.type}: {job.error ?? "failed"}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+            {detail.bots.length ? (
+              <Card title="Knowledge by bot">
+                <DataTable
+                  caption="Knowledge by bot"
+                  rows={detail.bots}
+                  rowKey={(bot) => bot.id}
+                  columns={[
+                    { key: "bot", header: "Bot", cell: (bot) => bot.name },
+                    {
+                      key: "sources",
+                      header: "Sources",
+                      className: "num",
+                      cell: (bot) => bot.source_count,
+                    },
+                    {
+                      key: "ingestion",
+                      header: "Last ingestion",
+                      cell: (bot) => bot.last_ingestion_job_status ?? "None",
+                    },
+                    {
+                      key: "revision",
+                      header: "Published revision",
+                      cell: (bot) =>
+                        bot.published_revision_id ? (
+                          <>
+                            <span className="mono" dir="ltr">
+                              {bot.published_revision_id}
+                            </span>{" "}
+                            ·{" "}
+                            {bot.published_at
+                              ? new Date(bot.published_at).toLocaleDateString()
+                              : "Date unavailable"}
+                          </>
+                        ) : (
+                          "None"
+                        ),
+                    },
+                    {
+                      key: "open",
+                      header: "Open",
+                      cell: (bot) => (
+                        <a href={`/app/${clientId}/bots/${bot.id}/knowledge`}>
+                          Open Knowledge
+                        </a>
+                      ),
+                    },
+                  ]}
+                />
+              </Card>
+            ) : (
+              <p>No bots in this organization yet.</p>
+            )}
+          </TabPanel>
         </>
       )}
     </main>

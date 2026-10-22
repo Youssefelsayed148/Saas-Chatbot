@@ -34,3 +34,8 @@ apps/api/.pytest_local_run/
 # Browser test output
 .test-storage-browser/
 .test-storage-*/
+
+# Screenshot baselines and captures (Batch E)
+.ui-baseline-*/
+.ui-after-*/
+apps/web/.ui-*/

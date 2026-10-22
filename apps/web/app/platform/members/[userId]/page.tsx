@@ -3,7 +3,16 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import * as api from "@/lib/api";
 import { MembershipControls, PasswordPanel } from "@/lib/staff-members";
-import { ConfirmAction, Loading, Notice } from "@/lib/ui";
+import {
+  Button,
+  ConfirmAction,
+  Field,
+  Loading,
+  Notice,
+  PageHeader,
+  StatusBadge,
+} from "@/lib/ui";
+import "@/app/staff-screens.css";
 
 export default function MemberPage() {
   const { userId } = useParams<{ userId: string }>();
@@ -53,36 +62,50 @@ export default function MemberPage() {
     }
   }
   return (
-    <main>
+    <main className="staff-page">
       {error && <Notice tone="error" message={error} />}
       {user ? (
         <>
-          <h1>{user.email}</h1>
-          <p>{user.phone}</p>
-          <p>{user.is_active ? "Active" : "Inactive"}</p>
+          <PageHeader
+            title={<bdi dir="ltr">{user.email}</bdi>}
+            purpose={user.phone ? <bdi dir="ltr">{user.phone}</bdi> : undefined}
+            actions={
+              <StatusBadge
+                value={user.is_active ? "active" : "inactive"}
+                tone={user.is_active ? "success" : "neutral"}
+              >
+                {user.is_active ? "Active" : "Inactive"}
+              </StatusBadge>
+            }
+          />
           <MembershipControls user={user} refresh={load} />
-          <section aria-label="Reset password">
-            <h2>Reset password</h2>
+          <section aria-label="Reset password" className="form-section">
+            <header>
+              <h2>Reset password</h2>
+            </header>
             <form
               onSubmit={(e) => {
                 void reset(e);
               }}
             >
-              <label>
-                New password
-                <input
-                  type="password"
-                  autoComplete="new-password"
-                  required={!generate}
-                  disabled={generate}
-                  minLength={8}
-                  maxLength={200}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </label>
-              <button
+              <Field label="New password">
+                {(control) => (
+                  <input
+                    {...control}
+                    type="password"
+                    autoComplete="new-password"
+                    required={!generate}
+                    disabled={generate}
+                    minLength={8}
+                    maxLength={200}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                )}
+              </Field>
+              <Button
                 type="button"
+                variant="quiet"
                 aria-pressed={generate}
                 onClick={() => {
                   setGenerate(!generate);
@@ -90,24 +113,38 @@ export default function MemberPage() {
                 }}
               >
                 {generate ? "Use typed password" : "Generate password"}
-              </button>
-              <button disabled={busy}>Reset password</button>
+              </Button>
+              <Button type="submit" disabled={busy}>
+                Reset password
+              </Button>
             </form>
           </section>
-          <ConfirmAction
-            title={user.is_active ? "Deactivate user" : "Reactivate user"}
-            description={
-              user.is_active
-                ? "This user will be signed out of every session and unable to log in."
-                : "Allow this user to log in again?"
-            }
-            disabled={busy}
-            onConfirm={() => {
-              void active();
-            }}
-          >
-            {user.is_active ? "Deactivate user" : "Reactivate user"}
-          </ConfirmAction>
+          <section aria-label="Account status" className="form-section">
+            <header>
+              <h2>Account status</h2>
+              <p>
+                {user.is_active
+                  ? "Deactivating signs the user out everywhere."
+                  : "This account is inactive and cannot sign in."}
+              </p>
+            </header>
+            <div className="action-row">
+              <ConfirmAction
+                title={user.is_active ? "Deactivate user" : "Reactivate user"}
+                description={
+                  user.is_active
+                    ? "This user will be signed out of every session and unable to log in."
+                    : "Allow this user to log in again?"
+                }
+                disabled={busy}
+                onConfirm={() => {
+                  void active();
+                }}
+              >
+                {user.is_active ? "Deactivate user" : "Reactivate user"}
+              </ConfirmAction>
+            </div>
+          </section>
           {issued && (
             <PasswordPanel password={issued} onDismiss={() => setIssued("")} />
           )}

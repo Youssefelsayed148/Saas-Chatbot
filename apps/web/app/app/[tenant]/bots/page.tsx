@@ -6,8 +6,16 @@ import { useCallback, useEffect, useState } from "react";
 
 import * as api from "@/lib/api";
 import { roleSatisfies, useSession } from "@/lib/session";
-import { LabelBadge, humanLabel } from "@/lib/labels";
-import { Empty, Loading, Notice } from "@/lib/ui";
+import { humanLabel } from "@/lib/labels";
+import {
+  Card,
+  DataTable,
+  Empty,
+  Loading,
+  Notice,
+  PageHeader,
+  StatusBadge,
+} from "@/lib/ui";
 import type { Bot } from "@/lib/api";
 
 export default function BotsListPage() {
@@ -57,25 +65,24 @@ export default function BotsListPage() {
 
   return (
     <main>
-      <p className="eyebrow">Chatbots</p>
-      <h1>Bots</h1>
-      <p className="page-purpose">
-        Build, train and install the assistants that help your visitors.
-      </p>
-      {canAdmin && (
-        <p>
-          <Link href={`/app/${tenantId}/settings/data`}>
-            Tenant data and audit
-          </Link>
-        </p>
-      )}
+      <PageHeader
+        eyebrow="Chatbots"
+        title="Bots"
+        purpose="Build, train and install the assistants that help your visitors."
+        actions={
+          canAdmin && (
+            <Link href={`/app/${tenantId}/settings/data`}>
+              Tenant data and audit
+            </Link>
+          )
+        }
+      />
       {sessionLoading && <Loading label="Loading session…" />}
       {!sessionLoading && sessionError && (
         <Notice message={sessionError} tone="error" />
       )}
       {!sessionLoading && !sessionError && quota && (
-        <section aria-label="Plan usage">
-          <h2>Plan usage</h2>
+        <Card aria-label="Plan usage" title="Plan usage">
           <p>
             {quota.plan} plan · Bots {quota.usage.bots}/{quota.limits.bots} ·
             Seats {quota.usage.seats}/{quota.limits.seats} · Contacts{" "}
@@ -92,7 +99,7 @@ export default function BotsListPage() {
             Plan limits are provisional. Measured provider tokens this month:{" "}
             {quota.measured_tokens_this_month}.
           </p>
-        </section>
+        </Card>
       )}
       {!sessionLoading && !sessionError && (
         <p className="muted">Contact us to add or change bots.</p>
@@ -105,31 +112,40 @@ export default function BotsListPage() {
         </Empty>
       )}
       {bots && bots.length > 0 && (
-        <table>
-          <caption className="sr-only">Bots</caption>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Status</th>
-              <th>Open</th>
-            </tr>
-          </thead>
-          <tbody>
-            {bots.map((bot) => (
-              <tr key={bot.id}>
-                <td>
-                  <Link href={`/app/${tenantId}/bots/${bot.id}/settings`}>
-                    {bot.name}
-                  </Link>
-                </td>
-                <td data-status={bot.status}>
-                  <LabelBadge value={bot.status} />
-                </td>
-                <td><Link href={`/app/${tenantId}/bots/${bot.id}/settings`}>Open bot</Link></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable
+          caption="Bots"
+          rows={bots}
+          rowKey={(bot) => bot.id}
+          columns={[
+            {
+              key: "name",
+              header: "Name",
+              cell: (bot) => (
+                <Link href={`/app/${tenantId}/bots/${bot.id}/settings`}>
+                  {bot.name}
+                </Link>
+              ),
+            },
+            {
+              key: "status",
+              header: "Status",
+              cell: (bot) => (
+                <StatusBadge value={bot.status} data-status={bot.status}>
+                  {humanLabel(bot.status)}
+                </StatusBadge>
+              ),
+            },
+            {
+              key: "open",
+              header: "Open",
+              cell: (bot) => (
+                <Link href={`/app/${tenantId}/bots/${bot.id}/settings`}>
+                  Open bot
+                </Link>
+              ),
+            },
+          ]}
+        />
       )}
       <label className="muted">
         <input

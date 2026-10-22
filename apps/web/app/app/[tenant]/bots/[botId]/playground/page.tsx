@@ -6,9 +6,76 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import * as api from "@/lib/api";
 import type { PlaygroundMessage } from "@/lib/api";
 import { useSession } from "@/lib/session";
-import { Loading, Notice } from "@/lib/ui";
+import {
+  Button,
+  Field,
+  Loading,
+  Notice,
+  PageHeader,
+  StatusBadge,
+} from "@/lib/ui";
 import BotWorkspaceNav from "@/lib/bot-workspace-nav";
 import { Icon } from "@/lib/icons";
+import "@/app/playground-screen.css";
+
+type Chunk = api.RagTrace["trace"]["chunks"][number];
+
+function TraceChunk({ chunk }: { chunk: Chunk }) {
+  const gate = chunk.gate;
+  return (
+    <li className="trace-chunk" data-accepted={chunk.accepted}>
+      <p className="trace-chunk-title">
+        {chunk.title} ({chunk.locator}) · cosine{" "}
+        {chunk.vector_similarity?.toFixed(3) ?? "—"} · FTS{" "}
+        {chunk.fts_match.toFixed(3)} ·{" "}
+        <StatusBadge
+          value={chunk.accepted ? "used" : "excluded"}
+          tone={chunk.accepted ? "success" : "neutral"}
+        />
+      </p>
+      {(gate || chunk.query_terms || chunk.matched_terms) && (
+        <dl className="trace-facts">
+          {gate && (
+            <>
+              <dt>Gate verdict</dt>
+              <dd>
+                {gate.passed
+                  ? `Passed${gate.accepted_by ? ` by ${gate.accepted_by}` : ""}`
+                  : "Rejected"}
+                {gate.reason ? `: ${gate.reason}` : ""}
+              </dd>
+            </>
+          )}
+          {chunk.query_terms && chunk.query_terms.length > 0 && (
+            <>
+              <dt>Query terms</dt>
+              <dd dir="auto">{chunk.query_terms.join(", ")}</dd>
+            </>
+          )}
+          {chunk.matched_terms && (
+            <>
+              <dt>Matched terms</dt>
+              <dd dir="auto">
+                {chunk.matched_terms.length > 0
+                  ? chunk.matched_terms.join(", ")
+                  : "none"}
+                {gate
+                  ? ` (${gate.terms.matched} of ${gate.terms.required} required)`
+                  : ""}
+              </dd>
+            </>
+          )}
+          {gate?.cosine.floor != null && (
+            <>
+              <dt>Cosine floor</dt>
+              <dd>{gate.cosine.floor.toFixed(2)}</dd>
+            </>
+          )}
+        </dl>
+      )}
+    </li>
+  );
+}
 
 export default function PlaygroundPage() {
   const params = useParams<{ tenant: string; botId: string }>();
@@ -130,13 +197,19 @@ export default function PlaygroundPage() {
 
   if (!me?.is_platform_staff) return null;
 
+  // A failed send keeps the typed message in the box, so the existing send
+  // handler can run again as a real retry. Other errors (feedback failure, an
+  // assistant-state note after a successful turn) have nothing to resend and
+  // keep the default page reload, labelled as such.
+  const canRetryTurn = !!draft.trim() && !sending;
+
   return (
-    <main>
+    <main className="playground-page">
       <BotWorkspaceNav tenantId={tenantId} botId={botId} />
-      <h1>Playground</h1>
-      <p className="page-purpose">
-        Test answers against your published knowledge before visitors do.
-      </p>
+      <PageHeader
+        title="Playground"
+        purpose="Test answers against your published knowledge before visitors do."
+      />
       {!canChat && (
         <Notice message="Only platform operators can use the playground." />
       )}
@@ -148,7 +221,11 @@ export default function PlaygroundPage() {
       )}
       {threadError && <Notice message={threadError} tone="error" />}
 
-      <section aria-label="Conversation" data-testid="thread">
+      <section
+        aria-label="Conversation"
+        data-testid="thread"
+        className="ui-card"
+      >
         {messages === null ? (
           <Loading label="Loading the conversation…" />
         ) : messages.length === 0 ? (
@@ -156,7 +233,7 @@ export default function PlaygroundPage() {
             No messages yet — ask something about the published knowledge.
           </p>
         ) : (
-          <ul>
+          <ul className="chat-list">
             {messages.map((message) =>
               message.sender_type === "visitor" ? (
                 <li key={message.id} data-role="visitor">
@@ -188,31 +265,35 @@ export default function PlaygroundPage() {
                   {message.needs_human && (
                     <Notice message="The assistant could not answer this from the knowledge." />
                   )}
-                  {message.response_ms !== null && (
-                    <span className="muted">{message.response_ms} ms</span>
-                  )}
-                  {canChat && message.sender_type === "ai" && (
-                    <span>
-                      <button
-                        type="button"
-                        aria-label="Thumbs up"
-                        data-testid={`thumbs-up-${message.id}`}
-                        disabled={feedbackGiven[message.id] !== undefined}
-                        onClick={() => void giveFeedback(message, "up")}
-                      >
-                        <Icon name="thumbs-up" />
-                      </button>
-                      <button
-                        type="button"
-                        aria-label="Thumbs down"
-                        data-testid={`thumbs-down-${message.id}`}
-                        disabled={feedbackGiven[message.id] !== undefined}
-                        onClick={() => void giveFeedback(message, "down")}
-                      >
-                        <Icon name="thumbs-down" />
-                      </button>
-                    </span>
-                  )}
+                  <div className="message-meta">
+                    {message.response_ms !== null && (
+                      <span className="muted">{message.response_ms} ms</span>
+                    )}
+                    {canChat && message.sender_type === "ai" && (
+                      <span className="feedback-buttons">
+                        <button
+                          type="button"
+                          className="icon-button"
+                          aria-label="Thumbs up"
+                          data-testid={`thumbs-up-${message.id}`}
+                          disabled={feedbackGiven[message.id] !== undefined}
+                          onClick={() => void giveFeedback(message, "up")}
+                        >
+                          <Icon name="thumbs-up" />
+                        </button>
+                        <button
+                          type="button"
+                          className="icon-button"
+                          aria-label="Thumbs down"
+                          data-testid={`thumbs-down-${message.id}`}
+                          disabled={feedbackGiven[message.id] !== undefined}
+                          onClick={() => void giveFeedback(message, "down")}
+                        >
+                          <Icon name="thumbs-down" />
+                        </button>
+                      </span>
+                    )}
+                  </div>
                 </li>
               ),
             )}
@@ -221,60 +302,121 @@ export default function PlaygroundPage() {
         <div ref={bottomRef} />
       </section>
 
-      <section aria-label="Answer traces" data-testid="answer-traces">
-        <h2>Answer traces</h2>
-        {traceError && <Notice message={traceError} tone="error" />}
-        {traces.length === 0 && (
-          <p className="muted">No recorded answers yet.</p>
-        )}
-        {traces.map(({ message_id, trace }) => (
-          <details key={message_id}>
-            <summary>
-              {trace.retrieval_mode} · {trace.gate} ·{" "}
-              {trace.rewrite_used ? "rewritten" : "original query"}
-            </summary>
-            <p>
-              Model: {trace.model ?? "No generation"}; tokens:{" "}
-              {trace.tokens?.total_tokens ?? "Unmeasured"}; cost:{" "}
-              {trace.cost_usd === null ? "Unmeasured" : `$${trace.cost_usd}`}
-            </p>
-            <ul>
-              {trace.chunks.map((chunk) => (
-                <li key={chunk.chunk_id}>
-                  {chunk.title} ({chunk.locator}) · cosine{" "}
-                  {chunk.vector_similarity?.toFixed(3) ?? "—"} · FTS{" "}
-                  {chunk.fts_match.toFixed(3)} ·{" "}
-                  {chunk.accepted ? "used" : "excluded"}
-                </li>
-              ))}
-            </ul>
-          </details>
-        ))}
-      </section>
-
-      {sendError && !notReady && <Notice message={sendError} tone="error" />}
-      <form onSubmit={onSend} aria-label="Playground input">
-        <label>
-          Message
-          <input
-            data-testid="playground-input"
-            dir="auto"
-            value={draft}
-            maxLength={1000}
-            disabled={!canChat || sending}
-            onChange={(event) => setDraft(event.target.value)}
-          />
-        </label>
+      {sendError && !notReady && (
+        <Notice
+          message={sendError}
+          tone="error"
+          {...(canRetryTurn
+            ? {
+                onRetry: () =>
+                  void onSend({
+                    preventDefault() {},
+                  } as React.FormEvent),
+                retryLabel: "Retry message",
+              }
+            : { retryLabel: "Reload page" })}
+        />
+      )}
+      <form
+        onSubmit={onSend}
+        aria-label="Playground input"
+        className="composer"
+      >
+        <Field label="Message">
+          {(control) => (
+            <input
+              {...control}
+              data-testid="playground-input"
+              dir="auto"
+              value={draft}
+              maxLength={1000}
+              disabled={!canChat || sending}
+              onChange={(event) => setDraft(event.target.value)}
+            />
+          )}
+        </Field>
         {canChat && (
-          <button
+          <Button
             type="submit"
             data-testid="playground-send"
             disabled={sending || !draft.trim()}
           >
             {sending ? "Sending…" : "Send"}
-          </button>
+          </Button>
         )}
       </form>
+
+      <section
+        aria-label="Answer traces"
+        data-testid="answer-traces"
+        className="ui-card"
+      >
+        <header className="section-heading">
+          <h2>Answer traces</h2>
+        </header>
+        {traceError && <Notice message={traceError} tone="error" />}
+        {traces.length === 0 && (
+          <p className="muted">No recorded answers yet.</p>
+        )}
+        {traces.map(({ message_id, trace }) => (
+          <details key={message_id} className="trace">
+            <summary>
+              {trace.retrieval_mode} · {trace.gate} ·{" "}
+              {trace.rewrite_used ? "rewritten" : "original query"}
+            </summary>
+            {trace.provider_error && (
+              <p className="trace-error" role="note">
+                Provider error: status{" "}
+                {trace.provider_error.status ?? "unknown"}
+                {trace.provider_error.model
+                  ? ` on ${trace.provider_error.model}`
+                  : ""}
+                . The visitor saw the temporary-unavailable message.
+              </p>
+            )}
+            <p>
+              Model: {trace.model ?? "No generation"}; tokens:{" "}
+              {trace.tokens?.total_tokens ?? "Unmeasured"}; cost:{" "}
+              {trace.cost_usd === null ? "Unmeasured" : `$${trace.cost_usd}`}
+            </p>
+            {(trace.streamed !== undefined ||
+              trace.degradation_reason ||
+              trace.stream_invalid_reason) && (
+              <dl className="trace-facts">
+                {trace.streamed !== undefined && (
+                  <>
+                    <dt>Delivery</dt>
+                    <dd>
+                      {trace.streamed ? "Streamed" : "Not streamed"}
+                      {trace.stream_mode ? ` (${trace.stream_mode})` : ""}
+                      {trace.time_to_first_token_ms != null
+                        ? ` · first token after ${trace.time_to_first_token_ms} ms`
+                        : ""}
+                    </dd>
+                  </>
+                )}
+                {trace.stream_invalid_reason && (
+                  <>
+                    <dt>Stream fallback</dt>
+                    <dd>{trace.stream_invalid_reason}</dd>
+                  </>
+                )}
+                {trace.degradation_reason && (
+                  <>
+                    <dt>Retrieval degraded</dt>
+                    <dd>{trace.degradation_reason}</dd>
+                  </>
+                )}
+              </dl>
+            )}
+            <ul className="trace-chunks">
+              {trace.chunks.map((chunk) => (
+                <TraceChunk key={chunk.chunk_id} chunk={chunk} />
+              ))}
+            </ul>
+          </details>
+        ))}
+      </section>
     </main>
   );
 }

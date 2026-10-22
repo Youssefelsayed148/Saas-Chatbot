@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import * as api from "./api";
-import { ConfirmAction, Notice } from "./ui";
+import { Button, Card, ConfirmAction, Field, Notice } from "./ui";
+import "@/app/staff-screens.css";
 
 export function RoleSelect({
   value,
@@ -12,17 +13,19 @@ export function RoleSelect({
   onChange: (role: api.ClientRole) => void;
 }) {
   return (
-    <label>
-      Role
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value as api.ClientRole)}
-      >
-        {(["admin", "editor", "viewer"] as const).map((role) => (
-          <option key={role}>{role}</option>
-        ))}
-      </select>
-    </label>
+    <Field label="Role">
+      {(control) => (
+        <select
+          {...control}
+          value={value}
+          onChange={(e) => onChange(e.target.value as api.ClientRole)}
+        >
+          {(["admin", "editor", "viewer"] as const).map((role) => (
+            <option key={role}>{role}</option>
+          ))}
+        </select>
+      )}
+    </Field>
   );
 }
 
@@ -64,24 +67,26 @@ export function OrganizationSelect({
   }, [activeOnly]);
   return (
     <>
-      <label>
-        Organization
-        <select
-          required={!optional}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-        >
-          <option value="">
-            {emptyLabel ??
-              (optional ? "No organization" : "Choose organization")}
-          </option>
-          {organizations.map((org) => (
-            <option key={org.id} value={org.id}>
-              {org.name}
+      <Field label="Organization">
+        {(control) => (
+          <select
+            {...control}
+            required={!optional}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+          >
+            <option value="">
+              {emptyLabel ??
+                (optional ? "No organization" : "Choose organization")}
             </option>
-          ))}
-        </select>
-      </label>
+            {organizations.map((org) => (
+              <option key={org.id} value={org.id}>
+                {org.name}
+              </option>
+            ))}
+          </select>
+        )}
+      </Field>
       {error && <Notice tone="error" message={error} />}
     </>
   );
@@ -97,31 +102,36 @@ export function PasswordPanel({
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
   return (
-    <section aria-label="One-time password">
-      <h2>Password — shown once</h2>
+    <Card
+      aria-label="One-time password"
+      title="Password — shown once"
+      className="password-panel"
+    >
       <code data-testid="issued-password">{password}</code>
       <p>Share this with the user; they should change it after first login.</p>
-      <button
-        type="button"
-        onClick={() => {
-          void (async () => {
-            try {
-              await navigator.clipboard.writeText(password);
-              setCopied(true);
-            } catch {
-              setError("Copy failed. Select and copy the password manually.");
-            }
-          })();
-        }}
-      >
-        Copy password
-      </button>
-      {copied && <span role="status">Copied.</span>}
+      <div className="action-row">
+        <Button
+          type="button"
+          onClick={() => {
+            void (async () => {
+              try {
+                await navigator.clipboard.writeText(password);
+                setCopied(true);
+              } catch {
+                setError("Copy failed. Select and copy the password manually.");
+              }
+            })();
+          }}
+        >
+          Copy password
+        </Button>
+        {copied && <span role="status">Copied.</span>}
+        <Button type="button" variant="quiet" onClick={onDismiss}>
+          Dismiss password
+        </Button>
+      </div>
       {error && <p role="alert">{error}</p>}
-      <button type="button" onClick={onDismiss}>
-        Dismiss password
-      </button>
-    </section>
+    </Card>
   );
 }
 
@@ -149,11 +159,13 @@ export function MembershipControls({
     }
   }
   return (
-    <section aria-label="Memberships">
-      <h2>Memberships</h2>
+    <section aria-label="Memberships" className="form-section">
+      <header>
+        <h2>Memberships</h2>
+      </header>
       {error && <Notice tone="error" message={error} />}
       {user.memberships.map((m) => (
-        <div key={m.organization_id}>
+        <div key={m.organization_id} className="membership-row">
           <p>
             {m.organization_name} · {m.status}
           </p>
@@ -184,6 +196,7 @@ export function MembershipControls({
         </div>
       ))}
       <form
+        className="inline-form"
         onSubmit={(e) => {
           e.preventDefault();
           void perform(() =>
@@ -193,7 +206,9 @@ export function MembershipControls({
       >
         <OrganizationSelect value={organization} onChange={setOrganization} />
         <RoleSelect value={role} onChange={setRole} />
-        <button disabled={busy}>Add membership</button>
+        <Button type="submit" disabled={busy}>
+          Add membership
+        </Button>
       </form>
     </section>
   );
@@ -226,9 +241,14 @@ export function OrganizationMembers({
     }
   }
   return (
-    <section aria-label="Manage organization members">
+    <section aria-label="Manage organization members" className="form-section">
+      <header>
+        <h2>Add people</h2>
+        <p>Find an existing user to add, or send them an invitation link.</p>
+      </header>
       {error && <Notice tone="error" message={error} />}
       <form
+        className="inline-form"
         onSubmit={(e) => {
           e.preventDefault();
           void perform(async () => {
@@ -240,58 +260,74 @@ export function OrganizationMembers({
           });
         }}
       >
-        <label>
-          Search email
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </label>
-        <button disabled={busy}>Search users</button>
+        <Field label="Search email">
+          {(control) => (
+            <input
+              {...control}
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          )}
+        </Field>
+        <Button type="submit" disabled={busy}>
+          Search users
+        </Button>
       </form>
-      <label>
-        Existing user
-        <select value={selected} onChange={(e) => setSelected(e.target.value)}>
-          <option value="">Choose user</option>
-          {users.map((u) => (
-            <option value={u.id} key={u.id}>
-              {u.email}
-            </option>
-          ))}
-        </select>
-      </label>
-      <RoleSelect value={role} onChange={setRole} />
-      <button
-        disabled={busy || !selected}
-        onClick={() => {
-          void perform(() =>
-            api.platformAssignUser(selected, organization, role),
-          );
-        }}
-      >
-        Add existing user
-      </button>
-      <button
-        disabled={busy || !email}
-        onClick={() => {
-          void perform(async () => {
-            const result = await api.createInvitation(
-              organization,
-              email,
-              role,
+      <div className="inline-form">
+        <Field label="Existing user">
+          {(control) => (
+            <select
+              {...control}
+              value={selected}
+              onChange={(e) => setSelected(e.target.value)}
+            >
+              <option value="">Choose user</option>
+              {users.map((u) => (
+                <option value={u.id} key={u.id}>
+                  {u.email}
+                </option>
+              ))}
+            </select>
+          )}
+        </Field>
+        <RoleSelect value={role} onChange={setRole} />
+      </div>
+      <div className="action-row">
+        <Button
+          disabled={busy || !selected}
+          onClick={() => {
+            void perform(() =>
+              api.platformAssignUser(selected, organization, role),
             );
-            setLink(result.link_path ?? "");
-          });
-        }}
-      >
-        Invite existing user
-      </button>
+          }}
+        >
+          Add existing user
+        </Button>
+        <Button
+          variant="quiet"
+          disabled={busy || !email}
+          onClick={() => {
+            void perform(async () => {
+              const result = await api.createInvitation(
+                organization,
+                email,
+                role,
+              );
+              setLink(result.link_path ?? "");
+            });
+          }}
+        >
+          Invite existing user
+        </Button>
+      </div>
       {link && (
-        <p>
+        <p className="invitation-link">
           Share this invitation: <code>{link}</code>
-          <button onClick={() => setLink("")}>Dismiss invitation</button>
+          <Button variant="quiet" onClick={() => setLink("")}>
+            Dismiss invitation
+          </Button>
         </p>
       )}
     </section>

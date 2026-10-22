@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 import * as api from "./api";
 import { OrganizationSelect } from "./staff-members";
-import { Notice } from "./ui";
+import { Button, Field, FormSection, Notice } from "./ui";
+import "@/app/staff-screens.css";
 
 export function BotLinks({
   organization,
@@ -14,7 +15,7 @@ export function BotLinks({
   bot: string;
 }) {
   return (
-    <span>
+    <span className="bot-links">
       <Link href={`/app/${organization}/bots/${bot}/knowledge`}>Knowledge</Link>
       {" · "}
       <Link href={`/app/${organization}/bots/${bot}/settings`}>Settings</Link>
@@ -55,8 +56,10 @@ export function CreateBotForm({
     }
   }
   return (
-    <section aria-label="Create bot">
-      <h2>Create bot</h2>
+    <FormSection
+      title="Create bot"
+      description="Creates a bot inside an organization. Add knowledge and settings after it exists."
+    >
       {error && <Notice tone="error" message={error} />}
       <form
         onSubmit={(e) => {
@@ -70,20 +73,24 @@ export function CreateBotForm({
         ) : (
           <OrganizationSelect value={selected} onChange={setSelected} />
         )}
-        <label>
-          Bot name
-          <input
-            required
-            minLength={1}
-            maxLength={100}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-        </label>
-        <button disabled={busy}>{busy ? "Creating…" : "Create bot"}</button>
+        <Field label="Bot name">
+          {(control) => (
+            <input
+              {...control}
+              required
+              minLength={1}
+              maxLength={100}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          )}
+        </Field>
+        <Button type="submit" disabled={busy}>
+          {busy ? "Creating…" : "Create bot"}
+        </Button>
       </form>
       {created && (
-        <div role="status">
+        <div role="status" className="bot-created">
           <h3>Bot created — next steps</h3>
           <p>
             Upload and publish knowledge, then configure the allowed website
@@ -92,6 +99,6 @@ export function CreateBotForm({
           <BotLinks organization={created.tenant_id} bot={created.id} />
         </div>
       )}
-    </section>
+    </FormSection>
   );
 }
