@@ -1572,6 +1572,13 @@ export interface RagTrace {
     model: string | null;
     tokens: Record<string, number> | null;
     cost_usd: string | null;
+    /** Present when the provider call failed: status and model only. */
+    provider_error?: { status: number | string | null; model: string | null };
+    degradation_reason?: string | null;
+    streamed?: boolean;
+    stream_mode?: string;
+    time_to_first_token_ms?: number | null;
+    stream_invalid_reason?: string | null;
     chunks: {
       chunk_id: string;
       title: string;
@@ -1579,6 +1586,23 @@ export interface RagTrace {
       vector_similarity: number | null;
       fts_match: number;
       accepted: boolean;
+      query_terms?: string[];
+      matched_terms?: string[];
+      matched_term_count?: number;
+      query_term_count?: number;
+      gate?: {
+        passed: boolean;
+        accepted_by: string | null;
+        reason: string;
+        cosine: {
+          value: number | null;
+          floor: number | null;
+          passed: boolean | null;
+        };
+        terms: { matched: number; required: number; passed: boolean };
+        fts: { value: number; minimum: number; passed: boolean };
+        top_result: boolean | null;
+      };
     }[];
   };
 }

@@ -27,10 +27,13 @@ export function Notice({
   message,
   tone = "info",
   onRetry,
+  retryLabel = "Retry page",
 }: {
   message: string;
   tone?: "info" | "error";
   onRetry?: () => void;
+  /** Honest name for the action: a page reload unless onRetry says otherwise. */
+  retryLabel?: string;
 }) {
   return (
     <div
@@ -44,7 +47,7 @@ export function Notice({
           className="quiet-button"
           onClick={onRetry ?? (() => window.location.reload())}
         >
-          Retry page
+          {retryLabel}
         </button>
       )}
     </div>
