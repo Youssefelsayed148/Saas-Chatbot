@@ -26,6 +26,7 @@ from app.chat.conversations import (
     visitor_chat_turn,
 )
 from app.chat.models import model_from_settings
+from app.chat.prompts import canned
 from app.core.config import Settings
 from app.core.errors import ApiError
 from app.core.ratelimit import rate_limit
@@ -210,9 +211,11 @@ def widget_config(bot: Bot) -> dict[str, Any]:
         "bot_name": name,
         "business_name": str(config.get("business_name") or "")[:100],
         "assistant_name": name,
+        # Empty greeting falls back to the hello_default canned text (#10):
+        # staff never have to fill the welcome message for a sane widget.
         "welcome_message": {
-            "en": str(welcome.get("en") or ""),
-            "ar": str(welcome.get("ar") or ""),
+            "en": str(welcome.get("en") or "") or canned("hello_default", "en"),
+            "ar": str(welcome.get("ar") or "") or canned("hello_default", "ar"),
         },
         "opening_questions": [str(question)[:120] for question in questions[:10]]
         if isinstance(questions, list)
