@@ -8,6 +8,7 @@
     "start": "next start --hostname 127.0.0.1",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "next typegen && tsc --noEmit",
+    "check:public-asset": "node scripts/check-public-asset.mjs",
     "test": "playwright test"
   },
   "dependencies": {
