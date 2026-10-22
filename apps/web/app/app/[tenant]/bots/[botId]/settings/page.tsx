@@ -12,6 +12,35 @@ import { ConfirmAction, Loading, Notice } from "@/lib/ui";
 import BotWorkspaceNav from "@/lib/bot-workspace-nav";
 import RagTierControl from "@/lib/rag-tier-control";
 
+/** API field paths (dotted, without the body root) → form input keys.
+ * Unmatched fields render in the form-level error area instead. */
+const FIELD_KEYS = new Set([
+  "name",
+  "assistant_name",
+  "business_name",
+  "business_description",
+  "welcome_message.en",
+  "welcome_message.ar",
+  "opening_questions",
+  "default_language",
+  "support_email",
+  "support_phone",
+  "colour",
+  "avatar",
+  "position",
+  "handoff_enabled",
+  "allowed_domains",
+]);
+
+function inlineFieldKey(field: string): string | null {
+  let key = field.replace(/^config\./, "");
+  const parts = key.split(".");
+  // List entries validate per item ("allowed_domains.0"); show under the list.
+  if (/^\d+$/.test(parts[parts.length - 1])) parts.pop();
+  key = parts.join(".");
+  return FIELD_KEYS.has(key) ? key : null;
+}
+
 export default function BotSettingsPage() {
   const params = useParams<{ tenant: string; botId: string }>();
   const tenantId = params.tenant;
@@ -23,6 +52,7 @@ export default function BotSettingsPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
 
@@ -81,6 +111,7 @@ export default function BotSettingsPage() {
   async function onSave(event: React.FormEvent) {
     event.preventDefault();
     setSaveError(null);
+    setFieldErrors({});
     setSaved(false);
     setSaving(true);
     try {
@@ -122,9 +153,22 @@ export default function BotSettingsPage() {
       setSaved(true);
       await load();
     } catch (caught) {
-      setSaveError(
-        caught instanceof Error ? caught.message : "Could not save settings.",
-      );
+      if (caught instanceof api.ApiError && caught.fieldErrors.length > 0) {
+        // Field details go inline under the matching input; fields without a
+        // matching input fall back to the form-level error area.
+        const mapped: Record<string, string> = {};
+        for (const entry of caught.fieldErrors) {
+          const key = inlineFieldKey(entry.field);
+          if (key && !(key in mapped)) mapped[key] = entry.message;
+          else if (!key) setSaveError(caught.message);
+        }
+        setFieldErrors(mapped);
+        if (!Object.keys(mapped).length) setSaveError(caught.message);
+      } else {
+        setSaveError(
+          caught instanceof Error ? caught.message : "Could not save settings.",
+        );
+      }
     } finally {
       setSaving(false);
     }
@@ -149,6 +193,16 @@ export default function BotSettingsPage() {
   }
 
   if (!me?.is_platform_staff) return null;
+
+  function fieldError(key: string) {
+    const message = fieldErrors[key];
+    if (!message) return null;
+    return (
+      <p role="alert" data-testid={`field-error-${key}`}>
+        {message}
+      </p>
+    );
+  }
 
   if (loadError) {
     return (
@@ -232,6 +286,7 @@ export default function BotSettingsPage() {
             onChange={(event) => setName(event.target.value)}
           />
         </label>
+        {fieldError("name")}
         <label>
           Assistant name
           <input
@@ -242,6 +297,7 @@ export default function BotSettingsPage() {
             onChange={(event) => setAssistantName(event.target.value)}
           />
         </label>
+        {fieldError("assistant_name")}
         <label>
           Business name
           <input
@@ -252,6 +308,7 @@ export default function BotSettingsPage() {
             onChange={(event) => setBusinessName(event.target.value)}
           />
         </label>
+        {fieldError("business_name")}
         <label>
           Business description
           <textarea
@@ -264,6 +321,7 @@ export default function BotSettingsPage() {
             onChange={(event) => setBusinessDescription(event.target.value)}
           />
         </label>
+        {fieldError("business_description")}
         <label>
           Welcome message (EN)
           <input
@@ -274,6 +332,7 @@ export default function BotSettingsPage() {
             onChange={(event) => setWelcomeEn(event.target.value)}
           />
         </label>
+        {fieldError("welcome_message.en")}
         <label>
           Welcome message (AR)
           <input
@@ -285,6 +344,7 @@ export default function BotSettingsPage() {
             onChange={(event) => setWelcomeAr(event.target.value)}
           />
         </label>
+        {fieldError("welcome_message.ar")}
         <label>
           Opening questions (one per line, max 10)
           <textarea
@@ -296,6 +356,7 @@ export default function BotSettingsPage() {
             onChange={(event) => setOpeningQuestions(event.target.value)}
           />
         </label>
+        {fieldError("opening_questions")}
         <label>
           Default language
           <select
@@ -310,6 +371,7 @@ export default function BotSettingsPage() {
             <option value="ar">العربية</option>
           </select>
         </label>
+        {fieldError("default_language")}
         <label>
           Support email
           <input
@@ -320,6 +382,7 @@ export default function BotSettingsPage() {
             onChange={(event) => setSupportEmail(event.target.value)}
           />
         </label>
+        {fieldError("support_email")}
         <label>
           Support phone
           <input
@@ -330,6 +393,7 @@ export default function BotSettingsPage() {
             onChange={(event) => setSupportPhone(event.target.value)}
           />
         </label>
+        {fieldError("support_phone")}
         <label>
           Widget colour (hex, e.g. #1a2b3c)
           <input
@@ -339,6 +403,7 @@ export default function BotSettingsPage() {
             onChange={(event) => setColour(event.target.value)}
           />
         </label>
+        {fieldError("colour")}
         <label>
           Widget avatar (public http(s) image URL)
           <input
@@ -348,6 +413,7 @@ export default function BotSettingsPage() {
             onChange={(event) => setAvatar(event.target.value)}
           />
         </label>
+        {fieldError("avatar")}
         <label>
           Widget position
           <select
@@ -363,6 +429,7 @@ export default function BotSettingsPage() {
             <option value="right">Right</option>
           </select>
         </label>
+        {fieldError("position")}
         <label>
           Human handoff enabled
           <input
@@ -373,6 +440,7 @@ export default function BotSettingsPage() {
             onChange={(event) => setHandoffEnabled(event.target.checked)}
           />
         </label>
+        {fieldError("handoff_enabled")}
         <label>
           Allowed domains (one per line, max 50)
           <textarea
@@ -384,6 +452,7 @@ export default function BotSettingsPage() {
             onChange={(event) => setAllowedDomains(event.target.value)}
           />
         </label>
+        {fieldError("allowed_domains")}
         {saveError && <Notice message={saveError} tone="error" />}
         {saved && <Notice message="Settings saved." />}
         {canEdit && (

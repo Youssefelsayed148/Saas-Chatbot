@@ -9,22 +9,32 @@
 export const SESSION_COOKIE = "chatbot_session";
 export const CSRF_COOKIE = "chatbot_csrf";
 
+/** Per-field validation detail (docs/05): dotted field path + message. */
+export interface FieldError {
+  field: string;
+  message: string;
+}
+
 export class ApiError extends Error {
   readonly code: string;
   readonly status: number;
   readonly requestId: string | undefined;
+  /** 422 field details, when the API sent them; empty otherwise. */
+  readonly fieldErrors: FieldError[];
 
   constructor(
     code: string,
     status: number,
     message: string,
     requestId?: string,
+    fieldErrors: FieldError[] = [],
   ) {
     super(message);
     this.name = "ApiError";
     this.code = code;
     this.status = status;
     this.requestId = requestId;
+    this.fieldErrors = fieldErrors;
   }
 }
 
@@ -741,7 +751,12 @@ export async function api<T>(
   if (!response.ok) {
     const error = (
       payload as {
-        error?: { code?: string; message?: string; request_id?: string };
+        error?: {
+          code?: string;
+          message?: string;
+          request_id?: string;
+          details?: { fields?: FieldError[] };
+        };
       }
     )?.error;
     // Global rule: an expired/invalid session sends the user back to the login page.
@@ -758,6 +773,7 @@ export async function api<T>(
       response.status,
       error?.message ?? `Request failed (${response.status}).`,
       error?.request_id,
+      error?.details?.fields ?? [],
     );
   }
   return payload as T;

@@ -24,6 +24,8 @@ export default function MembersPage() {
   const [organization, setOrganization] = useState("");
   const [role, setRole] = useState<api.ClientRole>("viewer");
   const [error, setError] = useState("");
+  const [phoneFieldError, setPhoneFieldError] = useState<string | null>(null);
+  const [emailFieldError, setEmailFieldError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const load = useCallback(async () => {
     const params = new URLSearchParams({
@@ -47,6 +49,8 @@ export default function MembersPage() {
     e.preventDefault();
     setBusy(true);
     setError("");
+    setPhoneFieldError(null);
+    setEmailFieldError(null);
     setIssued("");
     try {
       const result = await api.platformCreateUser({
@@ -61,7 +65,19 @@ export default function MembersPage() {
       setPhone("");
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not create user.");
+      if (e instanceof api.ApiError && e.fieldErrors.length > 0) {
+        // Field details go inline under the matching input; anything without a
+        // matching input stays in the form-level error area.
+        const phone = e.fieldErrors.find((entry) => entry.field === "phone");
+        const emailEntry = e.fieldErrors.find((entry) => entry.field === "email");
+        if (phone) setPhoneFieldError(phone.message);
+        if (emailEntry) setEmailFieldError(emailEntry.message);
+        if (e.fieldErrors.some((entry) => entry.field !== "phone" && entry.field !== "email")) {
+          setError(e.message);
+        }
+      } else {
+        setError(e instanceof Error ? e.message : "Could not create user.");
+      }
     } finally {
       setBusy(false);
     }
@@ -160,6 +176,11 @@ export default function MembersPage() {
               onChange={(e) => setEmail(e.target.value)}
             />
           </label>
+          {emailFieldError && (
+            <p role="alert" data-testid="email-field-error">
+              {emailFieldError}
+            </p>
+          )}
           <label>
             Phone
             <input
@@ -168,6 +189,11 @@ export default function MembersPage() {
               onChange={(e) => setPhone(e.target.value)}
             />
           </label>
+          {phoneFieldError && (
+            <p role="alert" data-testid="phone-field-error">
+              {phoneFieldError}
+            </p>
+          )}
           <label>
             Password
             <input

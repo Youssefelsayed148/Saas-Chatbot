@@ -110,6 +110,24 @@ test("staff creates, resets, deactivates and manages existing-user invitations",
   }
 });
 
+test("invalid phone shows an inline error without echoing the value", async ({
+  page,
+}) => {
+  const { tenantId } = await registerOperator(page, "phone-error");
+  await page.goto("/platform/members");
+  const create = page.getByRole("region", { name: "Create user", exact: true });
+  await create.getByLabel("Email", { exact: true }).fill(uniqueEmail("phone-error"));
+  await create.getByRole("button", { name: "Generate password" }).click();
+  await create.getByLabel("Phone", { exact: true }).fill("0123 not a phone");
+  await create.getByRole("combobox", { name: "Organization" }).selectOption(tenantId);
+  await create.getByRole("button", { name: "Create user", exact: true }).click();
+  const inline = page.getByTestId("phone-field-error");
+  await expect(inline).toBeVisible();
+  await expect(inline).toContainText("international");
+  // The submitted value itself is never echoed back.
+  await expect(inline).not.toContainText("0123 not a phone");
+});
+
 test("non-staff cannot access the Members list or details", async ({
   page,
 }) => {
