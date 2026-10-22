@@ -39,6 +39,8 @@ function inlineFieldKey(field: string): string | null {
   // List entries validate per item ("allowed_domains.0"); show under the list.
   if (/^\d+$/.test(parts[parts.length - 1])) parts.pop();
   key = parts.join(".");
+  // One name field (#9): a bot-name error shows under "Assistant name".
+  if (key === "name") key = "assistant_name";
   return FIELD_KEYS.has(key) ? key : null;
 }
 
@@ -57,9 +59,12 @@ export default function BotSettingsPage() {
   const [saved, setSaved] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
 
-  const [name, setName] = useState("");
   const [assistantName, setAssistantName] = useState("");
-  const [businessName, setBusinessName] = useState("");
+  // null = not edited: the field then shows the organization name (#9).
+  const [businessNameEdit, setBusinessNameEdit] = useState<string | null>(null);
+  const organizationName =
+    staffOrganizations?.find((org) => org.id === tenantId)?.name ?? "";
+  const businessName = businessNameEdit ?? organizationName;
   const [businessDescription, setBusinessDescription] = useState("");
   const [welcomeEn, setWelcomeEn] = useState("");
   const [welcomeAr, setWelcomeAr] = useState("");
@@ -77,9 +82,9 @@ export default function BotSettingsPage() {
     try {
       const loaded = await api.getBot(tenantId, botId);
       setBot(loaded);
-      setName(loaded.name);
-      setAssistantName(loaded.config.assistant_name ?? "");
-      setBusinessName(loaded.config.business_name ?? "");
+      // One name field (#9): the legacy bot name is the fallback.
+      setAssistantName(loaded.config.assistant_name || loaded.name);
+      setBusinessNameEdit(loaded.config.business_name || null);
       setBusinessDescription(loaded.config.business_description ?? "");
       setWelcomeEn(loaded.config.welcome_message?.en ?? "");
       setWelcomeAr(loaded.config.welcome_message?.ar ?? "");
@@ -117,7 +122,7 @@ export default function BotSettingsPage() {
     setSaving(true);
     try {
       const config: Record<string, unknown> = {};
-      if (assistantName) config.assistant_name = assistantName;
+      config.assistant_name = assistantName;
       if (businessName) config.business_name = businessName;
       if (businessDescription)
         config.business_description = businessDescription;
@@ -144,7 +149,8 @@ export default function BotSettingsPage() {
         config.allowed_domains = normalizeDomainLines(allowedDomains);
       }
       const updated = await api.patchBot(tenantId, botId, {
-        name,
+        // The stored bot name follows the single Assistant name field.
+        name: assistantName,
         config,
       });
       setBot(updated);
@@ -274,22 +280,11 @@ export default function BotSettingsPage() {
       )}
       <form onSubmit={onSave}>
         <label>
-          Bot name
-          <input
-            name="name"
-            disabled={!canEdit}
-            required
-            maxLength={100}
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-          />
-        </label>
-        {fieldError("name")}
-        <label>
           Assistant name
           <input
             name="assistant_name"
             disabled={!canEdit}
+            required
             maxLength={100}
             value={assistantName}
             onChange={(event) => setAssistantName(event.target.value)}
@@ -303,9 +298,13 @@ export default function BotSettingsPage() {
             disabled={!canEdit}
             maxLength={100}
             value={businessName}
-            onChange={(event) => setBusinessName(event.target.value)}
+            onChange={(event) => setBusinessNameEdit(event.target.value)}
           />
         </label>
+        <p className="muted">
+          Defaults to the organization name; edit it if customers know the
+          business by another name.
+        </p>
         {fieldError("business_name")}
         <label>
           Business description
