@@ -16,6 +16,7 @@ The tsvector columns are precomputed and indexed — queries never call
 """
 
 import re
+from collections.abc import Iterable
 
 from app.knowledge.language import normalise_text
 
@@ -222,11 +223,50 @@ def build_tsquery(question: str, language: str) -> str | None:
     return " | ".join(dict.fromkeys(tokens))
 
 
-def term_queries(question: str, language: str) -> list[str]:
-    """One OR query per distinct content term; Arabic variants count only once."""
+def _content_tokens(question: str, language: str, ignore: frozenset[str]) -> list[str]:
+    """Distinct content tokens, minus the configured store-name/filler words."""
     if language == "ar":
         question = normalise_text(question)
+    tokens = list(dict.fromkeys(_tokens(question)))
+    if not ignore:
+        return tokens
+    return [token for token in tokens if not _is_ignored(token, language, ignore)]
+
+
+def normalise_ignore_terms(values: Iterable[str]) -> frozenset[str]:
+    """Lowercase (and Arabic-normalise) the configured ignore list once."""
+    out: set[str] = set()
+    for value in values:
+        for token in TOKEN_RE.findall(str(value).lower()):
+            out.add(token)
+            out.add(normalise_text(token))
+    return frozenset(out)
+
+
+def _is_ignored(token: str, language: str, ignore: frozenset[str]) -> bool:
+    if token in ignore:
+        return True
+    if language == "ar":
+        base = normalise_text(token)
+        if base in ignore:
+            return True
+        if base.startswith(_ARABIC_ARTICLE) and base[len(_ARABIC_ARTICLE) :] in ignore:
+            return True
+    return False
+
+
+def term_queries(question: str, language: str, ignore: frozenset[str] = frozenset()) -> list[str]:
+    """One OR query per distinct content term; Arabic variants count only once.
+
+    ``ignore`` (normalised, see ``normalise_ignore_terms``) drops store-name and
+    filler words from the term count only; the ranking query is unchanged.
+    """
     return [
         " | ".join(_arabic_variants(token)) if language == "ar" else token
-        for token in dict.fromkeys(_tokens(question))
+        for token in _content_tokens(question, language, ignore)
     ]
+
+
+def term_labels(question: str, language: str, ignore: frozenset[str] = frozenset()) -> list[str]:
+    """Readable label per term, parallel to ``term_queries`` (for the staff trace)."""
+    return _content_tokens(question, language, ignore)
