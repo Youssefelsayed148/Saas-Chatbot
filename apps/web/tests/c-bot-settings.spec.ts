@@ -323,3 +323,92 @@ test("backfill action shows in normal style when needed and keeps its confirmati
     page.getByRole("dialog", { name: "Start embedding backfill?" }),
   ).toBeVisible();
 });
+
+function frameConfig(extra: Record<string, unknown>) {
+  return {
+    available: true,
+    config: {
+      bot_name: "Theme check",
+      assistant_name: "Assistant",
+      welcome_message: { en: "Hello there", ar: "Hello there" },
+      opening_questions: [],
+      colour: "#123456",
+      position: "right",
+      default_language: "en",
+      dir: "ltr",
+      ...extra,
+    },
+  };
+}
+
+async function captureBrand(page: Page) {
+  // Loaded top-level, the frame posts to itself; the real loader reads this
+  // message to colour the launcher button on the host page.
+  await page.addInitScript(() => {
+    const seen: unknown[] = [];
+    (window as unknown as { __brand: unknown[] }).__brand = seen;
+    window.addEventListener("message", (event) => {
+      if ((event.data as { type?: string })?.type === "chatbot:brand")
+        seen.push(event.data);
+    });
+  });
+}
+
+test("widget frame applies the saved theme through CSS variables", async ({
+  page,
+}) => {
+  await captureBrand(page);
+  await page.route("**/api/public/v1/widgets/themed/config", (route) =>
+    route.fulfill({
+      json: frameConfig({
+        theme: {
+          preset: "ocean",
+          header: "#0b5ea8",
+          send_button: "#0b5ea8",
+          user_bubble: "#0b5ea8",
+          bot_bubble: "#eaf3fb",
+          text: "#0f2a43",
+          launcher: "#c2410c",
+        },
+      }),
+    }),
+  );
+  await page.goto("/widget/frame?locator=themed");
+  await expect(page.getByTestId("widget-title")).toHaveText("Theme check");
+  await expect(page.locator(".widget-header")).toHaveCSS(
+    "background-color",
+    "rgb(11, 94, 168)",
+  );
+  const bubble = page.getByTestId("widget-ai-msg").first();
+  await expect(bubble).toHaveCSS("background-color", "rgb(234, 243, 251)");
+  await expect(bubble).toHaveCSS("color", "rgb(15, 42, 67)");
+  await expect(page.getByTestId("widget-send")).toHaveCSS(
+    "background-color",
+    "rgb(11, 94, 168)",
+  );
+  const brand = await page.evaluate(
+    () => (window as unknown as { __brand: Array<{ colour: string }> }).__brand,
+  );
+  expect(brand.at(-1)?.colour).toBe("#c2410c");
+});
+
+test("widget frame without a theme keeps today's look", async ({ page }) => {
+  await captureBrand(page);
+  await page.route("**/api/public/v1/widgets/plain/config", (route) =>
+    route.fulfill({ json: frameConfig({}) }),
+  );
+  await page.goto("/widget/frame?locator=plain");
+  await expect(page.getByTestId("widget-title")).toHaveText("Theme check");
+  await expect(page.locator(".widget-header")).toHaveCSS(
+    "background-color",
+    "rgb(18, 52, 86)",
+  );
+  await expect(page.getByTestId("widget-send")).toHaveCSS(
+    "background-color",
+    "rgb(18, 52, 86)",
+  );
+  const brand = await page.evaluate(
+    () => (window as unknown as { __brand: Array<{ colour: string }> }).__brand,
+  );
+  expect(brand.at(-1)?.colour).toBe("#123456");
+});
