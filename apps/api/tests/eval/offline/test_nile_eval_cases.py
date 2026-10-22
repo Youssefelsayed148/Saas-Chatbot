@@ -9,7 +9,7 @@ import hashlib
 import json
 import unicodedata
 from collections import Counter
-from functools import lru_cache
+from functools import cache
 from pathlib import Path
 from typing import Any
 
@@ -30,12 +30,11 @@ def load_nile_cases() -> list[dict[str, Any]]:
     ]
 
 
-@lru_cache(maxsize=None)
+@cache
 def page_texts(filename: str) -> tuple[str, ...]:
     reader = pypdf.PdfReader(str(CORPUS / filename), strict=False)
     return tuple(
-        unicodedata.normalize("NFKC", page.extract_text() or "").casefold()
-        for page in reader.pages
+        unicodedata.normalize("NFKC", page.extract_text() or "").casefold() for page in reader.pages
     )
 
 
