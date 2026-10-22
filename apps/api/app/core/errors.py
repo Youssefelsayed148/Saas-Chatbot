@@ -61,10 +61,23 @@ def install_error_handlers(application: FastAPI) -> None:
     async def handle_validation_error(
         request: Request, exc: RequestValidationError
     ) -> JSONResponse:
-        # Never echo raw input back (it may contain secrets); only describe the failure.
+        # Stable generic message; per-field details so forms can show messages
+        # under the matching input. Only the dotted location (without the
+        # request-body root) and the message are included: never echo input,
+        # context, docs URLs or any other value that could carry a submitted
+        # secret (password, token, message body).
+        fields = [
+            {
+                "field": ".".join(str(part) for part in error.get("loc", ()) if part != "body"),
+                "message": str(error.get("msg", "Value is invalid.")),
+            }
+            for error in exc.errors()
+        ]
         return JSONResponse(
             status_code=422,
-            content=error_body(request, "VALIDATION_ERROR", "Request body failed validation."),
+            content=error_body(
+                request, "VALIDATION_ERROR", "Request body failed validation.", {"fields": fields}
+            ),
         )
 
     @application.exception_handler(Exception)
