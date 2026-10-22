@@ -92,6 +92,13 @@ class SessionCreateResponse(BaseModel):
     config: dict[str, Any]
 
 
+class FrameAncestorsResponse(BaseModel):
+    # The compiled CSP source list for the frame page (#33). It carries only
+    # what the frame HTTP header already shows any browser; it never exposes
+    # other config keys.
+    frame_ancestors: str
+
+
 class FeedbackRequest(BaseModel):
     rating: str = Field(pattern="^(up|down)$")
 
@@ -132,6 +139,21 @@ def widget_config(
         "reason": availability,
         "config": service.widget_config(bot),
     }
+
+
+@router.get("/widgets/{locator}/frame-ancestors", response_model=FrameAncestorsResponse)
+def widget_frame_ancestors(
+    locator: str,
+    db: DbSession,
+    settings: CurrentSettings,
+) -> FrameAncestorsResponse:
+    """Per-bot CSP source list the web proxy sets on the frame page response
+    (A2.2). Locator-addressed like the rest of the public surface; unknown
+    locators 404. Falls back to Next's static permissive rule when unset."""
+    bot = service.bot_by_locator(db, locator)
+    return FrameAncestorsResponse(
+        frame_ancestors=service.frame_ancestors(bot, settings.environment)
+    )
 
 
 @router.post("/widgets/{locator}/sessions", response_model=SessionCreateResponse, status_code=201)

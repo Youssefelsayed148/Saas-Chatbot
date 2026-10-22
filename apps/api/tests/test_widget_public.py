@@ -320,7 +320,99 @@ def test_unallowed_domain_is_rejected_as_defence_signal(
     assert missing.status_code == 403
 
 
+def test_allowed_domains_accept_bare_hostname_page_origin(
+    db: OrmSession, app: FastAPI, corpus: dict[str, Any]
+) -> None:
+    """A2.1 (#32): the loader forwards the EMBEDDING page's location.hostname —
+    a bare hostname — as page_origin. The match stays hostname-only, so bare
+    hostnames, full origins and subdomains of an allowed entry all pass and
+    non-listed hosts still fail."""
+    users = corpus["users_a"]
+    bot = make_active_bot_with_knowledge(app, users, db, name="Hostbound")
+    patched = users.call(
+        "staff",
+        "PATCH",
+        f"/api/v1/tenants/{users.tenant_id}/bots/{bot['id']}",
+        json={"config": {"allowed_domains": ["example.com"]}},
+    )
+    assert patched.status_code == 200, patched.text
+    client = app_client(app)
+    for origin in ("example.com", "www.Example.COM", "example.com/some/path"):
+        allowed = client.post(
+            f"/api/public/v1/widgets/{bot['widget_locator']}/sessions",
+            json={"page_origin": origin},
+        )
+        assert allowed.status_code == 201, allowed.text
+    bad = client.post(
+        f"/api/public/v1/widgets/{bot['widget_locator']}/sessions",
+        json={"page_origin": "not-example.com"},
+    )
+    assert bad.status_code == 403
+    assert bad.json()["error"]["code"] == "DOMAIN_NOT_ALLOWED"
+
+
 # --- abuse limits ------------------------------------------------------
+
+
+# --- per-bot frame-ancestors (A2.2, #33) --------------------------------
+
+
+def test_frame_ancestors_endpoint_follows_configured_list(
+    db: OrmSession, app: FastAPI, corpus: dict[str, Any]
+) -> None:
+    """The web proxy fetches the compiled CSP source list for the frame page
+    response: permissive while unconfigured, host-only once domains are set."""
+    users = corpus["users_a"]
+    bot = make_active_bot_with_knowledge(app, users, db, name="Framed")
+    client = app_client(app)
+    locator = bot["widget_locator"]
+
+    open_value = client.get(f"/api/public/v1/widgets/{locator}/frame-ancestors")
+    assert open_value.status_code == 200
+    assert open_value.json()["frame_ancestors"] == "http: https:"
+
+    patched = users.call(
+        "staff",
+        "PATCH",
+        f"/api/v1/tenants/{users.tenant_id}/bots/{bot['id']}",
+        json={"config": {"allowed_domains": ["example.com"]}},
+    )
+    assert patched.status_code == 200, patched.text
+    strict_value = client.get(f"/api/public/v1/widgets/{locator}/frame-ancestors")
+    assert strict_value.status_code == 200
+    value = strict_value.json()["frame_ancestors"]
+    for source in (
+        "http://example.com",
+        "https://example.com",
+        "http://*.example.com",
+        "https://*.example.com",
+    ):
+        assert source in value
+    assert "localhost" not in value  # only the allowed hosts (plus subdomains)
+
+    unknown = client.get("/api/public/v1/widgets/some-unknown-l0c4t0r/frame-ancestors")
+    assert unknown.status_code == 404
+    assert unknown.json()["error"]["code"] == "NOT_FOUND"
+
+
+def test_frame_ancestors_localhost_gets_port_wildcard_outside_production(
+    corpus: dict[str, Any],
+) -> None:
+    """Localhost dev/test embeds live on arbitrary ports, so the wildcard port
+    form is emitted outside production; there the plain default-port host form
+    is used (#33)."""
+    from app.widget.service import frame_ancestors
+
+    bot = Bot(config={"allowed_domains": ["localhost", "shop.example.com"]})
+    test_value = frame_ancestors(bot, "test")
+    assert "http://localhost:*" in test_value
+    assert "https://localhost:*" in test_value
+    assert "http://localhost:80" not in test_value
+    # Other hostnames keep the no-port, default-port CSP rule.
+    assert "http://shop.example.com" in test_value.split()
+    production_value = frame_ancestors(bot, "production")
+    assert "localhost:*" not in production_value
+    assert "http://localhost" in production_value.split()
 
 
 def test_session_creation_abuse_limit(db: OrmSession, app: FastAPI, corpus: dict[str, Any]) -> None:

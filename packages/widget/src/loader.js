@@ -117,10 +117,16 @@
     frame.setAttribute("sandbox", "allow-scripts allow-same-origin allow-forms");
     frame.setAttribute("data-testid", "widget-frame");
     document.body.appendChild(frame);
+    // location.hostname of the EMBEDDING page (not the frame): the page host
+    // travels to the frame, which reports it as page_origin so the server can
+    // enforce the bot's allowed-domains list. Defence signal only (docs/06):
+    // a non-browser client can spoof it; the frame CSP is the browser guard.
     var sourceUrl =
       frameBase +
       "/widget/frame?locator=" +
       encodeURIComponent(locator) +
+      "&host=" +
+      encodeURIComponent(window.location.hostname || "") +
       "&v=" +
       VERSION;
     frame.src = sourceUrl;

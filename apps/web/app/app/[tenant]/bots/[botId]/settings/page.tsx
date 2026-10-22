@@ -69,7 +69,7 @@ export default function BotSettingsPage() {
   const [supportPhone, setSupportPhone] = useState("");
   const [colour, setColour] = useState("");
   const [avatar, setAvatar] = useState("");
-  const [position, setPosition] = useState<"left" | "right" | "">("");
+  const [position, setPosition] = useState<"left" | "right">("right");
   const [handoffEnabled, setHandoffEnabled] = useState(true);
   const [allowedDomains, setAllowedDomains] = useState("");
 
@@ -89,7 +89,7 @@ export default function BotSettingsPage() {
       setSupportPhone(loaded.config.support_phone ?? "");
       setColour(loaded.config.colour ?? "");
       setAvatar(loaded.config.avatar ?? "");
-      setPosition(loaded.config.position ?? "");
+      setPosition(loaded.config.position ?? "right");
       setHandoffEnabled(loaded.config.handoff_enabled ?? true);
       setAllowedDomains((loaded.config.allowed_domains ?? []).join("\n"));
       setLoadError(null);
@@ -419,10 +419,9 @@ export default function BotSettingsPage() {
             disabled={!canEdit}
             value={position}
             onChange={(event) =>
-              setPosition(event.target.value as "left" | "right" | "")
+              setPosition(event.target.value as "left" | "right")
             }
           >
-            <option value="">(none)</option>
             <option value="left">Left</option>
             <option value="right">Right</option>
           </select>
