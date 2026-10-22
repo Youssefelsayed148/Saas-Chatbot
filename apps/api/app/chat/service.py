@@ -33,6 +33,7 @@ from app.knowledge.language import detect_language
 from app.retrieval.gate import relevance_gate
 from app.retrieval.hybrid import retrieve_hybrid as retrieve
 from app.retrieval.service import RetrievalResult, RetrievedChunk
+from app.retrieval.trace import candidate_trace
 
 MAX_TOKENS = 700
 logger = logging.getLogger(__name__)
@@ -323,19 +324,7 @@ def chat_answer(
             gate="passed" if evidence else "refused",
             vector_floor=decision.vector_floor,
             fts_minimum=decision.fts_minimum,
-            chunks=[
-                {
-                    "chunk_id": str(chunk.chunk_id),
-                    "document_id": str(chunk.document_id),
-                    "title": chunk.title,
-                    "locator": chunk.page_ref,
-                    "vector_similarity": chunk.vector_similarity,
-                    "fts_match": chunk.fts_match,
-                    "rrf_score": chunk.rrf_score,
-                    "accepted": chunk in evidence,
-                }
-                for chunk in retrieval.evidence
-            ],
+            chunks=candidate_trace(retrieval, decision, evidence),
         )
         logger.info(
             "rag.gate tenant=%s bot=%s mode=%s accepted=%s rejected=%s rewrite=%s",

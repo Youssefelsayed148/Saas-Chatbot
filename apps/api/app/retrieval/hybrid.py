@@ -275,6 +275,7 @@ def retrieve_hybrid(
         revision_id=revision_id,
         question=result.fallback_query or question,
         language=result.applied_language,
+        ignore_terms=settings.retrieval_gate_ignore_terms,
     )
     # Same evidence rules as keyword mode (reserved always-include documents,
     # best document whole, small documents whole), applied to the fused ranking.
@@ -305,12 +306,15 @@ def retrieve_hybrid(
         revision_id=revision_id,
         question=result.fallback_query or question,
         language=result.applied_language,
+        ignore_terms=settings.retrieval_gate_ignore_terms,
     )
     for chunk in evidence:
         hit = fused.get(chunk.chunk_id)
         if hit is not None:
             chunk.fts_match, chunk.matched_terms = hit.fts_match, hit.matched_terms
             chunk.query_terms = hit.query_terms
+            chunk.query_term_labels = hit.query_term_labels
+            chunk.matched_term_labels = hit.matched_term_labels
     result.mode = "hybrid"
     result.candidates = ranked
     result.evidence = evidence

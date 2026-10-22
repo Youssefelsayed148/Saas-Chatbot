@@ -18,7 +18,7 @@ ranked hits. Defaults: ``top_k=8`` candidates, ``final_k=4`` chunks,
 ``max_evidence_chunks=8`` (tune only via a dated note in docs/14).
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from decimal import Decimal
 from uuid import UUID
@@ -27,7 +27,12 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session as OrmSession
 
 from app.core.config import Settings, get_settings
-from app.retrieval.query import build_tsquery, term_queries
+from app.retrieval.query import (
+    build_tsquery,
+    normalise_ignore_terms,
+    term_labels,
+    term_queries,
+)
 
 SUPPORTED_LANGUAGES = ("en", "ar")
 
@@ -62,6 +67,9 @@ class RetrievedChunk:
     matched_terms: int = 0
     # Distinct content terms in the query that produced matched_terms.
     query_terms: int = 0
+    # Readable labels behind the two counts (staff trace, read-only).
+    query_term_labels: list[str] = field(default_factory=list)
+    matched_term_labels: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -102,13 +110,16 @@ def score_lexical(
     revision_id: UUID,
     question: str,
     language: str,
+    ignore_terms: Iterable[str] = (),
 ) -> None:
     """Score each selected chunk's stored index, with the same scoped SQL.
 
     Collapse English stems and Arabic article/prefix variants into distinct
     content-term groups before counting matches. Never copy a document's score
-    to another chunk that may contain no matching terms.
+    to another chunk that may contain no matching terms. ``ignore_terms`` (the
+    store-name/filler list) leaves the term count only; ranking is unchanged.
     """
+    ignore = normalise_ignore_terms(ignore_terms)
     query = build_tsquery(question, language)
     if not chunks or not query:
         return
@@ -116,12 +127,15 @@ def score_lexical(
     rows = db.execute(
         text(f"""
             WITH terms AS (
-                SELECT DISTINCT to_tsquery(:config, term) AS query
-                FROM unnest(CAST(:terms AS text[])) AS term
-                WHERE numnode(to_tsquery(:config, term)) > 0
+                SELECT to_tsquery(:config, t.term) AS query, min(t.label) AS label
+                FROM unnest(CAST(:terms AS text[]), CAST(:labels AS text[])) AS t(term, label)
+                WHERE numnode(to_tsquery(:config, t.term)) > 0
+                GROUP BY to_tsquery(:config, t.term)
             )
             SELECT c.id, ts_rank_cd(c.{column}, to_tsquery(:config, :query)) AS score,
-                (SELECT count(*) FROM terms WHERE terms.query @@ c.{column}) AS matched
+                (SELECT count(*) FROM terms WHERE terms.query @@ c.{column}) AS matched,
+                (SELECT array_agg(terms.label ORDER BY terms.label)
+                   FROM terms WHERE terms.query @@ c.{column}) AS matched_labels
             FROM chunks c
             WHERE c.tenant_id=CAST(:tenant AS uuid) AND c.bot_id=CAST(:bot AS uuid)
               AND c.revision_id=CAST(:revision AS uuid)
@@ -129,7 +143,8 @@ def score_lexical(
         """),
         {
             "config": _tsquery_config(language),
-            "terms": term_queries(question, language),
+            "terms": term_queries(question, language, ignore),
+            "labels": term_labels(question, language, ignore),
             "query": query,
             "tenant": str(tenant_id),
             "bot": str(bot_id),
@@ -137,11 +152,18 @@ def score_lexical(
             "ids": [str(c.chunk_id) for c in chunks],
         },
     ).mappings()
-    scores = {row["id"]: (float(row["score"]), int(row["matched"])) for row in rows}
-    total = len(term_queries(question, language))
+    scores = {
+        row["id"]: (float(row["score"]), int(row["matched"]), list(row["matched_labels"] or []))
+        for row in rows
+    }
+    total = len(term_queries(question, language, ignore))
+    labels = term_labels(question, language, ignore)
     for chunk in chunks:
-        chunk.fts_match, chunk.matched_terms = scores.get(chunk.chunk_id, (0.0, 0))
+        chunk.fts_match, chunk.matched_terms, chunk.matched_term_labels = scores.get(
+            chunk.chunk_id, (0.0, 0, [])
+        )
         chunk.query_terms = total
+        chunk.query_term_labels = list(labels)
 
 
 def _best_chunk_per_document(
@@ -334,6 +356,7 @@ def _retrieve_one_pass(
         revision_id=revision_id,
         question=question,
         language=language,
+        ignore_terms=settings.retrieval_gate_ignore_terms,
     )
     return ranked, evidence
 

@@ -118,6 +118,14 @@ class Settings(BaseSettings):
     retrieval_min_fts_match: float = Field(default=0.01, gt=0)
     retrieval_min_matched_terms: int = Field(default=2, ge=1)
     retrieval_keyword_gates: dict[str, KeywordGate] = Field(default_factory=dict)
+    # B.5 calibration knobs. Defaults reproduce the previous behaviour exactly.
+    # Store-name/filler words left out of the matched/query term counts (not out
+    # of the ranking query). JSON list in the environment.
+    retrieval_gate_ignore_terms: list[str] = Field(default_factory=list)
+    # Top-result rule: the chunk with the highest cosine passes when it reaches
+    # this lower floor AND leads the runner-up by the margin. None = rule off.
+    retrieval_top_result_cosine_floor: float | None = Field(default=None, ge=-1, le=1)
+    retrieval_top_result_margin: float = Field(default=0.0, ge=0, le=2)
     chat_rewrite_enabled: bool = True
     chat_rewrite_plans: list[str] = Field(
         default_factory=lambda: ["free", "starter", "pro", "business"]
