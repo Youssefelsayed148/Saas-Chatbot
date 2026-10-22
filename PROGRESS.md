@@ -2606,3 +2606,58 @@ postgresql://test:test@127.0.0.1:55462/postgres per process, never written to a 
   only); the working-tree copy was restored after each run. Deliberately untouched:
   Stage 1 drift items (RETRIEVAL_MIN_MATCHED_TERMS alignment, fts_ar vs simple truth,
   ADR-019 dated notes in docs 07/14/18, MANUAL-TEST compose paths) and all Phase 6 files.
+
+## 2026-10-22 — A1.2–A1.7 batch (branch feat/a1.2-field-details, created from main)
+
+Commits (local only, no push/tag/merge): 53a3415 A1.2 API 422 field details;
+b73f1bd A1.2 web inline field errors; be4a3b7 A1.3 phone country-code + national
+input; 3277f2c A1.4 API domain normalization; 75cbb8b A1.4 web settings
+normalization; 615d748 A1.5 provider-failure trace/log; dd267e5 A1.6 tier
+provider/model display. All commit messages carry the required trailer.
+
+Verification environment: Windows venv (`.venv/Scripts/python.exe`, Python
+3.12.10) driven from WSL, as in earlier sessions.
+
+Commands and outcomes:
+- `python -m ruff check <touched files>` per commit — All checks passed!
+- `python -m ruff format --check <touched files>` per commit — formatted.
+- `python -m mypy --follow-imports=silent <touched app files>` — Success, no
+  issues. (`mypy` on the Windows venv reports 3 pre-existing errors in
+  `app/knowledge/ingest.py` (os.setsid/killpg/SIGKILL) — POSIX-only attrs,
+  untouched by this batch, not fixed here per batch scope.)
+- `npm run typecheck` (next typegen + tsc --noEmit) — clean after each web
+  commit; `npx eslint <touched files> --max-warnings 0` — clean; prettier run
+  on every touched web file.
+
+NOT verified (blocked, no fabrication):
+- Disposable test DB `saas-test-db` on 127.0.0.1:55462 refused connections
+  (`psycopg` ConnectionTimeout; socket-level ConnectionRefusedError). Starting
+  containers is owner-only, so NO pytest run and NO Playwright run happened in
+  this session. The new/extended tests (test_validation_details.py,
+  test_allowed_domains.py, test_chat.py provider-failure tests, test_rag_limits
+  tier-targets test, staff-members.spec.ts, staff-bots.spec.ts) are written
+  against existing fixtures but their outcome is unverified until the owner
+  brings the disposable DB back and runs:
+  `cd apps/api && TEST_DATABASE_URL=postgresql://test:test@127.0.0.1:55462/postgres ENVIRONMENT=test PYTHONUTF8=1 python -m pytest tests/test_validation_details.py tests/test_allowed_domains.py tests/test_chat.py tests/test_rag_limits.py`
+  and the Playwright specs `staff-members.spec.ts`, `staff-bots.spec.ts`.
+- A1.7 investigation (read-only, no code change): uploads never enqueue jobs —
+  `upload_files` (apps/api/app/knowledge/service.py:70-162) only creates Source
+  rows with status "stored"; the only enqueue path is `start_ingestion`
+  (service.py:206-268) on the explicit `POST .../ingestion` endpoint
+  (apps/api/app/knowledge/router.py:96-107) behind its own UI click, with the
+  submit button disabled while a request is in flight
+  (knowledge/page.tsx ~line 283, `disabled={ingesting || storedSources.length === 0}`).
+  A second ingest POST after sources are committed as "queued" returns 409
+  NOTHING_TO_INGEST (service.py:244-245). So two uploads create zero jobs (the
+  explicit ingest click enqueues one batch job for all stored sources) and one
+  click cannot enqueue twice. A theoretically simultaneous duplicate POST
+  landing between read and commit of the first is the generic double-submit
+  window on the ingest action, not an upload behavior; no idempotency added,
+  nothing changed.
+- A1.1 acceptance items (Dockerfile copies public / loader diff) belong to the
+  feat/a1.1-serve-web-public branch (commit 7d04ef1), not this branch. Read-only
+  cross-check from this branch: apps/web/public contains only `widget/`, and
+  apps/web/Dockerfile on main does NOT copy public yet; on the A1.1 branch the
+  generated copy `apps/web/public/widget/v1/loader.js` (206 lines) and
+  `packages/widget/src/loader.js` (206 lines) are byte-identical after CRLF/LF
+  normalization (cmp clean).
