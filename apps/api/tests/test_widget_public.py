@@ -320,6 +320,37 @@ def test_unallowed_domain_is_rejected_as_defence_signal(
     assert missing.status_code == 403
 
 
+def test_allowed_domains_accept_bare_hostname_page_origin(
+    db: OrmSession, app: FastAPI, corpus: dict[str, Any]
+) -> None:
+    """A2.1 (#32): the loader forwards the EMBEDDING page's location.hostname —
+    a bare hostname — as page_origin. The match stays hostname-only, so bare
+    hostnames, full origins and subdomains of an allowed entry all pass and
+    non-listed hosts still fail."""
+    users = corpus["users_a"]
+    bot = make_active_bot_with_knowledge(app, users, db, name="Hostbound")
+    patched = users.call(
+        "staff",
+        "PATCH",
+        f"/api/v1/tenants/{users.tenant_id}/bots/{bot['id']}",
+        json={"config": {"allowed_domains": ["example.com"]}},
+    )
+    assert patched.status_code == 200, patched.text
+    client = app_client(app)
+    for origin in ("example.com", "www.Example.COM", "example.com/some/path"):
+        allowed = client.post(
+            f"/api/public/v1/widgets/{bot['widget_locator']}/sessions",
+            json={"page_origin": origin},
+        )
+        assert allowed.status_code == 201, allowed.text
+    bad = client.post(
+        f"/api/public/v1/widgets/{bot['widget_locator']}/sessions",
+        json={"page_origin": "not-example.com"},
+    )
+    assert bad.status_code == 403
+    assert bad.json()["error"]["code"] == "DOMAIN_NOT_ALLOWED"
+
+
 # --- abuse limits ------------------------------------------------------
 
 

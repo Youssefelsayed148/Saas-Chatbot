@@ -109,12 +109,33 @@ def require_available(bot: Bot, *, session_scope: bool) -> None:
 # --- allowed domains (defence signal, NOT auth; docs/06) --------------------
 
 
-def _host_of(origin: str) -> str | None:
+def _host_of(value: str | None) -> str | None:
+    """The hostname behind a PAGE origin ("https://example.com:8443/page") or
+    behind a bare hostname ("example.com", "localhost" — what the loader's
+    location.hostname sends). Malformed or ambiguous input (colon in the
+    authority-less form) yields None so the check fails closed."""
+    candidate = (value or "").strip().lower()
+    if not candidate:
+        return None
     try:
-        parts = urlsplit(origin)
+        parts = urlsplit(candidate)
     except ValueError:
         return None
-    return (parts.hostname or "").lower() or None
+    if parts.netloc:
+        try:
+            # .hostname lowercases; it also parses the port and may raise on
+            # malformed input (e.g. "https://user:bad:port@example.com").
+            host = parts.hostname or ""
+        except ValueError:
+            return None
+    elif ":" in candidate or "//" in candidate:
+        # Authority-less but colon/colon-slashes ("example.com:8080",
+        # "example.com less://x"): ambiguous, never guess from these.
+        return None
+    else:
+        # Bare hostname, optionally with a path ("example.com/page").
+        host = parts.path.split("/", 1)[0]
+    return host or None
 
 
 def origin_allowed(bot: Bot, page_origin: str | None) -> bool:

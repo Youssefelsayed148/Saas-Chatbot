@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session as OrmSession
 
 from app.bots.schemas import BotConfig, normalize_domain
 from app.core.config import get_settings
+from app.widget.service import _host_of
 from tests.helpers import seeded_tenant
 
 CASES = [
@@ -28,6 +29,29 @@ CASES = [
 @pytest.mark.parametrize(("raw", "expected"), CASES)
 def test_normalize_domain(raw: str, expected: str) -> None:
     assert normalize_domain(raw) == expected
+
+
+HOST_OF_CASES = [
+    # Full origins keep working (the session contract before A2).
+    ("https://example.com:8443/page", "example.com"),
+    ("http://SUB.Example.COM", "sub.example.com"),
+    ("https://example.com/", "example.com"),
+    (None, None),
+    # A2.1: the loader sends the bare location.hostname of the embedding page.
+    ("example.com", "example.com"),
+    ("Example.COM/page", "example.com"),
+    ("  localhost  ", "localhost"),
+    ("", None),
+    # Colon in the authority-less form ("example.com:8080", "::1"): ambiguous,
+    # fail closed instead of guessing a host.
+    ("example.com:8080", None),
+    ("::1", None),
+]
+
+
+@pytest.mark.parametrize(("raw", "expected"), HOST_OF_CASES)
+def test_host_of(raw: str | None, expected: str | None) -> None:
+    assert _host_of(raw) == expected
 
 
 def test_config_normalizes_dedupes_and_keeps_rejections() -> None:

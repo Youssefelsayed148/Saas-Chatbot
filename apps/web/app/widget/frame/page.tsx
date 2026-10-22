@@ -133,6 +133,15 @@ function localTurnId(): string {
   return `local-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
 }
 
+function embedPageHost(): string | null {
+  // The parent loader appends the EMBEDDING page's location.hostname to the
+  // frame URL (docs/09 §host). It is a spoofable defence signal (docs/06),
+  // not authentication; the frame CSP is the browser-enforced guard.
+  const host = new URL(window.location.href).searchParams.get("host");
+  const trimmed = host?.trim() ?? "";
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 function widgetDebugEnabled(): boolean {
   if (new URLSearchParams(window.location.search).get("debugWidget") === "1") {
     return true;
@@ -195,7 +204,7 @@ async function ensureSessionFor(
   const response = await fetch(`/api/public/v1/widgets/${locator}/sessions`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ page_origin: null }),
+    body: JSON.stringify({ page_origin: embedPageHost() }),
   });
   if (!response.ok) {
     const payload = (await response.json().catch(() => null)) as {
