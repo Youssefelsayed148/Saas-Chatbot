@@ -18,8 +18,10 @@ from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Query, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.chat import streaming
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
 from app.core.ratelimit import client_ip
@@ -211,6 +213,49 @@ def send_message(
         kind=payload["kind"],
         language=payload["language"],
     )
+
+
+@router.post("/sessions/{session_id}/messages/stream")
+def send_message_stream(
+    session_id: UUID,
+    body: WidgetMessageRequest,
+    request: Request,
+    db: DbSession,
+    settings: CurrentSettings,
+    x_session_token: Annotated[str | None, Header()] = None,
+) -> StreamingResponse:
+    """The same grounded turn as ``send_message``, delivered as Server-Sent
+    Events (S.3). Auth, session, availability, rate-limit and quota checks run
+    BEFORE the stream opens, so refusals are ordinary JSON errors. Persistence
+    happens at ``done``; a client disconnect stops the provider call and
+    persists nothing."""
+    visitor_session = _session_or_401(db, session_id, settings, x_session_token)
+    bot = service.bot_for_session(db, visitor_session)
+    turn = streaming.prepare_widget_stream(
+        db,
+        visitor_session=visitor_session,
+        bot=bot,
+        text=body.text,
+        ip=client_ip(request),
+        settings=settings,
+        language_hint=body.language,
+    )
+    return StreamingResponse(
+        streaming.stream_events(turn, _turn_payload),
+        media_type="text/event-stream; charset=utf-8",
+        headers=streaming.SSE_HEADERS,
+    )
+
+
+def _turn_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """The buffered endpoint's response shape (citations stay private)."""
+    return MessageTurnResponse(
+        conversation_id=payload["conversation_id"],
+        visitor_message=payload["visitor_message"],
+        ai_message=({**payload["ai_message"], "citations": []} if payload["ai_message"] else None),
+        kind=payload["kind"],
+        language=payload["language"],
+    ).model_dump()
 
 
 @router.get("/sessions/{session_id}/messages", response_model=list[SessionMessageOut])

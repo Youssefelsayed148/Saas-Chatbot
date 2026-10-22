@@ -111,6 +111,7 @@ function localized(key: string, lang: string): string {
       ar: "نبدأ جلسة جديدة…",
     },
     typing: { en: "The assistant is typing…", ar: "المساعد يكتب…" },
+    stop: { en: "Stop", ar: "إيقاف" },
     cite: { en: "Sources", ar: "المصادر" },
     open: { en: "Open chat window", ar: "افتح نافذة المحادثة" },
     scroll: { en: "Scroll to bottom", ar: "الانتقال إلى الأسفل" },
@@ -127,6 +128,38 @@ function localized(key: string, lang: string): string {
   const entry = texts[key];
   if (!entry) return key;
   return lang === "ar" ? entry.ar : entry.en;
+}
+
+// The in-flight assistant bubble while a reply streams in (S.5). It is
+// replaced by the persisted message id when the server sends `done`.
+const STREAMING_TURN_ID = "streaming-reply";
+
+interface DonePayload {
+  visitor_message: { id: string; created_at: string };
+  ai_message: {
+    id: string;
+    text: string;
+    citations: CitedSource[];
+    needs_human: boolean;
+    created_at: string;
+  } | null;
+}
+
+/** Parse one SSE block ("event: x\ndata: {...}"); comments yield null. */
+function parseSseBlock(block: string): { event: string; data: unknown } | null {
+  let event = "";
+  const dataLines: string[] = [];
+  for (const line of block.split("\n")) {
+    if (line.startsWith("event:")) event = line.slice(6).trim();
+    else if (line.startsWith("data:"))
+      dataLines.push(line.slice(5).trimStart());
+  }
+  if (!event || dataLines.length === 0) return null;
+  try {
+    return { event, data: JSON.parse(dataLines.join("\n")) };
+  } catch {
+    return null;
+  }
 }
 
 function localTurnId(): string {
@@ -270,6 +303,12 @@ export default function WidgetFramePage() {
     error: null,
   });
   const [typing, setTyping] = useState(false);
+  // True from the first streamed character until the turn ends (S.5).
+  const [streaming, setStreaming] = useState(false);
+  // Final text of a streamed reply, announced once at `done` (not per token).
+  const [announce, setAnnounce] = useState("");
+  const abortRef = useRef<AbortController | null>(null);
+  const turnActiveRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const locatorRef = useRef<string | null>(null);
   const sessionRef = useRef<{ id: string; token: string } | null>(null);
@@ -333,7 +372,7 @@ export default function WidgetFramePage() {
 
   async function pollSession() {
     const session = sessionRef.current;
-    if (!session || pollingRef.current) return;
+    if (!session || pollingRef.current || turnActiveRef.current) return;
     pollingRef.current = true;
     try {
       const since = lastPollAtRef.current
@@ -506,6 +545,184 @@ export default function WidgetFramePage() {
     bottomRef.current?.scrollIntoView({ block: "end" });
   }, [turns, typing]);
 
+  function stopStream() {
+    abortRef.current?.abort();
+  }
+
+  /**
+   * Streamed turn (S.5): POST .../messages/stream and read Server-Sent Events
+   * with fetch + ReadableStream. Resolves to:
+   * - "done"     the turn finished (persisted by the server at `done`);
+   * - "fallback" the stream failed before any text: the caller makes ONE
+   *              request to the buffered endpoint;
+   * - "failed"   a typed error was shown (same handling as the buffered path);
+   * - "aborted"  the visitor pressed Stop (nothing is persisted server-side).
+   */
+  async function streamTurn(
+    session: { id: string; token: string },
+    text: string,
+    localTurn: Turn,
+    signal: AbortSignal,
+  ): Promise<"done" | "fallback" | "failed" | "aborted"> {
+    let response: Response;
+    try {
+      response = await fetch(
+        `/api/public/v1/sessions/${session.id}/messages/stream`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "text/event-stream",
+            "X-Session-Token": session.token,
+          },
+          body: JSON.stringify({ text, language: lang }),
+          signal,
+        },
+      );
+    } catch {
+      return signal.aborted ? "aborted" : "fallback";
+    }
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as {
+        error?: { code?: string; message?: string };
+      } | null;
+      if (payload?.error?.code) {
+        // An application refusal (paused, rate limit, expired session...):
+        // the buffered endpoint would answer the same, so show it directly.
+        setTypedError(payload.error.code, payload.error.message);
+        return "failed";
+      }
+      return "fallback"; // proxy or transport error
+    }
+    const type = response.headers.get("content-type") ?? "";
+    if (!response.body || !type.includes("text/event-stream")) {
+      return "fallback";
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let text_ = "";
+    let started = false;
+    const result: {
+      outcome: "done" | "fallback" | "failed" | "aborted" | null;
+    } = {
+      outcome: null,
+    };
+
+    const showStreamed = (next: string) => {
+      text_ = next;
+      if (!started) {
+        started = true;
+        setStreaming(true);
+        setTurns((current) => [
+          ...current,
+          { id: STREAMING_TURN_ID, role: "assistant", text: next },
+        ]);
+      } else {
+        setTurns((current) =>
+          current.map((turn) =>
+            turn.id === STREAMING_TURN_ID ? { ...turn, text: next } : turn,
+          ),
+        );
+      }
+    };
+
+    const finish = (payload: DonePayload) => {
+      lastPollAtRef.current =
+        payload.ai_message?.created_at ?? payload.visitor_message.created_at;
+      setTurns((current) => {
+        const withVisitorId = current.map((turn) =>
+          turn.id === localTurn.id
+            ? { ...turn, id: payload.visitor_message.id }
+            : turn,
+        );
+        const ai = payload.ai_message;
+        if (!ai) {
+          return withVisitorId.filter((turn) => turn.id !== STREAMING_TURN_ID);
+        }
+        const final: Turn = {
+          id: ai.id,
+          role: "assistant",
+          text: ai.text, // authoritative: replaces whatever streamed
+          citations: ai.citations,
+          needsHuman: ai.needs_human,
+        };
+        const rest = withVisitorId.filter(
+          (turn) => turn.id !== STREAMING_TURN_ID && turn.id !== ai.id,
+        );
+        return [...rest, final];
+      });
+      if (started && payload.ai_message) setAnnounce(payload.ai_message.text);
+      setReason(null);
+      setServerMessage(null);
+    };
+
+    const dropPartial = () => {
+      setTurns((current) =>
+        current.filter((turn) => turn.id !== STREAMING_TURN_ID),
+      );
+    };
+
+    const handle = (block: string) => {
+      const parsed = parseSseBlock(block);
+      if (!parsed) return;
+      const data = parsed.data as Record<string, unknown>;
+      if (parsed.event === "delta" && typeof data.text === "string") {
+        showStreamed(text_ + data.text);
+      } else if (
+        parsed.event === "cannot_confirm" &&
+        typeof data.text === "string"
+      ) {
+        showStreamed(data.text);
+      } else if (parsed.event === "done") {
+        finish(data as unknown as DonePayload);
+        result.outcome = "done";
+      } else if (parsed.event === "error") {
+        if (started) {
+          dropPartial();
+          setTypedError(String(data.code ?? "NETWORK"));
+          result.outcome = "failed";
+        } else {
+          result.outcome = "fallback";
+        }
+      }
+    };
+
+    try {
+      while (result.outcome === null) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder
+          .decode(value, { stream: true })
+          .replace(/\r\n/g, "\n");
+        let boundary = buffer.indexOf("\n\n");
+        while (boundary >= 0 && result.outcome === null) {
+          handle(buffer.slice(0, boundary));
+          buffer = buffer.slice(boundary + 2);
+          boundary = buffer.indexOf("\n\n");
+        }
+      }
+    } catch {
+      if (signal.aborted) {
+        dropPartial();
+        return "aborted";
+      }
+      if (!started) return "fallback";
+      dropPartial();
+      setReason("network");
+      return "failed";
+    } finally {
+      void reader.cancel().catch(() => undefined);
+    }
+    if (result.outcome !== null) return result.outcome;
+    // The stream ended without `done`.
+    if (!started) return "fallback";
+    dropPartial();
+    setReason("network");
+    return "failed";
+  }
+
   async function onSend(event: React.FormEvent, presetText?: string) {
     event.preventDefault();
     const locator = locatorRef.current;
@@ -520,7 +737,11 @@ export default function WidgetFramePage() {
       text,
     };
     setTurns((current) => [...current, localTurn]);
+    setAnnounce("");
     setTyping(true);
+    turnActiveRef.current = true;
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
       if (sessionRef.current === null) {
         sessionRef.current = await ensureSessionFor(locator);
@@ -529,6 +750,22 @@ export default function WidgetFramePage() {
         setTyping(false);
         return;
       }
+      const outcome = await streamTurn(
+        sessionRef.current,
+        text,
+        localTurn,
+        controller.signal,
+      );
+      if (outcome === "aborted") {
+        // Nothing was persisted: put the visitor's text back in the input.
+        setTurns((current) =>
+          current.filter((turn) => turn.id !== localTurn.id),
+        );
+        setDraft(text);
+        return;
+      }
+      if (outcome !== "fallback") return;
+      // The stream failed before any text: ONE request to the buffered endpoint.
       const response = await fetch(
         `/api/public/v1/sessions/${sessionRef.current.id}/messages`,
         {
@@ -598,6 +835,9 @@ export default function WidgetFramePage() {
         setReason("network");
       }
     } finally {
+      turnActiveRef.current = false;
+      abortRef.current = null;
+      setStreaming(false);
       setTyping(false);
     }
   }
@@ -756,7 +996,11 @@ export default function WidgetFramePage() {
         </button>
       </header>
 
-      <main className="widget-thread" aria-live="polite">
+      <main
+        className="widget-thread"
+        aria-live={streaming ? "off" : "polite"}
+        aria-busy={streaming}
+      >
         {status === "loading" && (
           <p role="status" className="widget-note">
             {reason === "network" ? localized("network", lang) : "…"}
@@ -819,10 +1063,12 @@ export default function WidgetFramePage() {
                       ? "widget-visitor-msg"
                       : "widget-ai-msg"
                   }
+                  aria-busy={turn.id === STREAMING_TURN_ID ? true : undefined}
                 >
                   <div dir="auto">{turn.text}</div>
                   {turn.role === "assistant" &&
                     turn.id !== "welcome" &&
+                    turn.id !== STREAMING_TURN_ID &&
                     !turn.feedback && (
                       <span
                         className="widget-feedback"
@@ -861,7 +1107,7 @@ export default function WidgetFramePage() {
                 </li>
               ))}
             </ul>
-            {typing && (
+            {typing && !streaming && (
               <p
                 role="status"
                 className="widget-note typing"
@@ -1051,8 +1297,25 @@ export default function WidgetFramePage() {
           >
             {typing ? "…" : localized("send", lang)}
           </button>
+          {typing && (
+            <button
+              type="button"
+              onClick={stopStream}
+              data-testid="widget-stop"
+            >
+              {localized("stop", lang)}
+            </button>
+          )}
         </form>
       )}
+      <p
+        className="sr-only"
+        role="status"
+        aria-live="polite"
+        data-testid="widget-announce"
+      >
+        {announce}
+      </p>
       <p className="sr-only">{localized("scroll", lang)}</p>
     </div>
   );
