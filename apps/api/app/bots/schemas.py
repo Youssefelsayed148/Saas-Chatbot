@@ -14,6 +14,7 @@ from app.core.config import get_settings
 NAME_MAX_LENGTH = 100
 COLOUR_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
 QUESTION_MAX_LENGTH = 120
+TONE_MAX_LENGTH = 2000
 
 
 def normalize_domain(value: str) -> str:
@@ -136,10 +137,16 @@ class BotUpdateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: str | None = Field(default=None, min_length=1, max_length=NAME_MAX_LENGTH)
     config: BotConfig | None = None
+    # Staff-only tone and rules (#15). Empty string or null clears it.
+    tone_and_rules: str | None = Field(default=None, max_length=TONE_MAX_LENGTH)
     # Widget lifecycle transitions (P4-01, docs/04 statuses): draft→active,
     # active→paused and paused→active. Archiving stays DELETE-only; drafts cannot
     # be made and archived bots cannot be revived here.
     status: str | None = None
+
+
+class ToneOut(BaseModel):
+    tone_and_rules: str | None = None
 
 
 class BotOut(BaseModel):
@@ -149,6 +156,8 @@ class BotOut(BaseModel):
     name: str
     status: str
     config: dict[str, object]
+    # Staff only: the router blanks it for tenant members (#15).
+    tone_and_rules: str | None = None
     # Opaque public widget locator (P4-01): not a secret, shown on the install page.
     widget_locator: str | None = None
     created_at: datetime

@@ -370,6 +370,7 @@ def chat_answer(
         support_contact=_support_contact(bot),
         language=language,
         evidence_block=block,
+        tone_and_rules=str(getattr(bot, "tone_and_rules", None) or ""),
     )
     user_text = question
     extra: list[str] = []

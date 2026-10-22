@@ -86,6 +86,11 @@ class BotService:
         if body.name is not None and body.name.strip() != bot.name:
             bot.name = body.name.strip()
             changes.append("name")
+        if "tone_and_rules" in body.model_fields_set:
+            tone = (body.tone_and_rules or "").strip() or None
+            if tone != bot.tone_and_rules:
+                bot.tone_and_rules = tone
+                changes.append("tone_and_rules")  # field name only, never the text
         if body.config is not None:
             bot.config = self._merge_config(bot, body.config)
             changes.append("config")

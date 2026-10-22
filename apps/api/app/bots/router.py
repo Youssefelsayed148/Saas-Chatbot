@@ -6,7 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends
 
 from app.auth import cookies
-from app.bots.schemas import BotCreateRequest, BotOut, BotUpdateRequest
+from app.bots.schemas import BotCreateRequest, BotOut, BotUpdateRequest, ToneOut
 from app.bots.service import BotService
 from app.core.tenancy import TenantContext, TenantContextDep
 
@@ -20,6 +20,7 @@ def _client_bot_out(context: TenantContext, bot: object) -> BotOut:
     if not context.user.is_platform_staff:
         out.widget_locator = None
         out.config = {}
+        out.tone_and_rules = None
     return out
 
 
@@ -40,6 +41,14 @@ def list_bots(context: TenantContextDep, include_archived: bool = False) -> list
 def get_bot(bot_id: UUID, context: TenantContextDep) -> BotOut:
     bot = BotService(context.db).get_bot(context, bot_id)
     return _client_bot_out(context, bot)
+
+
+@router.get("/api/v1/tenants/{tenant_id}/bots/{bot_id}/tone-and-rules", response_model=ToneOut)
+def get_tone_and_rules(bot_id: UUID, context: TenantContextDep) -> ToneOut:
+    """Staff-only read of the tone field: members get 403 (not a hidden UI)."""
+    context.require_operator()
+    bot = BotService(context.db).get_bot(context, bot_id)
+    return ToneOut(tone_and_rules=bot.tone_and_rules)
 
 
 @router.patch("/api/v1/tenants/{tenant_id}/bots/{bot_id}", response_model=BotOut)
