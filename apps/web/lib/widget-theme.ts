@@ -198,8 +198,6 @@ export function contrastIssues(slots: ThemeSlots): ContrastIssue[] {
     const bubbles = bubble
       ? [bubble]
       : [TOKEN_DEFAULTS.bot_bubble.light, TOKEN_DEFAULTS.bot_bubble.dark];
-    // Pair like with like when both are defaults (light text with light bubble).
-    if (!text && !bubble) return issues;
     if (text && !bubble) {
       for (const b of bubbles) pairs.push([text, b]);
     } else if (!text && bubble) {

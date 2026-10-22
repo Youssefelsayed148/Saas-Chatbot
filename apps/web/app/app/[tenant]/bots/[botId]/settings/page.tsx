@@ -14,6 +14,10 @@ import BotWorkspaceNav from "@/lib/bot-workspace-nav";
 import RagTierControl from "@/lib/rag-tier-control";
 import BotToneField from "@/lib/bot-tone-field";
 import BotReadinessCard from "@/lib/bot-readiness-card";
+import WidgetThemeEditor, { type ThemeDraft } from "@/lib/widget-theme-editor";
+import WidgetPreview from "@/lib/widget-preview";
+import { THEME_SLOTS, isHex, type ThemeSlots } from "@/lib/widget-theme";
+import "@/app/bot-settings-c.css";
 
 /** API field paths (dotted, without the body root) → form input keys.
  * Unmatched fields render in the form-level error area instead. */
@@ -34,6 +38,7 @@ const FIELD_KEYS = new Set([
   "handoff_enabled",
   "allowed_domains",
   "tone_and_rules",
+  "theme",
 ]);
 
 function inlineFieldKey(field: string): string | null {
@@ -41,6 +46,8 @@ function inlineFieldKey(field: string): string | null {
   const parts = key.split(".");
   // List entries validate per item ("allowed_domains.0"); show under the list.
   if (/^\d+$/.test(parts[parts.length - 1])) parts.pop();
+  // Theme slot errors ("theme.header") show under the appearance editor.
+  if (parts[0] === "theme") parts.length = 1;
   key = parts.join(".");
   // One name field (#9): a bot-name error shows under "Assistant name".
   if (key === "name") key = "assistant_name";
@@ -82,6 +89,13 @@ export default function BotSettingsPage() {
   const [handoffEnabled, setHandoffEnabled] = useState(true);
   const [allowedDomains, setAllowedDomains] = useState("");
   const [toneAndRules, setToneAndRules] = useState("");
+  const [themeDraft, setThemeDraft] = useState<ThemeDraft>({
+    preset: "classic",
+    slots: {},
+  });
+  // Only send a theme when staff changed it or the bot already had one, so an
+  // untouched bot keeps the exact default payload.
+  const [themeActive, setThemeActive] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -103,6 +117,19 @@ export default function BotSettingsPage() {
       setHandoffEnabled(loaded.config.handoff_enabled ?? true);
       setAllowedDomains((loaded.config.allowed_domains ?? []).join("\n"));
       setToneAndRules(loaded.tone_and_rules ?? "");
+      const storedTheme = loaded.config.theme;
+      const slots: ThemeSlots = {};
+      for (const slot of THEME_SLOTS) {
+        const value = storedTheme?.[slot];
+        if (isHex(value)) slots[slot] = value;
+      }
+      setThemeDraft({
+        preset:
+          storedTheme?.preset ??
+          (Object.keys(slots).length > 0 ? "custom" : "classic"),
+        slots,
+      });
+      setThemeActive(!!storedTheme);
       setLoadError(null);
     } catch (caught) {
       setLoadError(
@@ -151,6 +178,9 @@ export default function BotSettingsPage() {
       if (avatar) config.avatar = avatar;
       if (position) config.position = position;
       config.handoff_enabled = handoffEnabled;
+      if (themeActive) {
+        config.theme = { preset: themeDraft.preset, ...themeDraft.slots };
+      }
       if (allowedDomains) {
         config.allowed_domains = normalizeDomainLines(allowedDomains);
       }
@@ -443,6 +473,36 @@ export default function BotSettingsPage() {
           </select>
         </label>
         {fieldError("position")}
+        <section
+          aria-label="Widget appearance"
+          className="theme-appearance"
+          data-testid="widget-appearance"
+        >
+          <div>
+            <h2>Widget appearance</h2>
+            <p className="muted">
+              Pick a preset, then adjust any colour. The preview shows the
+              widget exactly as visitors will see it; Save settings applies it.
+            </p>
+            <WidgetThemeEditor
+              draft={themeDraft}
+              brand={colour}
+              disabled={!canEdit}
+              onChange={(next) => {
+                setThemeDraft(next);
+                setThemeActive(true);
+              }}
+            />
+            {fieldError("theme")}
+          </div>
+          <WidgetPreview
+            theme={{ preset: themeDraft.preset, ...themeDraft.slots }}
+            colour={colour}
+            lang={defaultLanguage}
+            name={assistantName || bot.name}
+            welcome={defaultLanguage === "ar" ? welcomeAr : welcomeEn}
+          />
+        </section>
         <label>
           Human handoff enabled
           <input

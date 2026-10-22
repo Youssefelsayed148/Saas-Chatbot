@@ -234,6 +234,16 @@ export interface Bot {
     handoff_enabled?: boolean;
     allowed_domains?: string[];
     avatar?: string;
+    /** Widget colour slots and preset id (#14); absent = default look. */
+    theme?: {
+      preset?: string;
+      header?: string;
+      send_button?: string;
+      user_bubble?: string;
+      bot_bubble?: string;
+      text?: string;
+      launcher?: string;
+    };
   };
   /** Staff-only; the API blanks it for members (#15). */
   tone_and_rules?: string | null;
