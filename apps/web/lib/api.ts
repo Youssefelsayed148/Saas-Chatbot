@@ -235,6 +235,8 @@ export interface Bot {
     allowed_domains?: string[];
     avatar?: string;
   };
+  /** Staff-only; the API blanks it for members (#15). */
+  tone_and_rules?: string | null;
   widget_locator?: string;
   created_at: string;
   updated_at: string;
@@ -903,6 +905,7 @@ export async function patchBot(
     name?: string;
     status?: "active" | "paused";
     config?: Record<string, unknown>;
+    tone_and_rules?: string | null;
   },
 ): Promise<Bot> {
   return api<Bot>(`tenants/${tenantId}/bots/${botId}`, {

@@ -12,6 +12,7 @@ import { useSession } from "@/lib/session";
 import { ConfirmAction, Loading, Notice } from "@/lib/ui";
 import BotWorkspaceNav from "@/lib/bot-workspace-nav";
 import RagTierControl from "@/lib/rag-tier-control";
+import BotToneField from "@/lib/bot-tone-field";
 
 /** API field paths (dotted, without the body root) → form input keys.
  * Unmatched fields render in the form-level error area instead. */
@@ -31,6 +32,7 @@ const FIELD_KEYS = new Set([
   "position",
   "handoff_enabled",
   "allowed_domains",
+  "tone_and_rules",
 ]);
 
 function inlineFieldKey(field: string): string | null {
@@ -77,6 +79,7 @@ export default function BotSettingsPage() {
   const [position, setPosition] = useState<"left" | "right">("right");
   const [handoffEnabled, setHandoffEnabled] = useState(true);
   const [allowedDomains, setAllowedDomains] = useState("");
+  const [toneAndRules, setToneAndRules] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -97,6 +100,7 @@ export default function BotSettingsPage() {
       setPosition(loaded.config.position ?? "right");
       setHandoffEnabled(loaded.config.handoff_enabled ?? true);
       setAllowedDomains((loaded.config.allowed_domains ?? []).join("\n"));
+      setToneAndRules(loaded.tone_and_rules ?? "");
       setLoadError(null);
     } catch (caught) {
       setLoadError(
@@ -152,6 +156,7 @@ export default function BotSettingsPage() {
         // The stored bot name follows the single Assistant name field.
         name: assistantName,
         config,
+        tone_and_rules: toneAndRules,
       });
       setBot(updated);
       setSaved(true);
@@ -449,6 +454,14 @@ export default function BotSettingsPage() {
           />
         </label>
         {fieldError("allowed_domains")}
+        {canEdit && (
+          <BotToneField
+            value={toneAndRules}
+            onChange={setToneAndRules}
+            disabled={!canEdit}
+            error={fieldErrors["tone_and_rules"] ?? null}
+          />
+        )}
         {saveError && <Notice message={saveError} tone="error" />}
         {saved && <Notice message="Settings saved." />}
         {canEdit && (
