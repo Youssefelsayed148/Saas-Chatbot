@@ -7,6 +7,7 @@
 import { useSession } from "./session";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Icon } from "./icons";
 
 const TABS = [
   { key: "overview", label: "Overview", segment: "overview" },
@@ -37,7 +38,9 @@ export default function BotWorkspaceNav({
       data-testid="bot-workspace-nav"
     >
       <span className="bot-nav-bot">
-        <Link href={`/app/${tenantId}/bots`}>‹ Bots</Link>
+        <Link href={`/app/${tenantId}/bots`}>
+          <Icon name="chevron-left" /> Bots
+        </Link>
         {botName && <strong> {botName}</strong>}
       </span>
       <span className="bot-nav-tabs">

@@ -8,6 +8,7 @@ import * as api from "@/lib/api";
 import { ConfirmAction, Loading, Notice } from "@/lib/ui";
 import { OrganizationMembers } from "@/lib/staff-members";
 import { BotLinks, CreateBotForm } from "@/lib/staff-bots";
+import { Icon } from "@/lib/icons";
 
 /** Client detail (P4-06, docs/11): bots + status, failed jobs, members and
  * roles, recent audit rows, usage. Read-only staff view (no impersonation). */
@@ -131,7 +132,9 @@ export default function PlatformClientPage() {
         availability.
       </p>
       <p className="eyebrow">
-        <a href="/platform">? Back to Organizations</a>
+        <a href="/platform">
+          <Icon name="arrow-left" /> Back to Organizations
+        </a>
       </p>
       {error && <Notice message={error} tone="error" />}
       {notice && <Notice message={notice} />}

@@ -8,6 +8,7 @@ import * as api from "@/lib/api";
 import type { ContactProfile } from "@/lib/api";
 import { roleSatisfies, useSession } from "@/lib/session";
 import { Loading, Notice } from "@/lib/ui";
+import { Icon } from "@/lib/icons";
 
 export default function ContactPage() {
   const { tenant: tenantId, contactId } = useParams<{
@@ -146,7 +147,9 @@ export default function ContactPage() {
   return (
     <main className="contact-profile">
       <p>
-        <Link href={`/app/${tenantId}/contacts`}>← Contacts</Link>
+        <Link href={`/app/${tenantId}/contacts`}>
+          <Icon name="arrow-left" /> Contacts
+        </Link>
       </p>
       {error && <Notice tone="error" message={error} />}
       {notice && <Notice message={notice} />}

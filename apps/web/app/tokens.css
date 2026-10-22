@@ -19,8 +19,6 @@
   --warning: #f2ce8e;
   --warning-soft: #372e1d;
   --focus: #b9d0ff;
-  --staff: #d1b3ff;
-  --staff-soft: #302440;
   --overlay: #050912b8;
   --shadow: 0 18px 48px #00000030;
   --radius: 16px;
@@ -33,10 +31,21 @@
   --space-6: 2rem;
   --space-7: 3rem;
   --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --text-sm: 0.825rem;
-  --text-base: 0.925rem;
-  --text-lg: 1.2rem;
-  --heading: clamp(1.65rem, 3vw, 2.3rem);
+  /* Type scale (rem; 1rem = 16px). Base text is 16px. */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-md: 1.125rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --heading: clamp(1.6rem, 3vw, 2rem);
+  --leading-tight: 1.25;
+  --leading-body: 1.6;
+  /* Content width: readable line length and page container. */
+  --content-max: 80rem;
+  --measure: 65ch;
+  --form-max: 42rem;
+  --control-height: 2.75rem;
   --ease: 160ms ease;
   --widget-brand: #1f7a5c;
   --ink-light: #ffffff;
@@ -62,8 +71,6 @@
   --warning: #745015;
   --warning-soft: #fff2d9;
   --focus: #2459b4;
-  --staff: #7040a2;
-  --staff-soft: #f0e8fa;
   --overlay: #17263a80;
   --shadow: 0 18px 48px #1d3c5912;
 }
@@ -88,8 +95,6 @@
     --warning: #745015;
     --warning-soft: #fff2d9;
     --focus: #2459b4;
-    --staff: #7040a2;
-    --staff-soft: #f0e8fa;
     --overlay: #17263a80;
     --shadow: 0 18px 48px #1d3c5912;
   }

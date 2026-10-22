@@ -1,10 +1,11 @@
 import Link from "next/link";
+import { Icon } from "@/lib/icons";
 
 export default function Home() {
   return (
     <main className="auth-page landing-page">
       <span className="brand-mark" aria-hidden="true">
-        ✧
+        <Icon name="sparkle" size={22} />
       </span>
       <p className="eyebrow">Website Chatbot SaaS</p>
       <h1>Application foundation</h1>

@@ -6,6 +6,7 @@ import { humanLabel } from "@/lib/labels";
 import * as api from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { Empty, Loading, Notice } from "@/lib/ui";
+import { Icon } from "@/lib/icons";
 export default function TenantOverview() {
   const { tenant } = useParams<{ tenant: string }>();
   const { me, loading } = useSession();
@@ -64,7 +65,7 @@ export default function TenantOverview() {
           </p>
         </div>
         <Link className="primary-link" href={`${base}/inbox`}>
-          Open inbox ↗
+          Open inbox <Icon name="external" />
         </Link>
       </div>
       {error && (
@@ -91,7 +92,9 @@ export default function TenantOverview() {
             <section className="panel">
               <div className="section-heading">
                 <h2>Recent conversations</h2>
-                <Link href={`${base}/inbox`}>View inbox →</Link>
+                <Link href={`${base}/inbox`}>
+                  View inbox <Icon name="arrow-right" />
+                </Link>
               </div>
               {!data.recent.conversations.length ? (
                 <Empty>
@@ -125,7 +128,11 @@ export default function TenantOverview() {
                 <ol className="checklist">
                   <li>
                     <span aria-hidden="true">
-                      {data.bots.length ? "✓" : "○"}
+                      {data.bots.length ? (
+                        <Icon name="check" />
+                      ) : (
+                        <Icon name="circle" />
+                      )}
                     </span>
                     <Link href={`${base}/bots`}>
                       {data.bots.length
@@ -136,7 +143,11 @@ export default function TenantOverview() {
                   {data.bots[0] && canReadKnowledge && (
                     <li>
                       <span aria-hidden="true">
-                        {data.published ? "✓" : "○"}
+                        {data.published ? (
+                          <Icon name="check" />
+                        ) : (
+                          <Icon name="circle" />
+                        )}
                       </span>
                       <Link href={`${base}/bots/${data.bots[0].id}/knowledge`}>
                         {data.published

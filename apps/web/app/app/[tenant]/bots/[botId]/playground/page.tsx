@@ -8,6 +8,7 @@ import type { PlaygroundMessage } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { Loading, Notice } from "@/lib/ui";
 import BotWorkspaceNav from "@/lib/bot-workspace-nav";
+import { Icon } from "@/lib/icons";
 
 export default function PlaygroundPage() {
   const params = useParams<{ tenant: string; botId: string }>();
@@ -199,7 +200,7 @@ export default function PlaygroundPage() {
                         disabled={feedbackGiven[message.id] !== undefined}
                         onClick={() => void giveFeedback(message, "up")}
                       >
-                        👍
+                        <Icon name="thumbs-up" />
                       </button>
                       <button
                         type="button"
@@ -208,7 +209,7 @@ export default function PlaygroundPage() {
                         disabled={feedbackGiven[message.id] !== undefined}
                         onClick={() => void giveFeedback(message, "down")}
                       >
-                        👎
+                        <Icon name="thumbs-down" />
                       </button>
                     </span>
                   )}
