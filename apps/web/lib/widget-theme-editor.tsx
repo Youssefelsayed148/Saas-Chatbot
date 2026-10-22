@@ -120,7 +120,9 @@ export default function WidgetThemeEditor({
                     className="theme-swatch"
                     style={{ background: colour }}
                     aria-label={`${label}: ${colour}`}
-                    aria-pressed={shown.toLowerCase() === colour && isHex(value)}
+                    aria-pressed={
+                      shown.toLowerCase() === colour && isHex(value)
+                    }
                     onClick={() => setSlot(slot, colour)}
                   />
                 ))}

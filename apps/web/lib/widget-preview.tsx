@@ -76,7 +76,7 @@ export function widgetPreviewHtml(input: PreviewInput): string {
   const welcome = input.welcome || (lang === "ar" ? "أهلاً بك!" : "Hello!");
   return `<!doctype html><html lang="${lang}" dir="${dir}"><head><meta charset="utf-8"><style>:root{${
     scheme === "dark" ? DARK_TOKENS : LIGHT_TOKENS
-  }}body{margin:0;overflow:hidden}${widgetStyles}</style></head><body>
+  }}*{box-sizing:border-box}body{margin:0;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.6}button,input{font:inherit}button{min-block-size:42px;padding:.55rem 1rem}${widgetStyles}</style></head><body>
 <div class="widget-frame" dir="${dir}" lang="${lang}"${
     variant ? ` data-widget-variant="${variant}"` : ""
   } style="${esc(style)}">
@@ -88,7 +88,7 @@ export function widgetPreviewHtml(input: PreviewInput): string {
 <li class="widget-bubble visitor"><div dir="auto">${t.question}</div></li>
 <li class="widget-bubble"><div dir="auto">${t.answer}</div></li>
 </ul></main>
-<form class="widget-composer"><input dir="auto" placeholder="${t.placeholder}" aria-label="${t.placeholder}" disabled><button type="button" disabled>${t.send}</button></form>
+<form class="widget-composer"><input dir="auto" placeholder="${t.placeholder}" aria-label="${t.placeholder}" readonly><button type="button" tabindex="-1">${t.send}</button></form>
 </div></body></html>`;
 }
 
@@ -124,7 +124,11 @@ export default function WidgetPreview({
       data-testid="widget-preview"
     >
       <h3>Live preview</h3>
-      <div className="widget-preview-scheme" role="group" aria-label="Preview mode">
+      <div
+        className="widget-preview-scheme"
+        role="group"
+        aria-label="Preview mode"
+      >
         {(["light", "dark"] as const).map((mode) => (
           <button
             key={mode}
