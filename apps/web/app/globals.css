@@ -1818,3 +1818,27 @@ td dialog button {
 :is(:lang(ar), [dir="rtl"]) :is(h1, .eyebrow) {
   letter-spacing: 0;
 }
+
+/* #49: the header actions wrap as a group on phones instead of letting "Sign out" break onto two lines. */
+.account-nav button,
+.account-nav a {
+  white-space: nowrap;
+}
+@media (max-width: 760px) {
+  .account-nav {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+  .account-nav select {
+    flex: 1 1 8rem;
+    min-inline-size: 0;
+    max-inline-size: 100%;
+  }
+}
+/* #49: room between the bots table and the archived-bots toggle. */
+.archived-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-block-start: var(--space-4);
+}
