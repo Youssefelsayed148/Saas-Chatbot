@@ -1403,15 +1403,6 @@ progress::-webkit-progress-value {
   color: var(--danger);
   border-color: var(--danger);
 }
-.audit-list {
-  list-style: none;
-  padding: 0;
-  font-size: 0.8rem;
-}
-.audit-list li {
-  padding: 0.75rem;
-  border-block-end: 1px solid var(--border);
-}
 .platform-clients > [data-testid="platform-search"] {
   display: flex;
   flex-direction: row;
@@ -1444,18 +1435,6 @@ progress::-webkit-progress-value {
 .platform-client-detail section li button {
   margin-inline-start: 1rem;
   font-size: 0.75rem;
-}
-.platform-operations > [data-testid="platform-analytics"] {
-  border-block-start: 3px solid var(--accent);
-}
-.platform-operations [data-testid="platform-audit-review"] ul {
-  list-style: none;
-  padding: 0;
-  font-size: 0.8rem;
-}
-.platform-operations [data-testid="platform-audit-review"] li {
-  padding: 0.75rem;
-  border-block-end: 1px solid var(--border);
 }
 .handoff-analytics {
   display: grid;
@@ -1802,6 +1781,7 @@ dialog .action-row {
 /* A confirm dialog rendered inside a table cell must not inherit the cell's
  * small type or its no-wrap rules, and a long email must wrap. */
 td dialog {
+  white-space: normal;
   font-size: var(--text-base);
   overflow-wrap: anywhere;
   text-align: start;

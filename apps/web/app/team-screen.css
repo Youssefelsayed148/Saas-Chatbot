@@ -13,6 +13,7 @@
 
 .team-invite {
   display: flex;
+  flex-direction: row;
   flex-wrap: wrap;
   align-items: flex-end;
   gap: var(--space-4);
@@ -27,6 +28,12 @@
 }
 .team-invite > button {
   flex: 0 0 auto;
+  align-self: flex-end;
+  margin-block-end: 0;
+}
+/* A label with inline markup (a name in bold) must flow as text, not flex items. */
+.team-page .field > label {
+  display: block;
 }
 
 .team-link {
@@ -89,6 +96,9 @@
 .team-dialog {
   inline-size: min(32rem, calc(100vw - 2rem));
   overflow-wrap: anywhere;
+}
+.team-page dialog.team-dialog {
+  margin: auto;
 }
 .team-dialog > * + * {
   margin-block-start: var(--space-4);
@@ -163,10 +173,6 @@
 .cr-triage select {
   min-block-size: var(--control-height);
 }
-.cr-list a:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
 
 /* Link styled as a quiet button. */
 .team-page a.quiet-button {
@@ -180,8 +186,4 @@
 }
 .team-page a.quiet-button:hover {
   background: var(--surface-hover);
-}
-.team-page a:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
 }

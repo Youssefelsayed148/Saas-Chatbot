@@ -189,7 +189,7 @@ export function ChangeRequests({ tenantId }: { tenantId?: string }) {
                       <a
                         href={`/api/v1/tenants/${row.tenant_id}/change-requests/${row.id}/attachments/${file.id}`}
                       >
-                        {file.name} ({file.size_bytes} bytes)
+                        <bdi>{file.name}</bdi> ({file.size_bytes} bytes)
                       </a>
                     </li>
                   ))}

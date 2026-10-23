@@ -229,7 +229,9 @@ export default function PlatformOperationsPage() {
                           </StatusBadge>
                         </td>
                         <td className="num">{job.attempts}</td>
-                        <td className="ops-error">{job.error ?? "—"}</td>
+                        <td className="ops-error">
+                          {job.error ? <bdi>{job.error}</bdi> : "—"}
+                        </td>
                         <td>
                           <div className="row-actions">
                             {job.status === "failed" && (
