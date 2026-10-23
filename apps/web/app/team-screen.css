@@ -67,3 +67,44 @@
   align-items: center;
   gap: var(--space-3);
 }
+
+/* Tenant data. */
+.team-page .ui-card > * + * {
+  margin-block-start: var(--space-4);
+}
+.team-copy {
+  margin-block: 0;
+  max-inline-size: var(--measure);
+  color: var(--muted);
+}
+.team-stack {
+  display: grid;
+  gap: var(--space-4);
+  max-inline-size: var(--form-max);
+}
+.team-stack input {
+  inline-size: 100%;
+  min-block-size: var(--control-height);
+}
+.team-dialog {
+  inline-size: min(32rem, calc(100vw - 2rem));
+  overflow-wrap: anywhere;
+}
+.team-dialog > * + * {
+  margin-block-start: var(--space-4);
+}
+.team-dialog input {
+  inline-size: 100%;
+  min-block-size: var(--control-height);
+}
+.team-dialog h2 {
+  margin-block-end: 0;
+}
+.team-counts {
+  margin: 0;
+  padding-inline-start: var(--space-5);
+  color: var(--muted);
+}
+.team-dialog .action-row {
+  justify-content: flex-end;
+}
