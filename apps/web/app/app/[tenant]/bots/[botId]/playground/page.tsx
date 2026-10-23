@@ -96,6 +96,7 @@ export default function PlaygroundPage() {
     Record<string, "up" | "down">
   >({});
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const loadThread = useCallback(async () => {
     try {
@@ -128,6 +129,19 @@ export default function PlaygroundPage() {
     }, 0);
     return () => clearTimeout(timer);
   }, [loadThread, loadTraces, me?.is_platform_staff]);
+
+  // The input is disabled while an answer is pending, which drops keyboard
+  // focus to the page body; hand it back once the reply (or error) is in.
+  const wasSending = useRef(false);
+  useEffect(() => {
+    if (
+      wasSending.current &&
+      !sending &&
+      document.activeElement === document.body
+    )
+      inputRef.current?.focus();
+    wasSending.current = sending;
+  }, [sending]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "nearest" });
@@ -227,21 +241,32 @@ export default function PlaygroundPage() {
         className="ui-card"
       >
         {messages === null ? (
-          <Loading label="Loading the conversation…" />
+          threadError ? null : (
+            <Loading label="Loading the conversation…" />
+          )
         ) : messages.length === 0 ? (
           <p className="muted">
             No messages yet — ask something about the published knowledge.
           </p>
         ) : (
-          <ul className="chat-list">
+          <ul
+            className="chat-list"
+            role="log"
+            aria-live="polite"
+            aria-relevant="additions"
+          >
             {messages.map((message) =>
               message.sender_type === "visitor" ? (
                 <li key={message.id} data-role="visitor">
-                  {message.text}
+                  <div dir="auto" className="message-text">
+                    {message.text}
+                  </div>
                 </li>
               ) : (
                 <li key={message.id} data-role={message.sender_type}>
-                  <div dir="auto">{message.text}</div>
+                  <div dir="auto" className="message-text">
+                    {message.text}
+                  </div>
                   {message.citations && message.citations.length > 0 && (
                     <ul data-testid="citations" aria-label="Sources">
                       {message.citations.map((citation) => (
@@ -270,11 +295,16 @@ export default function PlaygroundPage() {
                       <span className="muted">{message.response_ms} ms</span>
                     )}
                     {canChat && message.sender_type === "ai" && (
-                      <span className="feedback-buttons">
+                      <span
+                        className="feedback-buttons"
+                        role="group"
+                        aria-label="Rate this answer"
+                      >
                         <button
                           type="button"
                           className="icon-button"
                           aria-label="Thumbs up"
+                          aria-pressed={feedbackGiven[message.id] === "up"}
                           data-testid={`thumbs-up-${message.id}`}
                           disabled={feedbackGiven[message.id] !== undefined}
                           onClick={() => void giveFeedback(message, "up")}
@@ -285,6 +315,7 @@ export default function PlaygroundPage() {
                           type="button"
                           className="icon-button"
                           aria-label="Thumbs down"
+                          aria-pressed={feedbackGiven[message.id] === "down"}
                           data-testid={`thumbs-down-${message.id}`}
                           disabled={feedbackGiven[message.id] !== undefined}
                           onClick={() => void giveFeedback(message, "down")}
@@ -299,6 +330,9 @@ export default function PlaygroundPage() {
             )}
           </ul>
         )}
+        <p className="sr-only" role="status">
+          {sending ? "The assistant is answering…" : ""}
+        </p>
         <div ref={bottomRef} />
       </section>
 
@@ -326,6 +360,7 @@ export default function PlaygroundPage() {
           {(control) => (
             <input
               {...control}
+              ref={inputRef}
               data-testid="playground-input"
               dir="auto"
               value={draft}
@@ -355,7 +390,7 @@ export default function PlaygroundPage() {
           <h2>Answer traces</h2>
         </header>
         {traceError && <Notice message={traceError} tone="error" />}
-        {traces.length === 0 && (
+        {traces.length === 0 && !traceError && (
           <p className="muted">No recorded answers yet.</p>
         )}
         {traces.map(({ message_id, trace }) => (
