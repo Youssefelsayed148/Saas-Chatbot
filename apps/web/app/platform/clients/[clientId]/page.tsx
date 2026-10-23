@@ -8,8 +8,8 @@ import * as api from "@/lib/api";
 import {
   Button,
   Card,
-  ConfirmAction,
   DataTable,
+  Dialog,
   Field,
   Loading,
   Notice,
@@ -18,6 +18,7 @@ import {
   TabPanel,
   Tabs,
 } from "@/lib/ui";
+import { ConfirmAction } from "@/lib/ui";
 import { OrganizationMembers, focusAfterRemoval } from "@/lib/staff-members";
 import { BotLinks, CreateBotForm } from "@/lib/staff-bots";
 import { Icon } from "@/lib/icons";
@@ -39,6 +40,93 @@ function draftNote(bot: api.PlatformTenantDetail["bots"][number]): string {
     : "Not live yet: waiting to be activated.";
 }
 
+const REASON_MIN = 3;
+
+/** Reason form inside a dialog. It is mounted only while the dialog is open,
+ * so each action starts with an empty reason of its own. */
+function ReasonForm({
+  consequence,
+  confirmLabel,
+  onCancel,
+  onConfirm,
+}: {
+  consequence: string;
+  confirmLabel: string;
+  onCancel: () => void;
+  onConfirm: (reason: string) => void;
+}) {
+  const [reason, setReason] = useState("");
+  const input = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    // The dialog opens after this mounts, so focus the field a tick later.
+    const timer = setTimeout(() => input.current?.focus(), 0);
+    return () => clearTimeout(timer);
+  }, []);
+  const valid = reason.trim().length >= REASON_MIN;
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (valid) onConfirm(reason);
+      }}
+    >
+      <p>{consequence}</p>
+      <Field
+        label="Reason"
+        hint={`Required (${REASON_MIN}+ characters). It is recorded in the audit log.`}
+      >
+        {(control) => (
+          <input
+            {...control}
+            ref={input}
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            maxLength={500}
+            required
+          />
+        )}
+      </Field>
+      <div className="action-row">
+        <Button type="button" variant="quiet" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={!valid}>
+          {confirmLabel}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+/** A confirm dialog that collects its own reason before the action runs. */
+function ReasonDialog({
+  open,
+  onClose,
+  title,
+  consequence,
+  onConfirm,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  consequence: string;
+  onConfirm: (reason: string) => void;
+}) {
+  return (
+    <Dialog open={open} onClose={onClose} title={title}>
+      <ReasonForm
+        consequence={consequence}
+        confirmLabel="Confirm"
+        onCancel={onClose}
+        onConfirm={(reason) => {
+          onClose();
+          onConfirm(reason);
+        }}
+      />
+    </Dialog>
+  );
+}
+
 export default function PlatformClientPage() {
   const params = useParams<{ clientId: string }>();
   const clientId = params.clientId;
@@ -50,7 +138,10 @@ export default function PlatformClientPage() {
   const [status, setStatus] = useState("active");
   const [saving, setSaving] = useState(false);
   const [planLabel, setPlanLabel] = useState("");
-  const [reason, setReason] = useState("");
+  // Which action's reason dialog is open (each dialog owns its reason field).
+  const [dialog, setDialog] = useState<"plan" | "quota" | "pause" | null>(null);
+  const [pauseTarget, setPauseTarget] = useState<string | null>(null);
+  const botsSection = useRef<HTMLElement>(null);
   const [quotaOverrides, setQuotaOverrides] = useState('{"bots": 4}');
   const membersSection = useRef<HTMLElement>(null);
   const invitationsSection = useRef<HTMLElement>(null);
@@ -73,8 +164,7 @@ export default function PlatformClientPage() {
     return () => clearTimeout(timer);
   }, [clientId]);
 
-  async function assignPlan(event: React.FormEvent) {
-    event.preventDefault();
+  async function assignPlan(reason: string) {
     if (!detail) return;
     try {
       const updated = await api.platformAssignPlan(
@@ -90,13 +180,14 @@ export default function PlatformClientPage() {
       setError(null);
       setNotice("Changes saved.");
     } catch (caught) {
+      setNotice(null);
       setError(
         caught instanceof Error ? caught.message : "Plan update failed.",
       );
     }
   }
 
-  async function pauseBot(botId: string) {
+  async function pauseBot(botId: string, reason: string) {
     if (!detail) return;
     try {
       await api.platformPauseBot(botId, reason);
@@ -108,13 +199,14 @@ export default function PlatformClientPage() {
       });
       setError(null);
       setNotice("Changes saved.");
+      focusAfterRemoval(botsSection.current);
     } catch (caught) {
+      setNotice(null);
       setError(caught instanceof Error ? caught.message : "Bot pause failed.");
     }
   }
 
-  async function saveQuotaOverrides(event: React.FormEvent) {
-    event.preventDefault();
+  async function saveQuotaOverrides(reason: string) {
     if (!detail) return;
     try {
       const limits = JSON.parse(quotaOverrides) as Record<string, number>;
@@ -123,6 +215,7 @@ export default function PlatformClientPage() {
       setError(null);
       setNotice("Changes saved.");
     } catch (caught) {
+      setNotice(null);
       setError(
         caught instanceof Error ? caught.message : "Quota override failed.",
       );
@@ -176,6 +269,29 @@ export default function PlatformClientPage() {
             tabs={TABS.map((item) => ({ id: item, label: item }))}
             value={tab}
             onChange={setTab}
+          />
+          <ReasonDialog
+            open={dialog === "plan"}
+            onClose={() => setDialog(null)}
+            title="Save plan?"
+            consequence="This changes the organization plan label."
+            onConfirm={(reason) => void assignPlan(reason)}
+          />
+          <ReasonDialog
+            open={dialog === "quota"}
+            onClose={() => setDialog(null)}
+            title="Save quota override?"
+            consequence="This replaces the organization quota limits with the JSON entered."
+            onConfirm={(reason) => void saveQuotaOverrides(reason)}
+          />
+          <ReasonDialog
+            open={dialog === "pause"}
+            onClose={() => setDialog(null)}
+            title="Pause bot?"
+            consequence="The website widget will become unavailable and this bot will stop answering visitors until activated again."
+            onConfirm={(reason) => {
+              if (pauseTarget) void pauseBot(pauseTarget, reason);
+            }}
           />
           <TabPanel idPrefix="org" tabId="Overview" active={tab === "Overview"}>
             <p data-testid="client-detail-status" className="status-line">
@@ -275,22 +391,12 @@ export default function PlatformClientPage() {
                   still under review.
                 </p>
               </header>
-              <Field
-                label="Reason"
-                hint="Required (3+ characters) for plan, quota and pause actions. It is recorded in the audit log."
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  setDialog("plan");
+                }}
               >
-                {(control) => (
-                  <input
-                    {...control}
-                    value={reason}
-                    onChange={(event) => setReason(event.target.value)}
-                    minLength={3}
-                    maxLength={500}
-                    required
-                  />
-                )}
-              </Field>
-              <form onSubmit={(event) => void assignPlan(event)}>
                 <Field label="Plan label">
                   {(control) => (
                     <input
@@ -302,11 +408,14 @@ export default function PlatformClientPage() {
                     />
                   )}
                 </Field>
-                <Button type="submit" disabled={reason.trim().length < 3}>
-                  Save plan
-                </Button>
+                <Button type="submit">Save plan</Button>
               </form>
-              <form onSubmit={(event) => void saveQuotaOverrides(event)}>
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  setDialog("quota");
+                }}
+              >
                 <Field label="Quota overrides (JSON)">
                   {(control) => (
                     <textarea
@@ -322,9 +431,7 @@ export default function PlatformClientPage() {
                     />
                   )}
                 </Field>
-                <Button type="submit" disabled={reason.trim().length < 3}>
-                  Save override with reason
-                </Button>
+                <Button type="submit">Save override with reason</Button>
               </form>
             </section>
             <section
@@ -500,6 +607,7 @@ export default function PlatformClientPage() {
               }
             />
             <section
+              ref={botsSection}
               aria-label="Bots"
               data-testid="client-detail-bots"
               className="form-section"
@@ -507,21 +615,6 @@ export default function PlatformClientPage() {
               <header>
                 <h2>Bots</h2>
               </header>
-              <Field
-                label="Reason"
-                hint="Required (3+ characters) to pause a bot. It is recorded in the audit log."
-              >
-                {(control) => (
-                  <input
-                    {...control}
-                    value={reason}
-                    onChange={(event) => setReason(event.target.value)}
-                    minLength={3}
-                    maxLength={500}
-                    required
-                  />
-                )}
-              </Field>
               {detail.bots.length ? (
                 <DataTable
                   caption="Organization bots"
@@ -574,14 +667,15 @@ export default function PlatformClientPage() {
                           <BotLinks organization={clientId} bot={bot.id} />
                           {bot.status !== "paused" &&
                             bot.status !== "archived" && (
-                              <ConfirmAction
-                                title="Pause bot?"
-                                description="The website widget will become unavailable and this bot will stop answering visitors until activated again."
-                                disabled={reason.trim().length < 3}
-                                onConfirm={() => void pauseBot(bot.id)}
+                              <Button
+                                variant="danger"
+                                onClick={() => {
+                                  setPauseTarget(bot.id);
+                                  setDialog("pause");
+                                }}
                               >
                                 Pause bot
-                              </ConfirmAction>
+                              </Button>
                             )}
                         </div>
                       ),
