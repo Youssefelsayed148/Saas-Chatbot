@@ -1,0 +1,108 @@
+/* E2.6b: platform operations and staff change requests. Tokens only; logical properties for RTL. */
+
+.ops-page > * + * {
+  margin-block-start: var(--space-5);
+}
+.ops-page > .page-header,
+.ops-page > .ui-card {
+  margin-block-end: 0;
+}
+.ops-page .page-header .page-purpose {
+  margin-block-end: 0;
+}
+.ops-page .ui-card > * + * {
+  margin-block-start: var(--space-4);
+}
+.ops-copy {
+  margin-block: 0;
+  max-inline-size: var(--measure);
+  color: var(--muted);
+}
+
+/* Summary figures. */
+.ops-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+.ops-stats > div {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+}
+.ops-stats dt {
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+.ops-stats dd {
+  margin: 0;
+  font-size: var(--text-lg, 1.25rem);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Cells never break mid-word; wide tables scroll in their own region. */
+.ops-page :is(td, th) {
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
+}
+.ops-page td.ops-error {
+  white-space: normal;
+  min-inline-size: 14rem;
+  max-inline-size: 28rem;
+  overflow-wrap: anywhere;
+}
+.ops-page .num {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+.ops-page .row-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* Forms in a card. */
+.ops-reason {
+  max-inline-size: var(--form-max);
+}
+.ops-reason input,
+.ops-search input {
+  inline-size: 100%;
+  min-block-size: var(--control-height);
+}
+.ops-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-4);
+  max-inline-size: none;
+}
+.ops-search > .field {
+  flex: 1 1 14rem;
+}
+.ops-search > button {
+  flex: 0 0 auto;
+}
+
+/* Link styled as a quiet button. */
+.ops-page a.quiet-button {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--control-height);
+  padding-inline: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+}
+.ops-page a.quiet-button:hover {
+  background: var(--surface-hover);
+}
+.ops-page a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

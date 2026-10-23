@@ -167,3 +167,21 @@
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+
+/* Link styled as a quiet button. */
+.team-page a.quiet-button {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--control-height);
+  padding-inline: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+}
+.team-page a.quiet-button:hover {
+  background: var(--surface-hover);
+}
+.team-page a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
