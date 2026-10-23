@@ -1,0 +1,189 @@
+/* E2.6b: Team, tenant data and client change requests. Tokens only; logical properties for RTL. */
+
+.team-page > * + * {
+  margin-block-start: var(--space-5);
+}
+.team-page > .page-header,
+.team-page > .form-section {
+  margin-block-end: 0;
+}
+.team-page .page-header .page-purpose {
+  margin-block-end: 0;
+}
+
+.team-invite {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-4);
+  max-inline-size: none;
+}
+.team-invite > .field {
+  flex: 1 1 14rem;
+}
+.team-invite :is(input, select) {
+  inline-size: 100%;
+  min-block-size: var(--control-height);
+}
+.team-invite > button {
+  flex: 0 0 auto;
+  align-self: flex-end;
+  margin-block-end: 0;
+}
+/* A label with inline markup (a name in bold) must flow as text, not flex items. */
+.team-page .field > label {
+  display: block;
+}
+
+.team-link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+}
+.team-link > span {
+  flex: 1 1 100%;
+}
+.team-link code {
+  flex: 1 1 16rem;
+  min-inline-size: 0;
+  overflow-x: auto;
+  white-space: nowrap;
+  font-size: var(--text-sm);
+}
+
+/* Cells never break mid-word; long emails stay on one line and scroll. */
+.team-page :is(td, th) {
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
+}
+.team-role-select {
+  min-block-size: var(--control-height);
+  min-inline-size: 8rem;
+}
+.team-page .row-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* Tenant data. */
+.team-page .ui-card > * + * {
+  margin-block-start: var(--space-4);
+}
+.team-copy {
+  margin-block: 0;
+  max-inline-size: var(--measure);
+  color: var(--muted);
+}
+.team-stack {
+  display: grid;
+  gap: var(--space-4);
+  max-inline-size: var(--form-max);
+}
+.team-stack input {
+  inline-size: 100%;
+  min-block-size: var(--control-height);
+}
+.team-dialog {
+  inline-size: min(32rem, calc(100vw - 2rem));
+  overflow-wrap: anywhere;
+}
+.team-page dialog.team-dialog {
+  margin: auto;
+}
+.team-dialog > * + * {
+  margin-block-start: var(--space-4);
+}
+.team-dialog input {
+  inline-size: 100%;
+  min-block-size: var(--control-height);
+}
+.team-dialog h2 {
+  margin-block-end: 0;
+}
+.team-counts {
+  margin: 0;
+  padding-inline-start: var(--space-5);
+  color: var(--muted);
+}
+.team-dialog .action-row {
+  justify-content: flex-end;
+}
+
+/* Change requests. */
+.cr-page .team-stack :is(select, textarea, input) {
+  inline-size: 100%;
+}
+.cr-page .team-stack textarea {
+  min-block-size: 8rem;
+  resize: vertical;
+}
+.cr-page .team-stack select {
+  min-block-size: var(--control-height);
+}
+.cr-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-4);
+}
+.cr-list > li {
+  padding: var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow-wrap: anywhere;
+}
+.cr-list > li > * + * {
+  margin-block-start: var(--space-3);
+}
+.cr-list h2 {
+  margin: 0;
+  text-transform: capitalize;
+}
+.cr-text {
+  margin-block: 0;
+  white-space: pre-wrap;
+}
+.cr-meta {
+  margin-block: 0;
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+.cr-files {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.cr-triage {
+  max-inline-size: 16rem;
+}
+.cr-triage select {
+  min-block-size: var(--control-height);
+}
+
+/* Link styled as a quiet button. */
+.team-page a.quiet-button {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--control-height);
+  padding-inline: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+}
+.team-page a.quiet-button:hover {
+  background: var(--surface-hover);
+}

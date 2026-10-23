@@ -5,6 +5,23 @@ import * as api from "./api";
 import { Button, Card, ConfirmAction, Field, Notice } from "./ui";
 import "@/app/staff-screens.css";
 
+/** When the element that had focus is removed from the page, move focus to a
+ * sensible next target inside `host` instead of letting it fall to <body>. */
+export function focusAfterRemoval(
+  host: HTMLElement | null,
+  preferred = ".table-scroll, button",
+) {
+  if (!host) return;
+  requestAnimationFrame(() => {
+    const target = host.querySelector<HTMLElement>(preferred);
+    if (target) target.focus();
+    else {
+      host.tabIndex = -1;
+      host.focus();
+    }
+  });
+}
+
 export function RoleSelect({
   value,
   onChange,
@@ -87,7 +104,7 @@ export function OrganizationSelect({
           </select>
         )}
       </Field>
-      {error && <Notice tone="error" message={error} />}
+      {error && <Notice tone="error" message={error} scope="item" />}
     </>
   );
 }
@@ -126,7 +143,15 @@ export function PasswordPanel({
           Copy password
         </Button>
         {copied && <span role="status">Copied.</span>}
-        <Button type="button" variant="quiet" onClick={onDismiss}>
+        <Button
+          type="button"
+          variant="quiet"
+          onClick={(event) => {
+            const page = event.currentTarget.closest<HTMLElement>("main");
+            onDismiss();
+            focusAfterRemoval(page, ".table-scroll");
+          }}
+        >
           Dismiss password
         </Button>
       </div>
@@ -163,7 +188,7 @@ export function MembershipControls({
       <header>
         <h2>Memberships</h2>
       </header>
-      {error && <Notice tone="error" message={error} />}
+      {error && <Notice tone="error" message={error} scope="item" />}
       {user.memberships.map((m) => (
         <div key={m.organization_id} className="membership-row">
           <p>
@@ -246,7 +271,7 @@ export function OrganizationMembers({
         <h2>Add people</h2>
         <p>Find an existing user to add, or send them an invitation link.</p>
       </header>
-      {error && <Notice tone="error" message={error} />}
+      {error && <Notice tone="error" message={error} scope="item" />}
       <form
         className="inline-form"
         onSubmit={(e) => {
@@ -325,7 +350,17 @@ export function OrganizationMembers({
       {link && (
         <p className="invitation-link">
           Share this invitation: <code>{link}</code>
-          <Button variant="quiet" onClick={() => setLink("")}>
+          <Button
+            variant="quiet"
+            onClick={(event) => {
+              const row =
+                event.currentTarget
+                  .closest("section")
+                  ?.querySelector<HTMLElement>(".action-row") ?? null;
+              setLink("");
+              focusAfterRemoval(row, "button:last-child");
+            }}
+          >
             Dismiss invitation
           </Button>
         </p>

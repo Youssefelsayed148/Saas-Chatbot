@@ -11,12 +11,11 @@ import { useState } from "react";
 
 import * as api from "./api";
 import { PasswordField } from "./password-field";
-import { useSession } from "./session";
+import { Button, Field, FormSection } from "./ui";
 
 const MIN_PASSWORD_LENGTH = 8;
 
 export function AccountForm() {
-  const { me } = useSession();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -61,57 +60,71 @@ export function AccountForm() {
   }
 
   return (
-    <section aria-label="Change password">
-      <h2>Change password</h2>
+    <FormSection
+      title="Change password"
+      description="Changing it signs out your other sessions."
+    >
       <form onSubmit={onSubmit}>
-        <div className="password-control">
-          <label htmlFor="account-current-password">Current password</label>
-          <PasswordField
-            id="account-current-password"
-            name="current-password"
-            autoComplete="current-password"
-            required
-            value={currentPassword}
-            onChange={(event) => setCurrentPassword(event.target.value)}
-          />
-        </div>
-        <div className="password-control">
-          <label htmlFor="account-new-password">New password</label>
-          <PasswordField
-            id="account-new-password"
-            name="new-password"
-            autoComplete="new-password"
-            required
-            value={newPassword}
-            onChange={(event) => setNewPassword(event.target.value)}
-          />
-        </div>
-        <div className="password-control">
-          <label htmlFor="account-confirm-password">Confirm new password</label>
-          <PasswordField
-            id="account-confirm-password"
-            name="confirm-password"
-            autoComplete="new-password"
-            required
-            value={confirmPassword}
-            onChange={(event) => setConfirmPassword(event.target.value)}
-          />
-        </div>
+        <Field label="Current password">
+          {(control) => (
+            <PasswordField
+              {...control}
+              name="current-password"
+              autoComplete="current-password"
+              required
+              value={currentPassword}
+              onChange={(event) => setCurrentPassword(event.target.value)}
+            />
+          )}
+        </Field>
+        <Field label="New password">
+          {(control) => (
+            <PasswordField
+              {...control}
+              name="new-password"
+              autoComplete="new-password"
+              required
+              value={newPassword}
+              onChange={(event) => setNewPassword(event.target.value)}
+            />
+          )}
+        </Field>
+        <Field label="Confirm new password">
+          {(control) => (
+            <PasswordField
+              {...control}
+              name="confirm-password"
+              autoComplete="new-password"
+              required
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+            />
+          )}
+        </Field>
         {error && (
-          <p role="alert" data-testid="account-error">
+          <p
+            role="alert"
+            className="auth-message"
+            data-tone="error"
+            data-testid="account-error"
+          >
             {error}
           </p>
         )}
         {changed && (
-          <p role="status" data-testid="account-success">
+          <p
+            role="status"
+            className="auth-message"
+            data-tone="success"
+            data-testid="account-success"
+          >
             Password changed. Your other signed-in sessions were signed out.
           </p>
         )}
-        <button type="submit" disabled={submitting}>
+        <Button type="submit" disabled={submitting}>
           {submitting ? "Saving…" : "Change password"}
-        </button>
+        </Button>
       </form>
-      <p className="muted">Signed in as {me?.email ?? "…"}</p>
-    </section>
+    </FormSection>
   );
 }

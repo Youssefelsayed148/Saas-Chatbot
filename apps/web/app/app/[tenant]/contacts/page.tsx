@@ -8,7 +8,19 @@ import { LabelBadge } from "@/lib/labels";
 import * as api from "@/lib/api";
 import type { Contact } from "@/lib/api";
 import { roleSatisfies, useSession } from "@/lib/session";
-import { Empty, Loading, Notice } from "@/lib/ui";
+import {
+  Button,
+  Card,
+  DataTable,
+  Empty,
+  Field,
+  FormSection,
+  Loading,
+  Notice,
+  PageHeader,
+} from "@/lib/ui";
+
+import "@/app/contacts-screen.css";
 
 export default function ContactsPage() {
   const { tenant: tenantId } = useParams<{ tenant: string }>();
@@ -57,46 +69,70 @@ export default function ContactsPage() {
 
   return (
     <main className="contacts-page">
-      <h1>Contacts</h1>
-      <p className="page-purpose">
-        Keep visitor details, consent and conversation history together.
-      </p>
-      <p>
-        Contact records, consent, stages, and conversation history for this
-        organization.
-      </p>
+      <PageHeader
+        title="Contacts"
+        purpose="Keep visitor details, consent and conversation history together."
+        actions={
+          canExport && contacts && contacts.length > 0 ? (
+            <a
+              className="contacts-export"
+              href={`/api/v1/tenants/${tenantId}/contacts/export.csv`}
+            >
+              Export CSV
+            </a>
+          ) : undefined
+        }
+      />
       {error && <Notice tone="error" message={error} />}
       {canEdit && (
-        <form onSubmit={create} className="card">
-          <h2>Add contact</h2>
-          <label>
-            Name{" "}
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={200}
-            />
-          </label>
-          <label>
-            Email{" "}
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </label>
-          <label>
-            Phone{" "}
-            <input
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              maxLength={64}
-            />
-          </label>
-          <button type="submit" disabled={!email && !phone}>
-            Create contact
-          </button>
-        </form>
+        <FormSection
+          title="Add contact"
+          description="Contact records, consent, stages, and conversation history for this organization."
+        >
+          <form onSubmit={create} className="contacts-form">
+            <Field label="Name">
+              {(control) => (
+                <input
+                  {...control}
+                  dir="auto"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  maxLength={200}
+                />
+              )}
+            </Field>
+            <Field
+              label="Email"
+              hint={
+                !email && !phone ? "Add an email or a phone number." : undefined
+              }
+            >
+              {(control) => (
+                <input
+                  {...control}
+                  type="email"
+                  dir="ltr"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              )}
+            </Field>
+            <Field label="Phone">
+              {(control) => (
+                <input
+                  {...control}
+                  dir="ltr"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  maxLength={64}
+                />
+              )}
+            </Field>
+            <Button type="submit" disabled={!email && !phone}>
+              Create contact
+            </Button>
+          </form>
+        </FormSection>
       )}
       {contacts === null ? (
         <Loading />
@@ -105,44 +141,52 @@ export default function ContactsPage() {
           Contacts captured through the widget lead form will appear here.
         </Empty>
       ) : (
-        <>
-          <p>{contacts.length} contacts</p>
-          {canExport && (
-            <p>
-              <a href={`/api/v1/tenants/${tenantId}/contacts/export.csv`}>
-                Export CSV
-              </a>
-            </p>
-          )}
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Phone</th>
-                <th>Stage</th>
-                <th>Updated</th>
-              </tr>
-            </thead>
-            <tbody>
-              {contacts.map((contact) => (
-                <tr key={contact.id}>
-                  <td dir="auto">
-                    <Link href={`/app/${tenantId}/contacts/${contact.id}`}>
-                      {contact.display_name || "Unnamed contact"}
-                    </Link>
-                  </td>
-                  <td>{contact.email}</td>
-                  <td>{contact.phone}</td>
-                  <td>
-                    <LabelBadge value={contact.stage} />
-                  </td>
-                  <td>{new Date(contact.updated_at).toLocaleDateString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </>
+        <Card
+          title="All contacts"
+          actions={
+            <span className="contacts-count">{contacts.length} contacts</span>
+          }
+        >
+          <DataTable
+            caption="Contact list"
+            rows={contacts}
+            rowKey={(contact) => contact.id}
+            columns={[
+              {
+                key: "name",
+                header: "Name",
+                className: "contacts-name",
+                cell: (contact) => (
+                  <Link href={`/app/${tenantId}/contacts/${contact.id}`}>
+                    <bdi>{contact.display_name || "Unnamed contact"}</bdi>
+                  </Link>
+                ),
+              },
+              {
+                key: "email",
+                header: "Email",
+                cell: (contact) => <bdi dir="ltr">{contact.email}</bdi>,
+              },
+              {
+                key: "phone",
+                header: "Phone",
+                cell: (contact) => <bdi dir="ltr">{contact.phone}</bdi>,
+              },
+              {
+                key: "stage",
+                header: "Stage",
+                cell: (contact) => <LabelBadge value={contact.stage} />,
+              },
+              {
+                key: "updated",
+                header: "Updated",
+                className: "contacts-date",
+                cell: (contact) =>
+                  new Date(contact.updated_at).toLocaleDateString(),
+              },
+            ]}
+          />
+        </Card>
       )}
     </main>
   );

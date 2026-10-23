@@ -13,6 +13,8 @@ import { useRouter } from "next/navigation";
 import { AccountForm } from "@/lib/account";
 import { AppShell } from "@/lib/app-header";
 import { useSession } from "@/lib/session";
+import { Card, PageHeader } from "@/lib/ui";
+import "@/app/auth-screen.css";
 
 export default function AccountPage() {
   const { me, loading } = useSession();
@@ -27,9 +29,15 @@ export default function AccountPage() {
   return (
     <AppShell platform={me.is_platform_staff}>
       <main className="account-page">
-        <h1>Account</h1>
-        <p className="page-purpose">Your signed-in account and password.</p>
-        <p data-testid="account-email">Signed in as {me.email}</p>
+        <PageHeader
+          title="Account"
+          purpose="Your signed-in account and password."
+        />
+        <Card className="account-identity">
+          <p data-testid="account-email">
+            Signed in as <bdi dir="ltr">{me.email}</bdi>
+          </p>
+        </Card>
         <AccountForm />
       </main>
     </AppShell>

@@ -4,12 +4,20 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
-import { humanLabel, LabelBadge } from "@/lib/labels";
+import { humanLabel } from "@/lib/labels";
 import * as api from "@/lib/api";
 import type { InboxConversation } from "@/lib/api";
 import { roleSatisfies, useSession } from "@/lib/session";
-import { Empty, Loading, Notice } from "@/lib/ui";
+import {
+  Button,
+  Empty,
+  Loading,
+  Notice,
+  PageHeader,
+  StatusBadge,
+} from "@/lib/ui";
 import { Icon } from "./icons";
+import "@/app/inbox-screen.css";
 
 export function InboxList({
   compact = false,
@@ -95,15 +103,12 @@ export function InboxList({
   return (
     <Root className={`inbox-list-panel ${compact ? "compact" : ""}`}>
       {compact ? (
-        <h2>Inbox</h2>
+        <h2 className="inbox-panel-title">Inbox</h2>
       ) : (
-        <>
-          <h1>Inbox</h1>
-          <p className="page-purpose">
-            Find conversations that need attention and continue them with your
-            team.
-          </p>
-        </>
+        <PageHeader
+          title="Inbox"
+          purpose="Find conversations that need attention and continue them with your team."
+        />
       )}
       {counts && (
         <section aria-label="Inbox notifications" className="inbox-counts">
@@ -226,16 +231,20 @@ export function InboxList({
         {Object.entries(filters)
           .filter(([, value]) => value)
           .map(([key, value]) => (
-            <button
-              className="quiet-button"
-              type="button"
+            <Button
+              variant="quiet"
               key={key}
               aria-label={`Remove ${key} filter`}
               onClick={() => updateFilter(key as keyof typeof filters, "")}
             >
-              {humanLabel(key)}: {humanLabel(value)}{" "}
+              {humanLabel(key)}:{" "}
+              {key === "q" || key === "tag" ? (
+                <bdi>{value}</bdi>
+              ) : (
+                humanLabel(value)
+              )}{" "}
               <span aria-hidden="true">×</span>
-            </button>
+            </Button>
           ))}
       </div>
       {error && (
@@ -277,7 +286,9 @@ export function InboxList({
                       <Icon name="contacts" size={14} />{" "}
                       {humanLabel(row.channel)}
                     </span>
-                    <LabelBadge value={row.status} />
+                    <StatusBadge value={row.status} title={row.status}>
+                      {humanLabel(row.status)}
+                    </StatusBadge>
                     {(row.unread_count ?? 0) > 0 && (
                       <span
                         className="unread-count"
@@ -301,8 +312,8 @@ export function InboxList({
                   {(row.tags?.length ?? 0) > 0 && (
                     <div className="row-tags">
                       {row.tags?.map((tag) => (
-                        <span className="badge" key={tag} dir="auto">
-                          {tag}
+                        <span className="badge" key={tag}>
+                          <bdi>{tag}</bdi>
                         </span>
                       ))}
                     </div>

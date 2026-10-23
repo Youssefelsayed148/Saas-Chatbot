@@ -6,7 +6,9 @@ import { useEffect, useState } from "react";
 
 import * as api from "@/lib/api";
 import { useSession } from "@/lib/session";
-import { Loading, Notice } from "@/lib/ui";
+import { Card, Loading, Notice, PageHeader, StatusBadge } from "@/lib/ui";
+
+import "@/app/convo-screen.css";
 
 /** P4-04: one thread view with citations (title + source link). */
 
@@ -45,37 +47,47 @@ export default function ConversationDetailPage() {
   }, [tenantId, botId, conversationId]);
 
   return (
-    <main>
-      <p className="eyebrow">
-        <Link href={`/app/${tenantId}/bots/${botId}/conversations`}>
-          Back to conversations
-        </Link>
-      </p>
-      <h1 data-testid="conversation-detail-title">Conversation</h1>
-      <p className="page-purpose">
-        Read this visitor’s conversation and replies.
-      </p>
+    <main className="convo-page">
+      <PageHeader
+        eyebrow={
+          <Link href={`/app/${tenantId}/bots/${botId}/conversations`}>
+            Back to conversations
+          </Link>
+        }
+        title={
+          <span data-testid="conversation-detail-title">Conversation</span>
+        }
+        purpose="Read this visitor’s conversation and replies."
+      />
       {error && <Notice message={error} tone="error" />}
       {detail ? (
-        <section aria-label="Thread" data-testid="conversation-thread">
-          <p className="muted">
-            {detail.conversation.contact_name
-              ? `Lead: ${detail.conversation.contact_name}`
-              : "Anonymous visitor"}{" "}
-            · {detail.conversation.channel} ·{" "}
+        <Card aria-label="Thread" data-testid="conversation-thread">
+          <p className="convo-meta">
+            <span>
+              {detail.conversation.contact_name ? (
+                <>
+                  Lead: <bdi dir="auto">{detail.conversation.contact_name}</bdi>
+                </>
+              ) : (
+                "Anonymous visitor"
+              )}
+            </span>{" "}
+            · <bdi>{detail.conversation.channel}</bdi> ·{" "}
             <span data-status={detail.conversation.status}>
-              {detail.conversation.status}
+              <StatusBadge value={detail.conversation.status} />
             </span>
           </p>
-          <ul>
+          <ul className="convo-thread">
             {detail.messages.map((message) => (
               <li key={message.id} data-role={message.sender_type}>
-                <div dir="auto">{message.text}</div>
+                <div dir="auto" className="convo-text">
+                  {message.text}
+                </div>
                 {me?.is_platform_staff && message.citations.length > 0 && (
                   <ul data-testid="thread-citations" aria-label="Sources">
                     {message.citations.map((citation) => (
                       <li key={citation.chunk_id}>
-                        {citation.title}
+                        <bdi dir="auto">{citation.title}</bdi>
                         {citation.source_url ? (
                           <>
                             {" — "}
@@ -83,6 +95,7 @@ export default function ConversationDetailPage() {
                               href={citation.source_url ?? "#"}
                               rel="noreferrer noopener"
                               target="_blank"
+                              dir="ltr"
                             >
                               {citation.source_url}
                             </a>
@@ -98,7 +111,7 @@ export default function ConversationDetailPage() {
               </li>
             ))}
           </ul>
-        </section>
+        </Card>
       ) : (
         !error && <Loading label="Loading the conversation…" />
       )}

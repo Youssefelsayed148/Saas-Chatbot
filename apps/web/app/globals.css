@@ -510,30 +510,48 @@ dialog::backdrop {
 .bot-workspace-nav {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
-  padding-block: 0.5rem 1.2rem;
-  margin-block-end: 1.5rem;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+  padding-block: var(--space-2) var(--space-4);
+  margin-block-end: var(--space-5);
   border-block-end: 1px solid var(--border);
 }
 .bot-nav-bot {
   display: flex;
-  gap: 0.8rem;
+  gap: var(--space-3);
   align-items: center;
+  min-inline-size: 0;
 }
 .bot-nav-bot a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--control-height);
   text-decoration: none;
 }
 .bot-nav-tabs {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
+  gap: var(--space-1);
 }
 .bot-nav-tabs a {
-  padding: 0.4rem 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--control-height);
+  padding-inline: var(--space-3);
   border-radius: var(--radius-sm);
   color: var(--muted);
   text-decoration: none;
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
+  font-weight: 550;
+  white-space: nowrap;
+}
+.bot-nav-tabs a:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+.bot-workspace-nav a:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 .bot-nav-tabs a[aria-current="page"] {
   background: var(--accent-soft);
@@ -815,10 +833,6 @@ progress::-webkit-progress-value {
 }
 .auth-page .eyebrow {
   font-size: 0.65rem;
-}
-.auth-page > p:last-child {
-  font-size: 0.8rem;
-  margin-block-end: 0;
 }
 .landing-page {
   max-inline-size: 660px;
@@ -1385,15 +1399,6 @@ progress::-webkit-progress-value {
   color: var(--danger);
   border-color: var(--danger);
 }
-.audit-list {
-  list-style: none;
-  padding: 0;
-  font-size: 0.8rem;
-}
-.audit-list li {
-  padding: 0.75rem;
-  border-block-end: 1px solid var(--border);
-}
 .platform-clients > [data-testid="platform-search"] {
   display: flex;
   flex-direction: row;
@@ -1426,18 +1431,6 @@ progress::-webkit-progress-value {
 .platform-client-detail section li button {
   margin-inline-start: 1rem;
   font-size: 0.75rem;
-}
-.platform-operations > [data-testid="platform-analytics"] {
-  border-block-start: 3px solid var(--accent);
-}
-.platform-operations [data-testid="platform-audit-review"] ul {
-  list-style: none;
-  padding: 0;
-  font-size: 0.8rem;
-}
-.platform-operations [data-testid="platform-audit-review"] li {
-  padding: 0.75rem;
-  border-block-end: 1px solid var(--border);
 }
 .handoff-analytics {
   display: grid;
@@ -1779,4 +1772,49 @@ dialog .action-row {
 .toast-region .notice {
   margin: 0;
   box-shadow: var(--shadow);
+}
+
+/* A confirm dialog rendered inside a table cell must not inherit the cell's
+ * small type or its no-wrap rules, and a long email must wrap. */
+td dialog {
+  white-space: normal;
+  font-size: var(--text-base);
+  overflow-wrap: anywhere;
+  text-align: start;
+}
+td dialog button {
+  font-size: inherit;
+}
+/* One scroller per table: the focusable .table-scroll region, not the table. */
+.table-scroll > table {
+  display: table;
+  overflow: visible;
+}
+/* Arabic letters must stay joined: no tracking in right-to-left text. */
+:is(:lang(ar), [dir="rtl"]) :is(h1, .eyebrow) {
+  letter-spacing: 0;
+}
+
+/* #49: the header actions wrap as a group on phones instead of letting "Sign out" break onto two lines. */
+.account-nav button,
+.account-nav a {
+  white-space: nowrap;
+}
+@media (max-width: 760px) {
+  .account-nav {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+  .account-nav select {
+    flex: 1 1 8rem;
+    min-inline-size: 0;
+    max-inline-size: 100%;
+  }
+}
+/* #49: room between the bots table and the archived-bots toggle. */
+.archived-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-block-start: var(--space-4);
 }

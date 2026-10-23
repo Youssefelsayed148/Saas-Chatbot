@@ -6,8 +6,19 @@ import { useEffect, useState } from "react";
 import * as api from "@/lib/api";
 import BotWorkspaceNav from "@/lib/bot-workspace-nav";
 import { roleSatisfies, useSession } from "@/lib/session";
-import { Empty, Loading, Notice } from "@/lib/ui";
+import {
+  Button,
+  Card,
+  DataTable,
+  Empty,
+  Field,
+  Loading,
+  Notice,
+  PageHeader,
+} from "@/lib/ui";
 import { Icon } from "@/lib/icons";
+
+import "@/app/insights-screen.css";
 
 /** Overview (P4-05, docs/14 §9 / docs/10): MEASURED numbers only — usage
  * events and real conversations; playground threads never count. Date range
@@ -103,203 +114,282 @@ export default function OverviewPage() {
   const canAdjust = roleSatisfies(role, "viewer");
 
   return (
-    <main>
+    <main className="insights-page">
       <BotWorkspaceNav tenantId={tenantId} botId={botId} />
-      <h1 data-testid="overview-title">Overview</h1>
-      <p className="page-purpose">
-        Measure conversations, answers and leads using stored activity.
-      </p>
+      <PageHeader
+        title={<span data-testid="overview-title">Overview</span>}
+        purpose="Measure conversations, answers and leads using stored activity."
+      />
       <form
         aria-label="Date range"
         data-testid="overview-range"
+        className="insights-range"
         onSubmit={(event) => {
           event.preventDefault();
           setApplied({ from, to });
         }}
       >
-        <label>
-          From
-          <input
-            type="date"
-            data-testid="range-from"
-            value={from}
-            disabled={!role || !canAdjust}
-            onChange={(event) => setFrom(event.target.value)}
-          />
-        </label>
-        <label>
-          To
-          <input
-            type="date"
-            data-testid="range-to"
-            value={to}
-            disabled={!role || !canAdjust}
-            onChange={(event) => setTo(event.target.value)}
-          />
-        </label>
-        <button type="submit" data-testid="range-apply">
-          Apply
-        </button>
-        {roleSatisfies(role, "admin") && (
-          <>
-            <a
-              href={`/api/v1/tenants/${tenantId}/bots/${botId}/analytics/conversations.csv${csvSuffix}`}
-              data-testid="export-conversations"
-            >
-              Export conversations CSV
-            </a>
-            <a
-              href={`/api/v1/tenants/${tenantId}/bots/${botId}/analytics/leads.csv${csvSuffix}`}
-              data-testid="export-leads"
-            >
-              Export leads CSV
-            </a>
-          </>
-        )}
+        <Field label="From">
+          {(control) => (
+            <input
+              {...control}
+              type="date"
+              dir="ltr"
+              data-testid="range-from"
+              value={from}
+              disabled={!role || !canAdjust}
+              onChange={(event) => setFrom(event.target.value)}
+            />
+          )}
+        </Field>
+        <Field label="To">
+          {(control) => (
+            <input
+              {...control}
+              type="date"
+              dir="ltr"
+              data-testid="range-to"
+              value={to}
+              disabled={!role || !canAdjust}
+              onChange={(event) => setTo(event.target.value)}
+            />
+          )}
+        </Field>
+        <div className="insights-range-actions">
+          <Button type="submit" data-testid="range-apply">
+            Apply
+          </Button>
+          {roleSatisfies(role, "admin") && (
+            <>
+              <a
+                className="insights-export"
+                href={`/api/v1/tenants/${tenantId}/bots/${botId}/analytics/conversations.csv${csvSuffix}`}
+                data-testid="export-conversations"
+              >
+                Export conversations CSV
+              </a>
+              <a
+                className="insights-export"
+                href={`/api/v1/tenants/${tenantId}/bots/${botId}/analytics/leads.csv${csvSuffix}`}
+                data-testid="export-leads"
+              >
+                Export leads CSV
+              </a>
+            </>
+          )}
+        </div>
       </form>
       {error && <Notice message={error} tone="error" />}
       {loading && <Loading label="Loading measured numbers…" />}
       {!loading && summary && (
         <>
-          <section aria-label="Summary" data-testid="overview-summary">
-            <ul>
-              <li data-test="messages">Messages: {summary.messages}</li>
+          <Card
+            title="Summary"
+            aria-label="Summary"
+            data-testid="overview-summary"
+          >
+            <ul className="insights-stats">
+              <li data-test="messages">
+                Messages:{" "}
+                <span className="stat-value insights-num" dir="ltr">
+                  {summary.messages}
+                </span>
+              </li>
               <li data-test="conversations">
-                Conversations: {summary.conversations}
+                Conversations:{" "}
+                <span className="stat-value insights-num" dir="ltr">
+                  {summary.conversations}
+                </span>
               </li>
               <li data-test="widget_opens">
-                Widget opens: {summary.widget_opens}
+                Widget opens:{" "}
+                <span className="stat-value insights-num" dir="ltr">
+                  {summary.widget_opens}
+                </span>
               </li>
               <li data-test="engagement">
-                Engagement rate: {summary.engagement_rate}
+                Engagement rate:{" "}
+                <span className="stat-value insights-num" dir="ltr">
+                  {summary.engagement_rate}
+                </span>
               </li>
               <li data-test="avg_messages">
                 Avg messages/conversation:{" "}
-                {summary.avg_messages_per_conversation}
-              </li>
-              <li data-test="distribution">
-                Distribution:{" "}
-                {Object.entries(summary.message_distribution)
-                  .map(([bucket, count]) => `${bucket}: ${count}`)
-                  .join(" · ")}
+                <span className="stat-value insights-num" dir="ltr">
+                  {summary.avg_messages_per_conversation}
+                </span>
               </li>
               <li data-test="fallback">
-                Unanswered rate: {summary.fallback_rate}
+                Unanswered rate:{" "}
+                <span className="stat-value insights-num" dir="ltr">
+                  {summary.fallback_rate}
+                </span>
               </li>
               <li data-test="cannot_answer">
-                Cannot answer: {summary.cannot_answer}
+                Cannot answer:{" "}
+                <span className="stat-value insights-num" dir="ltr">
+                  {summary.cannot_answer}
+                </span>
               </li>
               <li data-test="needs_human">
-                Needs human: {summary.needs_human}
+                Needs human:{" "}
+                <span className="stat-value insights-num" dir="ltr">
+                  {summary.needs_human}
+                </span>
               </li>
               <li data-test="avg_response">
-                Avg response: {summary.avg_response_ms} ms
+                Avg response:{" "}
+                <span className="stat-value insights-num" dir="ltr">
+                  {summary.avg_response_ms} ms
+                </span>
               </li>
-              <li data-test="leads_summary">Leads: {summary.leads}</li>
+              <li data-test="leads_summary">
+                Leads:{" "}
+                <span className="stat-value insights-num" dir="ltr">
+                  {summary.leads}
+                </span>
+              </li>
               <li data-test="thumbs">
-                <Icon name="thumbs-up" label="Thumbs up" /> {summary.thumbs_up}{" "}
-                · <Icon name="thumbs-down" label="Thumbs down" />{" "}
-                {summary.thumbs_down}
+                <span className="stat-value insights-num" dir="ltr">
+                  <Icon name="thumbs-up" label="Thumbs up" />{" "}
+                  {summary.thumbs_up} ·{" "}
+                  <Icon name="thumbs-down" label="Thumbs down" />{" "}
+                  {summary.thumbs_down}
+                </span>
+              </li>
+              <li data-test="distribution" className="stat-wide">
+                Distribution:{" "}
+                <span className="stat-value insights-num" dir="ltr">
+                  {Object.entries(summary.message_distribution)
+                    .map(([bucket, count]) => `${bucket}: ${count}`)
+                    .join(" · ")}
+                </span>
               </li>
             </ul>
-          </section>
+          </Card>
 
-          <section aria-label="Volume per day" data-testid="volume">
-            <h2>Volume per day</h2>
+          <Card
+            title="Volume per day"
+            aria-label="Volume per day"
+            data-testid="volume"
+          >
             {(volume?.days.length ?? 0) === 0 ? (
               <Empty>No messages in this range.</Empty>
             ) : (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Day</th>
-                    <th>Visitor</th>
-                    <th>Assistant</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(volume?.days ?? []).map((day) => (
-                    <tr key={day.day}>
-                      <td>{day.day}</td>
-                      <td>{day.visitor}</td>
-                      <td>{day.assistant}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <DataTable
+                caption="Messages per day"
+                rows={volume?.days ?? []}
+                rowKey={(day) => day.day}
+                columns={[
+                  {
+                    key: "day",
+                    header: "Day",
+                    cell: (day) => <bdi dir="ltr">{day.day}</bdi>,
+                  },
+                  {
+                    key: "visitor",
+                    header: "Visitor",
+                    className: "insights-num",
+                    cell: (day) => <bdi dir="ltr">{day.visitor}</bdi>,
+                  },
+                  {
+                    key: "assistant",
+                    header: "Assistant",
+                    className: "insights-num",
+                    cell: (day) => <bdi dir="ltr">{day.assistant}</bdi>,
+                  },
+                ]}
+              />
             )}
-          </section>
+          </Card>
 
-          <section aria-label="Top questions" data-testid="top-questions">
-            <h2>Top questions</h2>
+          <Card
+            title="Top questions"
+            aria-label="Top questions"
+            data-testid="top-questions"
+          >
             {(topQuestions?.questions.length ?? 0) === 0 ? (
               <Empty>No visitor questions in this range.</Empty>
             ) : (
-              <ol>
+              <ol className="insights-list is-ranked">
                 {(topQuestions?.questions ?? []).map((row) => (
                   <li key={row.question}>
-                    {row.question} — {row.asked}×
+                    <bdi dir="auto">{row.question}</bdi> — {row.asked}×
                   </li>
                 ))}
               </ol>
             )}
-          </section>
+          </Card>
 
-          <section aria-label="Unanswered questions" data-testid="unanswered">
-            <h2>Unanswered questions</h2>
+          <Card
+            title="Unanswered questions"
+            aria-label="Unanswered questions"
+            data-testid="unanswered"
+          >
             {(unanswered?.questions.length ?? 0) === 0 ? (
               <Empty>Nothing went unanswered in this range.</Empty>
             ) : (
-              <ul>
+              <ul className="insights-list">
                 {(unanswered?.questions ?? []).map((row) => (
                   <li key={row.question}>
-                    {row.question} — asked {row.asked}× (last{" "}
-                    {row.last.slice(0, 10)})
+                    <bdi dir="auto">{row.question}</bdi> — asked {row.asked}×
+                    (last {row.last.slice(0, 10)})
                   </li>
                 ))}
               </ul>
             )}
-          </section>
+          </Card>
 
-          <section aria-label="Leads" data-testid="leads">
-            <h2>Leads trend</h2>
+          <Card title="Leads trend" aria-label="Leads" data-testid="leads">
             {(leads?.trend.length ?? 0) === 0 &&
             (leads?.contacts.length ?? 0) === 0 ? (
               <Empty>No leads captured in this range.</Empty>
             ) : (
               <>
-                <ul>
+                <ul className="insights-trend">
                   {(leads?.trend ?? []).map((row) => (
                     <li key={row.day}>
-                      {row.day}: {row.leads}
+                      <bdi dir="ltr">
+                        {row.day}: {row.leads}
+                      </bdi>
                     </li>
                   ))}
                 </ul>
                 {(leads?.contacts.length ?? 0) > 0 && (
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Phone</th>
-                        <th>Conversations</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(leads?.contacts ?? []).map((row) => (
-                        <tr key={row.contact_id}>
-                          <td>{row.display_name || "—"}</td>
-                          <td>{row.email ?? "—"}</td>
-                          <td>{row.phone ?? "—"}</td>
-                          <td>{row.conversations}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <DataTable
+                    caption="Lead contacts"
+                    rows={leads?.contacts ?? []}
+                    rowKey={(row) => row.contact_id}
+                    columns={[
+                      {
+                        key: "name",
+                        header: "Name",
+                        cell: (row) => (
+                          <bdi dir="auto">{row.display_name || "—"}</bdi>
+                        ),
+                      },
+                      {
+                        key: "email",
+                        header: "Email",
+                        cell: (row) => <bdi dir="ltr">{row.email ?? "—"}</bdi>,
+                      },
+                      {
+                        key: "phone",
+                        header: "Phone",
+                        cell: (row) => <bdi dir="ltr">{row.phone ?? "—"}</bdi>,
+                      },
+                      {
+                        key: "conversations",
+                        header: "Conversations",
+                        className: "insights-num",
+                        cell: (row) => <bdi dir="ltr">{row.conversations}</bdi>,
+                      },
+                    ]}
+                  />
                 )}
               </>
             )}
-          </section>
+          </Card>
         </>
       )}
     </main>

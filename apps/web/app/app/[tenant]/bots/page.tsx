@@ -147,7 +147,7 @@ export default function BotsListPage() {
           ]}
         />
       )}
-      <label className="muted">
+      <label className="muted archived-toggle">
         <input
           type="checkbox"
           checked={showArchived}

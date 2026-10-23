@@ -5,12 +5,13 @@ import { useParams, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { InboxList } from "@/lib/inbox-list";
-import { humanLabel, LabelBadge } from "@/lib/labels";
+import { humanLabel } from "@/lib/labels";
 import * as api from "@/lib/api";
 import type { InboxThread, Member } from "@/lib/api";
 import { roleSatisfies, useSession } from "@/lib/session";
-import { Loading, Notice } from "@/lib/ui";
+import { Button, Loading, Notice, PageHeader, StatusBadge } from "@/lib/ui";
 import { Icon } from "@/lib/icons";
+import "@/app/inbox-screen.css";
 
 export default function InboxConversationPage() {
   const params = useParams<{ tenant: string; conversation: string }>();
@@ -123,35 +124,37 @@ export default function InboxConversationPage() {
         <InboxList compact selectedId={conversationId} />
       </div>
       <main className="conversation-pane">
-        <p className="eyebrow">
-          <Link
-            href={`/app/${tenantId}/inbox${search.toString() ? `?${search.toString()}` : ""}`}
-          >
-            <Icon name="arrow-left" /> Back to inbox
-          </Link>
-        </p>
-        <h1>Conversation</h1>
+        <PageHeader
+          eyebrow={
+            <Link
+              href={`/app/${tenantId}/inbox${search.toString() ? `?${search.toString()}` : ""}`}
+            >
+              <Icon name="arrow-left" /> Back to inbox
+            </Link>
+          }
+          title="Conversation"
+          purpose="Read the thread, coordinate with your team and help the visitor."
+        />
         {me?.is_platform_staff && (
-          <p role="note">
+          <p role="note" className="staff-note">
             Staff view is read-only; replies come from client team members
           </p>
         )}
-        <p className="page-purpose">
-          Read the thread, coordinate with your team and help the visitor.
-        </p>
         {error && <Notice message={error} tone="error" />}
         <section
           aria-label="Conversation controls"
           className="conversation-controls"
         >
-          <span>
+          <span className="conversation-summary">
             {humanLabel(conversation.channel)} ·{" "}
             <strong
               data-testid="inbox-status"
               title={conversation.status}
               data-value={conversation.status}
             >
-              <LabelBadge value={conversation.status} />
+              <StatusBadge value={conversation.status}>
+                {humanLabel(conversation.status)}
+              </StatusBadge>
             </strong>{" "}
             ·{" "}
             <span data-testid="inbox-mode">
@@ -161,7 +164,7 @@ export default function InboxConversationPage() {
           {canEdit && conversation.status !== "resolved" && (
             <>
               {conversation.mode === "human" ? (
-                <button
+                <Button
                   disabled={busy}
                   onClick={() =>
                     void run(() =>
@@ -170,9 +173,9 @@ export default function InboxConversationPage() {
                   }
                 >
                   Return to AI
-                </button>
+                </Button>
               ) : (
-                <button
+                <Button
                   disabled={busy}
                   onClick={() =>
                     void run(() =>
@@ -181,9 +184,10 @@ export default function InboxConversationPage() {
                   }
                 >
                   Take over
-                </button>
+                </Button>
               )}
-              <button
+              <Button
+                variant="quiet"
                 disabled={busy}
                 onClick={() =>
                   void run(() =>
@@ -192,7 +196,7 @@ export default function InboxConversationPage() {
                 }
               >
                 Resolve
-              </button>
+              </Button>
             </>
           )}
           {canEdit && (
@@ -218,23 +222,26 @@ export default function InboxConversationPage() {
         </section>
         <section aria-label="Conversation tags" className="conversation-tags">
           <strong>Tags</strong>{" "}
-          {conversation.tags?.map((value) => (
-            <span key={value}>
-              {value}{" "}
-              {canEdit && (
-                <button
-                  aria-label={`Remove ${value} tag`}
-                  onClick={() =>
-                    void run(() =>
-                      api.removeInboxTag(tenantId, conversationId, value),
-                    )
-                  }
-                >
-                  ×
-                </button>
-              )}
-            </span>
-          ))}
+          <span className="tag-list">
+            {conversation.tags?.map((value) => (
+              <span key={value} className="tag-item">
+                <bdi>{value}</bdi>{" "}
+                {canEdit && (
+                  <Button
+                    variant="quiet"
+                    aria-label={`Remove ${value} tag`}
+                    onClick={() =>
+                      void run(() =>
+                        api.removeInboxTag(tenantId, conversationId, value),
+                      )
+                    }
+                  >
+                    ×
+                  </Button>
+                )}
+              </span>
+            ))}
+          </span>
           {canEdit && (
             <form
               onSubmit={(e) => {
@@ -254,7 +261,9 @@ export default function InboxConversationPage() {
                   onChange={(e) => setTag(e.target.value)}
                 />
               </label>
-              <button disabled={!tag.trim() || busy}>Add</button>
+              <Button type="submit" disabled={!tag.trim() || busy}>
+                Add
+              </Button>
             </form>
           )}
         </section>
@@ -360,7 +369,9 @@ export default function InboxConversationPage() {
                     rows={3}
                   />
                 </label>
-                <button disabled={!reply.trim() || busy}>Send reply</button>
+                <Button type="submit" disabled={!reply.trim() || busy}>
+                  Send reply
+                </Button>
               </form>
             )}
             <form
@@ -380,7 +391,9 @@ export default function InboxConversationPage() {
                   rows={2}
                 />
               </label>
-              <button disabled={!note.trim() || busy}>Add note</button>
+              <Button type="submit" disabled={!note.trim() || busy}>
+                Add note
+              </Button>
             </form>
           </section>
         )}

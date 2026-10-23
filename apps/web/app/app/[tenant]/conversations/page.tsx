@@ -3,7 +3,9 @@
 import { redirect, useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import * as api from "@/lib/api";
-import { Empty, Loading, Notice } from "@/lib/ui";
+import { Empty, Loading, Notice, PageHeader } from "@/lib/ui";
+
+import "@/app/convo-screen.css";
 
 /** Fallback while the sidebar resolves the organization's default conversation list. */
 export default function ConversationsLanding() {
@@ -28,8 +30,11 @@ export default function ConversationsLanding() {
   }, [load]);
   if (bots?.[0]) redirect(`/app/${tenant}/bots/${bots[0].id}/conversations`);
   return (
-    <main>
-      <h1>Conversations</h1>
+    <main className="convo-page">
+      <PageHeader
+        title="Conversations"
+        purpose="Saved visitor conversations for your organization."
+      />
       {error ? (
         <Notice message={error} tone="error" onRetry={() => void load()} />
       ) : bots ? (

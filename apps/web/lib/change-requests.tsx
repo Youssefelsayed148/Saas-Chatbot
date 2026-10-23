@@ -3,7 +3,27 @@
 import { useCallback, useEffect, useState } from "react";
 import * as api from "./api";
 import { useSession } from "./session";
-import { Loading, Notice } from "./ui";
+import {
+  Button,
+  Empty,
+  Field,
+  FormSection,
+  Loading,
+  Notice,
+  PageHeader,
+  StatusBadge,
+  type StatusTone,
+} from "./ui";
+
+import "@/app/team-screen.css";
+
+const STATUS_TONES: Record<string, StatusTone> = {
+  pending: "warning",
+  triaged: "info",
+  in_progress: "warning",
+  completed: "success",
+  rejected: "danger",
+};
 
 export function ChangeRequests({ tenantId }: { tenantId?: string }) {
   const { me, roleIn } = useSession();
@@ -33,89 +53,103 @@ export function ChangeRequests({ tenantId }: { tenantId?: string }) {
   }, [allowed, load]);
   if (!allowed)
     return (
-      <main>
-        <h1>Change requests</h1>
+      <main className="team-page">
+        <PageHeader title="Change requests" />
         <Notice message="Administrator access required." />
       </main>
     );
   return (
-    <main>
-      <h1>{tenantId ? "Request a change" : "Operator change queue"}</h1>
-      <p className="page-purpose">
-        {tenantId
-          ? "Request content or website updates, or an organization deletion review."
-          : "Review and triage client requests."}
-      </p>
+    <main className="team-page cr-page">
+      <PageHeader
+        title={tenantId ? "Request a change" : "Operator change queue"}
+        purpose={
+          tenantId
+            ? "Request content or website updates, or an organization deletion review."
+            : "Review and triage client requests."
+        }
+      />
       {error && <Notice message={error} tone="error" />}
       {tenantId && (
-        <form
-          onSubmit={async (event) => {
-            event.preventDefault();
-            const form = event.currentTarget;
-            setBusy(true);
-            setError(null);
-            try {
-              await api.createChangeRequest(tenantId, type, text, files);
-              setText("");
-              setFiles([]);
-              form.reset();
-              await load();
-            } catch (caught) {
-              setError(
-                caught instanceof Error
-                  ? caught.message
-                  : "Could not save request.",
-              );
-            } finally {
-              setBusy(false);
-            }
-          }}
-        >
-          <label>
-            Request type
-            <select
-              value={type}
-              onChange={(event) =>
-                setType(event.target.value as api.ChangeRequest["type"])
+        <FormSection title="New request">
+          <form
+            className="team-stack"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              const form = event.currentTarget;
+              setBusy(true);
+              setError(null);
+              try {
+                await api.createChangeRequest(tenantId, type, text, files);
+                setText("");
+                setFiles([]);
+                form.reset();
+                await load();
+              } catch (caught) {
+                setError(
+                  caught instanceof Error
+                    ? caught.message
+                    : "Could not save request.",
+                );
+              } finally {
+                setBusy(false);
               }
-            >
-              <option value="knowledge">Content update</option>
-              <option value="text_change">Text change</option>
-              <option value="domain">Website update</option>
-              <option value="delete_org">Delete organization</option>
-              <option value="other">Other</option>
-            </select>
-          </label>
-          <label>
-            Describe the change
-            <textarea
-              required
-              maxLength={10000}
-              value={text}
-              onChange={(event) => setText(event.target.value)}
-            />
-          </label>
-          <label>
-            Attachments
-            <input
-              type="file"
-              multiple
-              onChange={(event) =>
-                setFiles(Array.from(event.target.files ?? []))
-              }
-            />
-          </label>
-          <button disabled={busy || !text.trim()} type="submit">
-            {busy ? "Submitting…" : "Submit request"}
-          </button>
-        </form>
+            }}
+          >
+            <Field label="Request type">
+              {(control) => (
+                <select
+                  {...control}
+                  value={type}
+                  onChange={(event) =>
+                    setType(event.target.value as api.ChangeRequest["type"])
+                  }
+                >
+                  <option value="knowledge">Content update</option>
+                  <option value="text_change">Text change</option>
+                  <option value="domain">Website update</option>
+                  <option value="delete_org">Delete organization</option>
+                  <option value="other">Other</option>
+                </select>
+              )}
+            </Field>
+            <Field label="Describe the change">
+              {(control) => (
+                <textarea
+                  {...control}
+                  dir="auto"
+                  required
+                  maxLength={10000}
+                  value={text}
+                  onChange={(event) => setText(event.target.value)}
+                />
+              )}
+            </Field>
+            <Field label="Attachments">
+              {(control) => (
+                <input
+                  {...control}
+                  type="file"
+                  multiple
+                  onChange={(event) =>
+                    setFiles(Array.from(event.target.files ?? []))
+                  }
+                />
+              )}
+            </Field>
+            <div className="row-actions">
+              <Button disabled={busy || !text.trim()} type="submit">
+                {busy ? "Submitting…" : "Submit request"}
+              </Button>
+            </div>
+          </form>
+        </FormSection>
       )}
       {rows === null ? (
         <Loading label="Loading requests…" />
       ) : rows.length === 0 ? (
-        <p>No change requests yet.</p>
+        <Empty>No change requests yet.</Empty>
       ) : (
-        <ul>
+        <ul className="cr-list">
           {rows.map((row) => (
             <li key={row.id}>
               <h2>
@@ -129,68 +163,79 @@ export function ChangeRequests({ tenantId }: { tenantId?: string }) {
                     }[row.type]
                   : row.type.replaceAll("_", " ")}
               </h2>
-              <p>{row.text}</p>
-              <p>
-                Status: {row.status} · {row.created_at.slice(0, 10)}
+              <p className="cr-text" dir="auto">
+                {row.text}
+              </p>
+              <p className="cr-meta">
+                Status:{" "}
+                <StatusBadge
+                  value={row.status}
+                  tone={STATUS_TONES[row.status]}
+                />{" "}
+                · <span dir="ltr">{row.created_at.slice(0, 10)}</span>
               </p>
               {!tenantId && (
-                <p>
+                <p className="cr-meta">
                   <a href={`/app/${row.tenant_id}/settings/data`}>
                     Organization data and deletion
                   </a>{" "}
-                  · Requester: {row.requester_id}
+                  · Requester: <bdi dir="ltr">{row.requester_id}</bdi>
                 </p>
               )}
-              <ul>
-                {row.attachments.map((file) => (
-                  <li key={file.id}>
-                    <a
-                      href={`/api/v1/tenants/${row.tenant_id}/change-requests/${row.id}/attachments/${file.id}`}
-                    >
-                      {file.name} ({file.size_bytes} bytes)
-                    </a>
-                  </li>
-                ))}
-              </ul>
+              {row.attachments.length > 0 && (
+                <ul className="cr-files">
+                  {row.attachments.map((file) => (
+                    <li key={file.id}>
+                      <a
+                        href={`/api/v1/tenants/${row.tenant_id}/change-requests/${row.id}/attachments/${file.id}`}
+                      >
+                        <bdi>{file.name}</bdi> ({file.size_bytes} bytes)
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              )}
               {!tenantId && (
-                <label>
-                  Triage status
-                  <select
-                    aria-label={`Status for ${row.id}`}
-                    disabled={busy}
-                    value={row.status}
-                    onChange={async (event) => {
-                      setBusy(true);
-                      try {
-                        await api.triageChangeRequest(
-                          row.id,
-                          event.target.value as api.ChangeRequest["status"],
-                        );
-                        await load();
-                      } catch (caught) {
-                        setError(
-                          caught instanceof Error
-                            ? caught.message
-                            : "Could not triage request.",
-                        );
-                      } finally {
-                        setBusy(false);
-                      }
-                    }}
-                  >
-                    {[
-                      "pending",
-                      "triaged",
-                      "in_progress",
-                      "completed",
-                      "rejected",
-                    ].map((status) => (
-                      <option key={status} value={status}>
-                        {status.replaceAll("_", " ")}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <Field label="Triage status" className="cr-triage">
+                  {(control) => (
+                    <select
+                      {...control}
+                      aria-label={`Status for ${row.id}`}
+                      disabled={busy}
+                      value={row.status}
+                      onChange={async (event) => {
+                        setBusy(true);
+                        try {
+                          await api.triageChangeRequest(
+                            row.id,
+                            event.target.value as api.ChangeRequest["status"],
+                          );
+                          await load();
+                        } catch (caught) {
+                          setError(
+                            caught instanceof Error
+                              ? caught.message
+                              : "Could not triage request.",
+                          );
+                        } finally {
+                          setBusy(false);
+                        }
+                      }}
+                    >
+                      {[
+                        "pending",
+                        "triaged",
+                        "in_progress",
+                        "completed",
+                        "rejected",
+                      ].map((status) => (
+                        <option key={status} value={status}>
+                          {status.replaceAll("_", " ")}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </Field>
               )}
             </li>
           ))}

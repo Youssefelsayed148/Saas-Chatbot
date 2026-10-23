@@ -195,7 +195,7 @@
   padding-block: var(--space-2);
   border-block-end: 1px solid var(--border);
 }
-.ui-tabs + [role="tabpanel"] > * + * {
+.platform-client-detail [role="tabpanel"] > * + * {
   margin-block-start: var(--space-5);
 }
 
@@ -217,4 +217,7 @@ th.num {
 }
 .page-header-actions .status-badge {
   align-self: center;
+}
+.platform-client-detail p.action-row {
+  justify-content: flex-start;
 }

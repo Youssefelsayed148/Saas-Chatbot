@@ -7,8 +7,22 @@ import { useCallback, useEffect, useState } from "react";
 import * as api from "@/lib/api";
 import type { Conversation } from "@/lib/api";
 import { roleSatisfies, useSession } from "@/lib/session";
-import { ConfirmAction, Empty, Loading, Notice } from "@/lib/ui";
+import {
+  Button,
+  Card,
+  ConfirmAction,
+  DataTable,
+  Empty,
+  Field,
+  FormSection,
+  Loading,
+  Notice,
+  PageHeader,
+  StatusBadge,
+} from "@/lib/ui";
 import BotWorkspaceNav from "@/lib/bot-workspace-nav";
+
+import "@/app/convo-screen.css";
 
 /** P4-04: read-only conversations view (docs/10 Conversations tab) with the
  * tenant retention control (docs/14 §7). Live inbox views arrive in P5. */
@@ -83,42 +97,66 @@ export default function ConversationsPage() {
   }
 
   return (
-    <main>
+    <main className="convo-page">
       <BotWorkspaceNav tenantId={tenantId} botId={botId} />
-      <h1>Conversations</h1>
-      <p className="page-purpose">
-        Review saved visitor conversations and manage retention.
-      </p>
+      <PageHeader
+        title="Conversations"
+        purpose="Review saved visitor conversations and manage retention."
+      />
       {error && <Notice message={error} tone="error" />}
       {canTenant && (
-        <section aria-label="Retention" style={{ margin: "0.6rem 0" }}>
-          <label>
-            Message retention (days, tenant-wide, 1–365)
-            <input
-              data-testid="retention-input"
-              style={{ maxWidth: "10rem" }}
-              value={retentionDraft}
-              placeholder="30"
-              onChange={(event) => setRetentionDraft(event.target.value)}
-            />
-          </label>
-          <button
-            type="button"
-            data-testid="retention-save"
-            style={{ marginInlineStart: "0.5rem" }}
-            onClick={() => void saveRetention()}
-          >
-            Save retention
-          </button>
+        <FormSection
+          title="Retention"
+          description="How long saved messages are kept before the background purge removes them."
+        >
+          <div className="convo-retention">
+            <Field
+              label="Message retention (days, tenant-wide, 1–365)"
+              hint="Applies to every conversation in this organization."
+            >
+              {(control) => (
+                <input
+                  {...control}
+                  data-testid="retention-input"
+                  dir="ltr"
+                  inputMode="numeric"
+                  value={retentionDraft}
+                  placeholder="30"
+                  onChange={(event) => setRetentionDraft(event.target.value)}
+                />
+              )}
+            </Field>
+            <Button
+              data-testid="retention-save"
+              onClick={() => void saveRetention()}
+            >
+              Save retention
+            </Button>
+          </div>
           {retentionSaved && (
-            <p role="status" data-testid="retention-saved">
+            <p
+              role="status"
+              data-testid="retention-saved"
+              className="convo-saved"
+            >
               Retention updated. The background purge applies it on its next
               run.
             </p>
           )}
-        </section>
+        </FormSection>
       )}
-      <section aria-label="Conversation list" data-testid="conversations">
+      <Card
+        title="Saved conversations"
+        aria-label="Conversation list"
+        data-testid="conversations"
+        actions={
+          total !== null ? (
+            <span className="convo-count">
+              <bdi dir="ltr">{total}</bdi> in total
+            </span>
+          ) : undefined
+        }
+      >
         {rows === null ? (
           <Loading label="Loading conversations…" />
         ) : rows.length === 0 ? (
@@ -127,58 +165,77 @@ export default function ConversationsPage() {
             site, and threads appear here.
           </Empty>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Last activity</th>
-                <th>Channel</th>
-                <th>Status</th>
-                <th>Lead</th>
-                <th>Messages</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.id}>
-                  <td>
-                    <Link
-                      href={`/app/${tenantId}/bots/${botId}/conversations/${row.id}`}
-                    >
+          <DataTable
+            caption="Conversations"
+            rows={rows}
+            rowKey={(row) => row.id}
+            columns={[
+              {
+                key: "activity",
+                header: "Last activity",
+                className: "convo-date",
+                cell: (row) => (
+                  <Link
+                    href={`/app/${tenantId}/bots/${botId}/conversations/${row.id}`}
+                  >
+                    <bdi dir="ltr">
                       {row.last_message_at
                         ? new Date(row.last_message_at).toLocaleString()
                         : new Date(row.created_at).toLocaleString()}
-                    </Link>
-                  </td>
-                  <td>{row.channel}</td>
-                  <td data-status={row.status}>{row.status}</td>
-                  <td>{row.contact_name ?? "—"}</td>
-                  <td>{row.message_count}</td>
-                  <td>
-                    {canDelete && (
-                      <ConfirmAction
-                        title="Delete conversation?"
-                        description={
-                          "This conversation and its messages will be permanently deleted."
-                        }
-                        testId={`delete-${row.id}`}
-                        onConfirm={() => void removeThread(row.id)}
-                      >
-                        Delete
-                      </ConfirmAction>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    </bdi>
+                  </Link>
+                ),
+              },
+              {
+                key: "channel",
+                header: "Channel",
+                cell: (row) => <bdi>{row.channel}</bdi>,
+              },
+              {
+                key: "status",
+                header: "Status",
+                cell: (row) => (
+                  <span data-status={row.status}>
+                    <StatusBadge value={row.status} />
+                  </span>
+                ),
+              },
+              {
+                key: "lead",
+                header: "Lead",
+                cell: (row) => <bdi dir="auto">{row.contact_name ?? "—"}</bdi>,
+              },
+              {
+                key: "messages",
+                header: "Messages",
+                cell: (row) => <bdi dir="ltr">{row.message_count}</bdi>,
+              },
+              {
+                key: "actions",
+                header: <span className="sr-only">Actions</span>,
+                cell: (row) =>
+                  canDelete && (
+                    <ConfirmAction
+                      title="Delete conversation?"
+                      description={
+                        "This conversation and its messages will be permanently deleted."
+                      }
+                      testId={`delete-${row.id}`}
+                      onConfirm={() => void removeThread(row.id)}
+                    >
+                      Delete
+                    </ConfirmAction>
+                  ),
+              },
+            ]}
+          />
         )}
         {total !== null && rows !== null && total > rows.length && (
-          <p className="muted">
+          <p className="convo-more">
             Showing {rows.length} of {total} conversations (newest first).
           </p>
         )}
-      </section>
+      </Card>
     </main>
   );
 }
