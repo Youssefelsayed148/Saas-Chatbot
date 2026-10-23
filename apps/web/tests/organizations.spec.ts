@@ -18,10 +18,14 @@ test("staff create and manage an organization across its four tabs", async ({
     "New Org",
   );
   await page.getByLabel("Plan label").fill("pro");
-  await page
+  await page.getByRole("button", { name: "Save plan", exact: true }).click();
+  const planDialog = page.getByRole("dialog", { name: "Save plan?" });
+  await planDialog
     .getByLabel("Reason", { exact: true })
     .fill("Organization plan reviewed by staff");
-  await page.getByRole("button", { name: "Save plan", exact: true }).click();
+  await planDialog
+    .getByRole("button", { name: "Confirm", exact: true })
+    .click();
   await expect(page.getByText("Changes saved.")).toBeVisible();
   await expect(page.getByLabel("Plan label")).toHaveValue("pro");
   for (const label of ["Overview", "Members", "Bots", "Knowledge"] as const) {

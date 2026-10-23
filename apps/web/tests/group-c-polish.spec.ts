@@ -78,9 +78,6 @@ for (const item of confirmations) {
     await page.goto(item.path);
     if (item.platform) {
       await page.getByRole("tab", { name: "Bots", exact: true }).click();
-      await page
-        .getByLabel("Reason", { exact: true })
-        .fill("Owner requested pause");
     }
     const trigger = page.getByRole("button", {
       name: item.trigger,
@@ -90,8 +87,11 @@ for (const item of confirmations) {
     const dialog = page.getByRole("dialog", { name: item.title, exact: true });
     await expect(dialog).toBeVisible();
     await expect(dialog).toContainText(item.description);
+    // The platform pause dialog asks for its own reason, so focus starts there.
     await expect(
-      dialog.getByRole("button", { name: "Cancel", exact: true }),
+      item.platform
+        ? dialog.getByLabel("Reason", { exact: true })
+        : dialog.getByRole("button", { name: "Cancel", exact: true }),
     ).toBeFocused();
     expect(state.writes).toEqual([]);
     await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
@@ -103,6 +103,10 @@ for (const item of confirmations) {
     await expect(dialog).not.toBeVisible();
     expect(state.writes).toEqual([]);
     await trigger.click();
+    if (item.platform)
+      await dialog
+        .getByLabel("Reason", { exact: true })
+        .fill("Owner requested pause");
     await dialog.getByRole("button", { name: "Confirm", exact: true }).click();
     await expect.poll(() => state.writes.length).toBe(1);
     expect(state.writes[0]).toMatchObject({
