@@ -510,30 +510,48 @@ dialog::backdrop {
 .bot-workspace-nav {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
-  padding-block: 0.5rem 1.2rem;
-  margin-block-end: 1.5rem;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+  padding-block: var(--space-2) var(--space-4);
+  margin-block-end: var(--space-5);
   border-block-end: 1px solid var(--border);
 }
 .bot-nav-bot {
   display: flex;
-  gap: 0.8rem;
+  gap: var(--space-3);
   align-items: center;
+  min-inline-size: 0;
 }
 .bot-nav-bot a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--control-height);
   text-decoration: none;
 }
 .bot-nav-tabs {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
+  gap: var(--space-1);
 }
 .bot-nav-tabs a {
-  padding: 0.4rem 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--control-height);
+  padding-inline: var(--space-3);
   border-radius: var(--radius-sm);
   color: var(--muted);
   text-decoration: none;
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
+  font-weight: 550;
+  white-space: nowrap;
+}
+.bot-nav-tabs a:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+.bot-workspace-nav a:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 .bot-nav-tabs a[aria-current="page"] {
   background: var(--accent-soft);
