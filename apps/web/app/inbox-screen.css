@@ -1,0 +1,492 @@
+/* Batch E: inbox list and conversation detail. Tokens only; logical
+ * properties for RTL. Loaded after globals.css, so selectors are scoped to be
+ * more specific than the older inbox rules. */
+.inbox-workspace {
+  display: grid;
+  grid-template-columns: minmax(18rem, 0.9fr) minmax(0, 1.6fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+.inbox-list-panel {
+  min-inline-size: 0;
+}
+.inbox-list-panel > * + * {
+  margin-block-start: var(--space-4);
+}
+.inbox-panel-title {
+  margin-block: 0;
+  font-size: var(--text-lg);
+}
+
+/* Counts. */
+.inbox-list-panel .inbox-counts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+}
+.inbox-list-panel .inbox-counts > span {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--muted);
+  overflow-wrap: break-word;
+}
+.inbox-list-panel .inbox-counts strong {
+  display: block;
+  margin-block-start: var(--space-1);
+  color: var(--text);
+  font-size: var(--text-xl);
+  line-height: var(--leading-tight);
+}
+
+/* Filters: label above the control. */
+.inbox-list-panel .filter-toolbar {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.inbox-list-panel .filter-toolbar label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-inline-size: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.inbox-list-panel .filter-toolbar input,
+.inbox-list-panel .filter-toolbar select {
+  inline-size: 100%;
+  min-block-size: var(--control-height);
+  font-size: var(--text-base);
+  font-weight: 400;
+}
+.inbox-list-panel .filter-toolbar label:first-child {
+  grid-column: 1 / -1;
+}
+.inbox-list-panel .advanced-filters {
+  grid-column: 1 / -1;
+}
+.inbox-list-panel .advanced-filters > summary {
+  cursor: pointer;
+  min-block-size: var(--control-height);
+  display: flex;
+  align-items: center;
+  color: var(--accent);
+  font-weight: 600;
+}
+.inbox-list-panel .advanced-filters > summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.inbox-list-panel .advanced-filter-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin-block-start: var(--space-2);
+}
+.inbox-list-panel .filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-block: 0;
+}
+.inbox-list-panel .filter-chips:empty {
+  display: none;
+}
+.inbox-list-panel .filter-chips button {
+  min-block-size: var(--control-height);
+  padding-inline: var(--space-3);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+/* List. */
+.inbox-list-panel [data-testid="inbox-list"] {
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.inbox-list-panel [data-testid="inbox-list"] > ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.inbox-list-panel [data-testid="inbox-list"] > .loading-state,
+.inbox-list-panel [data-testid="inbox-list"] > .empty-state {
+  margin: var(--space-4);
+}
+.inbox-list-panel [data-testid="inbox-list"] > p {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-sm);
+}
+.inbox-list-panel .inbox-row {
+  border-block-end: 1px solid var(--border);
+}
+.inbox-list-panel .inbox-row > a {
+  display: block;
+  padding: var(--space-4);
+  color: var(--text);
+  text-decoration: none;
+  overflow-wrap: break-word;
+}
+.inbox-list-panel .inbox-row > a:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+.inbox-list-panel .inbox-row:hover {
+  background: var(--surface-hover);
+}
+.inbox-list-panel .inbox-row[data-selected="true"] {
+  background: var(--accent-soft);
+  box-shadow: inset 4px 0 0 var(--accent);
+}
+[dir="rtl"] .inbox-list-panel .inbox-row[data-selected="true"] {
+  box-shadow: inset -4px 0 0 var(--accent);
+}
+.inbox-list-panel .inbox-row-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.inbox-list-panel .inbox-row-heading strong {
+  min-inline-size: 0;
+  font-size: var(--text-base);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.inbox-list-panel .inbox-row-heading time {
+  flex: none;
+  font-size: var(--text-xs);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.inbox-list-panel .message-snippet {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-block: var(--space-2);
+  color: var(--muted);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+.inbox-list-panel .inbox-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+.inbox-list-panel .channel-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+.inbox-list-panel .unread-count {
+  display: inline-flex;
+  align-items: center;
+  margin-inline-start: auto;
+  color: var(--accent);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.inbox-list-panel .inbox-row > a > small {
+  display: block;
+  margin-block-start: var(--space-2);
+  font-size: var(--text-xs);
+}
+.inbox-list-panel .row-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-block-start: var(--space-2);
+}
+.inbox-list-panel.compact .inbox-counts {
+  display: none;
+}
+
+/* Empty detail pane. */
+.inbox-workspace .thread-placeholder {
+  position: sticky;
+  inset-block-start: var(--space-5);
+  min-block-size: 24rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-6);
+  text-align: center;
+}
+.inbox-workspace .thread-placeholder h2 {
+  margin-block: var(--space-3) 0;
+}
+.inbox-workspace .thread-placeholder p {
+  max-inline-size: 34ch;
+  margin-block: 0;
+}
+
+/* Conversation pane. */
+.conversation-pane {
+  min-inline-size: 0;
+}
+.conversation-pane > * + * {
+  margin-block-start: var(--space-4);
+}
+.conversation-pane .staff-note {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius-sm);
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+.conversation-pane .conversation-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3) var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.conversation-pane .conversation-summary {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-inline-end: auto;
+  min-block-size: var(--control-height);
+}
+.conversation-pane .conversation-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-inline-size: min(100%, 14rem);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.conversation-pane .conversation-controls select {
+  inline-size: 100%;
+  min-block-size: var(--control-height);
+  font-weight: 400;
+}
+.conversation-pane .conversation-controls button {
+  min-block-size: var(--control-height);
+  font-size: var(--text-base);
+}
+
+/* Tags. */
+.conversation-pane .conversation-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+.conversation-pane .tag-list {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.conversation-pane .tag-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding-inline-start: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+.conversation-pane .tag-item button {
+  min-block-size: var(--control-height);
+  min-inline-size: var(--control-height);
+  padding: var(--space-1);
+  border-width: 0;
+  background: transparent;
+}
+.conversation-pane .conversation-tags form {
+  flex: 1 1 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+  margin: 0;
+}
+.conversation-pane .conversation-tags form label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1 1 12rem;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.conversation-pane .conversation-tags form input {
+  inline-size: 100%;
+  min-block-size: var(--control-height);
+  font-weight: 400;
+}
+.conversation-pane .conversation-tags form > button {
+  min-block-size: var(--control-height);
+}
+
+/* Thread. */
+.conversation-pane [data-testid="inbox-thread"] > ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.conversation-pane .chat-thread > [data-role] {
+  inline-size: fit-content;
+  min-inline-size: min(50%, 100%);
+  max-inline-size: min(88%, 44rem);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow-wrap: anywhere;
+}
+.conversation-pane .chat-thread > [data-role="visitor"] {
+  align-self: flex-start;
+}
+.conversation-pane .chat-thread > [data-role="ai"],
+.conversation-pane .chat-thread > [data-role="agent"] {
+  align-self: flex-end;
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.conversation-pane .chat-thread > [data-role="note"] {
+  align-self: stretch;
+  max-inline-size: none;
+  background: var(--warning-soft);
+  border-color: var(--warning);
+}
+.conversation-pane .chat-thread > [data-role="system"] {
+  align-self: center;
+  background: var(--surface-raised);
+  color: var(--muted);
+}
+.conversation-pane .message-time {
+  display: block;
+  margin-block: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--muted);
+  unicode-bidi: isolate;
+}
+.conversation-pane .message-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.conversation-pane .chat-thread p[role="note"],
+.conversation-pane .chat-thread p[aria-label="Visitor feedback"] {
+  margin-block: var(--space-2) 0;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.conversation-pane .source-details {
+  margin-block-start: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  font-size: var(--text-sm);
+}
+.conversation-pane .source-details summary {
+  cursor: pointer;
+  color: var(--accent);
+}
+.conversation-pane .source-details summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.conversation-pane .source-details ul {
+  margin-block: var(--space-2) 0;
+  padding-inline-start: var(--space-5);
+}
+
+/* Reply and notes. */
+.conversation-pane .reply-notes {
+  display: grid;
+  gap: var(--space-4);
+}
+.conversation-pane .reply-notes form {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.conversation-pane .reply-notes label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  inline-size: 100%;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.conversation-pane .reply-notes textarea {
+  inline-size: 100%;
+  max-inline-size: none;
+  font-weight: 400;
+  resize: vertical;
+}
+.conversation-pane .reply-notes button {
+  min-block-size: var(--control-height);
+}
+
+@media (max-width: 1150px) {
+  .inbox-workspace {
+    grid-template-columns: minmax(16rem, 0.9fr) minmax(0, 1.5fr);
+    gap: var(--space-4);
+  }
+  .inbox-list-panel .filter-toolbar,
+  .inbox-list-panel .advanced-filter-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 900px) {
+  .inbox-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .inbox-side,
+  .inbox-workspace .thread-placeholder {
+    display: none;
+  }
+  .inbox-list-panel .filter-toolbar,
+  .inbox-list-panel .advanced-filter-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .conversation-pane .chat-thread > [data-role] {
+    max-inline-size: 100%;
+  }
+}
+@media (max-width: 480px) {
+  .inbox-list-panel .filter-toolbar,
+  .inbox-list-panel .advanced-filter-fields,
+  .inbox-list-panel .inbox-counts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .conversation-pane .conversation-controls > button,
+  .conversation-pane .conversation-controls label {
+    flex: 1 1 100%;
+  }
+}
