@@ -5,10 +5,9 @@ import localFont from "next/font/local";
  * Applied to the dashboard through the --font-dashboard CSS variable on <body>;
  * the widget frame keeps its own --font stack until Batch C is merged.
  *
- * The file below is a 0-byte PLACEHOLDER so the build stays green. Browsers
- * reject it and fall back to the system font stack (one console warning:
- * "Failed to decode downloaded font"). Replace it with the real file, same
- * name and path, see app/fonts/README.md. No external font request is made.
+ * Cairo (variable), Arabic + Latin, weight 200-1000. See app/fonts/README.md
+ * for the source and the OFL licence beside the file. No external font
+ * request is made.
  */
 export const dashboardFont = localFont({
   src: "./fonts/dashboard-font.woff2",
