@@ -41,7 +41,7 @@
 }
 .contacts-export:focus-visible,
 .contacts-page a:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 
@@ -104,16 +104,20 @@
   padding: 0;
   list-style: none;
 }
-.contacts-list li {
-  padding-block-end: var(--space-3);
+.contact-profile .contacts-list > li {
+  padding: 0 0 var(--space-3);
   border-block-end: 1px solid var(--border);
   overflow-wrap: anywhere;
 }
-.contacts-list li:last-child {
+.contact-profile .contacts-list > li:last-child {
   padding-block-end: 0;
   border-block-end: 0;
 }
-.contacts-followups li {
+/* The generic detail-page form width must not shrink the follow-up form. */
+.contact-profile .contacts-form {
+  max-inline-size: none;
+}
+.contact-profile .contacts-followups > li {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -145,7 +149,10 @@
   overflow-wrap: anywhere;
 }
 .contacts-dialog::backdrop {
-  background: rgb(0 0 0 / 0.5);
+  background: var(--overlay);
+}
+.contacts-dialog .check-control {
+  margin-block: var(--space-4);
 }
 .contacts-dialog .action-row {
   justify-content: flex-end;

@@ -13,6 +13,17 @@
 .inbox-list-panel > * + * {
   margin-block-start: var(--space-4);
 }
+/* On the full page the root is a <main>: drop its generic section card so the
+ * rhythm above is the only spacing. Deliberate cards re-add their own box. */
+.inbox-list-panel > section {
+  padding: 0;
+  border: 0;
+  background: none;
+  margin-block-end: 0;
+}
+.inbox-list-panel > section:first-child {
+  margin-block-start: 0;
+}
 .inbox-panel-title {
   margin-block: 0;
   font-size: var(--text-lg);
@@ -23,6 +34,9 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-3);
+  padding: 0;
+  border: 0;
+  background: none;
   font-size: var(--text-sm);
 }
 .inbox-list-panel .inbox-counts > span {
@@ -77,8 +91,29 @@
   min-block-size: var(--control-height);
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
   color: var(--accent);
   font-weight: 600;
+}
+/* Disclosure indicator (the marker is gone with display:flex). */
+.inbox-list-panel .advanced-filters > summary::after {
+  content: "";
+  flex: none;
+  inline-size: 0.5rem;
+  block-size: 0.5rem;
+  border-inline-end: 2px solid currentcolor;
+  border-block-end: 2px solid currentcolor;
+  transform: rotate(45deg);
+  transition: transform 0.15s ease;
+}
+.inbox-list-panel .advanced-filters[open] > summary::after {
+  transform: rotate(-135deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .inbox-list-panel .advanced-filters > summary::after {
+    transition: none;
+  }
 }
 .inbox-list-panel .advanced-filters > summary:focus-visible {
   outline: 2px solid var(--focus);
@@ -88,7 +123,6 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-3);
-  margin-block-start: var(--space-2);
 }
 .inbox-list-panel .filter-chips {
   display: flex;
@@ -246,6 +280,16 @@
 .conversation-pane > * + * {
   margin-block-start: var(--space-4);
 }
+/* Generic main > section card styling must not box tags, thread or replies. */
+.conversation-pane > section:not(.conversation-controls) {
+  padding: 0;
+  border: 0;
+  background: none;
+  margin-block-end: 0;
+}
+.conversation-pane > section:not(.conversation-controls):first-child {
+  margin-block-start: 0;
+}
 .conversation-pane .staff-note {
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--warning);
@@ -374,6 +418,7 @@
 }
 .conversation-pane .chat-thread > [data-role="note"] {
   align-self: stretch;
+  inline-size: auto;
   max-inline-size: none;
   background: var(--warning-soft);
   border-color: var(--warning);

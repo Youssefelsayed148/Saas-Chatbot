@@ -237,7 +237,12 @@ export function InboxList({
               aria-label={`Remove ${key} filter`}
               onClick={() => updateFilter(key as keyof typeof filters, "")}
             >
-              {humanLabel(key)}: {humanLabel(value)}{" "}
+              {humanLabel(key)}:{" "}
+              {key === "q" || key === "tag" ? (
+                <bdi>{value}</bdi>
+              ) : (
+                humanLabel(value)
+              )}{" "}
               <span aria-hidden="true">×</span>
             </Button>
           ))}
