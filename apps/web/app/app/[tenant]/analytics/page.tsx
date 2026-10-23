@@ -5,9 +5,11 @@ import { useCallback, useEffect, useState } from "react";
 
 import * as api from "@/lib/api";
 import type { HandoffAnalytics } from "@/lib/api";
-import { Empty, Loading, Notice } from "@/lib/ui";
+import { Card, Empty, Loading, Notice, PageHeader } from "@/lib/ui";
 import { useSession } from "@/lib/session";
 import RagOperatorPanel from "@/lib/rag-operator-panel";
+
+import "@/app/insights-screen.css";
 
 function duration(seconds: number | null): string {
   if (seconds === null) return "No replies recorded";
@@ -40,12 +42,14 @@ export default function HandoffAnalyticsPage() {
   }, [load]);
 
   return (
-    <main className="handoff-analytics">
-      <h1>Handoff analytics</h1>
-      <p className="page-purpose">
-        Understand handoffs and your team’s response using measured activity.
+    <main className="insights-page">
+      <PageHeader
+        title="Handoff analytics"
+        purpose="Understand handoffs and your team’s response using measured activity."
+      />
+      <p className="insights-lede">
+        Measured from website conversations created in the last 30 days.
       </p>
-      <p>Measured from website conversations created in the last 30 days.</p>
       {me?.is_platform_staff && <RagOperatorPanel tenantId={tenantId} />}
       {error && <Notice tone="error" message={error} />}
       {!data ? (
@@ -55,34 +59,48 @@ export default function HandoffAnalyticsPage() {
           <Loading />
         )
       ) : (
-        <>
-          <section className="card">
-            <h2>Conversation outcomes</h2>
-            <p>Total: {data.total_conversations}</p>
-            <p>Handoffs: {data.handoff_count}</p>
-            <p>
-              Handoff rate:{" "}
-              {data.handoff_rate === null
-                ? "No conversations"
-                : `${(data.handoff_rate * 100).toFixed(1)}%`}
-            </p>
-            <p>
-              First human reply:{" "}
-              {duration(data.average_first_human_reply_seconds)}
-            </p>
-            <p>
-              Resolved: {data.resolved_vs_open.resolved} · Open:{" "}
-              {data.resolved_vs_open.open}
-            </p>
-          </section>
-          <section className="card">
-            <h2>Conversations by channel</h2>
+        <div className="insights-grid">
+          <Card title="Conversation outcomes" className="insights-wide">
+            <div className="insights-kv">
+              <div>
+                Total:{" "}
+                <span className="stat-value insights-num" dir="ltr">
+                  {data.total_conversations}
+                </span>
+              </div>
+              <div>
+                Handoffs:{" "}
+                <span className="stat-value insights-num" dir="ltr">
+                  {data.handoff_count}
+                </span>
+              </div>
+              <div>
+                Handoff rate:{" "}
+                <span className="stat-value insights-num" dir="ltr">
+                  {data.handoff_rate === null
+                    ? "No conversations"
+                    : `${(data.handoff_rate * 100).toFixed(1)}%`}
+                </span>
+              </div>
+              <div>
+                First human reply:{" "}
+                <span className="stat-value">
+                  {duration(data.average_first_human_reply_seconds)}
+                </span>
+              </div>
+              <div>
+                Resolved: {data.resolved_vs_open.resolved} · Open:{" "}
+                {data.resolved_vs_open.open}
+              </div>
+            </div>
+          </Card>
+          <Card title="Conversations by channel">
             {Object.keys(data.conversations_by_channel).length ? (
-              <ul>
+              <ul className="insights-rows">
                 {Object.entries(data.conversations_by_channel).map(
                   ([channel, count]) => (
                     <li key={channel}>
-                      {channel}: {count}
+                      <bdi>{channel}</bdi>: <bdi dir="ltr">{count}</bdi>
                     </li>
                   ),
                 )}
@@ -90,15 +108,15 @@ export default function HandoffAnalyticsPage() {
             ) : (
               <Empty>No conversations recorded.</Empty>
             )}
-          </section>
-          <section className="card">
-            <h2>Agent workload</h2>
+          </Card>
+          <Card title="Agent workload">
             {Object.keys(data.agent_workload).length ? (
-              <ul>
+              <ul className="insights-rows">
                 {Object.entries(data.agent_workload).map(
                   ([memberName, count]) => (
                     <li key={memberName}>
-                      {memberName}: {count} open assignments
+                      <bdi dir="auto">{memberName}</bdi>:{" "}
+                      <bdi dir="ltr">{count}</bdi> open assignments
                     </li>
                   ),
                 )}
@@ -106,15 +124,14 @@ export default function HandoffAnalyticsPage() {
             ) : (
               <Empty>No active assignments recorded.</Empty>
             )}
-          </section>
-          <section className="card">
-            <h2>Sentiment</h2>
+          </Card>
+          <Card title="Sentiment">
             {Object.keys(data.sentiment_distribution).length ? (
-              <ul>
+              <ul className="insights-rows">
                 {Object.entries(data.sentiment_distribution).map(
                   ([sentiment, count]) => (
                     <li key={sentiment}>
-                      {sentiment}: {count}
+                      <bdi>{sentiment}</bdi>: <bdi dir="ltr">{count}</bdi>
                     </li>
                   ),
                 )}
@@ -122,8 +139,8 @@ export default function HandoffAnalyticsPage() {
             ) : (
               <Empty>Sentiment not measured yet.</Empty>
             )}
-          </section>
-        </>
+          </Card>
+        </div>
       )}
     </main>
   );
