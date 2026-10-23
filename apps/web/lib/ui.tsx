@@ -28,12 +28,16 @@ export function Notice({
   tone = "info",
   onRetry,
   retryLabel = "Retry page",
+  scope = "page",
 }: {
   message: string;
   tone?: "info" | "error";
   onRetry?: () => void;
   /** Honest name for the action: a page reload unless onRetry says otherwise. */
   retryLabel?: string;
+  /** "item" marks an error about one row or action (a failed job, a failed
+   * save): it names the problem but offers no page-level retry. */
+  scope?: "page" | "item";
 }) {
   return (
     <div
@@ -41,7 +45,7 @@ export function Notice({
       data-tone={tone}
     >
       <p role={tone === "error" ? "alert" : "status"}>{message}</p>
-      {tone === "error" && (
+      {tone === "error" && scope === "page" && (
         <button
           type="button"
           className="quiet-button"

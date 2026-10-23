@@ -382,7 +382,9 @@ export default function KnowledgePage() {
                     </>
                   )}
                 </span>
-                {source.error && <Notice message={source.error} tone="error" />}
+                {source.error && (
+                  <Notice message={source.error} tone="error" scope="item" />
+                )}
                 {source.row_errors && source.row_errors.length > 0 && (
                   <div data-testid="row-errors">
                     {source.row_errors.map((rowError) => (
@@ -432,7 +434,9 @@ export default function KnowledgePage() {
                     </>
                   )}
                 </span>
-                {job.error && <Notice message={job.error} tone="error" />}
+                {job.error && (
+                  <Notice message={job.error} tone="error" scope="item" />
+                )}
                 {canEdit &&
                   (job.status === "pending" || job.status === "running") && (
                     <Button

@@ -104,7 +104,7 @@ export function OrganizationSelect({
           </select>
         )}
       </Field>
-      {error && <Notice tone="error" message={error} />}
+      {error && <Notice tone="error" message={error} scope="item" />}
     </>
   );
 }
@@ -188,7 +188,7 @@ export function MembershipControls({
       <header>
         <h2>Memberships</h2>
       </header>
-      {error && <Notice tone="error" message={error} />}
+      {error && <Notice tone="error" message={error} scope="item" />}
       {user.memberships.map((m) => (
         <div key={m.organization_id} className="membership-row">
           <p>
@@ -271,7 +271,7 @@ export function OrganizationMembers({
         <h2>Add people</h2>
         <p>Find an existing user to add, or send them an invitation link.</p>
       </header>
-      {error && <Notice tone="error" message={error} />}
+      {error && <Notice tone="error" message={error} scope="item" />}
       <form
         className="inline-form"
         onSubmit={(e) => {
