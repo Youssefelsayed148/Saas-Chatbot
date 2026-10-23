@@ -1,0 +1,69 @@
+/* E2.6b: Team, tenant data and client change requests. Tokens only; logical properties for RTL. */
+
+.team-page > * + * {
+  margin-block-start: var(--space-5);
+}
+.team-page > .page-header,
+.team-page > .form-section {
+  margin-block-end: 0;
+}
+.team-page .page-header .page-purpose {
+  margin-block-end: 0;
+}
+
+.team-invite {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-4);
+  max-inline-size: none;
+}
+.team-invite > .field {
+  flex: 1 1 14rem;
+}
+.team-invite :is(input, select) {
+  inline-size: 100%;
+  min-block-size: var(--control-height);
+}
+.team-invite > button {
+  flex: 0 0 auto;
+}
+
+.team-link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+}
+.team-link > span {
+  flex: 1 1 100%;
+}
+.team-link code {
+  flex: 1 1 16rem;
+  min-inline-size: 0;
+  overflow-x: auto;
+  white-space: nowrap;
+  font-size: var(--text-sm);
+}
+
+/* Cells never break mid-word; long emails stay on one line and scroll. */
+.team-page :is(td, th) {
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
+}
+.team-role-select {
+  min-block-size: var(--control-height);
+  min-inline-size: 8rem;
+}
+.team-page .row-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--space-3);
+}
