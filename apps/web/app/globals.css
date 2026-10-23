@@ -834,10 +834,6 @@ progress::-webkit-progress-value {
 .auth-page .eyebrow {
   font-size: 0.65rem;
 }
-.auth-page > p:last-child {
-  font-size: 0.8rem;
-  margin-block-end: 0;
-}
 .landing-page {
   max-inline-size: 660px;
   padding: 3rem;

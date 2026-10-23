@@ -156,10 +156,6 @@
 }
 
 @media (max-width: 640px) {
-  .convo-page {
-    padding: var(--space-4);
-    margin-block: var(--space-4);
-  }
   .convo-page .ui-card {
     padding: var(--space-4);
   }

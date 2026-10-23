@@ -68,10 +68,6 @@
 }
 
 @media (max-width: 640px) {
-  .install-page {
-    padding: var(--space-4);
-    margin-block: var(--space-4);
-  }
   .install-page .ui-card {
     padding: var(--space-4);
   }

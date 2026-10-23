@@ -32,6 +32,7 @@
 /* Date range: label above control; actions on the same row when they fit. */
 .insights-page > .insights-range {
   display: flex;
+  flex-direction: row;
   flex-wrap: wrap;
   align-items: flex-end;
   gap: var(--space-4);
@@ -223,10 +224,6 @@
 }
 
 @media (max-width: 640px) {
-  .insights-page {
-    padding: var(--space-4);
-    margin-block: var(--space-4);
-  }
   .insights-range .field {
     flex-basis: 100%;
   }

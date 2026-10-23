@@ -34,7 +34,9 @@ export default function AccountPage() {
           purpose="Your signed-in account and password."
         />
         <Card className="account-identity">
-          <p data-testid="account-email">Signed in as {me.email}</p>
+          <p data-testid="account-email">
+            Signed in as <bdi dir="ltr">{me.email}</bdi>
+          </p>
         </Card>
         <AccountForm />
       </main>

@@ -89,8 +89,11 @@ export default function HandoffAnalyticsPage() {
                 </span>
               </div>
               <div>
-                Resolved: {data.resolved_vs_open.resolved} · Open:{" "}
-                {data.resolved_vs_open.open}
+                Resolved / open:{" "}
+                <span className="stat-value insights-num" dir="ltr">
+                  {data.resolved_vs_open.resolved} /{" "}
+                  {data.resolved_vs_open.open}
+                </span>
               </div>
             </div>
           </Card>

@@ -48,6 +48,7 @@ function AcceptForm() {
         <Notice
           message="This link is missing its invitation token."
           tone="error"
+          scope="item"
         />
         <p className="auth-footer">
           <Link href="/login">Sign in</Link>
@@ -66,8 +67,11 @@ function AcceptForm() {
       {!sessionLoading && me && !joined && (
         <>
           <p>
-            Signed in as <strong>{me.email}</strong>. Accepting joins this
-            account using the invited address.
+            Signed in as{" "}
+            <strong>
+              <bdi dir="ltr">{me.email}</bdi>
+            </strong>
+            . Accepting joins this account using the invited address.
           </p>
           <Button type="button" onClick={onAccept} disabled={busy}>
             {busy ? "Joining…" : "Accept invitation"}
@@ -97,7 +101,7 @@ function AcceptForm() {
           <Link href="/app">Go to your dashboard</Link>
         </p>
       )}
-      {error && <Notice message={error} tone="error" />}
+      {error && <Notice message={error} tone="error" scope="item" />}
     </main>
   );
 }
