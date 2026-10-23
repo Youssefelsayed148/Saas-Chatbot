@@ -1780,3 +1780,23 @@ dialog .action-row {
   margin: 0;
   box-shadow: var(--shadow);
 }
+
+/* A confirm dialog rendered inside a table cell must not inherit the cell's
+ * small type or its no-wrap rules, and a long email must wrap. */
+td dialog {
+  font-size: var(--text-base);
+  overflow-wrap: anywhere;
+  text-align: start;
+}
+td dialog button {
+  font-size: inherit;
+}
+/* One scroller per table: the focusable .table-scroll region, not the table. */
+.table-scroll > table {
+  display: table;
+  overflow: visible;
+}
+/* Arabic letters must stay joined: no tracking in right-to-left text. */
+:is(:lang(ar), [dir="rtl"]) :is(h1, .eyebrow) {
+  letter-spacing: 0;
+}

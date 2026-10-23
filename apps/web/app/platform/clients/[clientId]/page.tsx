@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { auditActionLabel } from "@/lib/labels";
 import * as api from "@/lib/api";
@@ -18,7 +18,7 @@ import {
   TabPanel,
   Tabs,
 } from "@/lib/ui";
-import { OrganizationMembers } from "@/lib/staff-members";
+import { OrganizationMembers, focusAfterRemoval } from "@/lib/staff-members";
 import { BotLinks, CreateBotForm } from "@/lib/staff-bots";
 import { Icon } from "@/lib/icons";
 import "@/app/staff-screens.css";
@@ -52,6 +52,8 @@ export default function PlatformClientPage() {
   const [planLabel, setPlanLabel] = useState("");
   const [reason, setReason] = useState("");
   const [quotaOverrides, setQuotaOverrides] = useState('{"bots": 4}');
+  const membersSection = useRef<HTMLElement>(null);
+  const invitationsSection = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -355,6 +357,7 @@ export default function PlatformClientPage() {
               }
             />
             <section
+              ref={membersSection}
               aria-label="Members"
               data-testid="client-detail-members"
               className="form-section"
@@ -420,7 +423,10 @@ export default function PlatformClientPage() {
                             void api
                               .platformRemoveUser(member.user_id, clientId)
                               .then(() => api.platformTenantDetail(clientId))
-                              .then(setDetail)
+                              .then((next) => {
+                                setDetail(next);
+                                focusAfterRemoval(membersSection.current);
+                              })
                               .catch((caught) =>
                                 setError(
                                   caught instanceof Error
@@ -440,10 +446,17 @@ export default function PlatformClientPage() {
                 <p>No members yet.</p>
               )}
             </section>
-            <section aria-label="Pending invitations" className="form-section">
+            <section
+              ref={invitationsSection}
+              aria-label="Pending invitations"
+              className="form-section"
+            >
               <header>
                 <h2>Pending invitations</h2>
               </header>
+              {detail.pending_invitations.length === 0 && (
+                <p className="muted">No pending invitations.</p>
+              )}
               <ul aria-label="Pending invitations" className="plain-list">
                 {detail.pending_invitations.map((invite) => (
                   <li key={invite.id}>
@@ -456,7 +469,13 @@ export default function PlatformClientPage() {
                         void api
                           .revokeInvitation(clientId, invite.id)
                           .then(() => api.platformTenantDetail(clientId))
-                          .then(setDetail)
+                          .then((next) => {
+                            setDetail(next);
+                            focusAfterRemoval(
+                              invitationsSection.current,
+                              "ul button",
+                            );
+                          })
                           .catch((caught) =>
                             setError(
                               caught instanceof Error
