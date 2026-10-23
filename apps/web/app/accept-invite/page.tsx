@@ -6,7 +6,8 @@ import { Suspense, useState } from "react";
 
 import * as api from "@/lib/api";
 import { useSession } from "@/lib/session";
-import { Loading, Notice } from "@/lib/ui";
+import { Button, Loading, Notice } from "@/lib/ui";
+import "@/app/auth-screen.css";
 
 function AcceptForm() {
   const searchParams = useSearchParams();
@@ -48,7 +49,9 @@ function AcceptForm() {
           message="This link is missing its invitation token."
           tone="error"
         />
-        <Link href="/login">Sign in</Link>
+        <p className="auth-footer">
+          <Link href="/login">Sign in</Link>
+        </p>
       </main>
     );
   }
@@ -66,9 +69,9 @@ function AcceptForm() {
             Signed in as <strong>{me.email}</strong>. Accepting joins this
             account using the invited address.
           </p>
-          <button type="button" onClick={onAccept} disabled={busy}>
+          <Button type="button" onClick={onAccept} disabled={busy}>
             {busy ? "Joining…" : "Accept invitation"}
-          </button>
+          </Button>
         </>
       )}
       {!sessionLoading && !me && !joined && (

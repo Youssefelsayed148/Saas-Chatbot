@@ -1,0 +1,141 @@
+/* E2.5: login, register, accept-invite and account. Tokens only; logical properties for RTL. */
+
+.auth-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  inline-size: 100%;
+  max-inline-size: 32rem;
+  padding: var(--space-6);
+}
+.auth-page > * {
+  margin-block: 0;
+}
+.auth-page .auth-brand {
+  margin-block-end: var(--space-4);
+}
+.auth-page .eyebrow {
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+}
+.auth-page h1 {
+  margin-block: 0;
+  font-size: var(--text-xl);
+  line-height: var(--leading-tight);
+}
+.auth-page .page-purpose {
+  color: var(--muted);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+}
+.auth-page form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-block-start: var(--space-2);
+}
+.auth-page form > button[type="submit"] {
+  inline-size: 100%;
+  min-block-size: var(--control-height);
+}
+.auth-page > button {
+  inline-size: 100%;
+  min-block-size: var(--control-height);
+}
+.auth-page .notice {
+  margin-block: 0;
+}
+.auth-page .auth-footer {
+  color: var(--muted);
+  font-size: var(--text-sm);
+  padding-block-start: var(--space-3);
+  border-block-start: 1px solid var(--border);
+}
+.auth-page .auth-footer a {
+  color: var(--accent);
+  font-weight: 600;
+}
+.auth-page a:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Password show/hide: keep the toggle inside the control, focus visible. */
+.password-field input {
+  padding-inline-end: 4.5rem;
+}
+.password-field button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+/* Account */
+.account-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  max-inline-size: var(--form-max, 640px);
+}
+.account-page > * {
+  margin-block: 0;
+}
+.account-page .page-header {
+  margin-block-end: 0;
+}
+.account-page .page-header h1 {
+  margin-block-end: var(--space-2);
+}
+.account-page .page-header .page-purpose {
+  margin-block-end: 0;
+  color: var(--muted);
+}
+.account-identity p {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-weight: 550;
+}
+.account-page .form-section {
+  margin-block: 0;
+}
+.account-page .form-section > form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: 0;
+  border: 0;
+}
+.account-page .form-section > form > button[type="submit"] {
+  align-self: flex-start;
+  min-block-size: var(--control-height);
+}
+.auth-message {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+.auth-message[data-tone="error"] {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.auth-message[data-tone="success"] {
+  background: var(--success-soft);
+  color: var(--success);
+  border-color: var(--success);
+}
+
+@media (max-width: 760px) {
+  .auth-page {
+    margin: var(--space-4);
+    inline-size: auto;
+    max-inline-size: none;
+    padding: var(--space-5);
+  }
+  .account-page .form-section > form > button[type="submit"] {
+    align-self: stretch;
+  }
+}

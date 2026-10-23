@@ -9,6 +9,8 @@ import { ThemeToggle } from "@/lib/theme";
 import * as api from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { Icon } from "@/lib/icons";
+import { Button, Field, Notice } from "@/lib/ui";
+import "@/app/auth-screen.css";
 
 function LoginForm() {
   const router = useRouter();
@@ -68,36 +70,39 @@ function LoginForm() {
         Welcome back. Continue helping your visitors.
       </p>
       <form onSubmit={onSubmit}>
-        <label>
-          Email
-          <input
-            type="email"
-            name="email"
-            autoComplete="email"
-            required
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-          />
-        </label>
-        <div className="password-control">
-          <label htmlFor="auth-password">Password</label>
-          <PasswordField
-            id="auth-password"
-            type="password"
-            name="password"
-            autoComplete="current-password"
-            required
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
-        </div>
-        {error && <p role="alert">{error}</p>}
-        <button type="submit" disabled={submitting}>
+        <Field label="Email">
+          {(control) => (
+            <input
+              {...control}
+              type="email"
+              name="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
+          )}
+        </Field>
+        <Field label="Password">
+          {(control) => (
+            <PasswordField
+              {...control}
+              type="password"
+              name="password"
+              autoComplete="current-password"
+              required
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+          )}
+        </Field>
+        {error && <Notice message={error} tone="error" scope="item" />}
+        <Button type="submit" disabled={submitting}>
           {submitting ? "Signing in…" : "Sign in"}
-        </button>
+        </Button>
       </form>
       {selfServeSignup && (
-        <p>
+        <p className="auth-footer">
           No account yet? <Link href="/register">Register</Link>
         </p>
       )}

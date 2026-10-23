@@ -9,6 +9,8 @@ import { ThemeToggle } from "@/lib/theme";
 import * as api from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { Icon } from "@/lib/icons";
+import { Button, Field, Notice } from "@/lib/ui";
+import "@/app/auth-screen.css";
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -119,59 +121,66 @@ function RegisterForm() {
         <form onSubmit={onSubmit}>
           {!isInviteSignup && (
             <>
-              <label>
-                Organization name
-                <input
-                  name="client-name"
-                  required
-                  maxLength={200}
-                  value={clientName}
-                  onChange={(event) => setClientName(event.target.value)}
-                />
-              </label>
-              <label>
-                First bot name
-                <input
-                  name="bot-name"
-                  required
-                  maxLength={100}
-                  value={botName}
-                  onChange={(event) => setBotName(event.target.value)}
-                />
-              </label>
+              <Field label="Organization name">
+                {(control) => (
+                  <input
+                    {...control}
+                    name="client-name"
+                    required
+                    maxLength={200}
+                    value={clientName}
+                    onChange={(event) => setClientName(event.target.value)}
+                  />
+                )}
+              </Field>
+              <Field label="First bot name">
+                {(control) => (
+                  <input
+                    {...control}
+                    name="bot-name"
+                    required
+                    maxLength={100}
+                    value={botName}
+                    onChange={(event) => setBotName(event.target.value)}
+                  />
+                )}
+              </Field>
             </>
           )}
-          <label>
-            Email
-            <input
-              type="email"
-              name="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-            />
-          </label>
-          <div className="password-control">
-            <label htmlFor="auth-password">Password</label>
-            <PasswordField
-              id="auth-password"
-              type="password"
-              name="new-password"
-              autoComplete="new-password"
-              required
-              minLength={MIN_PASSWORD_LENGTH}
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </div>
-          {error && <p role="alert">{error}</p>}
-          <button type="submit" disabled={submitting}>
+          <Field label="Email">
+            {(control) => (
+              <input
+                {...control}
+                type="email"
+                name="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+              />
+            )}
+          </Field>
+          <Field label="Password">
+            {(control) => (
+              <PasswordField
+                {...control}
+                type="password"
+                name="new-password"
+                autoComplete="new-password"
+                required
+                minLength={MIN_PASSWORD_LENGTH}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+              />
+            )}
+          </Field>
+          {error && <Notice message={error} tone="error" scope="item" />}
+          <Button type="submit" disabled={submitting}>
             {submitting ? "Creating account…" : "Create account"}
-          </button>
+          </Button>
         </form>
       )}
-      <p>
+      <p className="auth-footer">
         Already registered? <Link href="/login">Sign in</Link>
       </p>
     </main>
