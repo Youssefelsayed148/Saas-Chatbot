@@ -64,6 +64,12 @@ function inlineFieldKey(field: string): string | null {
   return FIELD_KEYS.has(key) ? key : null;
 }
 
+/** Everything the Save settings button sends, as one comparable string, so a
+ * change that is reverted reads as up to date again (presentation only). */
+function formSnapshot(values: Record<string, unknown>): string {
+  return JSON.stringify(values);
+}
+
 export default function BotSettingsPage() {
   const params = useParams<{ tenant: string; botId: string }>();
   const tenantId = params.tenant;
@@ -77,9 +83,10 @@ export default function BotSettingsPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
-  // Presentation only (#24): true once a form field changed since the last
-  // load or save. The instantly saved AI tier control is separate.
-  const [dirty, setDirty] = useState(false);
+  // Presentation only (#24): the form values as last loaded or saved; the form
+  // is dirty while it differs from this. The instantly saved AI tier control is
+  // separate.
+  const [baseline, setBaseline] = useState<string | null>(null);
   const [readinessKey, setReadinessKey] = useState(0);
   const [transitioning, setTransitioning] = useState(false);
 
@@ -136,13 +143,35 @@ export default function BotSettingsPage() {
         const value = storedTheme?.[slot];
         if (isHex(value)) slots[slot] = value;
       }
-      setThemeDraft({
+      const loadedTheme: ThemeDraft = {
         preset:
           storedTheme?.preset ??
           (Object.keys(slots).length > 0 ? "custom" : "classic"),
         slots,
-      });
+      };
+      setThemeDraft(loadedTheme);
       setThemeActive(!!storedTheme);
+      setBaseline(
+        formSnapshot({
+          assistantName: loaded.config.assistant_name || loaded.name,
+          businessName: loaded.config.business_name || "",
+          businessDescription: loaded.config.business_description ?? "",
+          welcomeEn: loaded.config.welcome_message?.en ?? "",
+          welcomeAr: loaded.config.welcome_message?.ar ?? "",
+          openingQuestions: (loaded.config.opening_questions ?? []).join("\n"),
+          defaultLanguage: loaded.config.default_language ?? "en",
+          supportEmail: loaded.config.support_email ?? "",
+          supportPhone: loaded.config.support_phone ?? "",
+          colour: loaded.config.colour ?? "",
+          avatar: loaded.config.avatar ?? "",
+          position: loaded.config.position ?? "right",
+          handoffEnabled: loaded.config.handoff_enabled ?? true,
+          allowedDomains: (loaded.config.allowed_domains ?? []).join("\n"),
+          toneAndRules: loaded.tone_and_rules ?? "",
+          themeDraft: loadedTheme,
+          themeActive: !!storedTheme,
+        }),
+      );
       setLoadError(null);
     } catch (caught) {
       setLoadError(
@@ -165,8 +194,6 @@ export default function BotSettingsPage() {
     setSaveError(null);
     setFieldErrors({});
     setSaved(false);
-    // Edits made while the request is in flight set this back to true.
-    setDirty(false);
     setSaving(true);
     try {
       const config: Record<string, unknown> = {};
@@ -210,7 +237,6 @@ export default function BotSettingsPage() {
       await load();
       setReadinessKey((key) => key + 1);
     } catch (caught) {
-      setDirty(true);
       if (caught instanceof api.ApiError && caught.fieldErrors.length > 0) {
         // Field details go inline under the matching input; fields without a
         // matching input fall back to the form-level error area.
@@ -251,6 +277,28 @@ export default function BotSettingsPage() {
   }
 
   if (!me?.is_platform_staff) return null;
+
+  const dirty =
+    baseline !== null &&
+    formSnapshot({
+      assistantName,
+      businessName: businessNameEdit ?? "",
+      businessDescription,
+      welcomeEn,
+      welcomeAr,
+      openingQuestions,
+      defaultLanguage,
+      supportEmail,
+      supportPhone,
+      colour,
+      avatar,
+      position,
+      handoffEnabled,
+      allowedDomains,
+      toneAndRules,
+      themeDraft,
+      themeActive,
+    }) !== baseline;
 
   /** Inline error for a field key, with the test id the specs rely on. */
   const err = (key: string) => ({
@@ -353,10 +401,7 @@ export default function BotSettingsPage() {
       <form
         className="settings-form"
         onSubmit={onSave}
-        onChange={() => {
-          setDirty(true);
-          setSaved(false);
-        }}
+        onChange={() => setSaved(false)}
       >
         <FormSection
           title="Identity"
@@ -490,7 +535,6 @@ export default function BotSettingsPage() {
                 onChange={(next) => {
                   setThemeDraft(next);
                   setThemeActive(true);
-                  setDirty(true);
                   setSaved(false);
                 }}
               />
