@@ -73,7 +73,7 @@ def test_self_contained_questions_skip_rewrite(question: str, expected: bool) ->
     assert needs_rewrite(question, []) is False
 
 
-@pytest.mark.parametrize("status", [401, 402, 403, 429])
+@pytest.mark.parametrize("status", [401, 402])
 def test_provider_quota_auth_stops_fallback_and_subsequent_calls(status: int) -> None:
     calls = []
 
@@ -370,3 +370,67 @@ def test_extra_document_never_displaces_part_of_a_passed_document() -> None:
     # The hard cap trims only the best document itself, never the others.
     capped = build_test_settings(retrieval_final_k=4, retrieval_max_evidence_chunks=3)
     assert select_evidence(decision, capped) == big[:3]
+
+
+def _chain_model(handler: Any, fallbacks: list[str]) -> OpenAICompatibleModel:
+    return OpenAICompatibleModel(
+        base_url="https://fixture.invalid/v1/",
+        api_key="synthetic-key",
+        model="one:free",
+        fallback_models=fallbacks,
+        transport=httpx.MockTransport(handler),
+    )
+
+
+@pytest.mark.parametrize("status", [429, 403, 500, 503])
+def test_rate_limit_forbidden_and_server_errors_move_to_the_next_model(status: int) -> None:
+    seen: list[str] = []
+
+    def response(request: httpx.Request) -> httpx.Response:
+        model_id = json.loads(request.content)["model"]
+        seen.append(model_id)
+        if model_id == "one:free":
+            return httpx.Response(status, json={})
+        return httpx.Response(200, json={"choices": [{"message": {"content": "ok"}}]})
+
+    model = _chain_model(response, ["two:free", "three:free"])
+    assert model.complete([], json_mode=False, max_tokens=50) == "ok"
+    assert seen == ["one:free", "two:free"] and model.model_used == "two:free"
+    assert model.blocked is False and model.last_http_status == 200
+
+
+def test_all_models_rate_limited_fails_the_turn_without_blocking_the_instance() -> None:
+    model = _chain_model(lambda request: httpx.Response(429, json={}), ["two:free"])
+    with pytest.raises(ProviderError):
+        model.complete([], json_mode=False, max_tokens=50)
+    assert model.blocked is False and model.last_http_status == 429
+    assert model.requests_used == 2
+
+
+def test_single_model_chain_still_blocks_on_429() -> None:
+    model = _chain_model(lambda request: httpx.Response(429, json={}), [])
+    with pytest.raises(ProviderError):
+        model.complete([], json_mode=False, max_tokens=50)
+    assert model.blocked is True and model.requests_used == 1
+
+
+def test_provider_trace_keeps_the_real_http_status(monkeypatch: Any) -> None:
+    result = RetrievalResult(
+        "en", "en", False, evidence=[chunk(vector_similarity=0.9)], embedding_model="ollama:bge-m3"
+    )
+    monkeypatch.setattr(service, "retrieve", lambda *args, **kwargs: result)
+    bot = Bot(id=uuid4(), tenant_id=uuid4(), published_revision_id=uuid4(), config={})
+    for status, expected in ((402, "blocked"), (429, "failed")):
+        model = _chain_model(lambda request, s=status: httpx.Response(s, json={}), ["two:free"])
+        with Session() as db:
+            reply = chat_answer(
+                db,
+                tenant_id=bot.tenant_id,
+                bot=bot,
+                question="What are your opening hours?",
+                model=model,
+                settings=build_test_settings(),
+            )
+        assert reply.kind == "busy"
+        detail = reply.trace["provider_error"]
+        assert detail["http_status"] == status and detail["status"] == expected

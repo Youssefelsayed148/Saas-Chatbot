@@ -324,7 +324,7 @@ def test_openai_stream_falls_back_to_the_next_model_before_any_text() -> None:
 
 def test_openai_stream_auth_or_quota_blocks_the_instance() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(429, content=b"slow down")
+        return httpx.Response(402, content=b"pay up")
 
     model = client(httpx.MockTransport(handler))
     with pytest.raises(ProviderError):
@@ -497,3 +497,16 @@ def test_stub_stream_delay_knob_is_read_from_the_environment(
     assert time.perf_counter() - started >= 0.02 * (len(fragments) - 1)
     monkeypatch.setenv("STUB_STREAM_DELAY_MS", "not-a-number")
     assert list(ExtractiveStubModel().stream_complete(msgs, max_tokens=10))  # ignored, no delay
+
+
+def test_openai_stream_rate_limit_falls_back_to_the_next_model() -> None:
+    raw = reply("ok")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if json.loads(request.content)["model"] == "a:free":
+            return httpx.Response(429, content=b"slow down")
+        return httpx.Response(200, content=sse_body(raw))
+
+    model = client(httpx.MockTransport(handler))
+    assert "".join(model.stream_complete(messages(), max_tokens=100)) == raw
+    assert model.model_used == "b:free" and model.blocked is False
