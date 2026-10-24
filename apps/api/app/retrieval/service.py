@@ -270,14 +270,15 @@ def _whole_document_chunks(
     tenant_id: UUID,
     bot_id: UUID,
     revision_id: UUID,
-    language: str,
+    language: str | None,
     document_id: UUID,
 ) -> list[RetrievedChunk]:
     """All chunks of one document (retrieved whole), in ordinal order.
 
-    The language filter stays active: a document's chunks in other languages
-    are not dropped from the document, but evidence is kept per-pass
-    consistent (small-document rule, docs/14 §5).
+    ``language`` is the document's own language (the matched chunk's), never
+    the pass language: a cross-language hit must still come back whole. None
+    (reserved always-include documents, whose language is unknown) fetches
+    every chunk of the document.
     """
     rows = db.execute(
         text(
@@ -300,7 +301,7 @@ def _whole_document_chunks(
             WHERE c.tenant_id = CAST(:tenant_id AS uuid)
               AND c.bot_id = CAST(:bot_id AS uuid)
               AND c.revision_id = CAST(:revision_id AS uuid)
-              AND c.language = :language
+              AND (CAST(:language AS text) IS NULL OR c.language = CAST(:language AS text))
               AND c.document_id = CAST(:document_id AS uuid)
             ORDER BY c.ordinal, c.id
             """
@@ -417,7 +418,7 @@ def assemble_evidence(
                 tenant_id=tenant_id,
                 bot_id=bot_id,
                 revision_id=revision_id,
-                language=language,
+                language=None,
                 document_id=document_id,
             )
         )
@@ -433,7 +434,7 @@ def assemble_evidence(
                 tenant_id=tenant_id,
                 bot_id=bot_id,
                 revision_id=revision_id,
-                language=language,
+                language=ranked[0].language,
                 document_id=ranked[0].document_id,
             )
         )
@@ -451,7 +452,7 @@ def assemble_evidence(
                 tenant_id=tenant_id,
                 bot_id=bot_id,
                 revision_id=revision_id,
-                language=language,
+                language=candidate.language,
                 document_id=candidate.document_id,
             )
             if len(whole) <= remaining:
@@ -497,7 +498,7 @@ def retrieve(
         settings=settings,
         always_include_document_ids=always_include_document_ids,
     )
-    if evidence:
+    if candidates:
         return RetrievalResult(
             query_language=question_language,
             applied_language=question_language,
@@ -505,6 +506,9 @@ def retrieve(
             evidence=evidence,
             candidates=candidates,
         )
+    # No ranked hit in the question language. ``evidence`` may still hold the
+    # reserved always-include documents; that must not suppress the fallback.
+    first_pass_evidence = evidence
 
     fallback_language = (
         bot_primary_language if bot_primary_language in SUPPORTED_LANGUAGES else "en"
@@ -515,7 +519,7 @@ def retrieve(
             query_language=question_language,
             applied_language=question_language,
             used_fallback=False,
-            evidence=[],
+            evidence=first_pass_evidence,
         )
     fallback_query: str | None = None
     if translate_query is not None:
@@ -532,6 +536,14 @@ def retrieve(
         settings=settings,
         always_include_document_ids=always_include_document_ids,
     )
+    if not candidates and first_pass_evidence:
+        # The fallback found nothing either: keep the always-include evidence.
+        return RetrievalResult(
+            query_language=question_language,
+            applied_language=question_language,
+            used_fallback=False,
+            evidence=first_pass_evidence,
+        )
     return RetrievalResult(
         query_language=question_language,
         applied_language=fallback_language if evidence else question_language,
