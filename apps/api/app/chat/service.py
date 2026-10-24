@@ -174,7 +174,15 @@ def translate_query(
     return translated
 
 
-def _parse_reply(raw: str, evidence: list[RetrievedChunk]) -> tuple[str, bool, list[UUID]] | None:
+@dataclass
+class ParsedReply:
+    answer: str
+    can_answer: bool
+    sources: list[UUID]  # valid, de-duplicated evidence ids
+    model_source_count: int  # what the model listed, before validation
+
+
+def _parse_reply(raw: str, evidence: list[RetrievedChunk]) -> ParsedReply | None:
     """Strict output contract: {"answer", "can_answer", "sources"} (docs/14 §6)."""
     try:
         payload = json.loads(raw)
@@ -201,7 +209,7 @@ def _parse_reply(raw: str, evidence: list[RetrievedChunk]) -> tuple[str, bool, l
     if can_answer and not kept:
         # A grounded "yes" without any valid citation is a fallback case.
         return None
-    return answer.strip(), can_answer, kept
+    return ParsedReply(answer.strip(), can_answer, kept, len(sources))
 
 
 def reconcile_refusal(
@@ -251,6 +259,7 @@ def chat_answer(
     language_hint: str | None = None,
     model: ChatModel,
     settings: Settings | None = None,
+    history_skipped: int = 0,
     post_check: Callable[[str, list[RetrievedChunk]], bool] | None = None,
 ) -> ChatReply:
     settings = settings or get_settings()
@@ -263,9 +272,18 @@ def chat_answer(
         "tokens": None,
         "cost_usd": None,
         "post_check": "not_configured",
+        "prompt_version": prompts.PROMPT_TEMPLATE_VERSION,
+        "history_count": 0,
+        "history_skipped_count": history_skipped,
+        "parsed_ok": False,
+        "model_can_answer": None,
+        "model_source_count": 0,
+        "kept_source_count": 0,
+        "reconciled": False,
     }
     model = TracedModel(model, trace)
     history_turns = normalize_history(history)
+    trace["history_count"] = len(visitor_texts(history_turns))
     history_visitor = visitor_texts(history_turns)[-6:]
 
     language = (
@@ -426,8 +444,12 @@ def chat_answer(
     try:
         raw = model.complete(messages, json_mode=True, max_tokens=settings.chat_max_tokens)
         parsed = _parse_reply(raw, evidence)
-        if parsed and parsed[1] and post_check is not None:
-            accepted = post_check(parsed[0], evidence)
+        trace["parsed_ok"] = parsed is not None
+        if parsed is not None:
+            trace["model_can_answer"] = parsed.can_answer
+            trace["model_source_count"] = parsed.model_source_count
+        if parsed and parsed.can_answer and post_check is not None:
+            accepted = post_check(parsed.answer, evidence)
             trace["post_check"] = "passed" if accepted else "rejected"
             if not accepted:
                 parsed = None
@@ -457,8 +479,9 @@ def chat_answer(
             used_fallback=bool(retrieval and retrieval.used_fallback),
             trace=trace,
         )
-    answer, can_answer, chunk_ids = parsed
-    if not can_answer:
+    chunk_ids = parsed.sources
+    if not parsed.can_answer:
+        trace["reconciled"] = True
         return reconcile_refusal(
             bot,
             language=language,
@@ -477,8 +500,9 @@ def chat_answer(
         }
         for chunk_id in chunk_ids
     ]
+    trace["kept_source_count"] = len(citations)
     return ChatReply(
-        answer=answer,
+        answer=parsed.answer,
         can_answer=True,
         needs_human=False,
         language=language,

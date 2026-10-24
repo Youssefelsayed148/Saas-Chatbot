@@ -295,6 +295,7 @@ def visitor_chat_turn(
             bot=bot,
             question=question,
             history=history.messages,
+            history_skipped=history.skipped,
             language_hint=language_hint,
             model=model,
             settings=settings,
