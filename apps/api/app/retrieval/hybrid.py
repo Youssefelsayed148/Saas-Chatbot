@@ -164,14 +164,26 @@ def fuse(
             else:
                 item.fts_match = chunk.fts_match
     # Equal fused scores are common (rank 1 in one list vs rank 1 in the other):
-    # decide by the stronger signals, never by the random chunk id alone.
+    # decide by the stronger signals, then by what the content is called (document
+    # title, page, ordinal), so a re-seeded corpus ranks the same. The chunk id
+    # only separates chunks that are identical in all of those.
     return sorted(by_id.values(), key=_fusion_order)[:k]
 
 
-def _fusion_order(chunk: RetrievedChunk) -> tuple[float, float, float, int, str]:
+def _fusion_order(
+    chunk: RetrievedChunk,
+) -> tuple[float, float, float, str, str, int, str]:
     sim = chunk.vector_similarity
     cosine = sim if sim is not None and math.isfinite(sim) else -2.0
-    return (-chunk.rrf_score, -cosine, -chunk.rank, chunk.ordinal, str(chunk.chunk_id))
+    return (
+        -chunk.rrf_score,
+        -cosine,
+        -chunk.rank,
+        chunk.title,
+        chunk.page_ref,
+        chunk.ordinal,
+        str(chunk.chunk_id),
+    )
 
 
 def _active_backfill(db: OrmSession, tenant_id: UUID, bot_id: UUID) -> bool:

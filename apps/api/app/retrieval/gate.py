@@ -65,19 +65,20 @@ def _top_result_id(result: RetrievalResult, settings: Settings) -> str | None:
     top_floor = settings.retrieval_top_result_cosine_floor
     if top_floor is None:
         return None
+    # Equal cosines are ordered by what the content is called, not by chunk id.
     sims = sorted(
         (
-            (chunk.vector_similarity, str(chunk.chunk_id))
+            (chunk.vector_similarity, chunk)
             for chunk in result.evidence
             if chunk.vector_similarity is not None and math.isfinite(chunk.vector_similarity)
         ),
-        reverse=True,
+        key=lambda item: (-item[0], item[1].title, item[1].page_ref, item[1].ordinal),
     )
     if not sims:
         return None
     runner_up = sims[1][0] if len(sims) > 1 else -1.0
     if sims[0][0] >= top_floor and sims[0][0] - runner_up >= settings.retrieval_top_result_margin:
-        return sims[0][1]
+        return str(sims[0][1].chunk_id)
     return None
 
 
