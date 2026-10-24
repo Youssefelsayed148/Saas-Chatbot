@@ -1,8 +1,11 @@
 """Rule-based routing decision before any model call (docs/14 §6).
 
 - smalltalk → the bot's welcome message (per visitor language)
-- handoff   → order/account/tracking questions; EN + AR keyword lists; a
-  per-bot toggle can disable the rule (then the model answers like always)
+- handoff   → an explicit request for a person (pre-retrieval); a per-bot
+  toggle can disable the rule (then the model answers like always)
+Order/account/tracking keywords never route before retrieval: the knowledge
+base may answer them. They count only after retrieval, when nothing can be
+answered (``order_account_requested``, used by the service layer).
 The service layer composes the actual localized text (prompts.canned).
 
 Matching is on whole tokens/phrases after normalisation (lowercase, no
@@ -165,12 +168,21 @@ HANDOFF_REQUEST_PHRASES = {
 }
 
 
+# Who an explicit request is addressed to. A request phrase alone ("talk to",
+# "customer service") is not enough before retrieval: it needs one of these.
+PERSON_NOUNS = {
+    "en": ("human", "person", "agent", "someone", "representative", "employee", "staff"),
+    "ar": ("شخص", "موظف", "انسان", "ممثل"),
+}
+
+
 @dataclass
 class RoutedReply:
     """A rule match that resolves without any model call."""
 
     kind: str  # "smalltalk" | "handoff"
     needs_human: bool
+    reason: str | None = None  # handoff only: "visitor_requested"
 
 
 def tokenize(text: str) -> list[str]:
@@ -221,6 +233,20 @@ def is_explicit_handoff_request(tokens: list[str]) -> bool:
     return contains_any(tokens, _all_languages(HANDOFF_REQUEST_PHRASES))
 
 
+def is_person_request(tokens: list[str]) -> bool:
+    """An explicit request phrase aimed at a person ("talk to a person",
+    "human agent", "أريد التحدث مع شخص"); outranks informational wording."""
+    return is_explicit_handoff_request(tokens) and contains_any(
+        tokens, _all_languages(PERSON_NOUNS)
+    )
+
+
+def order_account_requested(question: str) -> bool:
+    """Post-retrieval only: the message is about the visitor's own order or
+    account (whole-token keywords, informational questions excluded)."""
+    return keyword_requests_handoff(tokenize(question), _all_languages(ORDER_ACCOUNT_KEYWORDS))
+
+
 def keyword_requests_handoff(tokens: list[str], keywords: Iterable[str]) -> bool:
     """A keyword matched as whole tokens and the message is not an info question.
 
@@ -259,6 +285,7 @@ def route(
     tokens = tokenize(question)
     if _is_smalltalk(tokens):
         return RoutedReply(kind="smalltalk", needs_human=False)
-    if keyword_requests_handoff(tokens, _all_languages(ORDER_ACCOUNT_KEYWORDS)):
-        return RoutedReply(kind="handoff", needs_human=True) if handoff_enabled else None
+    if is_person_request(tokens):
+        if handoff_enabled:
+            return RoutedReply(kind="handoff", needs_human=True, reason="visitor_requested")
     return None

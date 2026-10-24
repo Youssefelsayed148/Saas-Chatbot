@@ -50,7 +50,11 @@ from app.chat.providers import (
     ProviderError,
     StreamUnsupported,
 )
-from app.chat.service import _default_answer_language, _support_contact
+from app.chat.service import (
+    _default_answer_language,
+    _support_contact,
+    order_account_handoff_applies,
+)
 from app.core.config import Settings
 from app.core.errors import ApiError
 from app.db.models import Bot, Conversation, UsageEvent, VisitorSession
@@ -224,7 +228,10 @@ def cannot_confirm_for(bot: Bot, question: str, language_hint: str | None) -> st
         or (language_hint if language_hint in ("en", "ar") else None)
         or _default_answer_language(bot)
     )
-    return prompts.canned("cannot_confirm", language, support_contact=_support_contact(bot))
+    # A refusal on an order/account question ends as a handoff (chat_answer):
+    # show the same text while it streams, so the final `done` does not change it.
+    kind = "handoff" if order_account_handoff_applies(bot, question) else "cannot_confirm"
+    return prompts.canned(kind, language, support_contact=_support_contact(bot))
 
 
 def stamp_stream_trace(db: OrmSession, *, bot: Bot, ai_message_id: str, stats: StreamStats) -> None:

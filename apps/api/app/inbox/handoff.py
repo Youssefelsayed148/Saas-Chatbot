@@ -54,11 +54,15 @@ def decide_handoff(
         return HandoffDecision("provider_failure", language)
     if not bool(config.get("handoff_enabled", True)):
         return None
-    if reply_kind == "handoff":
-        return HandoffDecision("order_account", language)
     built_in = PERSON_KEYWORDS.get(language, PERSON_KEYWORDS["en"])
     configured = config.get(f"handoff_keywords_{language}", [])
-    if _contains(question, built_in) or _contains(question, configured):
+    asked_for_person = _contains(question, built_in) or _contains(question, configured)
+    if reply_kind == "handoff":
+        # A routed handoff: an explicit person request, else order/account.
+        return HandoffDecision(
+            "visitor_requested" if asked_for_person else "order_account", language
+        )
+    if asked_for_person:
         return HandoffDecision("visitor_requested", language)
     threshold = config.get("handoff_after_unanswered", 2)
     if not isinstance(threshold, int) or isinstance(threshold, bool) or not 1 <= threshold <= 3:
