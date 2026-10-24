@@ -35,7 +35,7 @@ from app.knowledge.language import detect_language
 from app.retrieval.gate import relevance_gate, select_evidence
 from app.retrieval.hybrid import retrieve_hybrid as retrieve
 from app.retrieval.service import RetrievalResult, RetrievedChunk
-from app.retrieval.trace import candidate_trace, document_trace
+from app.retrieval.trace import candidate_trace, document_trace, rejected_candidates
 
 MAX_TOKENS = 700
 logger = logging.getLogger(__name__)
@@ -350,6 +350,16 @@ def chat_answer(
         "kept_source_count": 0,
         "reconciled": False,
         "skipped_steps": [],
+        # Why-this-answer facts for staff (no prompt text, no raw model output).
+        "revision_id": str(bot.published_revision_id) if bot.published_revision_id else None,
+        "tier": getattr(bot, "tier", None),
+        "generation_provider": getattr(bot, "generation_provider", None),
+        "applied_language": None,
+        "retrieval_query": None,
+        "fallback_query": None,
+        "rewrite_text": None,
+        "handoff_reason": None,
+        "rejected_candidates": [],
     }
     model = TracedModel(model, trace)
     history_turns = normalize_history(history)
@@ -402,6 +412,7 @@ def chat_answer(
             else:
                 _skip_step(trace, "rewrite")
     trace["rewrite_used"] = condensed is not None
+    trace["rewrite_text"] = condensed
 
     # 3) Retrieval on the condensed (or raw) question.
     revision_id = bot.published_revision_id
@@ -448,6 +459,9 @@ def chat_answer(
                 else None
             ),
             gate="passed" if evidence else "refused",
+            applied_language=retrieval.applied_language,
+            retrieval_query=condensed or question,
+            fallback_query=retrieval.fallback_query,
             vector_floor=decision.vector_floor,
             fts_minimum=decision.fts_minimum,
             chunks=candidate_trace(retrieval, decision, evidence),
@@ -465,6 +479,8 @@ def chat_answer(
 
     if not evidence:
         trace["gate"] = "refused"
+        if retrieval is not None:
+            trace["rejected_candidates"] = rejected_candidates(retrieval, decision)
         contact = _support_contact(bot)
         return ChatReply(
             answer=prompts.canned("cannot_confirm", language, support_contact=contact),

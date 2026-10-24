@@ -430,6 +430,16 @@ def visitor_chat_turn(
         needs_human=reply.needs_human,
         response_ms=response_ms,
     )
+    decision = decide_handoff(
+        db,
+        bot=bot,
+        conversation=conversation,
+        question=question,
+        language=reply.language,
+        reply_kind=reply.kind,
+        can_answer=reply.can_answer,
+    )
+    reply.trace["handoff_reason"] = decision.reason if decision is not None else None
     record_usage_event(
         db,
         tenant_id=tenant_id,
@@ -446,15 +456,6 @@ def visitor_chat_turn(
     )
     settle(
         db, tenant_id, bot.id, message_reservation, settings, tokens=0, cost_usd=None, commit=False
-    )
-    decision = decide_handoff(
-        db,
-        bot=bot,
-        conversation=conversation,
-        question=question,
-        language=reply.language,
-        reply_kind=reply.kind,
-        can_answer=reply.can_answer,
     )
     if decision is not None:
         start_handoff(db, bot=bot, conversation=conversation, decision=decision)

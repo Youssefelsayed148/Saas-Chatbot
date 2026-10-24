@@ -1698,6 +1698,25 @@ export interface RagTrace {
     model_source_count?: number;
     kept_source_count?: number;
     reconciled?: boolean;
+    revision_id?: string | null;
+    tier?: string | null;
+    generation_provider?: string | null;
+    applied_language?: string | null;
+    retrieval_query?: string | null;
+    fallback_query?: string | null;
+    rewrite_text?: string | null;
+    handoff_reason?: string | null;
+    skipped_steps?: string[];
+    /** Top candidates the gate rejected when no evidence reached the model. */
+    rejected_candidates?: {
+      document_title: string;
+      chunk_id: string;
+      locator: string;
+      vector_similarity: number | null;
+      fts_match: number;
+      rrf_score: number;
+      reason: string;
+    }[];
     chunks: {
       chunk_id: string;
       title: string;
