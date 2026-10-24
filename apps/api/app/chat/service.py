@@ -31,10 +31,10 @@ from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
 from app.db.models import Bot, Tenant
 from app.knowledge.language import detect_language
-from app.retrieval.gate import relevance_gate
+from app.retrieval.gate import relevance_gate, select_evidence
 from app.retrieval.hybrid import retrieve_hybrid as retrieve
 from app.retrieval.service import RetrievalResult, RetrievedChunk
-from app.retrieval.trace import candidate_trace
+from app.retrieval.trace import candidate_trace, document_trace
 
 MAX_TOKENS = 700
 logger = logging.getLogger(__name__)
@@ -355,7 +355,7 @@ def chat_answer(
             ),
         )
         decision = relevance_gate(retrieval, settings)
-        evidence = decision.passed[: settings.retrieval_final_k]
+        evidence = select_evidence(decision, settings)
         trace.update(
             retrieval_mode=retrieval.mode,
             degradation_reason=retrieval.degradation_reason,
@@ -370,6 +370,7 @@ def chat_answer(
             vector_floor=decision.vector_floor,
             fts_minimum=decision.fts_minimum,
             chunks=candidate_trace(retrieval, decision, evidence),
+            documents=document_trace(decision, evidence),
         )
         logger.info(
             "rag.gate tenant=%s bot=%s mode=%s accepted=%s rejected=%s rewrite=%s",

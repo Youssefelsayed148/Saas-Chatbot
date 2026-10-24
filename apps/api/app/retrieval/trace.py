@@ -19,6 +19,7 @@ def candidate_trace(
     """Trace rows for ``retrieval.evidence``; ``accepted`` is what reached the model."""
     verdicts: dict[str, ChunkVerdict] = {row.chunk_id: row for row in decision.verdicts}
     accepted_ids = {chunk.chunk_id for chunk in accepted}
+    passed_documents = {chunk.document_id for chunk in decision.passed}
     rows: list[dict[str, Any]] = []
     for chunk in retrieval.evidence:
         verdict = verdicts.get(str(chunk.chunk_id))
@@ -31,6 +32,7 @@ def candidate_trace(
             "fts_match": chunk.fts_match,
             "rrf_score": chunk.rrf_score,
             "accepted": chunk.chunk_id in accepted_ids,
+            "document_passed": chunk.document_id in passed_documents,
             "query_terms": list(chunk.query_term_labels),
             "matched_terms": list(chunk.matched_term_labels),
             "matched_term_count": chunk.matched_terms,
@@ -60,3 +62,27 @@ def candidate_trace(
             }
         rows.append(row)
     return rows
+
+
+def document_trace(
+    decision: GateDecision,
+    accepted: list[RetrievedChunk],
+) -> list[dict[str, Any]]:
+    """One row per evidence document: verdict, reason and what reached the model."""
+    kept: dict[str, int] = {}
+    for chunk in accepted:
+        kept[str(chunk.document_id)] = kept.get(str(chunk.document_id), 0) + 1
+    return [
+        {
+            "document_id": verdict.document_id,
+            "passed": verdict.accepted,
+            "reason": verdict.reason,
+            "chunk_count": verdict.chunk_count,
+            "passed_chunks": len(verdict.passed_chunk_ids),
+            "chunks_sent": kept.get(verdict.document_id, 0),
+            "best_rrf_score": verdict.best_rrf_score,
+            "max_cosine": verdict.max_cosine,
+            "best_fts_match": verdict.best_fts_match,
+        }
+        for verdict in decision.document_verdicts
+    ]

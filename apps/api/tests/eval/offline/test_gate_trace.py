@@ -78,7 +78,9 @@ def test_gate_matches_legacy_over_a_grid_at_defaults() -> None:
         result = RetrievalResult("en", "en", False, evidence=chunks, embedding_model=model)
         decision = relevance_gate(result, cfg)
         legacy_passed, legacy_rejected = legacy_gate(result, cfg)
-        assert decision.passed == legacy_passed
+        # Every chunk is its own document here; only the order is now by relevance.
+        assert {c.chunk_id for c in decision.passed} == {c.chunk_id for c in legacy_passed}
+        assert len(decision.passed) == len(legacy_passed)
         assert decision.rejected_ids == legacy_rejected
         assert len(decision.verdicts) == len(chunks)
         assert [v.accepted for v in decision.verdicts] == [

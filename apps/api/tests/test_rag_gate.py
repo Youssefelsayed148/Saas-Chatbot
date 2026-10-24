@@ -18,7 +18,7 @@ from app.chat.providers import FakeChatModel, OpenAICompatibleModel, ProviderErr
 from app.chat.service import chat_answer, needs_rewrite
 from app.db.models import Bot, Chunk, Conversation
 from app.knowledge.storage import get_storage
-from app.retrieval.gate import relevance_gate
+from app.retrieval.gate import relevance_gate, select_evidence
 from app.retrieval.hybrid import retrieve_hybrid
 from app.retrieval.service import RetrievalResult, RetrievedChunk
 from scripts.seed_demo import FAKE_PASSWORD, demo_id, seed_demo
@@ -270,7 +270,8 @@ def test_keyword_thresholds_are_configured_per_embedding_model() -> None:
     other = RetrievalResult(
         "en", "en", False, evidence=[weak, strong], embedding_model="ollama:bge-m3"
     )
-    assert relevance_gate(other, settings).passed == [weak, strong]
+    # Documents are ordered by relevance: the stronger FTS score first.
+    assert relevance_gate(other, settings).passed == [strong, weak]
     assert relevance_gate(openai, settings).fts_minimum == 0.2
 
 
@@ -298,3 +299,74 @@ def test_optional_steps_skip_when_the_token_cap_is_spent() -> None:
         )
         is None
     )
+
+
+def sibling(document_id: Any, ordinal: int, **kwargs: Any) -> RetrievedChunk:
+    return chunk(document_id=document_id, ordinal=ordinal, text=f"part {ordinal}", **kwargs)
+
+
+def test_document_with_one_strong_chunk_keeps_all_weak_siblings_and_ranks_first() -> None:
+    strong_doc, other_doc = uuid4(), uuid4()
+    weak_first = sibling(strong_doc, 0)
+    weak_last = sibling(strong_doc, 2)
+    strong = sibling(strong_doc, 1, vector_similarity=0.80, rrf_score=0.02)
+    lesser = sibling(other_doc, 0, vector_similarity=0.55, rrf_score=0.03)
+    result = RetrievalResult(
+        "en",
+        "en",
+        False,
+        evidence=[lesser, weak_last, strong, weak_first],
+        embedding_model="ollama:bge-m3",
+    )
+    decision = relevance_gate(result, build_test_settings())
+    # lesser has the better RRF score, so it leads; siblings stay in ordinal order.
+    assert decision.passed == [lesser, weak_first, strong, weak_last]
+    verdicts = {v.document_id: v for v in decision.document_verdicts}
+    assert verdicts[str(strong_doc)].accepted
+    assert verdicts[str(strong_doc)].passed_chunk_ids == [str(strong.chunk_id)]
+    assert verdicts[str(strong_doc)].chunk_count == 3
+    assert "1 of 3 chunks passed" in verdicts[str(strong_doc)].reason
+    assert decision.rejected_ids == []
+
+
+def test_failed_document_is_rejected_whole_with_a_document_verdict() -> None:
+    bad_doc = uuid4()
+    bad = [sibling(bad_doc, 0, vector_similarity=0.1), sibling(bad_doc, 1)]
+    result = RetrievalResult("en", "en", False, evidence=bad, embedding_model="ollama:bge-m3")
+    decision = relevance_gate(result, build_test_settings())
+    assert decision.passed == []
+    assert [v.accepted for v in decision.document_verdicts] == [False]
+    assert decision.document_verdicts[0].reason.startswith("rejected")
+    assert decision.rejected_ids == [str(c.chunk_id) for c in bad]
+
+
+def test_relevance_order_beats_ordinal_order_when_slicing() -> None:
+    first_doc, best_doc = uuid4(), uuid4()
+    # Retrieval order puts the weaker document first; the better one must lead.
+    weaker = [sibling(first_doc, i, vector_similarity=0.51, rrf_score=0.01) for i in range(2)]
+    better = [sibling(best_doc, i, vector_similarity=0.9, rrf_score=0.05) for i in range(2)]
+    result = RetrievalResult(
+        "en", "en", False, evidence=[*weaker, *better], embedding_model="ollama:bge-m3"
+    )
+    decision = relevance_gate(result, build_test_settings())
+    assert decision.passed[:2] == better
+    selected = select_evidence(decision, build_test_settings(retrieval_final_k=2))
+    assert selected == better
+
+
+def test_extra_document_never_displaces_part_of_a_passed_document() -> None:
+    big_doc, small_doc, tiny_doc = uuid4(), uuid4(), uuid4()
+    big = [sibling(big_doc, i, vector_similarity=0.9, rrf_score=0.05) for i in range(6)]
+    small = [sibling(small_doc, i, vector_similarity=0.7, rrf_score=0.04) for i in range(2)]
+    tiny = [sibling(tiny_doc, 0, vector_similarity=0.6, rrf_score=0.03)]
+    result = RetrievalResult(
+        "en", "en", False, evidence=[*big, *small, *tiny], embedding_model="ollama:bge-m3"
+    )
+    decision = relevance_gate(result, build_test_settings())
+    # The best document is whole (6 > final_k 4), nothing else squeezes in.
+    assert select_evidence(decision, build_test_settings()) == big
+    roomy = build_test_settings(retrieval_final_k=8, retrieval_max_evidence_chunks=8)
+    assert select_evidence(decision, roomy) == [*big, *small]
+    # The hard cap trims only the best document itself, never the others.
+    capped = build_test_settings(retrieval_final_k=4, retrieval_max_evidence_chunks=3)
+    assert select_evidence(decision, capped) == big[:3]

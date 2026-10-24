@@ -2,6 +2,7 @@
 
 import math
 from dataclasses import dataclass, field
+from uuid import UUID
 
 from app.core.config import Settings
 from app.retrieval.service import RetrievalResult, RetrievedChunk
@@ -30,12 +31,29 @@ class ChunkVerdict:
 
 
 @dataclass(frozen=True)
+class DocumentVerdict:
+    """A document passes when ANY of its evidence chunks passes the chunk rules."""
+
+    document_id: str
+    accepted: bool
+    reason: str
+    chunk_count: int
+    passed_chunk_ids: list[str]
+    best_rrf_score: float
+    max_cosine: float | None
+    best_fts_match: float
+
+
+@dataclass(frozen=True)
 class GateDecision:
+    # Evidence chunks of every passed document: documents in relevance order,
+    # chunks in reading (ordinal) order inside each document.
     passed: list[RetrievedChunk]
     rejected_ids: list[str]
     vector_floor: float | None
     fts_minimum: float
     verdicts: list[ChunkVerdict] = field(default_factory=list)
+    document_verdicts: list[DocumentVerdict] = field(default_factory=list)
 
 
 def _finite(value: float | None) -> bool:
@@ -121,7 +139,94 @@ def relevance_gate(result: RetrievalResult, settings: Settings) -> GateDecision:
                 top_result_pass=top_ok if top_rule_on else None,
             )
         )
-    return GateDecision(passed, rejected, floor, min_fts, verdicts)
+    return _document_level(result, passed, verdicts, floor, min_fts)
+
+
+def _sim(chunk: RetrievedChunk) -> float | None:
+    sim = chunk.vector_similarity
+    return sim if sim is not None and math.isfinite(sim) else None
+
+
+def _document_level(
+    result: RetrievalResult,
+    chunk_passed: list[RetrievedChunk],
+    verdicts: list[ChunkVerdict],
+    floor: float | None,
+    min_fts: float,
+) -> GateDecision:
+    """Judge per document: one passing chunk keeps the whole document's evidence.
+
+    Documents are ordered by relevance (best RRF score, then max cosine, then
+    FTS rank; ties keep retrieval order) and chunks inside a document by
+    ordinal. Sibling chunks need no cosine of their own."""
+    by_chunk = {v.chunk_id: v for v in verdicts}
+    passing_ids = {str(c.chunk_id) for c in chunk_passed}
+    groups: dict[UUID, list[RetrievedChunk]] = {}
+    for chunk in result.evidence:
+        groups.setdefault(chunk.document_id, []).append(chunk)
+    scored: list[tuple[tuple[float, float, float, int], UUID]] = []
+    document_verdicts: list[DocumentVerdict] = []
+    accepted_documents: set[UUID] = set()
+    for index, (document_id, chunks) in enumerate(groups.items()):
+        winners = [c for c in chunks if str(c.chunk_id) in passing_ids]
+        sims = [s for s in (_sim(c) for c in chunks) if s is not None]
+        cosine = max(sims) if sims else None
+        best_rrf = max(c.rrf_score for c in chunks)
+        best_fts = max((c.fts_match for c in chunks if math.isfinite(c.fts_match)), default=0.0)
+        if winners:
+            lead = max(winners, key=lambda c: -2.0 if (sim := _sim(c)) is None else sim)
+            detail = by_chunk[str(lead.chunk_id)].reason.removeprefix("passed: ")
+            reason = f"passed: {len(winners)} of {len(chunks)} chunks passed; {detail}"
+            accepted_documents.add(document_id)
+            rank = (-best_rrf, -(cosine if cosine is not None else -2.0), -best_fts, index)
+            scored.append((rank, document_id))
+        else:
+            reason = f"rejected: none of {len(chunks)} chunks passed"
+        document_verdicts.append(
+            DocumentVerdict(
+                document_id=str(document_id),
+                accepted=bool(winners),
+                reason=reason,
+                chunk_count=len(chunks),
+                passed_chunk_ids=[str(c.chunk_id) for c in winners],
+                best_rrf_score=best_rrf,
+                max_cosine=cosine,
+                best_fts_match=best_fts,
+            )
+        )
+    scored.sort(key=lambda item: item[0])
+    passed: list[RetrievedChunk] = []
+    for _, document_id in scored:
+        passed.extend(sorted(groups[document_id], key=lambda c: c.ordinal))
+    rejected = [
+        str(c.chunk_id)
+        for document_id, chunks in groups.items()
+        if document_id not in accepted_documents
+        for c in chunks
+    ]
+    return GateDecision(passed, rejected, floor, min_fts, verdicts, document_verdicts)
+
+
+def select_evidence(decision: GateDecision, settings: Settings) -> list[RetrievedChunk]:
+    """Slice the passed documents for the prompt without cutting one mid-way.
+
+    The most relevant passed document is kept whole (up to the hard
+    ``retrieval_max_evidence_chunks`` cap). Further documents are added whole,
+    in relevance order, while the soft ``retrieval_final_k`` chunk budget has
+    room; the first one that does not fit ends the selection, so a lower
+    document never displaces part of a higher one."""
+    documents: dict[UUID, list[RetrievedChunk]] = {}
+    for chunk in decision.passed:
+        documents.setdefault(chunk.document_id, []).append(chunk)
+    selected: list[RetrievedChunk] = []
+    for document_chunks in documents.values():
+        if not selected:
+            selected.extend(document_chunks[: settings.retrieval_max_evidence_chunks])
+            continue
+        if len(selected) + len(document_chunks) > settings.retrieval_final_k:
+            break
+        selected.extend(document_chunks)
+    return selected
 
 
 def _reason(
