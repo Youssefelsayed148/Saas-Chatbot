@@ -7,6 +7,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
+from app.chat.routing import keyword_requests_handoff, tokenize
 from app.core.audit import record_audit
 from app.db.models import Bot, Conversation, Message
 
@@ -23,12 +24,14 @@ class HandoffDecision:
 
 
 def _contains(text: str, words: object) -> bool:
+    """Whole-token/phrase match on the normalised message (never a substring).
+
+    A person keyword inside an informational question about the bot's content
+    ("personal data policy", "how do I contact an agent?") is not a request
+    for a human; ambiguity resolves to retrieval."""
     if not isinstance(words, (list, tuple)):
         return False
-    normalized = text.casefold()
-    return any(
-        isinstance(word, str) and word.strip() and word.casefold() in normalized for word in words
-    )
+    return keyword_requests_handoff(tokenize(text), [w for w in words if isinstance(w, str)])
 
 
 def decide_handoff(
