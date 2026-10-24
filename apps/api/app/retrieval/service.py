@@ -27,6 +27,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session as OrmSession
 
 from app.core.config import Settings, get_settings
+from app.knowledge.language import normalise_text
 from app.retrieval.query import (
     build_tsquery,
     normalise_ignore_terms,
@@ -124,6 +125,12 @@ def score_lexical(
     if not chunks or not query:
         return
     column = _fts_column(language)
+    # Terms are counted on heading + text only: the title (a filename such as
+    # "returns_1.pdf") is searchable for ranking but never satisfies a term.
+    bodies: dict[str, str] = {}
+    for chunk in chunks:
+        body = f"{chunk.heading or ''} {chunk.text}"
+        bodies[str(chunk.chunk_id)] = normalise_text(body) if language == "ar" else body
     rows = db.execute(
         text(f"""
             WITH terms AS (
@@ -131,15 +138,17 @@ def score_lexical(
                 FROM unnest(CAST(:terms AS text[]), CAST(:labels AS text[])) AS t(term, label)
                 WHERE numnode(to_tsquery(:config, t.term)) > 0
                 GROUP BY to_tsquery(:config, t.term)
+            ), bodies AS (
+                SELECT CAST(b.id AS uuid) AS id, to_tsvector(:config, b.body) AS tsv
+                FROM unnest(CAST(:body_ids AS text[]), CAST(:bodies AS text[])) AS b(id, body)
             )
             SELECT c.id, ts_rank_cd(c.{column}, to_tsquery(:config, :query)) AS score,
-                (SELECT count(*) FROM terms WHERE terms.query @@ c.{column}) AS matched,
+                (SELECT count(*) FROM terms WHERE terms.query @@ bodies.tsv) AS matched,
                 (SELECT array_agg(terms.label ORDER BY terms.label)
-                   FROM terms WHERE terms.query @@ c.{column}) AS matched_labels
-            FROM chunks c
+                   FROM terms WHERE terms.query @@ bodies.tsv) AS matched_labels
+            FROM chunks c JOIN bodies ON bodies.id = c.id
             WHERE c.tenant_id=CAST(:tenant AS uuid) AND c.bot_id=CAST(:bot AS uuid)
               AND c.revision_id=CAST(:revision AS uuid)
-              AND c.id=ANY(CAST(:ids AS uuid[]))
         """),
         {
             "config": _tsquery_config(language),
@@ -149,7 +158,8 @@ def score_lexical(
             "tenant": str(tenant_id),
             "bot": str(bot_id),
             "revision": str(revision_id),
-            "ids": [str(c.chunk_id) for c in chunks],
+            "body_ids": list(bodies),
+            "bodies": list(bodies.values()),
         },
     ).mappings()
     scores = {

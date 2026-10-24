@@ -7,6 +7,8 @@ the offline suite covers the pure logic).
 from typing import Any
 from uuid import UUID
 
+from sqlalchemy import text
+
 import tests.retrieval_helpers as helpers
 from app.retrieval.service import retrieve
 
@@ -45,3 +47,27 @@ def test_ignore_terms_change_the_count_but_not_the_ranking(db: Any, corpus: dict
         assert chunk.query_term_labels == ["hours"]
         assert chunk.query_terms == 1
     assert max(c.query_terms for c in plain.evidence) == 2
+
+
+def test_title_words_never_count_as_matched_terms_but_body_words_do(
+    db: Any, corpus: dict[str, Any]
+) -> None:
+    where = "text LIKE '%returned within 14 days%'"
+    original = db.execute(text(f"SELECT DISTINCT title FROM chunks WHERE {where}")).scalars().all()
+    assert len(original) == 1
+    db.execute(text(f"UPDATE chunks SET title='refunds pdf 1' WHERE {where}"))
+    db.commit()
+    try:
+        # "refunds" and "pdf" occur only in the filename-style title; "returned" is body text.
+        result = _retrieve(db, corpus, "refunds pdf returned")
+        hit = next(c for c in result.evidence if c.title == "refunds pdf 1")
+        assert set(hit.query_term_labels) == {"refunds", "pdf", "returned"}
+        assert hit.matched_term_labels == ["returned"]
+        assert hit.matched_terms == 1
+        # The title still takes part in ranking: it is found by its title words alone.
+        by_title = _retrieve(db, corpus, "refunds pdf")
+        titled = [c for c in by_title.evidence if c.title == "refunds pdf 1"]
+        assert titled and all(c.matched_terms == 0 and c.fts_match > 0 for c in titled)
+    finally:
+        db.execute(text(f"UPDATE chunks SET title=:t WHERE {where}"), {"t": original[0]})
+        db.commit()
