@@ -156,7 +156,7 @@ def test_handoff_toggle_off_falls_through_to_model(
         "where is my order return invoice?",
         config=bot_config(handoff_enabled=False),
     )
-    assert reply.kind == "answer"
+    assert reply.kind == "cannot_confirm"
     assert model.calls, "the model must be consulted when the toggle is off"
     assert reply.needs_human is True  # the model said can_answer=false
 
@@ -245,15 +245,18 @@ def test_invalid_citations_are_filtered(app: Any, db: OrmSession, corpus: dict[s
     assert "Never invent prices" in system
 
 
-def test_can_answer_false_keeps_answer_and_sets_needs_human(
+def test_can_answer_false_is_reconciled_to_the_canned_refusal(
     app: Any, db: OrmSession, corpus: dict[str, Any]
 ) -> None:
     model = EchoFirstEvidenceId("I cannot confirm from the information I have.", False)
     reply = answer(db, corpus, model, "returns policy shoe size")
-    assert reply.kind == "answer"
+    assert reply.kind == "cannot_confirm"
     assert reply.can_answer is False
     assert reply.needs_human is True
-    assert "cannot confirm" in reply.answer
+    assert reply.citations == []  # the model cited a real chunk; the refusal drops it
+    assert reply.answer == prompts.canned(
+        "cannot_confirm", "en", support_contact="support@acme.example.com / +966500000000"
+    )
 
 
 def test_invalid_json_becomes_busy(app: Any, db: OrmSession, corpus: dict[str, Any]) -> None:

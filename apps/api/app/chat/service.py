@@ -203,6 +203,29 @@ def _parse_reply(raw: str, evidence: list[RetrievedChunk]) -> tuple[str, bool, l
     return answer.strip(), can_answer, kept
 
 
+def reconcile_refusal(
+    bot: Bot,
+    *,
+    language: str,
+    condensed: str | None,
+    used_fallback: bool,
+    trace: dict[str, object],
+) -> ChatReply:
+    """The single rule for a model that says ``can_answer=false`` (buffered and
+    streamed turns both end here): the reply is the canned cannot_confirm text,
+    with no citations, and a human is needed. Model text and sources are dropped."""
+    return ChatReply(
+        answer=prompts.canned("cannot_confirm", language, support_contact=_support_contact(bot)),
+        can_answer=False,
+        needs_human=True,
+        language=language,
+        kind="cannot_confirm",
+        condensed_question=condensed,
+        used_fallback=used_fallback,
+        trace=trace,
+    )
+
+
 def _provider_status(model: ChatModel) -> str:
     """Blocked vs failed, read from the underlying client.
 
@@ -431,6 +454,14 @@ def chat_answer(
             trace=trace,
         )
     answer, can_answer, chunk_ids = parsed
+    if not can_answer:
+        return reconcile_refusal(
+            bot,
+            language=language,
+            condensed=condensed,
+            used_fallback=bool(retrieval and retrieval.used_fallback),
+            trace=trace,
+        )
     by_id = {chunk.chunk_id: chunk for chunk in evidence}
     citations = [
         {
@@ -444,8 +475,8 @@ def chat_answer(
     ]
     return ChatReply(
         answer=answer,
-        can_answer=can_answer,
-        needs_human=not can_answer,
+        can_answer=True,
+        needs_human=False,
         language=language,
         kind="answer",
         citations=citations,
