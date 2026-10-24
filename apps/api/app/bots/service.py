@@ -208,6 +208,8 @@ class BotService:
     def _merge_config(self, bot: Bot, patch: BotConfig) -> dict[str, object]:
         merged: dict[str, object] = dict(bot.config)
         provided = patch.model_dump(exclude_unset=True, exclude_none=True)
+        if "knowledge_language" in patch.model_fields_set and patch.knowledge_language is None:
+            merged.pop("knowledge_language", None)  # null clears it: back to default_language
         for key, value in provided.items():
             if key == "welcome_message" and isinstance(value, dict):
                 existing = merged.get("welcome_message")

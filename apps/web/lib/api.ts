@@ -227,6 +227,7 @@ export interface Bot {
     welcome_message?: { en?: string; ar?: string };
     opening_questions?: string[];
     default_language?: "en" | "ar";
+    knowledge_language?: "en" | "ar";
     support_email?: string;
     support_phone?: string;
     colour?: string;

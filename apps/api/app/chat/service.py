@@ -109,6 +109,13 @@ def _default_answer_language(bot: Bot) -> str:
     return configured if configured in ("en", "ar") else "en"
 
 
+def knowledge_language(bot: Bot) -> str:
+    """The knowledge base's primary language: ``knowledge_language`` when set,
+    else ``default_language`` (which only controls the widget UI otherwise)."""
+    configured = _config_get(bot, "knowledge_language", None)
+    return configured if configured in ("en", "ar") else _default_answer_language(bot)
+
+
 def condense(
     model: ChatModel,
     *,
@@ -354,7 +361,7 @@ def chat_answer(
             revision_id=revision_id,
             question=condensed or question,
             question_language=language,
-            bot_primary_language=_default_answer_language(bot),
+            bot_primary_language=knowledge_language(bot),
             settings=settings,
             always_include_document_ids={str(value) for value in always_include},
             channel=str(getattr(model, "channel", "website")),
