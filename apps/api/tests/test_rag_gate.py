@@ -432,5 +432,5 @@ def test_provider_trace_keeps_the_real_http_status(monkeypatch: Any) -> None:
                 settings=build_test_settings(),
             )
         assert reply.kind == "busy"
-        detail = reply.trace["provider_error"]
+        detail: Any = reply.trace["provider_error"]
         assert detail["http_status"] == status and detail["status"] == expected
