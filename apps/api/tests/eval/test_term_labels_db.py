@@ -71,3 +71,32 @@ def test_title_words_never_count_as_matched_terms_but_body_words_do(
     finally:
         db.execute(text(f"UPDATE chunks SET title=:t WHERE {where}"), {"t": original[0]})
         db.commit()
+
+
+def test_english_stop_words_are_exactly_what_postgres_drops(db: Any) -> None:
+    from app.retrieval.query import ENGLISH_STOP_WORDS
+
+    candidates = set(ENGLISH_STOP_WORDS) | {"would", "could", "may", "might", "must", "shall"}
+    dropped = {
+        word
+        for word in candidates
+        if db.execute(text("SELECT ts_lexize('english_stem', :w)"), {"w": word}).scalar() == []
+    }
+    assert dropped == set(ENGLISH_STOP_WORDS)
+    # The words that used to slip through as "terms" are all gone from the term count.
+    assert {"not", "all", "only", "out", "some", "no"} <= set(ENGLISH_STOP_WORDS)
+
+
+def test_stop_word_only_overlap_cannot_pass_and_stems_collapse(
+    db: Any, corpus: dict[str, Any]
+) -> None:
+    from app.retrieval.gate import relevance_gate
+
+    result = _retrieve(db, corpus, "not only all some")
+    assert result.evidence == []
+    # "return"/"returns"/"returned" are ONE term group; the 2-matched-terms rule
+    # stays reachable for a question made of a single stem.
+    result = _retrieve(db, corpus, "return returns returned")
+    hit = next(c for c in result.evidence if "returned within 14 days" in c.text)
+    assert hit.query_terms == 1 and hit.matched_terms == 1
+    assert relevance_gate(result, corpus["settings"]).verdicts[0].required_terms <= 1

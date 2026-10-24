@@ -145,7 +145,9 @@ def score_lexical(
             SELECT c.id, ts_rank_cd(c.{column}, to_tsquery(:config, :query)) AS score,
                 (SELECT count(*) FROM terms WHERE terms.query @@ bodies.tsv) AS matched,
                 (SELECT array_agg(terms.label ORDER BY terms.label)
-                   FROM terms WHERE terms.query @@ bodies.tsv) AS matched_labels
+                   FROM terms WHERE terms.query @@ bodies.tsv) AS matched_labels,
+                (SELECT count(*) FROM terms) AS term_total,
+                (SELECT array_agg(terms.label) FROM terms) AS term_group_labels
             FROM chunks c JOIN bodies ON bodies.id = c.id
             WHERE c.tenant_id=CAST(:tenant AS uuid) AND c.bot_id=CAST(:bot AS uuid)
               AND c.revision_id=CAST(:revision AS uuid)
@@ -162,12 +164,20 @@ def score_lexical(
             "bodies": list(bodies.values()),
         },
     ).mappings()
+    rows_seen = list(rows)
     scores = {
         row["id"]: (float(row["score"]), int(row["matched"]), list(row["matched_labels"] or []))
-        for row in rows
+        for row in rows_seen
     }
-    total = len(term_queries(question, language, ignore))
+    # The distinct term groups PostgreSQL itself keeps (stems collapsed, stop-words
+    # gone): the count the gate requires against can always be reached.
     labels = term_labels(question, language, ignore)
+    total = len(labels)
+    for row in rows_seen:
+        total = int(row["term_total"])
+        kept = set(row["term_group_labels"] or [])
+        labels = [label for label in labels if label in kept]
+        break
     for chunk in chunks:
         chunk.fts_match, chunk.matched_terms, chunk.matched_term_labels = scores.get(
             chunk.chunk_id, (0.0, 0, [])
