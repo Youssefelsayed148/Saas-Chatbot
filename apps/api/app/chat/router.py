@@ -12,10 +12,12 @@ from app.chat.conversations import (
     get_or_create_playground_conversation,
     messages_of,
     record_feedback,
+    reset_playground_conversation,
     visitor_chat_turn,
 )
 from app.core.config import Settings, get_settings
 from app.core.tenancy import TenantContextDep
+from app.db.models import Conversation
 
 router = APIRouter(prefix="/api/v1/tenants/{tenant_id}/bots/{bot_id}")
 
@@ -120,6 +122,31 @@ def playground_conversation(
         bot_id=bot_id,
         user_id=context.user.id,
     )
+    return _conversation_response(context, conversation, settings)
+
+
+@router.post("/playground/conversation/new", response_model=PlaygroundConversationResponse)
+def playground_new_session(
+    tenant_id: UUID,
+    bot_id: UUID,
+    context: TenantContextDep,
+    _: CsrfOk,
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> PlaygroundConversationResponse:
+    """Close this user's playground thread and start an empty one."""
+    context.require_operator()
+    from app.knowledge.service import get_bot as get_bot_scoped
+
+    get_bot_scoped(context, bot_id)
+    conversation = reset_playground_conversation(
+        context.db, tenant_id=context.tenant_id, bot_id=bot_id, user_id=context.user.id
+    )
+    return _conversation_response(context, conversation, settings)
+
+
+def _conversation_response(
+    context: TenantContextDep, conversation: Conversation, settings: Settings
+) -> PlaygroundConversationResponse:
     rows = messages_of(context.db, conversation, settings=settings)
     return PlaygroundConversationResponse(
         conversation_id=str(conversation.id),
