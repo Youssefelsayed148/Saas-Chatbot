@@ -2758,3 +2758,29 @@ TEST_DATABASE_URL set per process, `PYTHONUTF8=1` on Windows.
 - Migration 0020 (usage_events kind 'unavailable') applied by test_migrations up/down/up.
 - Web: `npx tsc --noEmit` and `npm run lint` clean. Playwright not run (needs servers).
 - gate_compare before/after on nile_eval.jsonl: identical (fts_only 26/27 kept, 6/12 leaks; hybrid+test embedder 23/27, 5/12).
+
+## R3b - router after retrieval + widget line breaks (branch fix/r3b-router-widget, local commits only)
+
+Base: main 0a99fdb (fix/r3-answers merged). Commits: a4fc989 (routing, #111), 0792d6d (widget CSS).
+Disposable DB 127.0.0.1:55462, TEST_DATABASE_URL per process, `PYTHONUTF8=1`.
+
+- Routing: pre-retrieval only smalltalk + explicit person requests (reason visitor_requested).
+  Order/account keywords count after retrieval (no evidence, model refusal, invalid_output) ->
+  kind "handoff", reason order_account; handoff toggle off -> plain cannot_confirm. Trace:
+  `routing_stage` (pre_retrieval|post_retrieval), `routed_handoff_reason`, `handoff_reason`.
+  `decide_handoff` gives a routed handoff visitor_requested when the person keywords match, else order_account.
+- Widget: the AI bubble class is `.widget-bubble` (`widget-ai-msg` is its test id) in apps/web/lib/widget-styles.ts;
+  `.widget-bubble:not(.visitor){white-space:pre-wrap;overflow-wrap:anywhere}`. Playground `.message-text` already had both.
+- Tests: `python -m pytest tests/test_routing.py tests/test_chat.py -q` -> 90 passed.
+  `python -m pytest tests/test_handoff.py tests/test_chat_streaming.py tests/test_chat_streaming_unit.py tests/test_playground_parity.py tests/test_group_0_inbox.py tests/test_trace_context.py tests/test_widget_public.py tests/test_rag_traces.py tests/test_followups_analytics.py tests/test_model_not_configured.py -q`
+  -> 114 passed, 1 failed (test_chat_streaming::test_client_disconnect_stops_the_provider_and_persists_nothing,
+  already failing on the R2 merge per the R3 entry above).
+- ruff check/format clean on touched files; mypy on touched files: only the existing Windows os.setsid/killpg errors in knowledge/ingest.py.
+  Web `npm run typecheck` and `npm run lint` clean.
+- Eval (stub, `tests/eval/test_nile_eval.py test_gate_compare.py test_eval.py`, 4 passed before and after; before = app/ from 0a99fdb):
+  gate-passed 80.0/72.0 -> 96.0/88.0 (fts_only/hybrid); wrong refusals 44.0 -> 36.0 (both modes);
+  cites expected page 52.0/48.0 unchanged; abstain 91.7, injection 100 unchanged; Arabic grounded 9.1 unchanged.
+  The four cases: before all 8 rows (4 x 2 modes) were `handoff`. After, tracking-number-en and fu-cod-cancel-en are
+  `answer` with a retrieval hit (the stub cites a different chunk, so cited_hit stays false); the Arabic pair has a
+  retrieval hit but the extractive stub refuses Arabic, so they end in a post-retrieval handoff (stub limitation).
+  gate_compare is retrieval-only: unaffected by routing.
