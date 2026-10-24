@@ -161,6 +161,24 @@ def test_rrf_retains_both_scores_without_using_raw_scores_for_rank() -> None:
     assert fused[0].document_id == item.document_id and fused[0].page_ref == "1"
 
 
+def test_rrf_tie_is_decided_by_cosine_then_fts_rank_then_ordinal_deterministically() -> None:
+    low, high = UUID(int=1), UUID(int=2)  # the old tie-break (chunk id) would pick `low`
+    base = RetrievedChunk(uuid4(), uuid4(), "T", None, "x", "en", 0, 0, None, "1", 4, 0)
+    by_fts = replace(base, chunk_id=low, rank=0.9)
+    by_vector = replace(base, chunk_id=high, vector_similarity=0.7)
+    for _ in range(5):
+        fused = hybrid.fuse([by_fts], [by_vector], 8, 60)
+        assert fused[0].rrf_score == fused[1].rrf_score
+        assert [c.chunk_id for c in fused] == [high, low]  # cosine beats the missing score
+    # Same fused score and cosine: FTS rank decides first, then ordinal, then chunk id.
+    first = replace(base, chunk_id=high, ordinal=0, vector_similarity=0.6)
+    second = replace(base, chunk_id=low, ordinal=1, vector_similarity=0.6)
+    both = hybrid.fuse([first], [second], 8, 60)
+    assert [c.chunk_id for c in both] == [high, low]  # ordinal 0 before ordinal 1
+    same = hybrid.fuse([replace(first, ordinal=0)], [replace(second, ordinal=0)], 8, 60)
+    assert [c.chunk_id for c in same] == [low, high]  # chunk id is the last resort
+
+
 @pytest.mark.parametrize("reason", ["forced", "backfill", "failure"])
 def test_degradation_is_logged_and_does_not_call_unneeded_provider(
     db: Session, corpus: dict[str, Any], monkeypatch: Any, caplog: Any, reason: str
