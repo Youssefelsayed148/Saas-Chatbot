@@ -23,8 +23,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
 from app.chat import prompts
+from app.chat.deadline import TurnBudget
 from app.chat.history import HistoryMessage, normalize_history, visitor_texts
-from app.chat.providers import ChatModel, ProviderError
+from app.chat.providers import ChatModel, OpenAICompatibleModel, ProviderError
 from app.chat.routing import route
 from app.chat.tracing import TracedModel
 from app.core.config import Settings, get_settings
@@ -276,6 +277,22 @@ def invalid_output_reply(
     )
 
 
+def _set_call_timeout(model: ChatModel, seconds: float) -> None:
+    """Cap the next provider call at ``seconds`` (the turn budget, #84)."""
+    current: ChatModel | None = model
+    while current is not None:
+        if isinstance(current, OpenAICompatibleModel):
+            current.call_timeout = seconds
+            return
+        current = vars(current).get("inner")
+
+
+def _skip_step(trace: dict[str, object], step: str) -> None:
+    skipped = trace.setdefault("skipped_steps", [])
+    if isinstance(skipped, list):
+        skipped.append(step)  # not enough turn budget left for an optional step
+
+
 def _provider_client(model: ChatModel) -> ChatModel:
     """The wrapped client that owns the ``blocked`` state, if there is one.
 
@@ -314,6 +331,7 @@ def chat_answer(
     post_check: Callable[[str, list[RetrievedChunk]], bool] | None = None,
 ) -> ChatReply:
     settings = settings or get_settings()
+    budget = TurnBudget.start(settings)
     trace: dict[str, object] = {
         "retrieval_mode": "not_run",
         "gate": "not_run",
@@ -331,6 +349,7 @@ def chat_answer(
         "model_source_count": 0,
         "kept_source_count": 0,
         "reconciled": False,
+        "skipped_steps": [],
     }
     model = TracedModel(model, trace)
     history_turns = normalize_history(history)
@@ -375,9 +394,13 @@ def chat_answer(
             .where(Tenant.id == tenant_id, Bot.id == bot.id)
         )
         if plan in settings.chat_rewrite_plans:
-            condensed = condense(
-                model, history=history_visitor, question=question, language=language
-            )
+            if budget.optional_allowed():
+                _set_call_timeout(model, budget.aux_timeout())
+                condensed = condense(
+                    model, history=history_visitor, question=question, language=language
+                )
+            else:
+                _skip_step(trace, "rewrite")
     trace["rewrite_used"] = condensed is not None
 
     # 3) Retrieval on the condensed (or raw) question.
@@ -387,6 +410,14 @@ def chat_answer(
         always_include = []
     retrieval: RetrievalResult | None = None
     evidence: list[RetrievedChunk] = []
+
+    def translate_within_budget(raw: str, target: str) -> str | None:
+        if not budget.optional_allowed():
+            _skip_step(trace, "translation")
+            return None
+        _set_call_timeout(model, budget.aux_timeout())
+        return translate_query(model, question=raw, target_language=target)
+
     if revision_id is not None:
         retrieval = retrieve(
             db,
@@ -401,9 +432,8 @@ def chat_answer(
             channel=str(getattr(model, "channel", "website")),
             # Cross-script bridge (P4-00): translate with ONE model call only
             # when the language pass is empty and the languages differ.
-            translate_query=lambda raw, target: translate_query(
-                model, question=raw, target_language=target
-            ),
+            translate_query=translate_within_budget,
+            embed_timeout=budget.embed_timeout(),
         )
         decision = relevance_gate(retrieval, settings)
         evidence = select_evidence(decision, settings)
@@ -495,6 +525,7 @@ def chat_answer(
     contact = _support_contact(bot)
     invalid_reason: str | None = None
     try:
+        _set_call_timeout(model, budget.generation_timeout())
         raw = model.complete(messages, json_mode=True, max_tokens=settings.chat_max_tokens)
         parsed, invalid_reason = _check_reply(raw, evidence)
         trace["parsed_ok"] = parsed is not None

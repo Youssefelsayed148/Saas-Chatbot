@@ -79,6 +79,11 @@ class Settings(BaseSettings):
     chat_openai_api_key: SecretStr | None = None
     chat_openai_model: str = ""
     chat_max_tokens: int = Field(default=700, ge=64, le=2000)
+    # Visitor-turn time budget (#84): whole turn, query embedding wait, and the
+    # optional rewrite/translation calls. Generation always gets at least 10 s.
+    chat_turn_deadline_seconds: float = Field(default=40.0, ge=5, le=300)
+    chat_embed_timeout_seconds: float = Field(default=5.0, gt=0, le=60)
+    chat_aux_timeout_seconds: float = Field(default=10.0, gt=0, le=60)
     # Message retention (docs/14 §7): configurable days; the worker purges.
     retention_days: int = Field(default=30, ge=1, le=365)
     retention_purge_interval_seconds: int = Field(default=86_400, ge=60)

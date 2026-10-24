@@ -124,6 +124,18 @@ class OpenAICompatibleModel(ChatModel):
         self.last_cost_usd: Decimal | None = None
         self.temperature = temperature
         self.usage_totals = None
+        # Seconds this call may take in total (set per call by the turn budget);
+        # None keeps the plain per-request ``timeout_seconds``.
+        self.call_timeout: float | None = None
+
+    def _attempt_timeout(self, started: float) -> float | None:
+        """Timeout for the next request, or None when the call budget is spent."""
+        if self.call_timeout is None:
+            return self.timeout_seconds
+        left = self.call_timeout - (time.monotonic() - started)
+        if left <= 0.05:
+            return None
+        return min(self.timeout_seconds, left)
 
     def _blocks(self, status: int) -> bool:
         """401/402 block the turn. 403/429 only block when no next model exists."""
@@ -140,6 +152,7 @@ class OpenAICompatibleModel(ChatModel):
         # turn's model instance, including preprocessing followed by generation.
         # A rate limit / forbidden / 5xx on one model moves on to the next one.
         self.last_http_status = None
+        started = time.monotonic()
         with httpx.Client(
             base_url=self.base_url,
             headers={"Authorization": f"Bearer {self._api_key}"},
@@ -148,7 +161,7 @@ class OpenAICompatibleModel(ChatModel):
             follow_redirects=False,
         ) as client:
             for model in [self.model, *self.fallback_models[:1]]:
-                response = self._post(client, model, messages, json_mode, max_tokens)
+                response = self._post(client, model, messages, json_mode, max_tokens, started)
                 if response is None:
                     continue
                 if self._blocks(response.status_code):
@@ -217,6 +230,7 @@ class OpenAICompatibleModel(ChatModel):
         messages: list[dict[str, str]],
         json_mode: bool,
         max_tokens: int,
+        started: float,
     ) -> httpx.Response | None:
         """One request for ``model``; None when the transport failed.
 
@@ -226,9 +240,12 @@ class OpenAICompatibleModel(ChatModel):
         compat = model in _COMPAT_PROFILE
         for attempt in (0, 1):
             body = self._body(model, messages, max_tokens, json_mode=json_mode, compat=compat)
+            timeout = self._attempt_timeout(started)
+            if timeout is None:
+                return None
             self.requests_used += 1
             try:
-                response = client.post("chat/completions", json=body)
+                response = client.post("chat/completions", json=body, timeout=timeout)
             except (httpx.ConnectError, httpx.ConnectTimeout):
                 return None
             except httpx.HTTPError:
@@ -260,6 +277,7 @@ class OpenAICompatibleModel(ChatModel):
             raise ProviderError("Provider unavailable for this turn.")
         self.last_cost_usd = None
         self.last_http_status = None
+        started = time.monotonic()
         with httpx.Client(
             base_url=self.base_url,
             headers={"Authorization": f"Bearer {self._api_key}"},
@@ -268,7 +286,7 @@ class OpenAICompatibleModel(ChatModel):
             follow_redirects=False,
         ) as client:
             for model in [self.model, *self.fallback_models[:1]]:
-                produced = yield from self._stream_one(client, model, messages, max_tokens)
+                produced = yield from self._stream_one(client, model, messages, max_tokens, started)
                 if produced:
                     return
         raise ProviderError("All configured models failed.")
@@ -279,6 +297,7 @@ class OpenAICompatibleModel(ChatModel):
         model: str,
         messages: list[dict[str, str]],
         max_tokens: int,
+        started: float,
     ) -> Generator[str, None, bool]:
         """Stream one model; the return value says whether it produced text
         (True: done) or the next model should be tried (False). Same one-shot
@@ -288,10 +307,15 @@ class OpenAICompatibleModel(ChatModel):
             body = self._body(model, messages, max_tokens, json_mode=True, compat=compat)
             body["stream"] = True
             body["stream_options"] = {"include_usage": True}
+            timeout = self._attempt_timeout(started)
+            if timeout is None:
+                return False
             self.requests_used += 1
             yielded = False
             try:
-                with client.stream("POST", "chat/completions", json=body) as response:
+                with client.stream(
+                    "POST", "chat/completions", json=body, timeout=timeout
+                ) as response:
                     self.last_http_status = response.status_code
                     if self._blocks(response.status_code):
                         self.blocked = True
@@ -306,6 +330,11 @@ class OpenAICompatibleModel(ChatModel):
                     if compat:
                         _COMPAT_PROFILE.add(model)
                     for line in response.iter_lines():
+                        if (
+                            self.call_timeout is not None
+                            and time.monotonic() - started > self.call_timeout
+                        ):
+                            raise ProviderError("The call exceeded its time budget.")
                         fragment = self._stream_line(line)
                         if fragment is None:
                             continue
