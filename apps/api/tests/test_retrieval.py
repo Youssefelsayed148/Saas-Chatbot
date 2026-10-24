@@ -195,7 +195,8 @@ def test_arabic_normalisation_and_prefix(
 
 
 def test_tsquery_builder_rules() -> None:
-    assert build_tsquery("What are your opening hours now?", "en") == "opening | hours | now"
+    # "now" is a PostgreSQL english stop-word, so it is no longer a query term (R2-5).
+    assert build_tsquery("What are your opening hours now?", "en") == "opening | hours"
     assert build_tsquery("i do it a", "en") is None  # stop words / short tokens
     query = build_tsquery("مرحبا إلى الساعات", "ar")
     assert query is not None

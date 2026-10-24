@@ -18,7 +18,7 @@ from app.chat.providers import FakeChatModel, OpenAICompatibleModel, ProviderErr
 from app.chat.service import chat_answer, needs_rewrite
 from app.db.models import Bot, Chunk, Conversation
 from app.knowledge.storage import get_storage
-from app.retrieval.gate import relevance_gate
+from app.retrieval.gate import relevance_gate, select_evidence
 from app.retrieval.hybrid import retrieve_hybrid
 from app.retrieval.service import RetrievalResult, RetrievedChunk
 from scripts.seed_demo import FAKE_PASSWORD, demo_id, seed_demo
@@ -73,7 +73,7 @@ def test_self_contained_questions_skip_rewrite(question: str, expected: bool) ->
     assert needs_rewrite(question, []) is False
 
 
-@pytest.mark.parametrize("status", [401, 402, 403, 429])
+@pytest.mark.parametrize("status", [401, 402])
 def test_provider_quota_auth_stops_fallback_and_subsequent_calls(status: int) -> None:
     calls = []
 
@@ -270,7 +270,8 @@ def test_keyword_thresholds_are_configured_per_embedding_model() -> None:
     other = RetrievalResult(
         "en", "en", False, evidence=[weak, strong], embedding_model="ollama:bge-m3"
     )
-    assert relevance_gate(other, settings).passed == [weak, strong]
+    # Documents are ordered by relevance: the stronger FTS score first.
+    assert relevance_gate(other, settings).passed == [strong, weak]
     assert relevance_gate(openai, settings).fts_minimum == 0.2
 
 
@@ -298,3 +299,138 @@ def test_optional_steps_skip_when_the_token_cap_is_spent() -> None:
         )
         is None
     )
+
+
+def sibling(document_id: Any, ordinal: int, **kwargs: Any) -> RetrievedChunk:
+    return chunk(document_id=document_id, ordinal=ordinal, text=f"part {ordinal}", **kwargs)
+
+
+def test_document_with_one_strong_chunk_keeps_all_weak_siblings_and_ranks_first() -> None:
+    strong_doc, other_doc = uuid4(), uuid4()
+    weak_first = sibling(strong_doc, 0)
+    weak_last = sibling(strong_doc, 2)
+    strong = sibling(strong_doc, 1, vector_similarity=0.80, rrf_score=0.02)
+    lesser = sibling(other_doc, 0, vector_similarity=0.55, rrf_score=0.03)
+    result = RetrievalResult(
+        "en",
+        "en",
+        False,
+        evidence=[lesser, weak_last, strong, weak_first],
+        embedding_model="ollama:bge-m3",
+    )
+    decision = relevance_gate(result, build_test_settings())
+    # lesser has the better RRF score, so it leads; siblings stay in ordinal order.
+    assert decision.passed == [lesser, weak_first, strong, weak_last]
+    verdicts = {v.document_id: v for v in decision.document_verdicts}
+    assert verdicts[str(strong_doc)].accepted
+    assert verdicts[str(strong_doc)].passed_chunk_ids == [str(strong.chunk_id)]
+    assert verdicts[str(strong_doc)].chunk_count == 3
+    assert "1 of 3 chunks passed" in verdicts[str(strong_doc)].reason
+    assert decision.rejected_ids == []
+
+
+def test_failed_document_is_rejected_whole_with_a_document_verdict() -> None:
+    bad_doc = uuid4()
+    bad = [sibling(bad_doc, 0, vector_similarity=0.1), sibling(bad_doc, 1)]
+    result = RetrievalResult("en", "en", False, evidence=bad, embedding_model="ollama:bge-m3")
+    decision = relevance_gate(result, build_test_settings())
+    assert decision.passed == []
+    assert [v.accepted for v in decision.document_verdicts] == [False]
+    assert decision.document_verdicts[0].reason.startswith("rejected")
+    assert decision.rejected_ids == [str(c.chunk_id) for c in bad]
+
+
+def test_relevance_order_beats_ordinal_order_when_slicing() -> None:
+    first_doc, best_doc = uuid4(), uuid4()
+    # Retrieval order puts the weaker document first; the better one must lead.
+    weaker = [sibling(first_doc, i, vector_similarity=0.51, rrf_score=0.01) for i in range(2)]
+    better = [sibling(best_doc, i, vector_similarity=0.9, rrf_score=0.05) for i in range(2)]
+    result = RetrievalResult(
+        "en", "en", False, evidence=[*weaker, *better], embedding_model="ollama:bge-m3"
+    )
+    decision = relevance_gate(result, build_test_settings())
+    assert decision.passed[:2] == better
+    selected = select_evidence(decision, build_test_settings(retrieval_final_k=2))
+    assert selected == better
+
+
+def test_extra_document_never_displaces_part_of_a_passed_document() -> None:
+    big_doc, small_doc, tiny_doc = uuid4(), uuid4(), uuid4()
+    big = [sibling(big_doc, i, vector_similarity=0.9, rrf_score=0.05) for i in range(6)]
+    small = [sibling(small_doc, i, vector_similarity=0.7, rrf_score=0.04) for i in range(2)]
+    tiny = [sibling(tiny_doc, 0, vector_similarity=0.6, rrf_score=0.03)]
+    result = RetrievalResult(
+        "en", "en", False, evidence=[*big, *small, *tiny], embedding_model="ollama:bge-m3"
+    )
+    decision = relevance_gate(result, build_test_settings())
+    # The best document is whole (6 > final_k 4), nothing else squeezes in.
+    assert select_evidence(decision, build_test_settings()) == big
+    roomy = build_test_settings(retrieval_final_k=8, retrieval_max_evidence_chunks=8)
+    assert select_evidence(decision, roomy) == [*big, *small]
+    # The hard cap trims only the best document itself, never the others.
+    capped = build_test_settings(retrieval_final_k=4, retrieval_max_evidence_chunks=3)
+    assert select_evidence(decision, capped) == big[:3]
+
+
+def _chain_model(handler: Any, fallbacks: list[str]) -> OpenAICompatibleModel:
+    return OpenAICompatibleModel(
+        base_url="https://fixture.invalid/v1/",
+        api_key="synthetic-key",
+        model="one:free",
+        fallback_models=fallbacks,
+        transport=httpx.MockTransport(handler),
+    )
+
+
+@pytest.mark.parametrize("status", [429, 403, 500, 503])
+def test_rate_limit_forbidden_and_server_errors_move_to_the_next_model(status: int) -> None:
+    seen: list[str] = []
+
+    def response(request: httpx.Request) -> httpx.Response:
+        model_id = json.loads(request.content)["model"]
+        seen.append(model_id)
+        if model_id == "one:free":
+            return httpx.Response(status, json={})
+        return httpx.Response(200, json={"choices": [{"message": {"content": "ok"}}]})
+
+    model = _chain_model(response, ["two:free", "three:free"])
+    assert model.complete([], json_mode=False, max_tokens=50) == "ok"
+    assert seen == ["one:free", "two:free"] and model.model_used == "two:free"
+    assert model.blocked is False and model.last_http_status == 200
+
+
+def test_all_models_rate_limited_fails_the_turn_without_blocking_the_instance() -> None:
+    model = _chain_model(lambda request: httpx.Response(429, json={}), ["two:free"])
+    with pytest.raises(ProviderError):
+        model.complete([], json_mode=False, max_tokens=50)
+    assert model.blocked is False and model.last_http_status == 429
+    assert model.requests_used == 2
+
+
+def test_single_model_chain_still_blocks_on_429() -> None:
+    model = _chain_model(lambda request: httpx.Response(429, json={}), [])
+    with pytest.raises(ProviderError):
+        model.complete([], json_mode=False, max_tokens=50)
+    assert model.blocked is True and model.requests_used == 1
+
+
+def test_provider_trace_keeps_the_real_http_status(monkeypatch: Any) -> None:
+    result = RetrievalResult(
+        "en", "en", False, evidence=[chunk(vector_similarity=0.9)], embedding_model="ollama:bge-m3"
+    )
+    monkeypatch.setattr(service, "retrieve", lambda *args, **kwargs: result)
+    bot = Bot(id=uuid4(), tenant_id=uuid4(), published_revision_id=uuid4(), config={})
+    for status, expected in ((402, "blocked"), (429, "failed")):
+        model = _chain_model(lambda request, s=status: httpx.Response(s, json={}), ["two:free"])
+        with Session() as db:
+            reply = chat_answer(
+                db,
+                tenant_id=bot.tenant_id,
+                bot=bot,
+                question="What are your opening hours?",
+                model=model,
+                settings=build_test_settings(),
+            )
+        assert reply.kind == "busy"
+        detail: Any = reply.trace["provider_error"]
+        assert detail["http_status"] == status and detail["status"] == expected

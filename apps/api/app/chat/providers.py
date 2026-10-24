@@ -91,6 +91,8 @@ class OpenAICompatibleModel(ChatModel):
         del retries  # compatibility only: retries are forbidden for all callers
         self.transport = transport
         self.blocked = False
+        # Real HTTP status of the most recent provider response (None: no response).
+        self.last_http_status: int | None = None
         self.requests_used = 0
         # Attempts that may have been processed and billed without usable output.
         self.ambiguous_attempts = 0
@@ -98,6 +100,12 @@ class OpenAICompatibleModel(ChatModel):
         self.last_cost_usd: Decimal | None = None
         self.temperature = temperature
         self.usage_totals = None
+
+    def _blocks(self, status: int) -> bool:
+        """401/402 block the turn. 403/429 only block when no next model exists."""
+        if status in (401, 402):
+            return True
+        return status in (403, 429) and not self.fallback_models
 
     def complete(self, messages: list[dict[str, str]], *, json_mode: bool, max_tokens: int) -> str:
         if self.blocked:
@@ -111,8 +119,10 @@ class OpenAICompatibleModel(ChatModel):
         if json_mode:
             body["response_format"] = {"type": "json_object"}
         # One attempt per model; at most the immediate next model as fallback.
-        # An auth/quota response blocks all subsequent calls on this turn's
-        # model instance, including preprocessing followed by generation.
+        # An auth/payment response (401/402) blocks all subsequent calls on this
+        # turn's model instance, including preprocessing followed by generation.
+        # A rate limit / forbidden / 5xx on one model moves on to the next one.
+        self.last_http_status = None
         with httpx.Client(
             base_url=self.base_url,
             headers={"Authorization": f"Bearer {self._api_key}"},
@@ -130,7 +140,8 @@ class OpenAICompatibleModel(ChatModel):
                 except httpx.HTTPError:
                     self.ambiguous_attempts += 1
                     continue
-                if response.status_code in (401, 402, 403, 429):
+                self.last_http_status = response.status_code
+                if self._blocks(response.status_code):
                     self.blocked = True
                     raise ProviderError("Provider unavailable for this turn.")
                 if response.status_code != 200:
@@ -180,6 +191,7 @@ class OpenAICompatibleModel(ChatModel):
         if self.blocked:
             raise ProviderError("Provider unavailable for this turn.")
         self.last_cost_usd = None
+        self.last_http_status = None
         body: dict[str, object] = {
             "messages": messages,
             "temperature": self.temperature,
@@ -201,7 +213,8 @@ class OpenAICompatibleModel(ChatModel):
                 yielded = False
                 try:
                     with client.stream("POST", "chat/completions", json=body) as response:
-                        if response.status_code in (401, 402, 403, 429):
+                        self.last_http_status = response.status_code
+                        if self._blocks(response.status_code):
                             self.blocked = True
                             raise ProviderError("Provider unavailable for this turn.")
                         if response.status_code != 200:

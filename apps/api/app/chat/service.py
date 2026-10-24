@@ -31,10 +31,10 @@ from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
 from app.db.models import Bot, Tenant
 from app.knowledge.language import detect_language
-from app.retrieval.gate import relevance_gate
+from app.retrieval.gate import relevance_gate, select_evidence
 from app.retrieval.hybrid import retrieve_hybrid as retrieve
 from app.retrieval.service import RetrievalResult, RetrievedChunk
-from app.retrieval.trace import candidate_trace
+from app.retrieval.trace import candidate_trace, document_trace
 
 MAX_TOKENS = 700
 logger = logging.getLogger(__name__)
@@ -235,18 +235,28 @@ def reconcile_refusal(
     )
 
 
-def _provider_status(model: ChatModel) -> str:
-    """Blocked vs failed, read from the underlying client.
+def _provider_client(model: ChatModel) -> ChatModel:
+    """The wrapped client that owns the ``blocked`` state, if there is one.
 
-    TracedModel and MeteredChatModel wrap the real client; walk down to the
-    wrapper that owns the ``blocked`` state (auth/quota) if there is one."""
+    TracedModel and MeteredChatModel wrap the real client; walk down to it."""
     current = model
     while not hasattr(current, "blocked"):
         deeper = getattr(current, "inner", None)
         if deeper is None:
             break
         current = deeper
-    return "blocked" if getattr(current, "blocked", False) else "failed"
+    return current
+
+
+def _provider_status(model: ChatModel) -> str:
+    """Blocked (auth/payment) vs failed, read from the underlying client."""
+    return "blocked" if getattr(_provider_client(model), "blocked", False) else "failed"
+
+
+def _provider_http_status(model: ChatModel) -> int | None:
+    """The last real HTTP status the provider answered with (None: no response)."""
+    status = getattr(_provider_client(model), "last_http_status", None)
+    return status if isinstance(status, int) and not isinstance(status, bool) else None
 
 
 def chat_answer(
@@ -355,7 +365,7 @@ def chat_answer(
             ),
         )
         decision = relevance_gate(retrieval, settings)
-        evidence = decision.passed[: settings.retrieval_final_k]
+        evidence = select_evidence(decision, settings)
         trace.update(
             retrieval_mode=retrieval.mode,
             degradation_reason=retrieval.degradation_reason,
@@ -370,6 +380,7 @@ def chat_answer(
             vector_floor=decision.vector_floor,
             fts_minimum=decision.fts_minimum,
             chunks=candidate_trace(retrieval, decision, evidence),
+            documents=document_trace(decision, evidence),
         )
         logger.info(
             "rag.gate tenant=%s bot=%s mode=%s accepted=%s rejected=%s rewrite=%s",
@@ -458,7 +469,11 @@ def chat_answer(
         # Staff-visible failure detail (Playground trace): status + model name
         # only — never a key, header, prompt or provider response body.
         status = _provider_status(model)
-        detail = {"status": status, "model": trace.get("model")}
+        detail = {
+            "status": status,
+            "http_status": _provider_http_status(model),
+            "model": trace.get("model"),
+        }
         trace["provider_error"] = detail
         logger.warning(
             "chat.provider_failure tenant=%s bot=%s model=%s status=%s tier=%s",
