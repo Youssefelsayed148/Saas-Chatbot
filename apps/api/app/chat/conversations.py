@@ -17,6 +17,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
+from app.chat.history import history_for_turn
 from app.chat.models import default_model
 from app.chat.providers import ChatModel
 from app.chat.service import chat_answer
@@ -171,35 +172,6 @@ def append_message(
     return message
 
 
-def history_messages(
-    db: OrmSession,
-    conversation: Conversation,
-    *,
-    settings: Settings,
-    exclude_message_id: UUID | None = None,
-) -> list[str]:
-    """Visitor texts within the retention window, oldest first (§7)."""
-    since = datetime.now(UTC) - timedelta(seconds=settings.retention_days * 86400)
-    rows = (
-        db.execute(
-            select(Message.text)
-            .where(
-                Message.conversation_id == conversation.id,
-                Message.tenant_id == conversation.tenant_id,
-                Message.bot_id == conversation.bot_id,
-                Message.id != exclude_message_id,
-                Message.sender_type == "visitor",
-                Message.created_at > since,
-            )
-            .order_by(Message.created_at.desc(), Message.id.desc())
-            .limit(settings.chat_num_history_messages)
-        )
-        .scalars()
-        .all()
-    )
-    return list(reversed(rows))
-
-
 def record_usage_event(
     db: OrmSession,
     *,
@@ -302,7 +274,7 @@ def visitor_chat_turn(
             "No chat model is configured. Add the provider key for this deployment.",
         )
 
-    history = history_messages(
+    history = history_for_turn(
         db, conversation, settings=settings, exclude_message_id=visitor_message.id
     )
     message_reservation = reserve(
@@ -322,7 +294,7 @@ def visitor_chat_turn(
             tenant_id=tenant_id,
             bot=bot,
             question=question,
-            history=history,
+            history=history.messages,
             language_hint=language_hint,
             model=model,
             settings=settings,

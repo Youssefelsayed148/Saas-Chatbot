@@ -23,6 +23,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
 from app.chat import prompts
+from app.chat.history import HistoryMessage, normalize_history, visitor_texts
 from app.chat.providers import ChatModel, ProviderError
 from app.chat.routing import route
 from app.chat.tracing import TracedModel
@@ -246,7 +247,7 @@ def chat_answer(
     tenant_id: UUID,
     bot: Bot,
     question: str,
-    history: list[str] | None = None,
+    history: list[str] | list[HistoryMessage] | None = None,
     language_hint: str | None = None,
     model: ChatModel,
     settings: Settings | None = None,
@@ -264,7 +265,8 @@ def chat_answer(
         "post_check": "not_configured",
     }
     model = TracedModel(model, trace)
-    history = [message for message in (history or []) if message.strip()][-6:]
+    history_turns = normalize_history(history)
+    history_visitor = visitor_texts(history_turns)[-6:]
 
     language = (
         detect_language(question)
@@ -297,14 +299,16 @@ def chat_answer(
 
     # 2) Rewrite only context-dependent follow-ups, if enabled for this plan.
     condensed = None
-    if settings.chat_rewrite_enabled and needs_rewrite(question, history):
+    if settings.chat_rewrite_enabled and needs_rewrite(question, history_visitor):
         plan = db.scalar(
             select(Tenant.plan_label)
             .join(Bot, Bot.tenant_id == Tenant.id)
             .where(Tenant.id == tenant_id, Bot.id == bot.id)
         )
         if plan in settings.chat_rewrite_plans:
-            condensed = condense(model, history=history, question=question, language=language)
+            condensed = condense(
+                model, history=history_visitor, question=question, language=language
+            )
     trace["rewrite_used"] = condensed is not None
 
     # 3) Retrieval on the condensed (or raw) question.
@@ -413,7 +417,7 @@ def chat_answer(
         user_text = f"{question}\n\n" + "\n".join(extra)
     messages = [
         {"role": "system", "content": system},
-        *({"role": "user", "content": previous} for previous in history),
+        *({"role": turn["role"], "content": turn["content"]} for turn in history_turns),
         {"role": "user", "content": user_text},
     ]
 
