@@ -1556,6 +1556,114 @@ export async function playgroundTurn(
   );
 }
 
+/** The stream broke before a `done` event arrived (network, provider or
+ * server error inside the stream). The caller falls back to the buffered turn. */
+export class PlaygroundStreamFailure extends Error {}
+
+export interface PlaygroundStreamHandlers {
+  signal: AbortSignal;
+  /** Text the model released so far (appended). */
+  onDelta: (text: string) => void;
+  /** The canned refusal replaces any model text. */
+  onCannotConfirm: (text: string) => void;
+}
+
+/**
+ * One playground turn over the staff SSE route (the website widget's stream
+ * with the same reconciliation). Resolves with the authoritative `done`
+ * payload. HTTP refusals (403/404/422/503...) throw ApiError exactly like the
+ * buffered call; anything that breaks mid-stream throws PlaygroundStreamFailure.
+ * An aborted signal rejects with its AbortError; the server then persists nothing.
+ */
+export async function playgroundTurnStream(
+  tenantId: string,
+  botId: string,
+  text: string,
+  handlers: PlaygroundStreamHandlers,
+): Promise<PlaygroundTurnResponse> {
+  const response = await fetch(
+    `/api/v1/tenants/${tenantId}/bots/${botId}/playground/messages/stream`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...csrfHeader() },
+      credentials: "same-origin",
+      body: JSON.stringify({ text }),
+      signal: handlers.signal,
+    },
+  );
+  rememberCsrfFrom(response.headers);
+  if (!response.ok || !response.body) {
+    let error:
+      { code?: string; message?: string; request_id?: string } | undefined;
+    try {
+      error = ((await response.json()) as { error?: typeof error }).error;
+    } catch {
+      error = undefined;
+    }
+    if (response.ok) throw new PlaygroundStreamFailure("No stream body.");
+    throw new ApiError(
+      error?.code ?? "UNKNOWN_ERROR",
+      response.status,
+      error?.message ?? `Request failed (${response.status}).`,
+      error?.request_id,
+      [],
+    );
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let done: PlaygroundTurnResponse | null = null;
+  try {
+    for (;;) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      buffer += decoder.decode(chunk.value, { stream: true });
+      let boundary = buffer.indexOf("\n\n");
+      while (boundary !== -1) {
+        const block = buffer.slice(0, boundary);
+        buffer = buffer.slice(boundary + 2);
+        boundary = buffer.indexOf("\n\n");
+        let event = "message";
+        const data: string[] = [];
+        for (const line of block.split("\n")) {
+          if (line.startsWith("event:")) event = line.slice(6).trim();
+          else if (line.startsWith("data:"))
+            data.push(line.slice(5).trimStart());
+        }
+        if (data.length === 0) continue; // comment / keep-alive
+        const payload = JSON.parse(data.join("\n")) as Record<string, unknown>;
+        if (event === "delta") handlers.onDelta(String(payload.text ?? ""));
+        else if (event === "cannot_confirm")
+          handlers.onCannotConfirm(String(payload.text ?? ""));
+        else if (event === "done")
+          done = payload as unknown as PlaygroundTurnResponse;
+        else if (event === "error")
+          throw new PlaygroundStreamFailure(
+            String(payload.message ?? "Stream error."),
+          );
+      }
+    }
+  } catch (caught) {
+    if (handlers.signal.aborted || caught instanceof PlaygroundStreamFailure)
+      throw caught;
+    throw new PlaygroundStreamFailure(
+      caught instanceof Error ? caught.message : "The stream failed.",
+    );
+  }
+  if (!done) throw new PlaygroundStreamFailure("The stream ended early.");
+  return done;
+}
+
+export async function playgroundNewSession(
+  tenantId: string,
+  botId: string,
+): Promise<PlaygroundConversation> {
+  return api<PlaygroundConversation>(
+    `tenants/${tenantId}/bots/${botId}/playground/conversation/new`,
+    { method: "POST" },
+  );
+}
+
 export interface PlaygroundConversation {
   conversation_id: string;
   message_count: number;
@@ -1579,6 +1687,14 @@ export interface RagTrace {
     stream_mode?: string;
     time_to_first_token_ms?: number | null;
     stream_invalid_reason?: string | null;
+    prompt_version?: string;
+    history_count?: number;
+    history_skipped_count?: number;
+    parsed_ok?: boolean;
+    model_can_answer?: boolean | null;
+    model_source_count?: number;
+    kept_source_count?: number;
+    reconciled?: boolean;
     chunks: {
       chunk_id: string;
       title: string;

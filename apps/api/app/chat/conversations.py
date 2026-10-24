@@ -17,6 +17,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
+from app.chat.history import history_for_turn
 from app.chat.models import default_model
 from app.chat.providers import ChatModel
 from app.chat.service import chat_answer
@@ -31,10 +32,19 @@ from app.quotas.ai import MeteredChatModel
 from app.quotas.rag import release, reserve, settle
 
 
+def playground_key(user_id: UUID) -> str:
+    """Playground threads are scoped to the staff user that started them.
+
+    Stored in the existing free-text ``connection_id`` column (no schema change):
+    ``assigned_user_id`` cannot hold it because that FK needs a tenant membership
+    and platform staff running the playground may not have one."""
+    return f"playground:{user_id}"
+
+
 def get_or_create_playground_conversation(
     db: OrmSession, *, tenant_id: UUID, bot_id: UUID, user_id: UUID
 ) -> Conversation:
-    """The dashboard playground keeps ONE run per user per bot (mode=ai)."""
+    """The dashboard playground keeps ONE open run per (bot, user) (mode=ai)."""
     conversation = (
         db.execute(
             select(Conversation)
@@ -42,6 +52,7 @@ def get_or_create_playground_conversation(
                 Conversation.tenant_id == tenant_id,
                 Conversation.bot_id == bot_id,
                 Conversation.source == "playground",
+                Conversation.connection_id == playground_key(user_id),
                 Conversation.status == "open",
             )
             .order_by(Conversation.updated_at.desc())
@@ -58,13 +69,38 @@ def get_or_create_playground_conversation(
         bot_id=bot_id,
         contact_id=None,  # anonymous playground: no CRM contact
         channel="website",
+        connection_id=playground_key(user_id),
         mode="ai",
         status="open",
         source="playground",
     )
-    db.add(conversation)  # created_by is carried through the turn call
-    del user_id
+    db.add(conversation)
     db.flush()
+    return conversation
+
+
+def reset_playground_conversation(
+    db: OrmSession, *, tenant_id: UUID, bot_id: UUID, user_id: UUID
+) -> Conversation:
+    """ "New session": close this user's open playground thread(s) and start empty."""
+    now = datetime.now(UTC)
+    for open_one in db.execute(
+        select(Conversation).where(
+            Conversation.tenant_id == tenant_id,
+            Conversation.bot_id == bot_id,
+            Conversation.source == "playground",
+            Conversation.connection_id == playground_key(user_id),
+            Conversation.status == "open",
+        )
+    ).scalars():
+        open_one.status = "resolved"
+        open_one.updated_at = now
+        db.add(open_one)
+    db.flush()
+    conversation = get_or_create_playground_conversation(
+        db, tenant_id=tenant_id, bot_id=bot_id, user_id=user_id
+    )
+    db.commit()
     return conversation
 
 
@@ -171,35 +207,6 @@ def append_message(
     return message
 
 
-def history_messages(
-    db: OrmSession,
-    conversation: Conversation,
-    *,
-    settings: Settings,
-    exclude_message_id: UUID | None = None,
-) -> list[str]:
-    """Visitor texts within the retention window, oldest first (§7)."""
-    since = datetime.now(UTC) - timedelta(seconds=settings.retention_days * 86400)
-    rows = (
-        db.execute(
-            select(Message.text)
-            .where(
-                Message.conversation_id == conversation.id,
-                Message.tenant_id == conversation.tenant_id,
-                Message.bot_id == conversation.bot_id,
-                Message.id != exclude_message_id,
-                Message.sender_type == "visitor",
-                Message.created_at > since,
-            )
-            .order_by(Message.created_at.desc(), Message.id.desc())
-            .limit(settings.chat_num_history_messages)
-        )
-        .scalars()
-        .all()
-    )
-    return list(reversed(rows))
-
-
 def record_usage_event(
     db: OrmSession,
     *,
@@ -302,7 +309,7 @@ def visitor_chat_turn(
             "No chat model is configured. Add the provider key for this deployment.",
         )
 
-    history = history_messages(
+    history = history_for_turn(
         db, conversation, settings=settings, exclude_message_id=visitor_message.id
     )
     message_reservation = reserve(
@@ -322,7 +329,8 @@ def visitor_chat_turn(
             tenant_id=tenant_id,
             bot=bot,
             question=question,
-            history=history,
+            history=history.messages,
+            history_skipped=history.skipped,
             language_hint=language_hint,
             model=model,
             settings=settings,
@@ -405,21 +413,22 @@ def messages_of(
     settings: Settings,
     limit: int = 100,
 ) -> list[Message]:
-    """Visible thread within the retention window, oldest first (§7)."""
+    """The newest ``limit`` messages within the retention window, oldest first (§7)."""
     since = datetime.now(UTC) - timedelta(seconds=settings.retention_days * 86400)
-    return list(
+    newest = (
         db.execute(
             select(Message)
             .where(
                 Message.conversation_id == conversation.id,
                 Message.created_at > since,
             )
-            .order_by(Message.created_at.asc(), Message.id)
+            .order_by(Message.created_at.desc(), Message.id.desc())
             .limit(limit)
         )
         .scalars()
         .all()
     )
+    return list(reversed(newest))
 
 
 def record_feedback(

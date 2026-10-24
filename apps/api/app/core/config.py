@@ -82,7 +82,10 @@ class Settings(BaseSettings):
     # Message retention (docs/14 §7): configurable days; the worker purges.
     retention_days: int = Field(default=30, ge=1, le=365)
     retention_purge_interval_seconds: int = Field(default=86_400, ge=60)
-    chat_num_history_messages: int = Field(default=6, ge=0, le=20)
+    # Prior exchanges (visitor message + its AI reply) sent as chat turns; 0 disables.
+    chat_history_exchanges: int = Field(default=3, ge=0, le=10)
+    # History window in days; None uses retention_days (never longer than it).
+    chat_history_window_days: int | None = Field(default=None, ge=1, le=365)
     # --- P4 widget public API (docs/09, docs/14 §7 defaults) ---
     # Visitor capability token lifetime (short-lived; the widget requests a
     # new session when expired).

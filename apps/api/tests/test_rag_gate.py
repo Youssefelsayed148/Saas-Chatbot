@@ -12,7 +12,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.chat import service
-from app.chat.conversations import append_message, history_messages
+from app.chat.conversations import append_message
+from app.chat.history import history_for_turn
 from app.chat.providers import FakeChatModel, OpenAICompatibleModel, ProviderError
 from app.chat.service import chat_answer, needs_rewrite
 from app.db.models import Bot, Chunk, Conversation
@@ -189,7 +190,7 @@ def test_stage0_raw_fts_gate_measurements(db: Session, tmp_path: Path) -> None:
 
 
 def test_rewrite_history_is_recent_prior_messages_only(db: Session, tmp_path: Path) -> None:
-    settings = build_test_settings(storage_root=str(tmp_path), chat_num_history_messages=2)
+    settings = build_test_settings(storage_root=str(tmp_path), chat_history_exchanges=2)
     seed = seed_demo(db, get_storage(settings), settings, FAKE_PASSWORD)
     thread = Conversation(
         tenant_id=seed.tenant_id,
@@ -201,13 +202,18 @@ def test_rewrite_history_is_recent_prior_messages_only(db: Session, tmp_path: Pa
     )
     db.add(thread)
     db.flush()
-    current = None
     for index in range(8):
-        current = append_message(db, thread, sender_type="visitor", text=str(index))
-    assert current is not None
-    assert history_messages(db, thread, settings=settings, exclude_message_id=current.id) == [
-        "5",
-        "6",
+        append_message(db, thread, sender_type="visitor", text=str(index))
+        append_message(
+            db, thread, sender_type="ai", text=f"reply {index}", can_answer=True, needs_human=False
+        )
+    current = append_message(db, thread, sender_type="visitor", text="now")
+    history = history_for_turn(db, thread, settings=settings, exclude_message_id=current.id)
+    assert history.messages == [
+        {"role": "user", "content": "6"},
+        {"role": "assistant", "content": "reply 6"},
+        {"role": "user", "content": "7"},
+        {"role": "assistant", "content": "reply 7"},
     ]
 
 

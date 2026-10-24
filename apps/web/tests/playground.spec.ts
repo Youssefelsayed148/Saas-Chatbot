@@ -135,6 +135,43 @@ test("playground chat: grounded answer, citation, thumbs, thread persists", asyn
   );
 });
 
+test("playground streams the turn, New session starts an empty thread", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  const { tenantId, botId } = await createOrgAndBot(page);
+  await page.goto(`/app/${tenantId}/bots/${botId}/playground`);
+  await expect(page.getByRole("heading", { name: "Playground" })).toBeVisible();
+  await expect(page.getByText("No messages yet")).toBeVisible();
+
+  // The Stop button only exists while a turn is in flight.
+  await expect(page.getByTestId("playground-stop")).toHaveCount(0);
+  await page
+    .getByTestId("playground-input")
+    .fill("What are your opening hours?");
+  const streamed = page.waitForResponse(
+    (response) =>
+      response.url().includes("/playground/messages/stream") &&
+      response.request().method() === "POST",
+  );
+  await page.getByTestId("playground-send").click();
+  expect((await streamed).status()).toBe(200);
+
+  // No knowledge is published: the canned refusal is the reply, with no sources.
+  await expect(page.locator("[data-role='ai']")).toHaveCount(1, {
+    timeout: 30_000,
+  });
+  await expect(page.locator("[data-role='visitor']")).toHaveCount(1);
+  await expect(page.getByTestId("citations")).toHaveCount(0);
+  await expect(page.getByTestId("playground-stop")).toHaveCount(0);
+
+  await page.getByTestId("playground-new-session").click();
+  await expect(page.getByText("No messages yet")).toBeVisible();
+  await expect(page.locator("[data-role='ai']")).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByText("No messages yet")).toBeVisible();
+});
+
 test("an expired session pushes the playground back to login", async ({
   page,
   context,

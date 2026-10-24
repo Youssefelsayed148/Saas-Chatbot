@@ -259,7 +259,7 @@ class StreamTurn:
 
     tenant_id: UUID
     bot_id: UUID
-    visitor_session_id: UUID
+    visitor_session_id: UUID | None  # None for the staff playground
     conversation_id: UUID
     text: str
     language_hint: str | None
@@ -275,14 +275,18 @@ def run_turn(
     with session_factory(get_engine())() as db:
         bot = db.get(Bot, turn.bot_id)
         conversation = db.get(Conversation, turn.conversation_id)
-        visitor_session = db.get(VisitorSession, turn.visitor_session_id)
+        visitor_session = (
+            db.get(VisitorSession, turn.visitor_session_id)
+            if turn.visitor_session_id is not None
+            else None
+        )
         if (
             bot is None
             or conversation is None
-            or visitor_session is None
             or bot.tenant_id != turn.tenant_id
             or conversation.tenant_id != turn.tenant_id
-            or visitor_session.tenant_id != turn.tenant_id
+            or (turn.visitor_session_id is not None and visitor_session is None)
+            or (visitor_session is not None and visitor_session.tenant_id != turn.tenant_id)
         ):
             raise ApiError(404, "NOT_FOUND", "Widget not found.")
         model = wrap_for_streaming(
@@ -414,6 +418,42 @@ def prepare_widget_stream(
         conversation_id=conversation.id,
         text=text,
         language_hint=language_hint,
+        settings=settings,
+        model=model,
+    )
+
+
+def prepare_playground_stream(
+    db: OrmSession,
+    *,
+    tenant_id: UUID,
+    bot: Bot,
+    user_id: UUID,
+    text: str,
+    settings: Settings,
+) -> StreamTurn:
+    """The staff playground's twin of ``prepare_widget_stream``: same worker,
+    wrapper model and reconciliation, with the conversation scoped to
+    (bot, user). Failures before the stream opens are ordinary HTTP errors."""
+    from app.chat.conversations import get_or_create_playground_conversation
+    from app.chat.models import model_from_settings
+
+    model = model_from_settings(settings, bot)
+    if model is None:
+        raise ApiError(
+            503, "MODEL_NOT_CONFIGURED", "No chat model is configured for this deployment."
+        )
+    conversation = get_or_create_playground_conversation(
+        db, tenant_id=tenant_id, bot_id=bot.id, user_id=user_id
+    )
+    db.commit()
+    return StreamTurn(
+        tenant_id=tenant_id,
+        bot_id=bot.id,
+        visitor_session_id=None,
+        conversation_id=conversation.id,
+        text=text,
+        language_hint=None,
         settings=settings,
         model=model,
     )
