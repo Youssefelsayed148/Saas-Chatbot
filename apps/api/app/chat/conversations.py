@@ -10,6 +10,7 @@ Usage events are idempotent per (tenant, bot, external_key) — turning the
 same event twice cannot double-count (docs/14 §7).
 """
 
+import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID, uuid4
@@ -17,10 +18,11 @@ from uuid import UUID, uuid4
 from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
+from app.chat import prompts
 from app.chat.history import history_for_turn
 from app.chat.models import default_model
 from app.chat.providers import ChatModel
-from app.chat.service import chat_answer
+from app.chat.service import _support_contact, chat_answer
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
 from app.core.ratelimit import purge_expired_windows
@@ -30,6 +32,8 @@ from app.inbox.handoff import decide_handoff, start_handoff, visitor_handoff_rep
 from app.knowledge.language import detect_language
 from app.quotas.ai import MeteredChatModel
 from app.quotas.rag import release, reserve, settle
+
+logger = logging.getLogger(__name__)
 
 
 def playground_key(user_id: UUID) -> str:
@@ -244,6 +248,72 @@ def record_usage_event(
     return event
 
 
+def _unavailable_turn(
+    db: OrmSession,
+    *,
+    bot: Bot,
+    conversation: Conversation,
+    visitor_message: Message,
+    language: str,
+) -> dict[str, Any]:
+    """No model is configured: the visitor gets the canned busy reply (never a 503).
+
+    Not a billable message (no ``message`` usage event, no reservation), no
+    handoff; staff see the cause in the trace (provider_error.status
+    ``not_configured``)."""
+    ai_message = append_message(
+        db,
+        conversation,
+        sender_type="ai",
+        text=prompts.canned("busy", language, support_contact=_support_contact(bot)),
+        can_answer=False,
+        needs_human=True,
+    )
+    record_usage_event(
+        db,
+        tenant_id=bot.tenant_id,
+        bot_id=bot.id,
+        kind="unavailable",
+        external_key=f"unavailable:{ai_message.id}",
+        message_id=ai_message.id,
+        conversation_id=conversation.id,
+        payload={
+            "rag_trace": {
+                "retrieval_mode": "not_run",
+                "gate": "not_run",
+                "rewrite_used": False,
+                "model": None,
+                "tokens": None,
+                "cost_usd": None,
+                "chunks": [],
+                "channel": conversation.channel,
+                "provider_error": {"status": "not_configured", "http_status": None, "model": None},
+            }
+        },
+    )
+    logger.warning("chat.model_not_configured tenant=%s bot=%s", bot.tenant_id, bot.id)
+    db.commit()
+    return {
+        "conversation_id": str(conversation.id),
+        "visitor_message": {
+            "id": str(visitor_message.id),
+            "text": visitor_message.text,
+            "created_at": visitor_message.created_at.isoformat(),
+        },
+        "ai_message": {
+            "id": str(ai_message.id),
+            "text": ai_message.text,
+            "citations": [],
+            "can_answer": False,
+            "needs_human": True,
+            "response_ms": None,
+            "created_at": ai_message.created_at.isoformat(),
+        },
+        "kind": "busy",
+        "language": language,
+    }
+
+
 def visitor_chat_turn(
     db: OrmSession,
     *,
@@ -302,11 +372,19 @@ def visitor_chat_turn(
 
     model = model or default_model(bot)
     if model is None:
-        db.commit()
-        raise ApiError(
-            503,
-            "MODEL_NOT_CONFIGURED",
-            "No chat model is configured. Add the provider key for this deployment.",
+        if conversation.source != "website":
+            db.commit()
+            raise ApiError(
+                503,
+                "MODEL_NOT_CONFIGURED",
+                "No chat model is configured. Add the provider key for this deployment.",
+            )
+        return _unavailable_turn(
+            db,
+            bot=bot,
+            conversation=conversation,
+            visitor_message=visitor_message,
+            language=language,
         )
 
     history = history_for_turn(

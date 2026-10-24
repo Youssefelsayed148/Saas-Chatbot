@@ -4,6 +4,7 @@ chat service then emits the not-ready/busy canned reply."""
 
 from app.chat.providers import ChatModel, OpenAICompatibleModel
 from app.core.config import Settings, get_settings
+from app.core.errors import ApiError
 from app.db.models import Bot
 
 
@@ -45,6 +46,14 @@ def model_from_settings(settings: Settings, bot: Bot | None = None) -> ChatModel
             retries=0,
         )
     return None
+
+
+def model_configured(settings: Settings, bot: Bot | None = None) -> bool:
+    """Whether a turn for this bot has a model to call (no key or id is read out)."""
+    try:
+        return model_from_settings(settings, bot) is not None
+    except ApiError:
+        return False
 
 
 def tier_targets(settings: Settings) -> dict[str, dict[str, str | None]]:

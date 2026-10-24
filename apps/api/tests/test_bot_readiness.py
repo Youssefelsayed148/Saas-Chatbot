@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from sqlalchemy.orm import Session as OrmSession
 
 from app.bots.service import readiness_items
+from app.core.config import Settings
 from app.db.models import Bot
 from tests.helpers import make_bot, seeded_tenant
 
@@ -20,8 +21,11 @@ def _bot(config: dict[str, Any], *, published: bool = False, tier: str = "standa
     )
 
 
+STUB = Settings.model_construct(chat_stub_model=True)  # a model is configured
+
+
 def _status(bot: Bot) -> dict[str, str]:
-    return {item.id: item.status for item in readiness_items(bot)}
+    return {item.id: item.status for item in readiness_items(bot, STUB)}
 
 
 def test_checklist_states_follow_the_config() -> None:
@@ -32,6 +36,7 @@ def test_checklist_states_follow_the_config() -> None:
         "allowed_domains": "warning",
         "knowledge_published": "todo",
         "tier": "ok",
+        "model_provider": "ok",
     }
     full = _status(
         _bot(

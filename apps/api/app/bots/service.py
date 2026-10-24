@@ -16,7 +16,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
 from app.bots.schemas import BotConfig, BotCreateRequest, BotUpdateRequest, ReadinessItem
+from app.chat.models import model_configured
 from app.core.audit import record_audit
+from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
 from app.core.tenancy import TenantContext
 from app.db.models import Bot
@@ -45,7 +47,7 @@ def validate_status_transition(current: str, requested: str) -> str:
     return requested
 
 
-def readiness_items(bot: Bot) -> list[ReadinessItem]:
+def readiness_items(bot: Bot, settings: Settings | None = None) -> list[ReadinessItem]:
     """Read-only checklist computed from the bot's real state (#26)."""
     config = bot.config if isinstance(bot.config, dict) else {}
 
@@ -64,6 +66,7 @@ def readiness_items(bot: Bot) -> list[ReadinessItem]:
     )
     has_contact = bool(text("support_email") or text("support_phone"))
     published = bot.published_revision_id is not None
+    configured = model_configured(settings or get_settings(), bot)
     return [
         ReadinessItem(
             id="support_contact",
@@ -106,6 +109,16 @@ def readiness_items(bot: Bot) -> list[ReadinessItem]:
             label="AI tier",
             status="ok" if bot.tier in ("standard", "premium") else "todo",
             detail=f"{bot.tier.capitalize()} tier selected.",
+            section="tier",
+        ),
+        ReadinessItem(
+            id="model_provider",
+            label="Model provider configured",
+            status="ok" if configured else "todo",
+            detail="A chat model is available for this bot."
+            if configured
+            else "No chat model is configured for this bot's tier: visitors get the "
+            "temporary-unavailable message. Ask the platform owner to set up the provider.",
             section="tier",
         ),
     ]
