@@ -66,6 +66,10 @@ TENANT_ROUTE_ROLES: dict[tuple[str, str], str] = {
         "/api/v1/tenants/{tenant_id}/bots/{bot_id}/playground/messages",
     ): "platform_staff_only",
     (
+        "POST",
+        "/api/v1/tenants/{tenant_id}/bots/{bot_id}/playground/messages/stream",
+    ): "platform_staff_only",
+    (
         "GET",
         "/api/v1/tenants/{tenant_id}/bots/{bot_id}/playground/conversation",
     ): "platform_staff_only",

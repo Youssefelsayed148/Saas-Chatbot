@@ -89,6 +89,12 @@ export default function PlaygroundPage() {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  // The turn in flight: the question and the answer text streamed so far.
+  const [pending, setPending] = useState<{
+    question: string;
+    answer: string;
+  } | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const [notReady, setNotReady] = useState(false);
   const [traces, setTraces] = useState<api.RagTrace[]>([]);
   const [traceError, setTraceError] = useState<string | null>(null);
@@ -153,8 +159,34 @@ export default function PlaygroundPage() {
     if (!text || sending) return;
     setSendError(null);
     setSending(true);
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setPending({ question: text, answer: "" });
     try {
-      const turn = await api.playgroundTurn(tenantId, botId, text);
+      let turn: api.PlaygroundTurnResponse;
+      try {
+        turn = await api.playgroundTurnStream(tenantId, botId, text, {
+          signal: controller.signal,
+          onDelta: (piece) =>
+            setPending((current) =>
+              current
+                ? { ...current, answer: current.answer + piece }
+                : current,
+            ),
+          onCannotConfirm: (canned) =>
+            setPending((current) =>
+              current ? { ...current, answer: canned } : current,
+            ),
+        });
+      } catch (caught) {
+        // A broken stream falls back to the buffered turn; HTTP refusals and
+        // a user stop do not.
+        if (!(caught instanceof api.PlaygroundStreamFailure)) throw caught;
+        setPending((current) =>
+          current ? { ...current, answer: "" } : current,
+        );
+        turn = await api.playgroundTurn(tenantId, botId, text);
+      }
       void loadTraces();
       setDraft("");
       setNotReady(false);
@@ -187,11 +219,33 @@ export default function PlaygroundPage() {
         );
       }
     } catch (caught) {
-      const message = caught instanceof Error ? caught.message : "Send failed.";
-      if (/MODEL_NOT_CONFIGURED|No chat model/.test(message)) setNotReady(true);
-      setSendError(message);
+      // Stop: the server persists nothing for a cancelled stream; the draft stays.
+      if (!controller.signal.aborted) {
+        const message =
+          caught instanceof Error ? caught.message : "Send failed.";
+        if (/MODEL_NOT_CONFIGURED|No chat model/.test(message))
+          setNotReady(true);
+        setSendError(message);
+      }
     } finally {
+      abortRef.current = null;
+      setPending(null);
       setSending(false);
+    }
+  }
+
+  async function onNewSession() {
+    if (sending) return;
+    setSendError(null);
+    try {
+      const thread = await api.playgroundNewSession(tenantId, botId);
+      setMessages(thread.messages);
+      setFeedbackGiven({});
+      setDraft("");
+    } catch (caught) {
+      setSendError(
+        caught instanceof Error ? caught.message : "Could not start a session.",
+      );
     }
   }
 
@@ -244,7 +298,7 @@ export default function PlaygroundPage() {
           threadError ? null : (
             <Loading label="Loading the conversation…" />
           )
-        ) : messages.length === 0 ? (
+        ) : messages.length === 0 && !pending ? (
           <p className="muted">
             No messages yet — ask something about the published knowledge.
           </p>
@@ -328,6 +382,24 @@ export default function PlaygroundPage() {
                 </li>
               ),
             )}
+            {pending && (
+              <>
+                <li data-role="visitor" data-pending="true">
+                  <div dir="auto" className="message-text">
+                    {pending.question}
+                  </div>
+                </li>
+                <li data-role="ai" data-pending="true">
+                  <div
+                    dir="auto"
+                    className="message-text"
+                    data-testid="pending-answer"
+                  >
+                    {pending.answer || "…"}
+                  </div>
+                </li>
+              </>
+            )}
           </ul>
         )}
         <p className="sr-only" role="status">
@@ -379,6 +451,25 @@ export default function PlaygroundPage() {
             {sending ? "Sending…" : "Send"}
           </Button>
         )}
+        {canChat && sending && (
+          <Button
+            variant="quiet"
+            data-testid="playground-stop"
+            onClick={() => abortRef.current?.abort()}
+          >
+            Stop
+          </Button>
+        )}
+        {canChat && (
+          <Button
+            variant="quiet"
+            data-testid="playground-new-session"
+            disabled={sending}
+            onClick={() => void onNewSession()}
+          >
+            New session
+          </Button>
+        )}
       </form>
 
       <section
@@ -416,8 +507,29 @@ export default function PlaygroundPage() {
             </p>
             {(trace.streamed !== undefined ||
               trace.degradation_reason ||
-              trace.stream_invalid_reason) && (
+              trace.stream_invalid_reason ||
+              trace.prompt_version) && (
               <dl className="trace-facts">
+                {trace.prompt_version && (
+                  <>
+                    <dt>Prompt</dt>
+                    <dd>
+                      {trace.prompt_version} · history{" "}
+                      {trace.history_count ?? 0} exchange(s)
+                      {trace.history_skipped_count
+                        ? `, ${trace.history_skipped_count} skipped`
+                        : ""}
+                    </dd>
+                    <dt>Model reply</dt>
+                    <dd>
+                      {trace.parsed_ok ? "parsed" : "not parsed"} · can answer{" "}
+                      {String(trace.model_can_answer ?? "n/a")} ·{" "}
+                      {trace.model_source_count ?? 0} source(s) cited,{" "}
+                      {trace.kept_source_count ?? 0} kept
+                      {trace.reconciled ? " · replaced by canned refusal" : ""}
+                    </dd>
+                  </>
+                )}
                 {trace.streamed !== undefined && (
                   <>
                     <dt>Delivery</dt>
