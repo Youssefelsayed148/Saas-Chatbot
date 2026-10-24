@@ -121,7 +121,7 @@ def test_sample_traces_and_postcheck_hook(db: Session, tmp_path: Path, monkeypat
         settings=settings,
         post_check=lambda answer, chunks: False,
     )
-    assert rejected.kind == "busy" and rejected.trace["post_check"] == "rejected"
+    assert rejected.kind == "invalid_output" and rejected.trace["post_check"] == "rejected"
     retrieved.evidence = []
     refusal_model = FakeChatModel()
     refusal = chat_answer(

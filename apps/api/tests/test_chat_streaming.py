@@ -395,7 +395,7 @@ def test_out_of_order_keys_fall_back_to_the_buffered_path(
     assert events[-1][1]["ai_message"]["can_answer"] is True
 
 
-def test_malformed_json_before_release_is_a_busy_turn_with_no_stream(
+def test_malformed_json_before_release_is_invalid_output_with_no_stream(
     db: OrmSession,
     app: FastAPI,
     corpus: dict[str, Any],
@@ -405,8 +405,8 @@ def test_malformed_json_before_release_is_a_busy_turn_with_no_stream(
     use_model(ScriptedModel(lambda ids: chunks_of("Sure! Here is my answer in prose.")))
     _, events = stream(client, session)
     assert names(events) == ["done"]
-    assert events[-1][1]["kind"] == "busy"
-    assert events[-1][1]["ai_message"]["text"].strip()  # the handoff/busy reply, never model text
+    assert events[-1][1]["kind"] == "invalid_output"
+    assert events[-1][1]["ai_message"]["text"].strip()  # the canned reply, never model text
     assert "Sure!" not in events[-1][1]["ai_message"]["text"]
 
 
@@ -426,7 +426,7 @@ def test_truncated_stream_after_release_is_replaced_by_the_validated_result(
     _, events = stream(client, session)
     assert deltas(events)  # some text was released
     done = events[-1][1]
-    assert done["kind"] == "busy"  # strict parse failed: the partial is NOT kept
+    assert done["kind"] == "invalid_output"  # strict parse failed: the partial is NOT kept
     stored = [r for r in messages_of(db, session["session_id"]) if r.sender_type == "ai"]
     assert stored[0].text == done["ai_message"]["text"]
     assert "never" not in stored[0].text and "long answer" not in stored[0].text

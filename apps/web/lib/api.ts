@@ -1692,6 +1692,8 @@ export interface RagTrace {
     history_count?: number;
     history_skipped_count?: number;
     parsed_ok?: boolean;
+    /** Why a model reply was unusable: parse_failed | no_valid_source | post_check_rejected. */
+    invalid_output_reason?: string;
     model_can_answer?: boolean | null;
     model_source_count?: number;
     kept_source_count?: number;

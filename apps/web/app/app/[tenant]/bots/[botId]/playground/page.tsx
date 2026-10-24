@@ -215,7 +215,11 @@ export default function PlaygroundPage() {
       ]);
       if (turn.kind !== "answer") {
         setSendError(
-          turn.kind === "smalltalk" ? null : `Assistant state: ${turn.kind}`,
+          turn.kind === "smalltalk"
+            ? null
+            : turn.kind === "invalid_output"
+              ? "The model replied, but the reply was unusable, so the visitor got the standard can't-confirm message. See the answer trace for the reason."
+              : `Assistant state: ${turn.kind}`,
         );
       }
     } catch (caught) {
@@ -522,7 +526,11 @@ export default function PlaygroundPage() {
                     </dd>
                     <dt>Model reply</dt>
                     <dd>
-                      {trace.parsed_ok ? "parsed" : "not parsed"} · can answer{" "}
+                      {trace.parsed_ok ? "parsed" : "not parsed"}
+                      {trace.invalid_output_reason
+                        ? ` (unusable: ${trace.invalid_output_reason})`
+                        : ""}{" "}
+                      · can answer{" "}
                       {String(trace.model_can_answer ?? "n/a")} ·{" "}
                       {trace.model_source_count ?? 0} source(s) cited,{" "}
                       {trace.kept_source_count ?? 0} kept

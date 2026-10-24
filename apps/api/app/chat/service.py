@@ -75,7 +75,9 @@ class ChatReply:
     can_answer: bool
     needs_human: bool
     language: str
-    # "smalltalk" | "handoff" | "answer" | "busy" | "cannot_confirm"
+    # "smalltalk" | "handoff" | "answer" | "busy" | "cannot_confirm" | "invalid_output"
+    # busy = the provider failed; invalid_output = the model answered but the reply
+    # was unusable (not a provider failure, never a handoff).
     kind: str
     # Validated citations (subset of retrieved chunks, in retrieval order).
     citations: list[dict[str, str | None]] = field(default_factory=list)
@@ -190,22 +192,29 @@ class ParsedReply:
 
 
 def _parse_reply(raw: str, evidence: list[RetrievedChunk]) -> ParsedReply | None:
-    """Strict output contract: {"answer", "can_answer", "sources"} (docs/14 §6)."""
+    return _check_reply(raw, evidence)[0]
+
+
+def _check_reply(raw: str, evidence: list[RetrievedChunk]) -> tuple[ParsedReply | None, str | None]:
+    """Strict output contract: {"answer", "can_answer", "sources"} (docs/14 §6).
+
+    Returns the parsed reply, or None plus why: ``parse_failed`` (not the JSON
+    shape, empty answer) or ``no_valid_source`` (a "yes" with no valid citation)."""
     try:
         payload = json.loads(raw)
     except ValueError:
-        return None
+        return None, "parse_failed"
     if not isinstance(payload, dict):
-        return None
+        return None, "parse_failed"
     answer = payload.get("answer")
     can_answer = payload.get("can_answer")
     sources = payload.get("sources", [])
     if not isinstance(answer, str) or not answer.strip():
-        return None
+        return None, "parse_failed"
     if not isinstance(can_answer, bool):
-        return None
+        return None, "parse_failed"
     if not isinstance(sources, list) or len(sources) > 8:
-        return None
+        return None, "parse_failed"
     valid_ids = {str(chunk.chunk_id) for chunk in evidence}
     kept: list[UUID] = []
     for value in sources:
@@ -214,9 +223,9 @@ def _parse_reply(raw: str, evidence: list[RetrievedChunk]) -> ParsedReply | None
             if chunk_id not in kept:
                 kept.append(chunk_id)
     if can_answer and not kept:
-        # A grounded "yes" without any valid citation is a fallback case.
-        return None
-    return ParsedReply(answer.strip(), can_answer, kept, len(sources))
+        # A grounded "yes" without any valid citation is unusable output.
+        return None, "no_valid_source"
+    return ParsedReply(answer.strip(), can_answer, kept, len(sources)), None
 
 
 def reconcile_refusal(
@@ -236,6 +245,31 @@ def reconcile_refusal(
         needs_human=True,
         language=language,
         kind="cannot_confirm",
+        condensed_question=condensed,
+        used_fallback=used_fallback,
+        trace=trace,
+    )
+
+
+def invalid_output_reply(
+    bot: Bot,
+    *,
+    language: str,
+    reason: str,
+    condensed: str | None,
+    used_fallback: bool,
+    trace: dict[str, object],
+) -> ChatReply:
+    """The model answered but the reply was unusable: canned cannot_confirm text,
+    no citations, a human is needed. Not a provider failure (no busy text, no
+    handoff, no provider_error); ``reason`` goes to the staff trace."""
+    trace["invalid_output_reason"] = reason
+    return ChatReply(
+        answer=prompts.canned("cannot_confirm", language, support_contact=_support_contact(bot)),
+        can_answer=False,
+        needs_human=True,
+        language=language,
+        kind="invalid_output",
         condensed_question=condensed,
         used_fallback=used_fallback,
         trace=trace,
@@ -459,9 +493,10 @@ def chat_answer(
 
     # 5) Model call + strict validation; every failure becomes a canned turn.
     contact = _support_contact(bot)
+    invalid_reason: str | None = None
     try:
         raw = model.complete(messages, json_mode=True, max_tokens=settings.chat_max_tokens)
-        parsed = _parse_reply(raw, evidence)
+        parsed, invalid_reason = _check_reply(raw, evidence)
         trace["parsed_ok"] = parsed is not None
         if parsed is not None:
             trace["model_can_answer"] = parsed.can_answer
@@ -470,7 +505,7 @@ def chat_answer(
             accepted = post_check(parsed.answer, evidence)
             trace["post_check"] = "passed" if accepted else "rejected"
             if not accepted:
-                parsed = None
+                parsed, invalid_reason = None, "post_check_rejected"
     except ProviderError:
         parsed = None
         # Staff-visible failure detail (Playground trace): status + model name
@@ -489,6 +524,15 @@ def chat_answer(
             detail["model"],
             status,
             getattr(bot, "tier", None),
+        )
+    if parsed is None and invalid_reason is not None:
+        return invalid_output_reply(
+            bot,
+            language=language,
+            reason=invalid_reason,
+            condensed=condensed,
+            used_fallback=bool(retrieval and retrieval.used_fallback),
+            trace=trace,
         )
     if parsed is None:
         return ChatReply(
