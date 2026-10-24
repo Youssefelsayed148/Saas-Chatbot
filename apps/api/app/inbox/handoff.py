@@ -47,6 +47,8 @@ def decide_handoff(
     """Return the first matching handoff rule; playgrounds never enter inbox."""
     if conversation.source != "website" or conversation.status == "waiting_human":
         return None
+    if reply_kind == "invalid_output":
+        return None  # an unusable model reply is not a provider failure and never hands off
     config = bot.config if isinstance(bot.config, dict) else {}
     if reply_kind == "busy":
         return HandoffDecision("provider_failure", language)

@@ -363,11 +363,8 @@ def widget_message_turn(
     conversation = get_or_create_conversation_for_session(
         db, bot=bot, visitor_session=visitor_session
     )
+    # None (no model configured) is answered with the canned busy reply, not a 503.
     model = model_from_settings(settings, bot)
-    if model is None:
-        raise ApiError(
-            503, "MODEL_NOT_CONFIGURED", "The assistant is not configured for this deployment yet."
-        )
     return visitor_chat_turn(
         db,
         tenant_id=visitor_session.tenant_id,

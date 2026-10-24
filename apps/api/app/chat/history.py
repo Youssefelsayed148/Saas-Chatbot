@@ -5,7 +5,7 @@ message plus the AI reply to it, and the assistant turn is the reply text alone
 (no sources, no trace). The Evidence block stays current-turn only.
 
 Exchanges whose AI reply was a refusal or a failure (can_answer false,
-needs_human true: cannot_confirm, busy, handoff) are skipped, as is a visitor
+needs_human true: cannot_confirm, busy, invalid_output, handoff) are skipped, as is a visitor
 message with no AI reply. Replies from human agents are never assistant turns.
 """
 

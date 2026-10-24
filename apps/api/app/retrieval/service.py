@@ -227,7 +227,7 @@ def _best_chunk_per_document(
               AND q.query @@ c.{column}
             ORDER BY c.document_id, rank DESC, c.priority DESC, c.ordinal, c.id
         ) best
-        ORDER BY rank DESC, priority DESC, document_id
+        ORDER BY rank DESC, priority DESC, title, page_ref, ordinal, document_id
         LIMIT :top_k
         """
     )

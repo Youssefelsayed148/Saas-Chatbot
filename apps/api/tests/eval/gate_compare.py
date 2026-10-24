@@ -33,7 +33,7 @@ from sqlalchemy.orm import Session as OrmSession
 
 from app.core.config import Settings
 from app.knowledge.language import detect_language
-from app.retrieval.gate import relevance_gate
+from app.retrieval.gate import relevance_gate, select_evidence
 from app.retrieval.hybrid import retrieve_hybrid
 from tests.eval.nile_metrics import expected_sources, locate_source
 
@@ -153,7 +153,7 @@ def collect(
     candidates: list[dict[str, Any]],
     base_settings: Settings,
 ) -> dict[str, dict[str, dict[str, Any]]]:
-    """Run retrieval + gate for every candidate and case (DB-backed)."""
+    """Run retrieval + gate + evidence slice for every candidate and case (DB-backed)."""
     from tests.retrieval_helpers import published_revision_id
 
     users = seeded["users"]
@@ -173,7 +173,9 @@ def collect(
             )
             decision = relevance_gate(retrieval, settings)
             pages = set()
-            for chunk in decision.passed:
+            # What the model would actually receive (the real evidence slice), not
+            # everything the gate passed: a passed document can still be cut.
+            for chunk in select_evidence(decision, settings):
                 located = locate_source(chunk.title, chunk.page_ref)
                 if located:
                     pages.add(located)

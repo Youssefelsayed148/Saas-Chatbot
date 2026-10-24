@@ -264,7 +264,7 @@ class StreamTurn:
     text: str
     language_hint: str | None
     settings: Settings
-    model: ChatModel
+    model: ChatModel | None  # None: no model configured (canned busy reply)
     extra: dict[str, Any] = field(default_factory=dict)
 
 
@@ -289,11 +289,15 @@ def run_turn(
             or (visitor_session is not None and visitor_session.tenant_id != turn.tenant_id)
         ):
             raise ApiError(404, "NOT_FOUND", "Widget not found.")
-        model = wrap_for_streaming(
-            turn.model,
-            emit=emit,
-            cannot_confirm_text=cannot_confirm_for(bot, turn.text, turn.language_hint),
-            cancelled=cancelled,
+        model = (
+            wrap_for_streaming(
+                turn.model,
+                emit=emit,
+                cannot_confirm_text=cannot_confirm_for(bot, turn.text, turn.language_hint),
+                cancelled=cancelled,
+            )
+            if turn.model is not None
+            else None
         )
         result = visitor_chat_turn(
             db,
@@ -306,7 +310,7 @@ def run_turn(
             settings=turn.settings,
         )
         ai_message = result.get("ai_message")
-        if ai_message:
+        if ai_message and model is not None:
             stamp_stream_trace(db, bot=bot, ai_message_id=str(ai_message["id"]), stats=model.stats)
         return result
 
@@ -403,11 +407,7 @@ def prepare_widget_stream(
     conversation = get_or_create_conversation_for_session(
         db, bot=bot, visitor_session=visitor_session
     )
-    model = model_from_settings(settings, bot)
-    if model is None:
-        raise ApiError(
-            503, "MODEL_NOT_CONFIGURED", "The assistant is not configured for this deployment yet."
-        )
+    model = model_from_settings(settings, bot)  # None: the turn answers with the busy reply
     # Persist the rate-limit counter and the lazily created conversation, and
     # release the tenant row lock before the (long) streamed turn begins.
     db.commit()

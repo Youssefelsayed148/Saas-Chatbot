@@ -64,6 +64,44 @@ def candidate_trace(
     return rows
 
 
+def rejected_candidates(
+    retrieval: RetrievalResult,
+    decision: GateDecision,
+    limit: int = 5,
+) -> list[dict[str, Any]]:
+    """The strongest candidates the gate turned away, for a turn with no evidence.
+
+    Document title, chunk id, scores and the gate's reason; no chunk text."""
+    verdicts = {row.chunk_id: row for row in decision.verdicts}
+    ranked = sorted(
+        retrieval.evidence,
+        key=lambda chunk: (
+            -chunk.rrf_score,
+            -(chunk.vector_similarity if chunk.vector_similarity is not None else -2.0),
+            -chunk.fts_match,
+        ),
+    )
+    rows: list[dict[str, Any]] = []
+    for chunk in ranked:
+        verdict = verdicts.get(str(chunk.chunk_id))
+        if verdict is not None and verdict.accepted:
+            continue
+        rows.append(
+            {
+                "document_title": chunk.title,
+                "chunk_id": str(chunk.chunk_id),
+                "locator": chunk.page_ref,
+                "vector_similarity": chunk.vector_similarity,
+                "fts_match": chunk.fts_match,
+                "rrf_score": chunk.rrf_score,
+                "reason": verdict.reason if verdict is not None else "not judged",
+            }
+        )
+        if len(rows) == limit:
+            break
+    return rows
+
+
 def document_trace(
     decision: GateDecision,
     accepted: list[RetrievedChunk],

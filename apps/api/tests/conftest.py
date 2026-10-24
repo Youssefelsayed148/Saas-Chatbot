@@ -134,6 +134,16 @@ def clean_tables(engine: Engine) -> Iterator[None]:
     truncate_all(engine)
 
 
+@pytest.fixture(autouse=True)
+def reset_embed_breaker() -> Iterator[None]:
+    """The query-embedding circuit breaker is process memory: start every test closed."""
+    from app.retrieval import hybrid
+
+    hybrid.reset_embed_breaker()
+    yield
+    hybrid.reset_embed_breaker()
+
+
 @pytest.fixture
 def db(engine: Engine) -> Iterator[OrmSession]:
     """A raw session for direct DB manipulation in tests (cleaned by clean_tables)."""

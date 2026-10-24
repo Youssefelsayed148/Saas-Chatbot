@@ -215,7 +215,11 @@ export default function PlaygroundPage() {
       ]);
       if (turn.kind !== "answer") {
         setSendError(
-          turn.kind === "smalltalk" ? null : `Assistant state: ${turn.kind}`,
+          turn.kind === "smalltalk"
+            ? null
+            : turn.kind === "invalid_output"
+              ? "The model replied, but the reply was unusable, so the visitor got the standard can't-confirm message. See the answer trace for the reason."
+              : `Assistant state: ${turn.kind}`,
         );
       }
     } catch (caught) {
@@ -522,8 +526,11 @@ export default function PlaygroundPage() {
                     </dd>
                     <dt>Model reply</dt>
                     <dd>
-                      {trace.parsed_ok ? "parsed" : "not parsed"} · can answer{" "}
-                      {String(trace.model_can_answer ?? "n/a")} ·{" "}
+                      {trace.parsed_ok ? "parsed" : "not parsed"}
+                      {trace.invalid_output_reason
+                        ? ` (unusable: ${trace.invalid_output_reason})`
+                        : ""}{" "}
+                      · can answer {String(trace.model_can_answer ?? "n/a")} ·{" "}
                       {trace.model_source_count ?? 0} source(s) cited,{" "}
                       {trace.kept_source_count ?? 0} kept
                       {trace.reconciled ? " · replaced by canned refusal" : ""}
@@ -556,6 +563,72 @@ export default function PlaygroundPage() {
                 )}
               </dl>
             )}
+            {(trace.revision_id !== undefined || trace.retrieval_query) && (
+              <dl className="trace-facts" data-testid="trace-context">
+                <dt>Knowledge revision</dt>
+                <dd>{trace.revision_id ?? "None published"}</dd>
+                <dt>Tier / provider</dt>
+                <dd>
+                  {trace.tier ?? "n/a"} · {trace.generation_provider ?? "n/a"}
+                </dd>
+                {trace.applied_language && (
+                  <>
+                    <dt>Search language</dt>
+                    <dd>{trace.applied_language}</dd>
+                  </>
+                )}
+                {trace.retrieval_query && (
+                  <>
+                    <dt>Search query</dt>
+                    <dd dir="auto">{trace.retrieval_query}</dd>
+                  </>
+                )}
+                {trace.fallback_query && (
+                  <>
+                    <dt>Translated query</dt>
+                    <dd dir="auto">{trace.fallback_query}</dd>
+                  </>
+                )}
+                {trace.rewrite_text && (
+                  <>
+                    <dt>Rewrite</dt>
+                    <dd dir="auto">{trace.rewrite_text}</dd>
+                  </>
+                )}
+                {trace.skipped_steps && trace.skipped_steps.length > 0 && (
+                  <>
+                    <dt>Skipped (time budget)</dt>
+                    <dd>{trace.skipped_steps.join(", ")}</dd>
+                  </>
+                )}
+                {trace.handoff_reason && (
+                  <>
+                    <dt>Handoff</dt>
+                    <dd>{trace.handoff_reason}</dd>
+                  </>
+                )}
+              </dl>
+            )}
+            {trace.rejected_candidates &&
+              trace.rejected_candidates.length > 0 && (
+                <div data-testid="trace-rejected">
+                  <p>
+                    No evidence reached the model. Closest rejected candidates:
+                  </p>
+                  <ul className="trace-chunks">
+                    {trace.rejected_candidates.map((candidate) => (
+                      <li key={candidate.chunk_id}>
+                        {candidate.document_title}
+                        {candidate.locator ? ` (${candidate.locator})` : ""} ·
+                        cosine{" "}
+                        {candidate.vector_similarity?.toFixed(3) ?? "n/a"} · fts{" "}
+                        {candidate.fts_match.toFixed(3)} · rrf{" "}
+                        {candidate.rrf_score.toFixed(4)} — {candidate.reason}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             <ul className="trace-chunks">
               {trace.chunks.map((chunk) => (
                 <TraceChunk key={chunk.chunk_id} chunk={chunk} />

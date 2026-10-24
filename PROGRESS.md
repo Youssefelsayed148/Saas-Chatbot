@@ -2745,3 +2745,16 @@ NOT verified (blocked, no fabrication):
   generated copy `apps/web/public/widget/v1/loader.js` (206 lines) and
   `packages/widget/src/loader.js` (206 lines) are byte-identical after CRLF/LF
   normalization (cmp clean).
+
+## R3 - answer correctness part 2 (branch fix/r3-answers, local commits only)
+
+Items 1-6, 8, 9 implemented, one commit each (git log 1d0b2b7..HEAD); item 7 is a
+read-only proposal in the batch report. Disposable DB 127.0.0.1:55462 (r3_test),
+TEST_DATABASE_URL set per process, `PYTHONUTF8=1` on Windows.
+
+- Full run: `python -m pytest tests/test_chat.py tests/test_chat_streaming*.py tests/test_cross_*.py tests/test_handoff.py tests/test_hybrid_retrieval.py tests/test_knowledge_language.py tests/test_model_not_configured.py tests/test_provider_params.py tests/test_rag_*.py tests/test_retrieval.py tests/test_routing.py tests/test_stable_tie_break.py tests/test_trace_context.py tests/test_turn_deadline.py tests/test_widget_*.py tests/test_playground_parity.py tests/test_bots.py tests/test_bot_readiness.py tests/test_conversations.py tests/test_migrations.py tests/test_quotas.py tests/eval`
+  -> 370 passed, 4 failed WITHOUT PYTHONUTF8 (3 are cp1252 decode errors in test_rag_gate::test_stage0_raw_fts_gate_measurements, test_rag_evaluation::test_two_mode_retrieval_eval_is_entirely_offline, test_rag_stage0_baseline::test_real_fts_pipeline_checkpoints_and_never_replays; they pass with PYTHONUTF8=1). The 4th,
+  test_chat_streaming::test_client_disconnect_stops_the_provider_and_persists_nothing, fails the same way on the R2 merge (1d0b2b7) with my changes stashed: pre-existing.
+- Migration 0020 (usage_events kind 'unavailable') applied by test_migrations up/down/up.
+- Web: `npx tsc --noEmit` and `npm run lint` clean. Playwright not run (needs servers).
+- gate_compare before/after on nile_eval.jsonl: identical (fts_only 26/27 kept, 6/12 leaks; hybrid+test embedder 23/27, 5/12).

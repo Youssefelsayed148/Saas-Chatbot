@@ -47,7 +47,7 @@ def get_traces(bot_id: UUID, context: TenantContextDep) -> dict[str, object]:
         .where(
             UsageEvent.tenant_id == context.tenant_id,
             UsageEvent.bot_id == bot_id,
-            UsageEvent.kind == "message",
+            UsageEvent.kind.in_(("message", "unavailable")),
             UsageEvent.payload["rag_trace"].is_not(None),
         )
         .order_by(UsageEvent.created_at.desc(), UsageEvent.id.desc())

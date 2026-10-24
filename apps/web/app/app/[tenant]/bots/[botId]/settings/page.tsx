@@ -40,6 +40,7 @@ const FIELD_KEYS = new Set([
   "welcome_message.ar",
   "opening_questions",
   "default_language",
+  "knowledge_language",
   "support_email",
   "support_phone",
   "colour",
@@ -101,6 +102,10 @@ export default function BotSettingsPage() {
   const [welcomeAr, setWelcomeAr] = useState("");
   const [openingQuestions, setOpeningQuestions] = useState("");
   const [defaultLanguage, setDefaultLanguage] = useState<"en" | "ar">("en");
+  // "" = same as the default language (no knowledge_language stored).
+  const [knowledgeLanguage, setKnowledgeLanguage] = useState<"" | "en" | "ar">(
+    "",
+  );
   const [supportEmail, setSupportEmail] = useState("");
   const [supportPhone, setSupportPhone] = useState("");
   const [colour, setColour] = useState("");
@@ -129,6 +134,7 @@ export default function BotSettingsPage() {
       setWelcomeAr(loaded.config.welcome_message?.ar ?? "");
       setOpeningQuestions((loaded.config.opening_questions ?? []).join("\n"));
       setDefaultLanguage(loaded.config.default_language ?? "en");
+      setKnowledgeLanguage(loaded.config.knowledge_language ?? "");
       setSupportEmail(loaded.config.support_email ?? "");
       setSupportPhone(loaded.config.support_phone ?? "");
       setColour(loaded.config.colour ?? "");
@@ -160,6 +166,7 @@ export default function BotSettingsPage() {
           welcomeAr: loaded.config.welcome_message?.ar ?? "",
           openingQuestions: (loaded.config.opening_questions ?? []).join("\n"),
           defaultLanguage: loaded.config.default_language ?? "en",
+          knowledgeLanguage: loaded.config.knowledge_language ?? "",
           supportEmail: loaded.config.support_email ?? "",
           supportPhone: loaded.config.support_phone ?? "",
           colour: loaded.config.colour ?? "",
@@ -214,6 +221,7 @@ export default function BotSettingsPage() {
           .filter(Boolean);
       }
       config.default_language = defaultLanguage;
+      config.knowledge_language = knowledgeLanguage || null;
       if (supportEmail) config.support_email = supportEmail;
       if (supportPhone) config.support_phone = supportPhone;
       if (colour) config.colour = colour;
@@ -288,6 +296,7 @@ export default function BotSettingsPage() {
       welcomeAr,
       openingQuestions,
       defaultLanguage,
+      knowledgeLanguage,
       supportEmail,
       supportPhone,
       colour,
@@ -461,6 +470,27 @@ export default function BotSettingsPage() {
                   setDefaultLanguage(event.target.value as "en" | "ar")
                 }
               >
+                <option value="en">English</option>
+                <option value="ar">العربية</option>
+              </select>
+            )}
+          </Field>
+          <Field
+            label="Knowledge language"
+            hint="The language your knowledge base is written in. Used to find answers when a visitor writes in the other language. Leave as the default language if they match."
+            {...err("knowledge_language")}
+          >
+            {(control) => (
+              <select
+                {...control}
+                name="knowledge_language"
+                disabled={!canEdit}
+                value={knowledgeLanguage}
+                onChange={(event) =>
+                  setKnowledgeLanguage(event.target.value as "" | "en" | "ar")
+                }
+              >
+                <option value="">Same as default language</option>
                 <option value="en">English</option>
                 <option value="ar">العربية</option>
               </select>

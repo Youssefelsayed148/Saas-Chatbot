@@ -227,6 +227,7 @@ export interface Bot {
     welcome_message?: { en?: string; ar?: string };
     opening_questions?: string[];
     default_language?: "en" | "ar";
+    knowledge_language?: "en" | "ar";
     support_email?: string;
     support_phone?: string;
     colour?: string;
@@ -1691,10 +1692,31 @@ export interface RagTrace {
     history_count?: number;
     history_skipped_count?: number;
     parsed_ok?: boolean;
+    /** Why a model reply was unusable: parse_failed | no_valid_source | post_check_rejected. */
+    invalid_output_reason?: string;
     model_can_answer?: boolean | null;
     model_source_count?: number;
     kept_source_count?: number;
     reconciled?: boolean;
+    revision_id?: string | null;
+    tier?: string | null;
+    generation_provider?: string | null;
+    applied_language?: string | null;
+    retrieval_query?: string | null;
+    fallback_query?: string | null;
+    rewrite_text?: string | null;
+    handoff_reason?: string | null;
+    skipped_steps?: string[];
+    /** Top candidates the gate rejected when no evidence reached the model. */
+    rejected_candidates?: {
+      document_title: string;
+      chunk_id: string;
+      locator: string;
+      vector_similarity: number | null;
+      fts_match: number;
+      rrf_score: number;
+      reason: string;
+    }[];
     chunks: {
       chunk_id: string;
       title: string;

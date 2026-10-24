@@ -111,6 +111,9 @@ class BotConfig(BaseModel):
     welcome_message: WelcomeMessage | None = None
     opening_questions: list[str] | None = Field(default=None, max_length=10)
     default_language: str | None = Field(default=None, pattern="^(en|ar)$")
+    # Language of the knowledge base; None = same as default_language. Drives the
+    # cross-language fallback and query translation, never the widget UI language.
+    knowledge_language: str | None = Field(default=None, pattern="^(en|ar)$")
     support_email: EmailStr | None = None
     support_phone: str | None = Field(default=None, max_length=30)
     colour: str | None = None

@@ -13,7 +13,7 @@ import os
 import re
 import time
 from abc import ABC, abstractmethod
-from collections.abc import Iterator
+from collections.abc import Generator, Iterator
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 
@@ -53,6 +53,30 @@ class StreamUnsupported(Exception):
 class ProviderChainAttempt:
     model: str
     error: str
+
+
+# Models whose API rejected ``temperature`` / ``max_tokens`` and then accepted the
+# compat profile (no temperature, ``max_completion_tokens``). In-process memory:
+# later requests skip the attempt that is known to fail.
+_COMPAT_PROFILE: set[str] = set()
+_PARAMETER_HINTS = (
+    "temperature",
+    "max_tokens",
+    "max_completion_tokens",
+    "unsupported parameter",
+    "unsupported_parameter",
+    "unsupported value",
+    "unsupported_value",
+)
+
+
+def _names_parameter(response: httpx.Response) -> bool:
+    """A 400 whose error text blames a sampling/length parameter."""
+    try:
+        text = response.text.lower()
+    except httpx.HTTPError:
+        return False
+    return any(hint in text for hint in _PARAMETER_HINTS)
 
 
 class OpenAICompatibleModel(ChatModel):
@@ -100,6 +124,18 @@ class OpenAICompatibleModel(ChatModel):
         self.last_cost_usd: Decimal | None = None
         self.temperature = temperature
         self.usage_totals = None
+        # Seconds this call may take in total (set per call by the turn budget);
+        # None keeps the plain per-request ``timeout_seconds``.
+        self.call_timeout: float | None = None
+
+    def _attempt_timeout(self, started: float) -> float | None:
+        """Timeout for the next request, or None when the call budget is spent."""
+        if self.call_timeout is None:
+            return self.timeout_seconds
+        left = self.call_timeout - (time.monotonic() - started)
+        if left <= 0.05:
+            return None
+        return min(self.timeout_seconds, left)
 
     def _blocks(self, status: int) -> bool:
         """401/402 block the turn. 403/429 only block when no next model exists."""
@@ -111,18 +147,12 @@ class OpenAICompatibleModel(ChatModel):
         if self.blocked:
             raise ProviderError("Provider unavailable for this turn.")
         self.last_cost_usd = None
-        body: dict[str, object] = {
-            "messages": messages,
-            "temperature": self.temperature,
-            "max_tokens": max_tokens,
-        }
-        if json_mode:
-            body["response_format"] = {"type": "json_object"}
         # One attempt per model; at most the immediate next model as fallback.
         # An auth/payment response (401/402) blocks all subsequent calls on this
         # turn's model instance, including preprocessing followed by generation.
         # A rate limit / forbidden / 5xx on one model moves on to the next one.
         self.last_http_status = None
+        started = time.monotonic()
         with httpx.Client(
             base_url=self.base_url,
             headers={"Authorization": f"Bearer {self._api_key}"},
@@ -131,16 +161,9 @@ class OpenAICompatibleModel(ChatModel):
             follow_redirects=False,
         ) as client:
             for model in [self.model, *self.fallback_models[:1]]:
-                body["model"] = model
-                self.requests_used += 1
-                try:
-                    response = client.post("chat/completions", json=body)
-                except (httpx.ConnectError, httpx.ConnectTimeout):
+                response = self._post(client, model, messages, json_mode, max_tokens, started)
+                if response is None:
                     continue
-                except httpx.HTTPError:
-                    self.ambiguous_attempts += 1
-                    continue
-                self.last_http_status = response.status_code
                 if self._blocks(response.status_code):
                     self.blocked = True
                     raise ProviderError("Provider unavailable for this turn.")
@@ -180,6 +203,68 @@ class OpenAICompatibleModel(ChatModel):
                 return content
         raise ProviderError("All configured models failed.")
 
+    def _body(
+        self,
+        model: str,
+        messages: list[dict[str, str]],
+        max_tokens: int,
+        *,
+        json_mode: bool,
+        compat: bool,
+    ) -> dict[str, object]:
+        body: dict[str, object] = {"model": model, "messages": messages}
+        if compat:
+            # Models that reject the classic parameters (reasoning models).
+            body["max_completion_tokens"] = max_tokens
+        else:
+            body["temperature"] = self.temperature
+            body["max_tokens"] = max_tokens
+        if json_mode:
+            body["response_format"] = {"type": "json_object"}
+        return body
+
+    def _post(
+        self,
+        client: httpx.Client,
+        model: str,
+        messages: list[dict[str, str]],
+        json_mode: bool,
+        max_tokens: int,
+        started: float,
+    ) -> httpx.Response | None:
+        """One request for ``model``; None when the transport failed.
+
+        A 400 that blames temperature / max_tokens / an unsupported parameter is
+        retried ONCE with the compat profile, and a profile that works is
+        remembered for this model name."""
+        compat = model in _COMPAT_PROFILE
+        for attempt in (0, 1):
+            body = self._body(model, messages, max_tokens, json_mode=json_mode, compat=compat)
+            timeout = self._attempt_timeout(started)
+            if timeout is None:
+                return None
+            self.requests_used += 1
+            try:
+                response = client.post("chat/completions", json=body, timeout=timeout)
+            except (httpx.ConnectError, httpx.ConnectTimeout):
+                return None
+            except httpx.HTTPError:
+                self.ambiguous_attempts += 1
+                return None
+            self.last_http_status = response.status_code
+            if (
+                response.status_code == 400
+                and attempt == 0
+                and not compat
+                and _names_parameter(response)
+            ):
+                compat = True
+                continue
+            if response.status_code == 200 and compat:
+                _COMPAT_PROFILE.add(model)
+            return response
+        return None  # unreachable: the second attempt always returns
+
     def stream_complete(self, messages: list[dict[str, str]], *, max_tokens: int) -> Iterator[str]:
         """Streamed JSON-mode completion (OpenAI-compatible SSE).
 
@@ -192,14 +277,7 @@ class OpenAICompatibleModel(ChatModel):
             raise ProviderError("Provider unavailable for this turn.")
         self.last_cost_usd = None
         self.last_http_status = None
-        body: dict[str, object] = {
-            "messages": messages,
-            "temperature": self.temperature,
-            "max_tokens": max_tokens,
-            "response_format": {"type": "json_object"},
-            "stream": True,
-            "stream_options": {"include_usage": True},
-        }
+        started = time.monotonic()
         with httpx.Client(
             base_url=self.base_url,
             headers={"Authorization": f"Bearer {self._api_key}"},
@@ -208,36 +286,73 @@ class OpenAICompatibleModel(ChatModel):
             follow_redirects=False,
         ) as client:
             for model in [self.model, *self.fallback_models[:1]]:
-                body["model"] = model
-                self.requests_used += 1
-                yielded = False
-                try:
-                    with client.stream("POST", "chat/completions", json=body) as response:
-                        self.last_http_status = response.status_code
-                        if self._blocks(response.status_code):
-                            self.blocked = True
-                            raise ProviderError("Provider unavailable for this turn.")
-                        if response.status_code != 200:
-                            continue
-                        for line in response.iter_lines():
-                            fragment = self._stream_line(line)
-                            if fragment is None:
-                                continue
-                            yielded = True
-                            self.model_used = model
-                            yield fragment
-                        if yielded:
-                            return
-                        self.ambiguous_attempts += 1
-                        continue
-                except (httpx.ConnectError, httpx.ConnectTimeout):
-                    continue
-                except httpx.HTTPError as error:
-                    self.ambiguous_attempts += 1
-                    if yielded:
-                        raise ProviderError("The stream was interrupted.") from error
-                    continue
+                produced = yield from self._stream_one(client, model, messages, max_tokens, started)
+                if produced:
+                    return
         raise ProviderError("All configured models failed.")
+
+    def _stream_one(
+        self,
+        client: httpx.Client,
+        model: str,
+        messages: list[dict[str, str]],
+        max_tokens: int,
+        started: float,
+    ) -> Generator[str, None, bool]:
+        """Stream one model; the return value says whether it produced text
+        (True: done) or the next model should be tried (False). Same one-shot
+        compat retry as ``_post``; a 400 arrives before any text."""
+        compat = model in _COMPAT_PROFILE
+        for attempt in (0, 1):
+            body = self._body(model, messages, max_tokens, json_mode=True, compat=compat)
+            body["stream"] = True
+            body["stream_options"] = {"include_usage": True}
+            timeout = self._attempt_timeout(started)
+            if timeout is None:
+                return False
+            self.requests_used += 1
+            yielded = False
+            try:
+                with client.stream(
+                    "POST", "chat/completions", json=body, timeout=timeout
+                ) as response:
+                    self.last_http_status = response.status_code
+                    if self._blocks(response.status_code):
+                        self.blocked = True
+                        raise ProviderError("Provider unavailable for this turn.")
+                    if response.status_code == 400 and attempt == 0 and not compat:
+                        response.read()
+                        if _names_parameter(response):
+                            compat = True
+                            continue
+                    if response.status_code != 200:
+                        return False
+                    if compat:
+                        _COMPAT_PROFILE.add(model)
+                    for line in response.iter_lines():
+                        if (
+                            self.call_timeout is not None
+                            and time.monotonic() - started > self.call_timeout
+                        ):
+                            raise ProviderError("The call exceeded its time budget.")
+                        fragment = self._stream_line(line)
+                        if fragment is None:
+                            continue
+                        yielded = True
+                        self.model_used = model
+                        yield fragment
+                    if yielded:
+                        return True
+                    self.ambiguous_attempts += 1
+                    return False
+            except (httpx.ConnectError, httpx.ConnectTimeout):
+                return False
+            except httpx.HTTPError as error:
+                self.ambiguous_attempts += 1
+                if yielded:
+                    raise ProviderError("The stream was interrupted.") from error
+                return False
+        return False
 
     def _stream_line(self, line: str) -> str | None:
         """One SSE line -> a content fragment, or None (comments, usage, done)."""

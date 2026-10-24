@@ -23,8 +23,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
 from app.chat import prompts
+from app.chat.deadline import TurnBudget
 from app.chat.history import HistoryMessage, normalize_history, visitor_texts
-from app.chat.providers import ChatModel, ProviderError
+from app.chat.providers import ChatModel, OpenAICompatibleModel, ProviderError
 from app.chat.routing import route
 from app.chat.tracing import TracedModel
 from app.core.config import Settings, get_settings
@@ -34,7 +35,7 @@ from app.knowledge.language import detect_language
 from app.retrieval.gate import relevance_gate, select_evidence
 from app.retrieval.hybrid import retrieve_hybrid as retrieve
 from app.retrieval.service import RetrievalResult, RetrievedChunk
-from app.retrieval.trace import candidate_trace, document_trace
+from app.retrieval.trace import candidate_trace, document_trace, rejected_candidates
 
 MAX_TOKENS = 700
 logger = logging.getLogger(__name__)
@@ -75,7 +76,9 @@ class ChatReply:
     can_answer: bool
     needs_human: bool
     language: str
-    # "smalltalk" | "handoff" | "answer" | "busy" | "cannot_confirm"
+    # "smalltalk" | "handoff" | "answer" | "busy" | "cannot_confirm" | "invalid_output"
+    # busy = the provider failed; invalid_output = the model answered but the reply
+    # was unusable (not a provider failure, never a handoff).
     kind: str
     # Validated citations (subset of retrieved chunks, in retrieval order).
     citations: list[dict[str, str | None]] = field(default_factory=list)
@@ -107,6 +110,13 @@ def _welcome_for(bot: Bot, language: str) -> str:
 def _default_answer_language(bot: Bot) -> str:
     configured = _config_get(bot, "default_language", "en")
     return configured if configured in ("en", "ar") else "en"
+
+
+def knowledge_language(bot: Bot) -> str:
+    """The knowledge base's primary language: ``knowledge_language`` when set,
+    else ``default_language`` (which only controls the widget UI otherwise)."""
+    configured = _config_get(bot, "knowledge_language", None)
+    return configured if configured in ("en", "ar") else _default_answer_language(bot)
 
 
 def condense(
@@ -183,22 +193,29 @@ class ParsedReply:
 
 
 def _parse_reply(raw: str, evidence: list[RetrievedChunk]) -> ParsedReply | None:
-    """Strict output contract: {"answer", "can_answer", "sources"} (docs/14 §6)."""
+    return _check_reply(raw, evidence)[0]
+
+
+def _check_reply(raw: str, evidence: list[RetrievedChunk]) -> tuple[ParsedReply | None, str | None]:
+    """Strict output contract: {"answer", "can_answer", "sources"} (docs/14 §6).
+
+    Returns the parsed reply, or None plus why: ``parse_failed`` (not the JSON
+    shape, empty answer) or ``no_valid_source`` (a "yes" with no valid citation)."""
     try:
         payload = json.loads(raw)
     except ValueError:
-        return None
+        return None, "parse_failed"
     if not isinstance(payload, dict):
-        return None
+        return None, "parse_failed"
     answer = payload.get("answer")
     can_answer = payload.get("can_answer")
     sources = payload.get("sources", [])
     if not isinstance(answer, str) or not answer.strip():
-        return None
+        return None, "parse_failed"
     if not isinstance(can_answer, bool):
-        return None
+        return None, "parse_failed"
     if not isinstance(sources, list) or len(sources) > 8:
-        return None
+        return None, "parse_failed"
     valid_ids = {str(chunk.chunk_id) for chunk in evidence}
     kept: list[UUID] = []
     for value in sources:
@@ -207,9 +224,9 @@ def _parse_reply(raw: str, evidence: list[RetrievedChunk]) -> ParsedReply | None
             if chunk_id not in kept:
                 kept.append(chunk_id)
     if can_answer and not kept:
-        # A grounded "yes" without any valid citation is a fallback case.
-        return None
-    return ParsedReply(answer.strip(), can_answer, kept, len(sources))
+        # A grounded "yes" without any valid citation is unusable output.
+        return None, "no_valid_source"
+    return ParsedReply(answer.strip(), can_answer, kept, len(sources)), None
 
 
 def reconcile_refusal(
@@ -233,6 +250,47 @@ def reconcile_refusal(
         used_fallback=used_fallback,
         trace=trace,
     )
+
+
+def invalid_output_reply(
+    bot: Bot,
+    *,
+    language: str,
+    reason: str,
+    condensed: str | None,
+    used_fallback: bool,
+    trace: dict[str, object],
+) -> ChatReply:
+    """The model answered but the reply was unusable: canned cannot_confirm text,
+    no citations, a human is needed. Not a provider failure (no busy text, no
+    handoff, no provider_error); ``reason`` goes to the staff trace."""
+    trace["invalid_output_reason"] = reason
+    return ChatReply(
+        answer=prompts.canned("cannot_confirm", language, support_contact=_support_contact(bot)),
+        can_answer=False,
+        needs_human=True,
+        language=language,
+        kind="invalid_output",
+        condensed_question=condensed,
+        used_fallback=used_fallback,
+        trace=trace,
+    )
+
+
+def _set_call_timeout(model: ChatModel, seconds: float) -> None:
+    """Cap the next provider call at ``seconds`` (the turn budget, #84)."""
+    current: ChatModel | None = model
+    while current is not None:
+        if isinstance(current, OpenAICompatibleModel):
+            current.call_timeout = seconds
+            return
+        current = vars(current).get("inner")
+
+
+def _skip_step(trace: dict[str, object], step: str) -> None:
+    skipped = trace.setdefault("skipped_steps", [])
+    if isinstance(skipped, list):
+        skipped.append(step)  # not enough turn budget left for an optional step
 
 
 def _provider_client(model: ChatModel) -> ChatModel:
@@ -273,6 +331,7 @@ def chat_answer(
     post_check: Callable[[str, list[RetrievedChunk]], bool] | None = None,
 ) -> ChatReply:
     settings = settings or get_settings()
+    budget = TurnBudget.start(settings)
     trace: dict[str, object] = {
         "retrieval_mode": "not_run",
         "gate": "not_run",
@@ -290,6 +349,17 @@ def chat_answer(
         "model_source_count": 0,
         "kept_source_count": 0,
         "reconciled": False,
+        "skipped_steps": [],
+        # Why-this-answer facts for staff (no prompt text, no raw model output).
+        "revision_id": str(bot.published_revision_id) if bot.published_revision_id else None,
+        "tier": getattr(bot, "tier", None),
+        "generation_provider": getattr(bot, "generation_provider", None),
+        "applied_language": None,
+        "retrieval_query": None,
+        "fallback_query": None,
+        "rewrite_text": None,
+        "handoff_reason": None,
+        "rejected_candidates": [],
     }
     model = TracedModel(model, trace)
     history_turns = normalize_history(history)
@@ -334,10 +404,15 @@ def chat_answer(
             .where(Tenant.id == tenant_id, Bot.id == bot.id)
         )
         if plan in settings.chat_rewrite_plans:
-            condensed = condense(
-                model, history=history_visitor, question=question, language=language
-            )
+            if budget.optional_allowed():
+                _set_call_timeout(model, budget.aux_timeout())
+                condensed = condense(
+                    model, history=history_visitor, question=question, language=language
+                )
+            else:
+                _skip_step(trace, "rewrite")
     trace["rewrite_used"] = condensed is not None
+    trace["rewrite_text"] = condensed
 
     # 3) Retrieval on the condensed (or raw) question.
     revision_id = bot.published_revision_id
@@ -346,6 +421,14 @@ def chat_answer(
         always_include = []
     retrieval: RetrievalResult | None = None
     evidence: list[RetrievedChunk] = []
+
+    def translate_within_budget(raw: str, target: str) -> str | None:
+        if not budget.optional_allowed():
+            _skip_step(trace, "translation")
+            return None
+        _set_call_timeout(model, budget.aux_timeout())
+        return translate_query(model, question=raw, target_language=target)
+
     if revision_id is not None:
         retrieval = retrieve(
             db,
@@ -354,15 +437,14 @@ def chat_answer(
             revision_id=revision_id,
             question=condensed or question,
             question_language=language,
-            bot_primary_language=_default_answer_language(bot),
+            bot_primary_language=knowledge_language(bot),
             settings=settings,
             always_include_document_ids={str(value) for value in always_include},
             channel=str(getattr(model, "channel", "website")),
             # Cross-script bridge (P4-00): translate with ONE model call only
             # when the language pass is empty and the languages differ.
-            translate_query=lambda raw, target: translate_query(
-                model, question=raw, target_language=target
-            ),
+            translate_query=translate_within_budget,
+            embed_timeout=budget.embed_timeout(),
         )
         decision = relevance_gate(retrieval, settings)
         evidence = select_evidence(decision, settings)
@@ -377,6 +459,9 @@ def chat_answer(
                 else None
             ),
             gate="passed" if evidence else "refused",
+            applied_language=retrieval.applied_language,
+            retrieval_query=condensed or question,
+            fallback_query=retrieval.fallback_query,
             vector_floor=decision.vector_floor,
             fts_minimum=decision.fts_minimum,
             chunks=candidate_trace(retrieval, decision, evidence),
@@ -394,6 +479,8 @@ def chat_answer(
 
     if not evidence:
         trace["gate"] = "refused"
+        if retrieval is not None:
+            trace["rejected_candidates"] = rejected_candidates(retrieval, decision)
         contact = _support_contact(bot)
         return ChatReply(
             answer=prompts.canned("cannot_confirm", language, support_contact=contact),
@@ -452,9 +539,11 @@ def chat_answer(
 
     # 5) Model call + strict validation; every failure becomes a canned turn.
     contact = _support_contact(bot)
+    invalid_reason: str | None = None
     try:
+        _set_call_timeout(model, budget.generation_timeout())
         raw = model.complete(messages, json_mode=True, max_tokens=settings.chat_max_tokens)
-        parsed = _parse_reply(raw, evidence)
+        parsed, invalid_reason = _check_reply(raw, evidence)
         trace["parsed_ok"] = parsed is not None
         if parsed is not None:
             trace["model_can_answer"] = parsed.can_answer
@@ -463,7 +552,7 @@ def chat_answer(
             accepted = post_check(parsed.answer, evidence)
             trace["post_check"] = "passed" if accepted else "rejected"
             if not accepted:
-                parsed = None
+                parsed, invalid_reason = None, "post_check_rejected"
     except ProviderError:
         parsed = None
         # Staff-visible failure detail (Playground trace): status + model name
@@ -482,6 +571,15 @@ def chat_answer(
             detail["model"],
             status,
             getattr(bot, "tier", None),
+        )
+    if parsed is None and invalid_reason is not None:
+        return invalid_output_reply(
+            bot,
+            language=language,
+            reason=invalid_reason,
+            condensed=condensed,
+            used_fallback=bool(retrieval and retrieval.used_fallback),
+            trace=trace,
         )
     if parsed is None:
         return ChatReply(

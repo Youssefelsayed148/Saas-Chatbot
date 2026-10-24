@@ -8,6 +8,8 @@ over a materialized, already-filtered relation, never Python post-filtering.
 import json
 import logging
 import math
+import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from uuid import UUID
@@ -31,6 +33,49 @@ from app.retrieval.service import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Query-embedding circuit breaker (#84): after this many failures (errors or
+# timeouts) inside the window, the vector leg is skipped for one window.
+# In-process, keyed by embedding identity; a success clears the count.
+EMBED_BREAKER_FAILURES = 3
+EMBED_BREAKER_WINDOW_SECONDS = 60.0
+_clock = time.monotonic
+_breaker_lock = threading.Lock()
+_embed_failures: dict[str, list[float]] = {}
+_embed_suspended_until: dict[str, float] = {}
+
+
+def reset_embed_breaker() -> None:
+    with _breaker_lock:
+        _embed_failures.clear()
+        _embed_suspended_until.clear()
+
+
+def _vector_leg_suspended(identity: str) -> bool:
+    with _breaker_lock:
+        return _embed_suspended_until.get(identity, 0.0) > _clock()
+
+
+def _record_embed_failure(identity: str) -> None:
+    now = _clock()
+    with _breaker_lock:
+        recent = [
+            at
+            for at in _embed_failures.get(identity, [])
+            if now - at < EMBED_BREAKER_WINDOW_SECONDS
+        ]
+        recent.append(now)
+        if len(recent) >= EMBED_BREAKER_FAILURES:
+            _embed_suspended_until[identity] = now + EMBED_BREAKER_WINDOW_SECONDS
+            recent = []
+        _embed_failures[identity] = recent
+
+
+def _record_embed_success(identity: str) -> None:
+    with _breaker_lock:
+        _embed_failures.pop(identity, None)
+
+
 VECTOR_COLUMNS = """
     c.id AS chunk_id, c.document_id, c.title, c.heading, c.text AS chunk_text,
     c.language, c.priority, c.ordinal, d.source_url, d.page_ref,
@@ -119,14 +164,26 @@ def fuse(
             else:
                 item.fts_match = chunk.fts_match
     # Equal fused scores are common (rank 1 in one list vs rank 1 in the other):
-    # decide by the stronger signals, never by the random chunk id alone.
+    # decide by the stronger signals, then by what the content is called (document
+    # title, page, ordinal), so a re-seeded corpus ranks the same. The chunk id
+    # only separates chunks that are identical in all of those.
     return sorted(by_id.values(), key=_fusion_order)[:k]
 
 
-def _fusion_order(chunk: RetrievedChunk) -> tuple[float, float, float, int, str]:
+def _fusion_order(
+    chunk: RetrievedChunk,
+) -> tuple[float, float, float, str, str, int, str]:
     sim = chunk.vector_similarity
     cosine = sim if sim is not None and math.isfinite(sim) else -2.0
-    return (-chunk.rrf_score, -cosine, -chunk.rank, chunk.ordinal, str(chunk.chunk_id))
+    return (
+        -chunk.rrf_score,
+        -cosine,
+        -chunk.rank,
+        chunk.title,
+        chunk.page_ref,
+        chunk.ordinal,
+        str(chunk.chunk_id),
+    )
 
 
 def _active_backfill(db: OrmSession, tenant_id: UUID, bot_id: UUID) -> bool:
@@ -159,6 +216,7 @@ def retrieve_hybrid(
     translate_query: TranslateQuery | None = None,
     mode_override: str | None = None,
     channel: str = "website",
+    embed_timeout: float | None = None,
 ) -> RetrievalResult:
     settings = settings or get_settings()
     bot = db.scalar(
@@ -203,6 +261,13 @@ def retrieve_hybrid(
 
     identity = bot.active_embedding_model
     assert identity is not None
+    if _vector_leg_suspended(identity):
+        result = keyword()
+        result.degradation_reason = "embedding_suspended_after_failures"
+        logger.warning(
+            "rag.fts_only reason=embedding_suspended tenant=%s bot=%s", tenant_id, bot_id
+        )
+        return result
     bind = db.get_bind()
     engine = bind if isinstance(bind, Engine) else bind.engine
 
@@ -231,11 +296,22 @@ def retrieve_hybrid(
             )
         return found, batch
 
-    with ThreadPoolExecutor(max_workers=1, thread_name_prefix="rag-vector") as executor:
+    # No ``with``: leaving the block must never wait for a stalled embed thread.
+    executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="rag-vector")
+    submitted = _clock()
+    try:
         future = executor.submit(semantic)
         result = keyword()
+        wait = None if embed_timeout is None else max(0.0, embed_timeout - (_clock() - submitted))
         try:
-            vectors, batch = future.result()
+            vectors, batch = future.result(timeout=wait)
+        except TimeoutError:
+            _record_embed_failure(identity)
+            result.degradation_reason = "embedding_timeout"
+            logger.warning(
+                "rag.fts_only reason=embedding_timeout tenant=%s bot=%s", tenant_id, bot_id
+            )
+            return result
         except ApiError as error:
             if error.code != "QUOTA_EXCEEDED":
                 raise
@@ -246,7 +322,9 @@ def retrieve_hybrid(
                 bot_id,
             )
             return result
-        except (EmbeddingError, SQLAlchemyError):
+        except (EmbeddingError, SQLAlchemyError) as error:
+            if isinstance(error, EmbeddingError):
+                _record_embed_failure(identity)
             result.degradation_reason = "embedding_or_vector_failure"
             logger.warning(
                 "rag.fts_only reason=embedding_or_vector_failure tenant=%s bot=%s",
@@ -254,6 +332,9 @@ def retrieve_hybrid(
                 bot_id,
             )
             return result
+    finally:
+        executor.shutdown(wait=False, cancel_futures=True)
+    _record_embed_success(identity)
     # A concurrent backfill may start after the first readiness check. Never use
     # its partial/new model index with the previously captured query identity.
     bot = db.scalar(

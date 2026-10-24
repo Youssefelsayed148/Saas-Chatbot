@@ -83,6 +83,7 @@ def answer(
     history: list[str] | None = None,
     config: dict[str, object] | None = None,
     tier: str | None = None,
+    post_check: Any = None,
 ) -> Any:
     users = chat_corpus["users_a"]
     bot = Bot(
@@ -104,6 +105,7 @@ def answer(
         history=history,
         model=model,
         settings=chat_corpus["settings"],
+        post_check=post_check,
     )
 
 
@@ -186,7 +188,11 @@ def test_history_is_condensed_via_short_model_call(
     assert model.calls[1][1] is True
 
 
-def test_condensation_failure_ends_busy(app: Any, db: OrmSession, corpus: dict[str, Any]) -> None:
+def test_condensation_failure_is_skipped_then_generation_failure_is_busy(
+    app: Any, db: OrmSession, corpus: dict[str, Any]
+) -> None:
+    """The optional rewrite swallows its own provider failure (raw question is
+    used); the busy reply comes from the generation call that fails after it."""
     reply = answer(
         db,
         corpus,
@@ -195,7 +201,13 @@ def test_condensation_failure_ends_busy(app: Any, db: OrmSession, corpus: dict[s
         history=["What are your opening hours?"],
     )
     assert reply.kind == "busy"
-    assert reply.condensed_question is None
+    assert reply.condensed_question is None and reply.trace["rewrite_used"] is False
+    events = reply.trace["events"]
+    assert [(event["kind"], event["status"]) for event in events] == [
+        ("rewrite", "failed"),
+        ("generation", "failed"),
+    ]
+    assert "provider_error" in reply.trace
 
 
 def test_condense_helper_rules() -> None:
@@ -225,8 +237,13 @@ def test_grounded_yes_without_valid_citation_is_fallback(
 ) -> None:
     model = FakeChatModel(responses=[json_reply("Open until 17:00.", True, ["not-a-chunk"])])
     reply = answer(db, corpus, model, "What are your opening hours?")
-    assert reply.kind == "busy"  # can_answer=true with no valid citation ⇒ fallback
-    assert "briefly unavailable" in reply.answer or "عذراً" in reply.answer
+    assert reply.kind == "invalid_output"  # can_answer=true with no valid citation
+    assert reply.trace["invalid_output_reason"] == "no_valid_source"
+    assert reply.answer == prompts.canned(
+        "cannot_confirm", "en", support_contact="support@acme.example.com / +966500000000"
+    )
+    assert reply.citations == [] and reply.needs_human and not reply.can_answer
+    assert "provider_error" not in reply.trace
 
 
 def test_invalid_citations_are_filtered(app: Any, db: OrmSession, corpus: dict[str, Any]) -> None:
@@ -259,11 +276,35 @@ def test_can_answer_false_is_reconciled_to_the_canned_refusal(
     )
 
 
-def test_invalid_json_becomes_busy(app: Any, db: OrmSession, corpus: dict[str, Any]) -> None:
+def test_invalid_json_is_invalid_output_not_busy(
+    app: Any, db: OrmSession, corpus: dict[str, Any]
+) -> None:
     model = FakeChatModel(responses=["definitely not json"])
     reply = answer(db, corpus, model, "What are your opening hours?")
-    assert reply.kind == "busy"
-    assert reply.needs_human is True
+    assert reply.kind == "invalid_output"
+    assert reply.trace["invalid_output_reason"] == "parse_failed"
+    assert reply.needs_human is True and reply.citations == []
+    assert "provider_error" not in reply.trace
+
+
+def test_empty_answer_is_invalid_output(app: Any, db: OrmSession, corpus: dict[str, Any]) -> None:
+    model = FakeChatModel(responses=[json_reply("   ", True, ["x"])])
+    reply = answer(db, corpus, model, "What are your opening hours?")
+    assert reply.kind == "invalid_output"
+    assert reply.trace["invalid_output_reason"] == "parse_failed"
+
+
+def test_post_check_rejection_is_invalid_output(
+    app: Any, db: OrmSession, corpus: dict[str, Any]
+) -> None:
+    model = EchoFirstEvidenceId("Open until 17:00.", True)
+    reply = answer(
+        db, corpus, model, "What are your opening hours?", post_check=lambda text, chunks: False
+    )
+    assert reply.kind == "invalid_output"
+    assert reply.trace["post_check"] == "rejected"
+    assert reply.trace["invalid_output_reason"] == "post_check_rejected"
+    assert reply.citations == [] and reply.needs_human
 
 
 def test_provider_failure_becomes_busy_not_trace(
@@ -286,7 +327,8 @@ def test_provider_failure_is_visible_in_trace_and_logs(
             db,
             corpus,
             FakeChatModel(responses=[], raises=True),
-            f"What are your hours? {marker}",
+            "What are your opening hours?",
+            history=[f"Earlier question {marker}"],  # in the prompt, never in logs
             tier="standard",
         )
     assert reply.kind == "busy"
