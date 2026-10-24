@@ -13,6 +13,7 @@ html,body{height:100%}
 .widget-frame .widget-thread{flex:1;overflow-y:auto;padding:1.1rem;display:flex;flex-direction:column;gap:.8rem;min-height:0;inline-size:100%;max-inline-size:none;margin:0}
 .widget-turns{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.85rem}
 .widget-bubble{background:var(--w-bot-bubble,var(--surface-raised));color:var(--w-text,var(--text));border:1px solid var(--border);border-radius:var(--radius) var(--radius) var(--radius) 4px;padding:.75rem .9rem;max-inline-size:88%;align-self:flex-start;overflow-wrap:anywhere;line-height:1.65}
+.widget-bubble:not(.visitor){white-space:pre-wrap;overflow-wrap:anywhere}
 .widget-bubble.visitor{background:var(--w-user-bubble,var(--widget-brand));color:var(--w-user-bubble-ink,var(--widget-ink,var(--ink-light)));align-self:flex-end;border-color:transparent;border-radius:var(--radius) var(--radius) 4px var(--radius)}
 [dir=rtl] .widget-bubble{border-radius:var(--radius) var(--radius) 4px var(--radius)}[dir=rtl] .widget-bubble.visitor{border-radius:var(--radius) var(--radius) var(--radius) 4px}
 .widget-citations{list-style:none;margin:.6rem 0 0;padding:0;display:flex;flex-wrap:wrap;gap:.3rem}.widget-source-chip{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.2rem .5rem;font-size:.7rem}.widget-source-chip a{color:var(--accent);text-decoration:none}
