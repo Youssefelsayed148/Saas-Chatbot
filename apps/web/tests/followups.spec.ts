@@ -66,8 +66,8 @@ test("editor schedules a website follow-up from a contact profile and views meas
   ).toBeVisible();
 
   await page.goto(`/app/${tenantId}/analytics`);
+  await expect(page.getByRole("heading", { name: "Insights" })).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "Handoff analytics" }),
-  ).toBeVisible();
-  await expect(page.getByText("Total: 1")).toBeVisible();
+    page.locator(".ui-card", { hasText: "Conversation outcomes" }),
+  ).toContainText(/Conversations\s*1/);
 });

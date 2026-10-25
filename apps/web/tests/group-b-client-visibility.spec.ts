@@ -238,11 +238,11 @@ for (const role of ["admin", "editor", "viewer", "staff"] as const) {
     await expect(plan).toContainText("Maximum file size (MB)");
     await expect(plan.locator("input, select, button, a")).toHaveCount(0);
     await expect(
-      plan.getByRole("progressbar", {
+      plan.getByRole("meter", {
         name: "Messages this month",
         exact: true,
       }),
-    ).toHaveAttribute("value", "80");
+    ).toHaveAttribute("aria-valuenow", "80");
     await checkText();
     const nav = page
       .locator("aside")

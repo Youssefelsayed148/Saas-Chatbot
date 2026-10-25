@@ -5,42 +5,35 @@ import { useEffect, useState } from "react";
 
 import * as api from "@/lib/api";
 import BotWorkspaceNav from "@/lib/bot-workspace-nav";
+import {
+  BarList,
+  TrendChart,
+  formatCount,
+  formatDay,
+  formatMsAsSeconds,
+  formatPercent,
+  hasChartData,
+} from "@/lib/charts";
 import { roleSatisfies, useSession } from "@/lib/session";
 import {
   Button,
   Card,
   DataTable,
-  Empty,
   Field,
   LinkButton,
   Loading,
   Notice,
   PageHeader,
+  StatCard,
 } from "@/lib/ui";
 import { Icon } from "@/lib/icons";
 
 import "@/app/insights-screen.css";
+import "@/app/bot-overview-screen.css";
 
 /** Overview (P4-05, docs/14 §9 / docs/10): MEASURED numbers only — usage
  * events and real conversations; playground threads never count. Date range
  * + CSV exports. */
-
-type Summary = {
-  messages: number;
-  conversations: number;
-  widget_opens: number;
-  engagement_rate: number;
-  avg_messages_per_conversation: number;
-  message_distribution: Record<string, number>;
-  fallback_rate: number;
-  cannot_answer: number;
-  needs_human: number;
-  handoffs: number;
-  avg_response_ms: number;
-  leads: number;
-  thumbs_up: number;
-  thumbs_down: number;
-};
 
 function isoDaysAgo(days: number): string {
   const time = new Date();
@@ -57,7 +50,9 @@ export default function OverviewPage() {
 
   const [from, setFrom] = useState(isoDaysAgo(29));
   const [to, setTo] = useState(isoDaysAgo(0));
-  const [summary, setSummary] = useState<Summary | null>(null);
+  const [summary, setSummary] = useState<api.AnalyticsSummaryResponse | null>(
+    null,
+  );
   const [volume, setVolume] = useState<api.AnalyticsVolumeResponse | null>(
     null,
   );
@@ -114,8 +109,23 @@ export default function OverviewPage() {
 
   const canAdjust = roleSatisfies(role, "viewer");
 
+  const volumeDays = volume?.days ?? [];
+  const showVolume = hasChartData(
+    volumeDays.flatMap((day) => [day.visitor, day.assistant]),
+  );
+  const distribution = Object.entries(summary?.message_distribution ?? {});
+  const showDistribution = hasChartData(distribution.map(([, count]) => count));
+  const topRows = topQuestions?.questions ?? [];
+  const unansweredRows = unanswered?.questions ?? [];
+  const leadTrend = leads?.trend ?? [];
+  const leadContacts = leads?.contacts ?? [];
+  const showLeadTrend = hasChartData(leadTrend.map((row) => row.leads));
+
+  const thumbsUp = summary?.thumbs_up ?? 0;
+  const thumbsDown = summary?.thumbs_down ?? 0;
+
   return (
-    <main className="insights-page">
+    <main className="insights-page overview-page">
       <BotWorkspaceNav tenantId={tenantId} botId={botId} />
       <PageHeader
         title={<span data-testid="overview-title">Overview</span>}
@@ -124,7 +134,7 @@ export default function OverviewPage() {
       <form
         aria-label="Date range"
         data-testid="overview-range"
-        className="insights-range"
+        className="insights-range overview-range"
         onSubmit={(event) => {
           event.preventDefault();
           setApplied({ from, to });
@@ -186,213 +196,203 @@ export default function OverviewPage() {
       {loading && <Loading label="Loading measured numbers…" />}
       {!loading && summary && (
         <>
-          <Card
-            title="Summary"
+          <div
+            className="overview-kpis"
             aria-label="Summary"
+            role="group"
             data-testid="overview-summary"
           >
-            <ul className="insights-stats">
-              <li data-test="messages">
-                Messages:{" "}
-                <span className="stat-value insights-num" dir="ltr">
-                  {summary.messages}
-                </span>
-              </li>
-              <li data-test="conversations">
-                Conversations:{" "}
-                <span className="stat-value insights-num" dir="ltr">
-                  {summary.conversations}
-                </span>
-              </li>
-              <li data-test="widget_opens">
-                Widget opens:{" "}
-                <span className="stat-value insights-num" dir="ltr">
-                  {summary.widget_opens}
-                </span>
-              </li>
-              <li data-test="engagement">
-                Engagement rate:{" "}
-                <span className="stat-value insights-num" dir="ltr">
-                  {summary.engagement_rate}
-                </span>
-              </li>
-              <li data-test="avg_messages">
-                Avg messages/conversation:{" "}
-                <span className="stat-value insights-num" dir="ltr">
-                  {summary.avg_messages_per_conversation}
-                </span>
-              </li>
-              <li data-test="fallback">
-                Unanswered rate:{" "}
-                <span className="stat-value insights-num" dir="ltr">
-                  {summary.fallback_rate}
-                </span>
-              </li>
-              <li data-test="cannot_answer">
-                Cannot answer:{" "}
-                <span className="stat-value insights-num" dir="ltr">
-                  {summary.cannot_answer}
-                </span>
-              </li>
-              <li data-test="needs_human">
-                Needs human:{" "}
-                <span className="stat-value insights-num" dir="ltr">
-                  {summary.needs_human}
-                </span>
-              </li>
-              <li data-test="avg_response">
-                Avg response:{" "}
-                <span className="stat-value insights-num" dir="ltr">
-                  {summary.avg_response_ms} ms
-                </span>
-              </li>
-              <li data-test="leads_summary">
-                Leads:{" "}
-                <span className="stat-value insights-num" dir="ltr">
-                  {summary.leads}
-                </span>
-              </li>
-              <li data-test="thumbs">
-                <span className="stat-value insights-num" dir="ltr">
-                  <Icon name="thumbs-up" label="Thumbs up" />{" "}
-                  {summary.thumbs_up} ·{" "}
-                  <Icon name="thumbs-down" label="Thumbs down" />{" "}
-                  {summary.thumbs_down}
-                </span>
-              </li>
-              <li data-test="distribution" className="stat-wide">
-                Distribution:{" "}
-                <span className="stat-value insights-num" dir="ltr">
-                  {Object.entries(summary.message_distribution)
-                    .map(([bucket, count]) => `${bucket}: ${count}`)
-                    .join(" · ")}
-                </span>
-              </li>
-            </ul>
-          </Card>
-
-          <Card
-            title="Volume per day"
-            aria-label="Volume per day"
-            data-testid="volume"
-          >
-            {(volume?.days.length ?? 0) === 0 ? (
-              <Empty>No messages in this range.</Empty>
-            ) : (
-              <DataTable
-                caption="Messages per day"
-                rows={volume?.days ?? []}
-                rowKey={(day) => day.day}
-                columns={[
-                  {
-                    key: "day",
-                    header: "Day",
-                    cell: (day) => <bdi dir="ltr">{day.day}</bdi>,
-                  },
-                  {
-                    key: "visitor",
-                    header: "Visitor",
-                    className: "insights-num",
-                    cell: (day) => <bdi dir="ltr">{day.visitor}</bdi>,
-                  },
-                  {
-                    key: "assistant",
-                    header: "Assistant",
-                    className: "insights-num",
-                    cell: (day) => <bdi dir="ltr">{day.assistant}</bdi>,
-                  },
-                ]}
+            <StatCard
+              data-test="messages"
+              label="Messages"
+              value={formatCount(summary.messages ?? 0)}
+            />
+            <StatCard
+              data-test="conversations"
+              label="Conversations"
+              value={formatCount(summary.conversations ?? 0)}
+            />
+            <StatCard
+              data-test="widget_opens"
+              label="Widget opens"
+              value={formatCount(summary.widget_opens ?? 0)}
+            />
+            <StatCard
+              data-test="engagement"
+              label="Engagement rate"
+              value={formatPercent(summary.engagement_rate ?? 0)}
+            />
+            <StatCard
+              data-test="avg_messages"
+              label="Avg messages per conversation"
+              value={String(Math.round((summary.avg_messages_per_conversation ?? 0) * 10) / 10)}
+            />
+            <StatCard
+              data-test="fallback"
+              label="Unanswered rate"
+              value={formatPercent(summary.fallback_rate ?? 0)}
+            />
+            <StatCard
+              data-test="cannot_answer"
+              label="Cannot answer"
+              value={formatCount(summary.cannot_answer ?? 0)}
+            />
+            <StatCard
+              data-test="needs_human"
+              label="Needs a person"
+              value={formatCount(summary.needs_human ?? 0)}
+            />
+            <StatCard
+              data-test="avg_response"
+              label="Avg response"
+              value={formatMsAsSeconds(summary.avg_response_ms ?? 0)}
+            />
+            <StatCard
+              data-test="leads_summary"
+              label="Leads"
+              value={formatCount(summary.leads ?? 0)}
+            />
+            {(thumbsUp > 0 || thumbsDown > 0) && (
+              <StatCard
+                data-test="thumbs"
+                label="Feedback"
+                value={
+                  <span className="overview-thumbs" dir="ltr">
+                    <span>
+                      <Icon name="thumbs-up" label="Thumbs up" />{" "}
+                      {formatCount(thumbsUp)}
+                    </span>
+                    <span>
+                      <Icon name="thumbs-down" label="Thumbs down" />{" "}
+                      {formatCount(thumbsDown)}
+                    </span>
+                  </span>
+                }
               />
             )}
-          </Card>
+          </div>
 
-          <Card
-            title="Top questions"
-            aria-label="Top questions"
-            data-testid="top-questions"
-          >
-            {(topQuestions?.questions.length ?? 0) === 0 ? (
-              <Empty>No visitor questions in this range.</Empty>
-            ) : (
-              <ol className="insights-list is-ranked">
-                {(topQuestions?.questions ?? []).map((row) => (
-                  <li key={row.question}>
-                    <bdi dir="auto">{row.question}</bdi> — {row.asked}×
-                  </li>
-                ))}
-              </ol>
-            )}
-          </Card>
+          {showVolume && (
+            <Card
+              title="Volume per day"
+              aria-label="Volume per day"
+              data-testid="volume"
+            >
+              <TrendChart
+                label="Messages per day"
+                data={volumeDays}
+                xKey="day"
+                variant="area"
+                series={[
+                  { key: "visitor", label: "Visitor messages" },
+                  { key: "assistant", label: "Assistant messages" },
+                ]}
+              />
+            </Card>
+          )}
 
-          <Card
-            title="Unanswered questions"
-            aria-label="Unanswered questions"
-            data-testid="unanswered"
-          >
-            {(unanswered?.questions.length ?? 0) === 0 ? (
-              <Empty>Nothing went unanswered in this range.</Empty>
-            ) : (
-              <ul className="insights-list">
-                {(unanswered?.questions ?? []).map((row) => (
-                  <li key={row.question}>
-                    <bdi dir="auto">{row.question}</bdi> — asked {row.asked}×
-                    (last {row.last.slice(0, 10)})
-                  </li>
-                ))}
-              </ul>
+          <div className="overview-grid">
+            {showDistribution && (
+              <Card title="Reply length" aria-label="Reply length">
+                <BarList
+                  label="Replies by length"
+                  items={distribution.map(([bucket, count]) => ({
+                    key: bucket,
+                    label: bucket,
+                    value: count,
+                  }))}
+                  formatValue={formatCount}
+                />
+              </Card>
             )}
-          </Card>
 
-          <Card title="Leads trend" aria-label="Leads" data-testid="leads">
-            {(leads?.trend.length ?? 0) === 0 &&
-            (leads?.contacts.length ?? 0) === 0 ? (
-              <Empty>No leads captured in this range.</Empty>
-            ) : (
-              <>
-                <ul className="insights-trend">
-                  {(leads?.trend ?? []).map((row) => (
-                    <li key={row.day}>
-                      <bdi dir="ltr">
-                        {row.day}: {row.leads}
-                      </bdi>
-                    </li>
-                  ))}
-                </ul>
-                {(leads?.contacts.length ?? 0) > 0 && (
-                  <DataTable
-                    caption="Lead contacts"
-                    rows={leads?.contacts ?? []}
-                    rowKey={(row) => row.contact_id}
-                    columns={[
-                      {
-                        key: "name",
-                        header: "Name",
-                        cell: (row) => (
-                          <bdi dir="auto">{row.display_name || "—"}</bdi>
-                        ),
-                      },
-                      {
-                        key: "email",
-                        header: "Email",
-                        cell: (row) => <bdi dir="ltr">{row.email ?? "—"}</bdi>,
-                      },
-                      {
-                        key: "phone",
-                        header: "Phone",
-                        cell: (row) => <bdi dir="ltr">{row.phone ?? "—"}</bdi>,
-                      },
-                      {
-                        key: "conversations",
-                        header: "Conversations",
-                        className: "insights-num",
-                        cell: (row) => <bdi dir="ltr">{row.conversations}</bdi>,
-                      },
-                    ]}
-                  />
-                )}
-              </>
+            {topRows.length > 0 && (
+              <Card
+                title="Top questions"
+                aria-label="Top questions"
+                data-testid="top-questions"
+              >
+                <BarList
+                  label="Most asked questions"
+                  ranked
+                  items={topRows.map((row) => ({
+                    key: row.question,
+                    label: row.question,
+                    value: row.asked,
+                  }))}
+                  formatValue={(count) => `${formatCount(count)}×`}
+                />
+              </Card>
             )}
-          </Card>
+
+            {unansweredRows.length > 0 && (
+              <Card
+                title="Unanswered questions"
+                aria-label="Unanswered questions"
+                data-testid="unanswered"
+              >
+                <BarList
+                  label="Unanswered questions"
+                  items={unansweredRows.map((row) => ({
+                    key: row.question,
+                    label: row.question,
+                    value: row.asked,
+                    hint: row.last
+                      ? `last asked ${formatDay(row.last.slice(0, 10))}`
+                      : undefined,
+                  }))}
+                  formatValue={(count) => `${formatCount(count)}×`}
+                />
+              </Card>
+            )}
+          </div>
+
+          {(showLeadTrend || leadContacts.length > 0) && (
+            <Card title="Leads" aria-label="Leads" data-testid="leads">
+              {showLeadTrend && (
+                <TrendChart
+                  label="Leads per day"
+                  data={leadTrend}
+                  xKey="day"
+                  variant="area"
+                  height={140}
+                  series={[{ key: "leads", label: "Leads" }]}
+                />
+              )}
+              {leadContacts.length > 0 && (
+                <DataTable
+                  caption="Lead contacts"
+                  rows={leadContacts}
+                  rowKey={(row) => row.contact_id}
+                  columns={[
+                    {
+                      key: "name",
+                      header: "Name",
+                      cell: (row) => (
+                        <bdi dir="auto">{row.display_name || "—"}</bdi>
+                      ),
+                    },
+                    {
+                      key: "email",
+                      header: "Email",
+                      cell: (row) => <bdi dir="ltr">{row.email ?? "—"}</bdi>,
+                    },
+                    {
+                      key: "phone",
+                      header: "Phone",
+                      cell: (row) => <bdi dir="ltr">{row.phone ?? "—"}</bdi>,
+                    },
+                    {
+                      key: "conversations",
+                      header: "Conversations",
+                      className: "insights-num",
+                      cell: (row) => <bdi dir="ltr">{row.conversations}</bdi>,
+                    },
+                  ]}
+                />
+              )}
+            </Card>
+          )}
         </>
       )}
     </main>

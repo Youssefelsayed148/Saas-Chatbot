@@ -88,6 +88,30 @@ export interface HandoffAnalytics {
   resolved_vs_open: { resolved: number; open: number };
   sentiment_distribution: Record<string, number>;
   agent_workload: Record<string, number>;
+  /** Same-length window immediately before `from`..`to` (B3 BE-2). Optional: older mocks omit it. */
+  previous?: HandoffAnalyticsPrevious;
+}
+
+export interface HandoffAnalyticsPrevious {
+  from: string;
+  to: string;
+  total_conversations: number;
+  handoff_count: number;
+  handoff_rate: number | null;
+  average_first_human_reply_seconds: number | null;
+}
+
+/** One UTC day, zero-filled by the API (B3 BE-1). Website conversations only. */
+export interface ConversationTimeseriesDay {
+  day: string;
+  conversations: number;
+  handoffs: number;
+  resolved: number;
+}
+export interface ConversationTimeseries {
+  from: string;
+  to: string;
+  days: ConversationTimeseriesDay[];
 }
 
 const CONTACTS = (tenantId: string) => `tenants/${tenantId}/contacts`;
@@ -185,8 +209,32 @@ export function cancelFollowUp(
   });
 }
 
-export function handoffAnalytics(tenantId: string): Promise<HandoffAnalytics> {
-  return api<HandoffAnalytics>(`tenants/${tenantId}/analytics`);
+/** `from`/`to` are inclusive ISO dates (YYYY-MM-DD); both omitted = last 30 days. */
+function rangeQuery(from?: string, to?: string): string {
+  const query = new URLSearchParams();
+  if (from) query.set("from", from);
+  if (to) query.set("to", to);
+  return query.size ? `?${query.toString()}` : "";
+}
+
+export function handoffAnalytics(
+  tenantId: string,
+  from?: string,
+  to?: string,
+): Promise<HandoffAnalytics> {
+  return api<HandoffAnalytics>(
+    `tenants/${tenantId}/analytics${rangeQuery(from, to)}`,
+  );
+}
+
+export function conversationTimeseries(
+  tenantId: string,
+  from?: string,
+  to?: string,
+): Promise<ConversationTimeseries> {
+  return api<ConversationTimeseries>(
+    `tenants/${tenantId}/analytics/timeseries${rangeQuery(from, to)}`,
+  );
 }
 
 export interface Membership {
@@ -405,7 +453,10 @@ export interface TenantQuotaStatus {
   plan: string;
   usage: Record<string, number>;
   limits: Record<string, number>;
+  /** Counters at 80% or more of the limit. */
   warnings: string[];
+  /** Subset of `warnings` with used >= limit (B3 BE-7); the rest are approaching. */
+  at_limit?: string[];
   measured_tokens_this_month: number;
 }
 
@@ -510,6 +561,9 @@ export interface InboxConversation {
   id: string;
   bot_id: string;
   contact_id: string | null;
+  /** Null when the conversation has no contact yet (B3 BE-6). */
+  contact_name?: string | null;
+  created_at?: string;
   channel: string;
   mode: string;
   status: string;

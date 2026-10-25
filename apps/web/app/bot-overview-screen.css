@@ -1,0 +1,45 @@
+/* Per-assistant Overview (B4). Tokens only, logical properties. */
+
+.overview-page .overview-range {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3, 0.75rem);
+}
+
+.overview-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+  gap: var(--space-3, 0.75rem);
+  margin-block-end: var(--space-4, 1rem);
+}
+
+.overview-kpis .stat-card {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.overview-thumbs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3, 0.75rem);
+  unicode-bidi: isolate;
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  gap: var(--space-4, 1rem);
+  align-items: start;
+  margin-block-end: var(--space-4, 1rem);
+}
+
+.overview-grid > .ui-card {
+  min-inline-size: 0;
+  margin-block-end: 0;
+}
+
+.overview-page [data-testid="leads"] > * + * {
+  margin-block-start: var(--space-4, 1rem);
+}
