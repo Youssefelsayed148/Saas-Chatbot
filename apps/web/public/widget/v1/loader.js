@@ -14,7 +14,9 @@
  * Protocol (postMessage):
  *   parent → iframe  {type:"chatbot:locator", locator}
  *   iframe → parent  {type:"chatbot:ready"} — the parent answers with the locator
- *                    {type:"chatbot:size", height}
+ *                    {type:"chatbot:size", height} — informational only: the panel
+ *                    height is set by the loader's CSS (bounded, never fed back from
+ *                    the frame, which only ever reports its own current height)
  *                    {type:"chatbot:brand", colour, position, dir}
  *                    {type:"chatbot:close"} — viewport Escape inside the frame
  * Public API contract: docs/05 (config/session/messages), docs/14 §7/§11.
@@ -162,13 +164,6 @@
     button.focus();
   }
 
-  function applyFrameSize(height) {
-    if (!frame) return;
-    var max = window.innerHeight - 106; // bubble + margins
-    var px = Math.min(Math.max(height || 600, 200), Math.max(max, 200));
-    frame.style.height = px + "px";
-  }
-
   // --- message channel -------------------------------------------------------
 
   window.addEventListener("message", function (event) {
@@ -181,9 +176,6 @@
           { targetOrigin: frameBase }
         );
       }
-      applyFrameSize(600);
-    } else if (data.type === "chatbot:size") {
-      applyFrameSize(data.height);
     } else if (data.type === "chatbot:brand") {
       state.brand.colour = data.colour || state.brand.colour;
       state.brand.position = data.position || state.brand.position;
@@ -204,9 +196,11 @@
     widgetTokens +
     ".chatbot-widget-frame{position:fixed;bottom:5rem;border:0;border-radius:1rem;" +
     "box-shadow:var(--shadow);z-index:2147483000;background:var(--surface);" +
-    "overflow:hidden;width:min(23.5rem, calc(100vw - 2.5rem));}" +
+    "overflow:hidden;width:min(23.5rem, calc(100vw - 2.5rem));" +
+    "height:min(640px, calc(100vh - 7rem));height:min(640px, calc(100dvh - 7rem));}" +
     "@media (max-width: 480px)" +
-    "{.chatbot-widget-frame{bottom:0;width:calc(100vw - 1rem);border-radius:1rem 1rem 0 0;min-height:70dvh}}";
+    "{.chatbot-widget-frame{bottom:0;width:calc(100vw - 1rem);border-radius:1rem 1rem 0 0;" +
+    "height:min(640px, calc(100vh - 1rem));height:min(640px, calc(100dvh - 1rem))}}";
   document.head.appendChild(css);
   styleButton();
 })();

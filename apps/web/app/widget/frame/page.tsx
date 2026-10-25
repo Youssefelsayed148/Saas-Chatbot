@@ -1155,7 +1155,7 @@ export default function WidgetFramePage() {
       )}
       {status === "ready" && !blocked && (
         <section
-          className="widget-lead"
+          className={lead.open ? "widget-lead open" : "widget-lead"}
           aria-label={localized("leadTitle", lang)}
         >
           {!lead.open ? (
