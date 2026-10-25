@@ -1,0 +1,170 @@
+You are a senior engineer in the ManyOsirisChat repo (FastAPI + SQLAlchemy + Alembic + Celery/Redis, Next.js dashboard, Postgres). Implement the Many side of the channel contract (v1 plus the v1.1 delta, both appended below the line "CONTRACT"): a per-channel "delegated mode" where an external SaaS generates the AI replies and Many keeps everything Meta. The appended contract is the source of truth for payloads, signing, retries and error codes. If the contract is unclear or contradicts the code, STOP and ask.
+
+RULES
+1. First commit on the branch: add a `CLAUDE.md` with these rules (the repo has none).
+2. Branch `feature/saas-delegation` cut from `main`. First check whether `fix/facebook-instagram-app-separation` is already merged into `main` (`git merge-base --is-ancestor`); if it is not, STOP and ask which base to use. Small commits, one concern each. You MAY push only `feature/saas-delegation` to origin so the owner can review; never push `main`, never force-push, no tags, no merges, no PR merge.
+3. Never open, print, copy or commit `popeye access token.txt` (tracked in the repo root) or any `.env`/token/secret. Tell the owner in your report that it must be rotated and purged from git history; do not do that yourself.
+4. Tests: `backend/tests/conftest.py` calls `Base.metadata.drop_all()` at the end of the session against `TEST_DATABASE_URL or DATABASE_URL`. NEVER let it resolve to anything but a disposable local Postgres you start in the session. Set `TEST_DATABASE_URL` and `APP_ENV=test` explicitly for every test command, and confirm the URL before running. If no disposable Postgres can be started in the cloud environment, STOP and report; do not point tests anywhere else. No real Meta or OpenAI calls. No docker.
+5. Instagram is live and used by the owner. Do not refactor the existing handlers. Add one early delegation branch per platform that calls a shared helper. Any change to Instagram dispatch/send code beyond that branch requires the owner's confirmation: STOP and ask.
+6. Everything is OFF by default: `saas_delegation_enabled=false`. With delegation off every code path must behave exactly as today (assert this in tests).
+7. Never fabricate results. Report exact commands and outcomes. Migrations are reversible and chained on the real head (`alembic heads`; the latest seen was `0022_whatsapp_opt_in`, and note there is no 0016).
+
+WHAT STAYS UNCHANGED: Meta tokens, OAuth/connect flows, webhook verification and storage, campaigns, automations, comment-to-DM, follow gates, templates, WhatsApp outreach, consent/window services, dashboards, and all existing routes.
+
+FINDINGS ABOUT THE CURRENT CODE (verified on `main` 5cc60c7; re-verify in M-00)
+- `workers/tasks.py` has three separate inbound-message paths: Instagram (inside `process_webhook_event`, the `for msg_evt in message_events` loop, then `_dispatch_ai_turn`), WhatsApp (`_process_whatsapp_message_events` then `_dispatch_whatsapp_ai_turn`) and Facebook (`_process_facebook_message_events` then `_dispatch_facebook_ai_turn`). Each turn task (`process_ai_conversation_turn`, `process_whatsapp_ai_conversation_turn`, `process_facebook_ai_conversation_turn`) calls `ai_service.generate_reply` (gpt-4o-mini).
+- The dispatch functions are reached only AFTER several gates that `continue`: account `ai_enabled`, `ai_cold_dm_enabled`, `campaign.ai_enabled`, `lead_source`, WhatsApp `account.status != connected`, and WhatsApp consent commands. The conversation row is created inside `_dispatch_*`. So the delegation branch must go right after dedupe + account/lead/identity resolution and BEFORE those AI gates, and must create or resolve the conversation first (contract A5, A6).
+- Only WhatsApp has delivery statuses (`process_whatsapp_status_events`). Instagram/Facebook only know the Send API result. `classify_meta_error` is keyword/English based and has no window concept (Messenger window errors, code 10, currently classify as `permission_error`); build a code+subcode mapping per delta A3, do not rely on message text.
+- Existing send paths to reuse: `MetaMessagingClient.send_direct_message` (Instagram), the WhatsApp Cloud client `send_text_message`, and the Facebook `send_direct_message`. WhatsApp 24 h window helpers: `services/whatsapp_window_service.py`. Secret handling: `utils/crypto.py` (Fernet via `TOKEN_ENCRYPTION_KEY`; reuse it for delegation secrets). Beat schedule: `workers/beat_schedule.py` and `workers/whatsapp_beat_schedule.py`. Take Over / Resume Bot: `api/routes_conversations.py` and `services/conversation_service.py` (`hand_off`, `resume_bot`).
+
+TICKETS (one per turn; after each report in five lines and wait for "continue")
+M-00 Read-only: confirm branch/base, map the exact hook points above (file and line), the status-webhook paths, send paths, secret handling, beat, the dashboard conversation page (`dashboard/app/(dashboard)/conversations/page.tsx`) and account settings pages; start the disposable DB; run the baseline tests; list files you will change; list any contract question. Add CLAUDE.md. No feature code.
+M-01 Delegation config: columns on Instagram account, WhatsApp account and Facebook page (`saas_delegation_enabled` default false, `saas_connection_id`, `saas_base_url` validated https in production and no private/loopback hosts, encrypted current and previous secret + previous expiry), migration, schemas, API endpoints (admin role only), dashboard settings section per channel (enable, connection id, base URL, secret input never echoed back, last forward status, queue depth, degraded badge). Disabling returns to today's behaviour immediately and drops queued, unsent forwards (A13).
+M-02 Signing + forwarder: HMAC module (contract section 3; constant-time compare on bytes), `forward_event` Celery task (signed POST to `{saas_base_url}/api/channels/manyosiris/events`, retry on network error/5xx/429 honoring Retry-After, exponential backoff with jitter, same `event_id`, up to 24 h, no retry on other 4xx, per-conversation ordering per A7, degraded health while retrying, never any AI fallback), event ids stable and unique, payload builder for `message.received` (A5, A6, A11). Then the delegation branch for WhatsApp and Facebook. Instagram branch LAST and only after the owner confirms the diff (rule 5).
+M-03 `POST /api/saas/messages`: signed (current or unexpired previous secret), 5 min skew, generic 401, 64 KB cap, 202 `{"id": ...}`, dedupe on `message_id` for >= 7 days, refuse (generic error, no oracle) when the channel is not delegated or not linked to the given `connection_id`; sends through the existing send paths; WhatsApp window/template enforcement via the existing services; `message_too_long` instead of silent truncation (A4); records the outbound message with the SaaS `message_id`.
+M-04 `message.status` callbacks: `sent`/`failed` for all platforms (A2), delivered/read for WhatsApp via the existing status handler (and Messenger/Instagram receipts only if they are already parsed; otherwise report it, do not add new Meta subscriptions), error mapping per A3 with unit tests built from recorded error bodies, forwarded with retry.
+M-05 Health: `channel.status` events on every transition (derive from existing token/webhook-health services, no new Meta calls), heartbeat via beat at most every 6 h, signed `GET /api/saas/connections/{connection_id}/health` (empty body signs `timestamp + "."`), mandatory per A9.
+M-06 Take Over / Resume Bot guards: on a delegated channel return 409 with a stable code and show "Managed in the SaaS inbox" in the dashboard; Many AI gates (turn limit, daily cap, campaign ai_enabled) must not apply on delegated channels.
+M-07 Contract tests against a FAKE SaaS server (verifies signatures, records requests, configurable responses): delegation off = unchanged; delegation on = `ai_service` never called (assert), every genuine DM forwarded even with ai_enabled=false, automation traffic NOT forwarded (A5 list), no fallback when the SaaS is down, retry/backoff/dedupe/order, signature rejection matrix, dual-secret rotation, window_closed/template_required/recipient_unreachable/message_too_long mapping, idempotent `/api/saas/messages`, health endpoint + heartbeat, Take Over blocked, rollback (disable delegation = old behaviour). Add a README section. STOP; the owner runs staging with one test number.
+
+FIRST ACTION: M-00 only, then report.
+
+
+
+=====
+CONTRACT v1 (docs/17 of the SaaS repo)
+=====
+
+# ManyOsirisChat channel integration (ADR-002, ADR-017) - contract v1
+
+Status: contract v1, updated 2026-10-18 after the owner design session (supersedes the 2026-10-12 draft). 
+Companion documents: implementation/PHASE-06/PLAN.md (SaaS build plan), implementation/PHASE-06/MANY-AGENT-PROMPT.md (Many-side requirements and prompt), docs/19-CHATBOT-STRATEGY-AND-MANYOSIRISCHAT-PLAN.md (decisions record).
+
+## 1. Roles
+
+- **This SaaS** is the single brain for replies on every linked channel. It owns the bot, knowledge, conversations, inbox, handoff, takeover, assignment, contacts/CRM, the AI on/off switch per connection, limits and metering. One bot = one knowledge base = all channels (website and every linked Meta channel). A connection links to exactly one bot; a tenant may have several bots.
+- **ManyOsirisChat (Many)** owns everything Meta: app credentials and tokens, webhook verification, the WhatsApp 24-hour window, approved templates, opt-in rules, delivery to the user's phone, and its own campaigns, automations, comment-to-DM and outreach exactly as implemented today. Many stays a separate app and database. This repo never stores Meta tokens and never reads Many's database. Many never calls Meta on behalf of the SaaS beyond sending the messages the SaaS asks for.
+- **Delegated mode (decided, no longer an assumption).** A Many channel linked to this SaaS runs in delegated mode. For that channel only:
+  1. Many generates no AI reply of its own. Its reply-generation step is replaced by forwarding the inbound message to the SaaS.
+  2. Many forwards every inbound message of the channel (text and unsupported types) to the SaaS.
+  3. Handoff, takeover, return-to-AI, resolve, assignment and turn limits exist ONLY in the SaaS. Many disables its own Take Over / Resume Bot for the channel (UI and route guard, "Managed in the SaaS inbox"). Many's own AI gates (turn limit, daily cap, campaign ai_enabled) do not apply.
+  4. Many MUST NOT fall back to its own AI when the SaaS is unreachable. It queues and retries (section 6) and reports degraded health.
+  5. Everything else in Many is unchanged: tokens, webhooks, campaigns, automations, templates, outreach, its own campaign analytics. Delegation is reversible per channel. Many-only clients are unaffected.
+
+## 2. Connection (explicit, staff-created)
+
+A `channel_connection` links one SaaS tenant + bot to one Many channel (WhatsApp number / Messenger page / Instagram account). Created by platform staff only; never inferred from email or domain. Fields: `connection_id` (UUID, ours), `channel`, display name, Many base URL, an optional Many channel reference (display/trace only), status, `ai_enabled`, health, per-connection signing secret.
+
+Status:
+- `active`: full operation.
+- `paused`: emergency stop. Events are still authenticated, accepted (202) and stored, so no customer message is lost, but no AI reply is generated and no outbound is sent. Inbound messages land in the inbox as waiting for a human. Agent replies are refused with 409 `CONNECTION_PAUSED`. AI/agent messages that were pending when the connection was paused fail with `connection_paused` and are not auto-resent on resume.
+- `revoked`: terminal. All events are rejected (401). Existing conversations stay readable.
+
+`ai_enabled` (separate from pause): when false, inbound messages are stored and the conversation goes to `waiting_human`; no AI reply; agents can still reply.
+
+Secret: generated by the SaaS, shown once to staff, stored encrypted, rotatable. Rotation keeps the previous secret valid for a grace window (default 24 h) so both apps can switch without downtime; during the window the SaaS accepts either secret and signs outbound with the new one.
+
+Many-side configuration (per delegated channel): the SaaS `connection_id`, the secret, and the SaaS base URL, entered by an operator in Many.
+
+## 3. Signing (both directions)
+
+Headers: `X-Osiris-Connection: <connection_id>`, `X-Osiris-Timestamp: <unix seconds>`, `X-Osiris-Signature: sha256=<hex HMAC-SHA256(secret, timestamp + "." + raw_body)>`. Content type `application/json`, UTF-8.
+
+Receiver rules: reject if the timestamp is more than 5 minutes from now, the signature is wrong (constant-time compare), the connection is unknown or revoked, or the body exceeds 64 KB. All authentication failures return the same generic `401` (no oracle about which check failed); the reason is logged without secrets or message text. Every event carries `event_id`; the SaaS dedupes on (connection_id, event_id) and retains the dedupe record at least 30 days.
+
+## 4. Many to SaaS: `POST /api/channels/manyosiris/events`
+
+Responds `202 {"status":"accepted"}` immediately after authentication, dedupe and storage; processing runs as a job. A duplicate event also returns `202 {"status":"duplicate"}`. A signed but malformed body returns `422` (Many must not retry). Unknown event types and unknown fields are accepted and ignored (forward compatible). Rate limit per connection returns `429` with `Retry-After`.
+
+Common envelope: `version` (1), `event_id` (string, max 128), `event_type`, `connection_id`, `occurred_at` (ISO 8601 UTC).
+
+### 4.1 `message.received`
+`channel`, `external_contact_id`, `contact` {`name?`, `phone?`, `handle?`}, `external_conversation_id`, `external_message_id`, `type` (`text` | `unsupported`), `text?` (max 4000 chars), `received_at`, `window_expires_at?`, `origin?`.
+
+`origin` (campaign context, optional): `{"type":"campaign","campaign_name": <max 120>, "opening_message_text": <max 2000>, "campaign_ref": <opaque, max 128>}`. Sent when the conversation started from a Many campaign. The SaaS stores it once on the conversation, shows "From campaign: <name>" in the inbox thread, and gives the opening message to the bot as context.
+
+Behavior in the SaaS:
+- Tenant and bot come from the connection, never from the payload.
+- Contact identity is unique per (tenant, connection, external_contact_id). A website lead and a Meta contact are merged only by an explicit admin action.
+- Conversation is unique per (connection, external_conversation_id). A new inbound message on a resolved conversation reopens it with `mode = ai`.
+- Text goes through the same chat/handoff pipeline as the widget when the conversation is in AI mode and the connection is active with `ai_enabled`. In human mode or when the AI is off or the connection is paused, the message is stored and no AI reply is made.
+- Text longer than 1000 characters is stored in full and truncated to 1000 for the pipeline (a channel message is never rejected for length).
+- `unsupported` (voice, image, etc.): stored as a localized placeholder, the conversation is flagged for a human (`waiting_human`), and one localized "text only" reply is sent (at most once per conversation per hour).
+
+### 4.2 `message.status`
+`message_id` (ours) or `external_message_id`, `status` (`sent` | `delivered` | `read` | `failed`), `error_code?` (`window_closed` | `template_required` | `recipient_unreachable` | `rate_limited` | `channel_disconnected` | `unknown`), `error_detail?` (max 200, no personal data), `occurred_at`.
+Status never moves backwards: `pending < sent < delivered < read`. `failed` is accepted only while the message is below `delivered`. Out-of-order and duplicate statuses are harmless.
+
+### 4.3 `channel.status` (connection health)
+`status` (`connected` | `token_expiring` | `token_expired` | `webhook_unhealthy` | `disconnected`), `detail?` (max 200), `expires_at?`, `occurred_at`. Many sends this on every transition and at least every 6 hours as a heartbeat. The SaaS maps it to health `healthy` (connected), `degraded` (token_expiring, webhook_unhealthy) or `unhealthy` (token_expired, disconnected); an older `occurred_at` than the stored one is ignored. If nothing (event or poll) has arrived for 15 minutes the SaaS shows health as `unknown/stale`.
+
+## 5. SaaS to Many
+
+### 5.1 `POST {many_base_url}/api/saas/messages`
+Signed as in section 3 with the same secret. Body: `message_id` (our id, the idempotency key), `connection_id`, `external_contact_id`, `external_conversation_id`, `text`, `kind` (`reply` | `agent` | `handoff`). Reserved for later and not used in v1: `followup`, `broadcast`, `template_ref`, `variables`.
+Many answers `202 {"id": <many id>}`; the final outcome arrives as `message.status`. Many dedupes on `message_id` for at least 7 days. Which messages are sent: AI replies, the localized handoff/busy/text-only replies, and agent replies from the inbox. Internal notes and system events are never sent.
+Many enforces the window and templates and Meta's real length limits. The SaaS keeps replies within a conservative per-channel length and may split a long reply into several messages (each with its own `message_id`).
+
+### 5.2 `GET {many_base_url}/api/saas/connections/{connection_id}/health`
+Signed (empty body; signature over `timestamp + "."`). Returns `{"status": <as in 4.3>, "detail"?, "expires_at"?, "checked_at"}`. Used for the staff "Check now" button and a periodic poll (every 5 minutes) of active connections.
+
+## 6. Retries and failure behavior
+
+- Many to SaaS: retry on network error, 5xx and 429 (honor `Retry-After`); do not retry other 4xx. Exponential backoff with jitter, same `event_id`, for up to 24 hours. While retrying, the channel reports degraded health in Many. No AI fallback in Many.
+- SaaS to Many: retry on timeout, network error, 5xx and 429 with exponential backoff and the same `message_id`; connect timeout 5 s, read timeout 15 s, redirects not followed. Other 4xx are permanent: the message is marked `failed` with a readable code. After the retry budget the message is `failed` with `many_unreachable` and the connection health becomes degraded. `window_closed`, `template_required` and `recipient_unreachable` are shown in the inbox and are never retried blindly.
+- The SaaS reply is asynchronous; the customer sees the reply when Many sends it.
+
+## 7. Identity, privacy and data
+
+`contact_identities(contact_id, channel, connection_id, external_id)` unique per (tenant, connection, external_id). Consent/opt-in for follow-ups and broadcasts is recorded per contact and channel (used when outreach is built; out of scope in v1). Message text is never logged. Stored event payloads follow the tenant's message retention and are purged with it; tenant export and deletion cover connections and events and never include secrets. Staff see connection details; client roles see only channel, display name, status and health (read-only, on Overview).
+
+## 8. Scope
+
+In v1: text messages both ways, delivery status, connection health (push and pull), campaign name and opening message as context, AI toggle and pause per connection, secret rotation, contract tests against a fake Many, staging canary with one test number, rollback = pause the connection.
+Deferred (owner decision 2026-10-18): outreach and campaign sending controlled from the SaaS, follow-ups and broadcasts through Many, the "message sent by Many" mirror event, voice/image/media, bot actions (booking, purchasing). Many keeps its own campaigns, outreach and campaign analytics.
+
+## 9. What Many must provide (separate workstream in the Many repo)
+
+Delegated-mode flag per channel (default off); signed forwarder with retry and dedupe; signed inbound endpoint `POST /api/saas/messages` (idempotent) that sends through its existing Meta send paths; `message.status` callbacks including Meta's real error codes mapped to section 4.2; `channel.status` events and the health endpoint; disabled Take Over / Resume Bot on delegated channels; campaign origin included in forwarded events; dual-secret acceptance for rotation. Full requirements and the agent prompt: implementation/PHASE-06/MANY-AGENT-PROMPT.md. The SaaS side is contract-tested against a fake Many; the real end-to-end test runs in staging with a test number and needs the owner's approval.
+
+## 10. Out of scope
+
+Meta app review, webhook verification, token storage, template creation/approval UI (all Many). Voice/image/media in v1. Shared tenant identity or shared database with Many. Billing coupling. Meta credentials or webhooks in this repo.
+
+
+=====
+CONTRACT v1.1 DELTA (wins over v1)
+=====
+
+# Contract v1.1 delta (amends docs/17 v1)
+
+Status: PROPOSED 2026-10-26 from the Phase 6 review. Takes effect when the owner approves it (issuing the rebuild prompt counts as approval; record it as ADR-021 and merge it into docs/17 as part of ticket R-00). Where this delta and docs/17 v1 differ, this delta wins. Anything not mentioned stays as in v1.
+
+A1. Channel must match. `message.received.channel` MUST equal the connection's channel. Otherwise the SaaS returns `422` (signed, malformed; Many must not retry).
+
+A2. Status duty. After Meta accepts a message Many MUST send `message.status` `sent`; on rejection `failed` with an `error_code`. `delivered`/`read` only where the platform reports them (WhatsApp always; Messenger/Instagram only if Many subscribes to the receipts). The SaaS treats the `202` from `/api/saas/messages` as "accepted by Many", not "sent". A message with a Many id and no status for 15 minutes is shown as `unconfirmed` (neutral state); any later real status overrides it.
+
+A3. Error codes. `error_code` enum gains `message_too_long`. Many maps Meta errors by code/subcode, never by message text (Meta localizes text). Starting table (VERIFY each against the current Meta docs before relying on it):
+- WhatsApp: 131047 -> `window_closed`; 131026 -> `recipient_unreachable`; 130429/131056 -> `rate_limited`; template errors 132000-132015 and 131058 -> `template_required`; 190 -> `channel_disconnected`.
+- Messenger/Instagram: code 10 with subcode 2534022 (outside allowed window) or 2018278 -> `window_closed`; code 100 with subcode 2018001 (no matching user) -> `recipient_unreachable`; codes 4, 17, 32, 613 -> `rate_limited`; 190, 102 -> `channel_disconnected`.
+- Anything else -> `unknown`, with a short `error_detail` that contains no personal data.
+
+A4. Length. The SaaS splits long replies per channel: WhatsApp and Messenger 1000 characters, Instagram 900 UTF-8 bytes (Instagram text is limited in bytes). Many must never truncate silently: if a message still exceeds the platform limit it fails permanently with `message_too_long`.
+
+A5. What Many forwards. Forward every genuine customer DM of a delegated channel: free text and unsupported types (voice, image, sticker, etc). Do NOT forward Many-owned automation traffic: follow-gate postbacks/quick replies owned by Many flows, WhatsApp consent commands (STOP/START/opt-out keywords, handled by Many for compliance), echoes/own-page messages, delivery/read receipts, reactions. Placement in Many: after identity resolution and inbound storage, BEFORE any Many AI gate (`ai_enabled`, `ai_cold_dm_enabled`, `campaign.ai_enabled`, `lead_source`, turn limit, daily cap). Many's account `status != connected` still blocks (nothing can be sent anyway) and must be reported as degraded health.
+
+A6. Identifiers. `external_contact_id` = IGSID / PSID / WhatsApp wa_id (stable per channel). `external_conversation_id` = Many's `conversations.id` as a string. Many creates or resolves the conversation row BEFORE forwarding, so the id exists. `external_message_id` = Meta's message id (`mid` / `wamid`), or Many's stable derived id when Meta provides none.
+
+A7. Ordering. Many forwards events of one conversation in order: a retrying earlier message blocks later ones of that conversation (bounded by the 24 h retry budget; after that the earlier event is marked failed and the queue continues). The SaaS processes events of one conversation one at a time (row lock) in order of receipt.
+
+A8. Loop and flood guard. SaaS: more than 15 inbound messages per minute from one contact on one connection are stored, flagged `waiting_human`, and get no AI reply; at most one busy/quota reply per conversation per 10 minutes. Many: never forward echoes or messages authored by the business itself.
+
+A9. Health freshness. The SaaS 5-minute pull is the freshness source, so Many's signed health endpoint is mandatory (not optional). Many's push heartbeat (<= 6 h) and transition events remain. The SaaS stale threshold stays 15 minutes: with no event and no successful poll it shows `unknown/stale`.
+
+A10. Clock safety. The SaaS clamps `received_at` to `[now-24h, now+5min]`; outside that range it uses its own receipt time.
+
+A11. Campaign origin. WhatsApp: outreach campaign name and the rendered template body. Instagram/Facebook comment-to-DM: campaign name and the DM text Many delivered. `campaign_ref` stays opaque. Sent on every forwarded message of a campaign-origin conversation until the SaaS has stored it once (the SaaS keeps the first).
+
+A12. Rotation (clarification). During the 24 h grace window each side accepts either secret on inbound and signs outbound with the NEW secret. Many stores current and previous secret with the previous expiry.
+
+A13. Delegation off. Turning delegation off in Many returns the channel to today's behaviour immediately. Messages already queued for forwarding are dropped after the switch (logged), never sent to the SaaS afterwards.
