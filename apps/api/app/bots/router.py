@@ -56,7 +56,7 @@ def get_readiness(bot_id: UUID, context: TenantContextDep) -> ReadinessOut:
     """Staff-only, read-only launch checklist computed from the bot's real state."""
     context.require_operator()
     bot = BotService(context.db).get_bot(context, bot_id)
-    items = readiness_items(bot)
+    items = readiness_items(bot, db=context.db)
     return ReadinessOut(ready=all(item.status != "todo" for item in items), items=items)
 
 

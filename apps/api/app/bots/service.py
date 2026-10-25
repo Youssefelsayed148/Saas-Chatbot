@@ -21,7 +21,7 @@ from app.core.audit import record_audit
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
 from app.core.tenancy import TenantContext
-from app.db.models import Bot
+from app.db.models import Bot, UsageEvent
 
 ALLOWED_STATUS_TRANSITIONS = {
     "draft": {"active"},
@@ -47,8 +47,100 @@ def validate_status_transition(current: str, requested: str) -> str:
     return requested
 
 
-def readiness_items(bot: Bot, settings: Settings | None = None) -> list[ReadinessItem]:
-    """Read-only checklist computed from the bot's real state (#26)."""
+# Provider error codes that mean the model setup itself is wrong, not a passing hiccup.
+MODEL_SETUP_CODES = frozenset(
+    {"model_not_found", "invalid_api_key", "insufficient_quota", "payment_required"}
+)
+MODEL_CHECK_TURNS = 5
+
+
+def model_reachability(traces: list[dict[str, object]]) -> ReadinessItem:
+    """The "Model reachable" item from the bot's recent traces, newest first.
+
+    Reads recorded traces only (never a live provider call, never a key). Walking
+    back from the newest turn it stops at the first clean model call, because a
+    failure older than that has been fixed since."""
+    seen = 0
+    failed = 0
+    setup_problem: tuple[str, object] | None = None
+    for trace in traces:
+        if seen >= MODEL_CHECK_TURNS:
+            break
+        error = trace.get("provider_error")
+        attempts = (
+            error.get("attempts") if isinstance(error, dict) else trace.get("provider_attempts")
+        )
+        if isinstance(error, dict) and error.get("status") == "not_configured":
+            continue  # reported by "Model provider configured"
+        if not isinstance(error, dict) and trace.get("model") in (None, ""):
+            continue  # no model was called on this turn (routing, no evidence)
+        seen += 1
+        failures = [
+            item
+            for item in (attempts if isinstance(attempts, list) else [])
+            if isinstance(item, dict) and item.get("outcome") != "ok"
+        ]
+        if isinstance(error, dict):
+            failed += 1
+        elif not failures:
+            break  # a clean call: anything older is history
+        for item in failures or ([error] if isinstance(error, dict) else []):
+            code = item.get("error_code") if isinstance(item, dict) else None
+            if setup_problem is None and code in MODEL_SETUP_CODES:
+                setup_problem = (str(code), item.get("model") if isinstance(item, dict) else None)
+    if setup_problem is not None:
+        code, model = setup_problem
+        where = f" on {model}" if model else ""
+        return ReadinessItem(
+            id="model_reachable",
+            label="Model reachable",
+            status="warning",
+            detail=f"A recent answer failed with {code}{where}. Check the model name and "
+            "the provider key and credit with the platform owner.",
+            section="tier",
+        )
+    if seen and failed == seen:
+        return ReadinessItem(
+            id="model_reachable",
+            label="Model reachable",
+            status="warning",
+            detail=f"The last {seen} model call(s) all failed. Open the Playground answer "
+            "traces to see the provider error for each attempt.",
+            section="tier",
+        )
+    return ReadinessItem(
+        id="model_reachable",
+        label="Model reachable",
+        status="ok",
+        detail="Recent model calls succeeded."
+        if seen
+        else "No model call recorded yet: send a test message in the Playground.",
+        section="tier",
+    )
+
+
+def recent_traces(db: OrmSession, bot: Bot) -> list[dict[str, object]]:
+    """The bot's newest recorded traces (tenant scoped), newest first."""
+    payloads = db.scalars(
+        select(UsageEvent.payload)
+        .where(
+            UsageEvent.tenant_id == bot.tenant_id,
+            UsageEvent.bot_id == bot.id,
+            UsageEvent.kind.in_(("message", "unavailable")),
+            UsageEvent.payload["rag_trace"].is_not(None),
+        )
+        .order_by(UsageEvent.created_at.desc(), UsageEvent.id.desc())
+        .limit(MODEL_CHECK_TURNS * 3)
+    )
+    traces = [p["rag_trace"] for p in payloads if isinstance(p.get("rag_trace"), dict)]
+    return [t for t in traces if isinstance(t, dict)]
+
+
+def readiness_items(
+    bot: Bot, settings: Settings | None = None, db: OrmSession | None = None
+) -> list[ReadinessItem]:
+    """Read-only checklist computed from the bot's real state (#26). With a
+    session it also reads the bot's recent traces for "Model reachable"."""
     config = bot.config if isinstance(bot.config, dict) else {}
 
     def text(key: str) -> str:
@@ -121,6 +213,7 @@ def readiness_items(bot: Bot, settings: Settings | None = None) -> list[Readines
             "temporary-unavailable message. Ask the platform owner to set up the provider.",
             section="tier",
         ),
+        *([model_reachability(recent_traces(db, bot))] if db is not None else []),
     ]
 
 
