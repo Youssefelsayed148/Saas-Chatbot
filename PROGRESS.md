@@ -2818,3 +2818,11 @@ CHAT_STUB_MODEL=true EMBEDDING_TEST_STUB=true`:
 
    Gate verdict: GO — baseline 102/102, channel suites match accepted counts,
    digest green. Proceeding to P6-05.
+
+## Phase 6 close-out, R-00 preflight (cloud session, 2026-10-26)
+- Branch: session branch `claude/saas-rebuild-r00-jrd3an`, identical to `origin/feature/phase-6-channels` (f9def26); `git status` clean (the two uncommitted test-file edits are not in this clone, per CLOUD-ADDENDUM item 6). `origin/main` = 2b9e015, 181 commits ahead of merge-base 5c4d253.
+- `git merge --no-commit --no-ff origin/main` dry run, aborted: 20 content conflicts. .env.example, DECISIONS.md, PROGRESS.md, api/app/{analytics/handoff,chat/conversations,chat/prompts,core/config,db/models/chat,inbox/listing,main}.py, api/tests/test_chat.py, web {analytics,contacts,inbox/[conversation],tenant page}.tsx, globals.css, lib/{api.ts,app-header.tsx,inbox-list.tsx}, tests/e2e-api-setup.ts.
+- Alembic: branch single head `0020_channel_health_poll` (0017..0020 channel chain on 0016). main head `0022_knowledge_hygiene`, so channel migrations renumber to 0023..0026 in R-01.
+- Environment: Python 3.12.3 venv from requirements-dev.lock; PostgreSQL 16 started; `apt-get update` was needed before `apt-get install postgresql-16-pgvector postgresql-contrib` succeeded; role `test` created (SUPERUSER + CREATEDB, so CREATE EXTENSION works). TEST_DATABASE_URL must be `postgresql://test:test@127.0.0.1:5432/phase6` (no `+psycopg`): tests/conftest.py passes it to raw psycopg.connect; conftest derives `phase6_test`. Set per process, not in a file. Playwright not attempted yet.
+- Baseline on the unmerged branch (cwd apps/api, `python -m pytest tests/<file> -q`): test_channel_contract 17, test_channel_events 12, test_channel_health 9, test_channel_inbox_insights 9, test_channel_migrations 1, test_channel_outbound 28, test_channel_outbound_unit 16, test_channels 7, test_chat 17, test_inbox_list 5. All passed (121 total, 0 failed). Not run: the rest of the API suite, web lint/typecheck, Playwright (R-07).
+- Docs only: ADR-021 added to DECISIONS.md, v1.1 delta A1-A13 merged into docs/17 as section 11. ADR-020 still awaiting owner sign-off.

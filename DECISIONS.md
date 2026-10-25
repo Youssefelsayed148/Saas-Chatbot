@@ -23,6 +23,7 @@ Change a decision only by adding a dated entry below with rationale, alternative
 | ADR-018 | Two dashboards: (1) client dashboard per chatbot (overview, inbox, contacts, knowledge, playground, settings, install, channels, follow-ups, team) and (2) platform admin console for staff to manage all clients. A basic admin console (client list, client detail, staff onboarding through the shared ProvisioningService) is built in P4 so first clients can be onboarded; quotas, platform analytics, connection health and audit review follow in P7 | Approved 2026-10-12 |
 | ADR-019 | Hybrid RAG retrieval, embeddings and relevance gate; docs/RAG-PLAN-v2.md plus execution overrides | Approved RAG phase; renumbered 2026-10-16 by owner request |
 | ADR-020 | Channel health degradation model: retry-budget exhaustion instead of a consecutive-failure counter; cleared by a newer health signal; one failed send can flip health. Recorded as a deviation against docs/17 §6 / PLAN D10 wording during P6-06 | Proposed by agent 2026-10-19 on the P6 branch evidence; owner sign-off pending |
+| ADR-021 | Channel contract v1.1 adopted (delta A1-A13: channel must match connection, status duty and `unconfirmed`, Meta error-code table, byte-aware splitting, forwarding scope, ordering, flood guard, mandatory health endpoint, clock clamp, campaign origin, rotation, delegation off). Spec in docs/17 section 11 | Approved 2026-10-26 (owner, by issuing SAAS-REBUILD-PROMPT) |
 
 ## 2026-10-12 — ADR-003 approval
 Approver: product owner. Rationale: one standalone deployment with clear module boundaries and tenant isolation, minimal infrastructure. Alternatives: historical multi-service control plane and cross-product architecture rejected for MVP. Impact: `apps/web`, `apps/api`, local Compose PostgreSQL.
@@ -90,3 +91,6 @@ newer signal CAN clear it; a per-message flip is loud enough because the
 failure is already user-visible as a failed message in the inbox. If the owner
 prefers the literal consecutive-failure model, migration 0020 has unused head
 room and the change is small — decide before staging.
+
+## 2026-10-26 - ADR-021: contract v1.1 adopted
+Approver: product owner, by issuing implementation/PHASE-06-V2/SAAS-REBUILD-PROMPT.md. Rationale: the Phase 6 review (REVIEW-REPORT.md) found gaps between contract v1 and the Many code (C1-C8) and SaaS defects (D1-D13); the delta A1-A13 closes the contract side. Alternatives: keep v1 and patch per defect (rejected: Many-side behaviour such as status duty, forwarding scope and error mapping would stay undefined). Impact: docs/17 gains section 11; the fake Many and contract suite pin A1-A13; Many implements the same delta in its own repo. ADR-020 (health degradation model) is NOT covered by this approval and remains awaiting owner sign-off; its text is prepared in R-05.
