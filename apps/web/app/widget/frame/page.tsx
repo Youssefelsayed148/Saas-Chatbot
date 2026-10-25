@@ -617,7 +617,21 @@ export default function WidgetFramePage() {
   }, []);
 
   const announceSize = useCallback(() => {
-    const height = document.documentElement.scrollHeight;
+    // Intrinsic content height, NOT documentElement.scrollHeight: the root is
+    // html,body{height:100%} so that equals this iframe's own current height and
+    // an older loader that follows it would stick at the first small value
+    // (150px -> 200px). Fixed chrome + the thread's content, never below 600.
+    const root = document.querySelector<HTMLElement>(".widget-frame");
+    let height = 600;
+    if (root) {
+      let intrinsic = 0;
+      for (const child of Array.from(root.children) as HTMLElement[]) {
+        intrinsic += child.classList.contains("widget-thread")
+          ? child.scrollHeight
+          : child.offsetHeight;
+      }
+      height = Math.max(height, intrinsic);
+    }
     window.parent.postMessage(
       { type: "chatbot:size", height },
       window.location.origin,
@@ -716,6 +730,7 @@ export default function WidgetFramePage() {
     };
 
     const finish = (payload: DonePayload) => {
+      noteHandoff(payload.kind, payload.ai_message?.needs_human);
       lastPollAtRef.current =
         payload.ai_message?.created_at ?? payload.visitor_message.created_at;
       setTurns((current) => {
@@ -730,7 +745,6 @@ export default function WidgetFramePage() {
         }
         const final: Turn = {
           id: ai.id,
-      noteHandoff(payload.kind, payload.ai_message?.needs_human);
           role: "assistant",
           text: ai.text, // authoritative: replaces whatever streamed
           citations: ai.citations,
@@ -877,6 +891,7 @@ export default function WidgetFramePage() {
         return;
       }
       const payload = (await response.json()) as {
+        kind?: string;
         visitor_message: { id: string; created_at: string };
         ai_message: {
           id: string;
@@ -886,12 +901,12 @@ export default function WidgetFramePage() {
           created_at: string;
         } | null;
       };
+      noteHandoff(payload.kind, payload.ai_message?.needs_human);
       lastPollAtRef.current =
         payload.ai_message?.created_at ?? payload.visitor_message.created_at;
       setTurns((current) => {
         const withVisitorId = current.map((turn) =>
           turn.id === localTurn.id
-        kind?: string;
             ? { ...turn, id: payload.visitor_message.id }
             : turn,
         );
@@ -901,7 +916,6 @@ export default function WidgetFramePage() {
         ) {
           return withVisitorId;
         }
-      noteHandoff(payload.kind, payload.ai_message?.needs_human);
         return [
           ...withVisitorId,
           {
@@ -929,6 +943,8 @@ export default function WidgetFramePage() {
       abortRef.current = null;
       setStreaming(false);
       setTyping(false);
+      // One look right after the turn: a handoff / scheduled follow-up resumes polling.
+      schedulePollRef.current(0);
     }
   }
 
@@ -943,8 +959,6 @@ export default function WidgetFramePage() {
       current.map((item) =>
         item.id === turn.id ? { ...item, feedback: rating } : item,
       ),
-      // One look right after the turn: a handoff / scheduled follow-up resumes polling.
-      schedulePollRef.current(0);
     );
     const session = sessionRef.current;
     if (!session) return;

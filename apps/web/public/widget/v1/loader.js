@@ -14,9 +14,10 @@
  * Protocol (postMessage):
  *   parent → iframe  {type:"chatbot:locator", locator}
  *   iframe → parent  {type:"chatbot:ready"} — the parent answers with the locator
- *                    {type:"chatbot:size", height} — informational only: the panel
- *                    height is set by the loader's CSS (bounded, never fed back from
- *                    the frame, which only ever reports its own current height)
+ *                    {type:"chatbot:size", height} — informational only, kept for older
+ *                    loaders: the panel height is owned by the loader's CSS below
+ *                    (bounded, never fed back from the frame, which can only report
+ *                    its own current height)
  *                    {type:"chatbot:brand", colour, position, dir}
  *                    {type:"chatbot:close"} — viewport Escape inside the frame
  * Public API contract: docs/05 (config/session/messages), docs/14 §7/§11.
@@ -26,7 +27,7 @@
 
   var VERSION = "v1";
   /* GENERATED_WIDGET_TOKENS */
-  var widgetTokens = "/* Canonical semantic tokens, shared by dashboard and scoped widget surfaces. */\r\n.chatbot-widget-button,.chatbot-widget-frame {\r\n  color-scheme: dark;\r\n  --bg: #0b1018;\r\n  --surface: #111925;\r\n  --surface-raised: #172231;\r\n  --surface-hover: #1e2c3d;\r\n  --text: #edf3fa;\r\n  --muted: #a3b2c6;\r\n  --border: #2b3a4e;\r\n  --accent: #8aafff;\r\n  --accent-soft: #20324f;\r\n  --button: #b1c9ff;\r\n  --button-text: #101e38;\r\n  --danger: #ffaaa5;\r\n  --danger-soft: #382022;\r\n  --success: #86ddbd;\r\n  --success-soft: #14372d;\r\n  --warning: #f2ce8e;\r\n  --warning-soft: #372e1d;\r\n  --focus: #b9d0ff;\r\n  --staff: #d1b3ff;\r\n  --staff-soft: #302440;\r\n  --overlay: #050912b8;\r\n  --shadow: 0 18px 48px #00000030;\r\n  --radius: 16px;\r\n  --radius-sm: 9px;\r\n  --space-1: 0.25rem;\r\n  --space-2: 0.5rem;\r\n  --space-3: 0.75rem;\r\n  --space-4: 1rem;\r\n  --space-5: 1.5rem;\r\n  --space-6: 2rem;\r\n  --space-7: 3rem;\r\n  --font: ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", sans-serif;\r\n  --text-sm: 0.825rem;\r\n  --text-base: 0.925rem;\r\n  --text-lg: 1.2rem;\r\n  --heading: clamp(1.65rem, 3vw, 2.3rem);\r\n  --ease: 160ms ease;\r\n  --widget-brand: #1f7a5c;\r\n  --ink-light: #ffffff;\r\n  --ink-dark: #000000;\r\n}\r\n.chatbot-widget-button[data-theme=light],.chatbot-widget-frame[data-theme=light] {\r\n  color-scheme: light;\r\n  --bg: #f3f6fb;\r\n  --surface: #ffffff;\r\n  --surface-raised: #edf2f9;\r\n  --surface-hover: #e5edf7;\r\n  --text: #19263a;\r\n  --muted: #52647c;\r\n  --border: #cbd6e5;\r\n  --accent: #2459b4;\r\n  --accent-soft: #e5edff;\r\n  --button: #234f9a;\r\n  --button-text: #ffffff;\r\n  --danger: #a62631;\r\n  --danger-soft: #fff0f0;\r\n  --success: #176449;\r\n  --success-soft: #e3f4ec;\r\n  --warning: #745015;\r\n  --warning-soft: #fff2d9;\r\n  --focus: #2459b4;\r\n  --staff: #7040a2;\r\n  --staff-soft: #f0e8fa;\r\n  --overlay: #17263a80;\r\n  --shadow: 0 18px 48px #1d3c5912;\r\n}\r\n@media (prefers-color-scheme: light) {\r\n  .chatbot-widget-button,.chatbot-widget-frame {\r\n    color-scheme: light;\r\n    --bg: #f3f6fb;\r\n    --surface: #ffffff;\r\n    --surface-raised: #edf2f9;\r\n    --surface-hover: #e5edf7;\r\n    --text: #19263a;\r\n    --muted: #52647c;\r\n    --border: #cbd6e5;\r\n    --accent: #2459b4;\r\n    --accent-soft: #e5edff;\r\n    --button: #234f9a;\r\n    --button-text: #ffffff;\r\n    --danger: #a62631;\r\n    --danger-soft: #fff0f0;\r\n    --success: #176449;\r\n    --success-soft: #e3f4ec;\r\n    --warning: #745015;\r\n    --warning-soft: #fff2d9;\r\n    --focus: #2459b4;\r\n    --staff: #7040a2;\r\n    --staff-soft: #f0e8fa;\r\n    --overlay: #17263a80;\r\n    --shadow: 0 18px 48px #1d3c5912;\r\n  }\r\n}\r\n";
+  var widgetTokens = "/* Canonical semantic tokens, shared by dashboard and scoped widget surfaces. */\r\n.chatbot-widget-button,.chatbot-widget-frame {\r\n  color-scheme: dark;\r\n  --bg: #0b1018;\r\n  --surface: #111925;\r\n  --surface-raised: #172231;\r\n  --surface-hover: #1e2c3d;\r\n  --text: #edf3fa;\r\n  --muted: #a3b2c6;\r\n  --border: #2b3a4e;\r\n  --accent: #8aafff;\r\n  --accent-soft: #20324f;\r\n  --button: #b1c9ff;\r\n  --button-text: #101e38;\r\n  --danger: #ffaaa5;\r\n  --danger-soft: #382022;\r\n  --success: #86ddbd;\r\n  --success-soft: #14372d;\r\n  --warning: #f2ce8e;\r\n  --warning-soft: #372e1d;\r\n  --focus: #b9d0ff;\r\n  --overlay: #050912b8;\r\n  --shadow: 0 18px 48px #00000030;\r\n  --radius: 16px;\r\n  --radius-sm: 9px;\r\n  --space-1: 0.25rem;\r\n  --space-2: 0.5rem;\r\n  --space-3: 0.75rem;\r\n  --space-4: 1rem;\r\n  --space-5: 1.5rem;\r\n  --space-6: 2rem;\r\n  --space-7: 3rem;\r\n  --font: ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", sans-serif;\r\n  /* Type scale (rem; 1rem = 16px). Base text is 16px. */\r\n  --text-xs: 0.75rem;\r\n  --text-sm: 0.875rem;\r\n  --text-base: 1rem;\r\n  --text-md: 1.125rem;\r\n  --text-lg: 1.25rem;\r\n  --text-xl: 1.5rem;\r\n  --heading: clamp(1.6rem, 3vw, 2rem);\r\n  --leading-tight: 1.25;\r\n  --leading-body: 1.6;\r\n  /* Content width: readable line length and page container. */\r\n  --content-max: 80rem;\r\n  --measure: 65ch;\r\n  --form-max: 42rem;\r\n  --control-height: 2.75rem;\r\n  --ease: 160ms ease;\r\n  --widget-brand: #1f7a5c;\r\n  --ink-light: #ffffff;\r\n  --ink-dark: #000000;\r\n}\r\n.chatbot-widget-button[data-theme=light],.chatbot-widget-frame[data-theme=light] {\r\n  color-scheme: light;\r\n  --bg: #f3f6fb;\r\n  --surface: #ffffff;\r\n  --surface-raised: #edf2f9;\r\n  --surface-hover: #e5edf7;\r\n  --text: #19263a;\r\n  --muted: #52647c;\r\n  --border: #cbd6e5;\r\n  --accent: #2459b4;\r\n  --accent-soft: #e5edff;\r\n  --button: #234f9a;\r\n  --button-text: #ffffff;\r\n  --danger: #a62631;\r\n  --danger-soft: #fff0f0;\r\n  --success: #176449;\r\n  --success-soft: #e3f4ec;\r\n  --warning: #745015;\r\n  --warning-soft: #fff2d9;\r\n  --focus: #2459b4;\r\n  --overlay: #17263a80;\r\n  --shadow: 0 18px 48px #1d3c5912;\r\n}\r\n@media (prefers-color-scheme: light) {\r\n  .chatbot-widget-button,.chatbot-widget-frame {\r\n    color-scheme: light;\r\n    --bg: #f3f6fb;\r\n    --surface: #ffffff;\r\n    --surface-raised: #edf2f9;\r\n    --surface-hover: #e5edf7;\r\n    --text: #19263a;\r\n    --muted: #52647c;\r\n    --border: #cbd6e5;\r\n    --accent: #2459b4;\r\n    --accent-soft: #e5edff;\r\n    --button: #234f9a;\r\n    --button-text: #ffffff;\r\n    --danger: #a62631;\r\n    --danger-soft: #fff0f0;\r\n    --success: #176449;\r\n    --success-soft: #e3f4ec;\r\n    --warning: #745015;\r\n    --warning-soft: #fff2d9;\r\n    --focus: #2459b4;\r\n    --overlay: #17263a80;\r\n    --shadow: 0 18px 48px #1d3c5912;\r\n  }\r\n}\r\n";
   /* END_WIDGET_TOKENS */
 
   var script =
@@ -197,10 +198,14 @@
     ".chatbot-widget-frame{position:fixed;bottom:5rem;border:0;border-radius:1rem;" +
     "box-shadow:var(--shadow);z-index:2147483000;background:var(--surface);" +
     "overflow:hidden;width:min(23.5rem, calc(100vw - 2.5rem));" +
-    "height:min(640px, calc(100vh - 7rem));height:min(640px, calc(100dvh - 7rem));}" +
+    // Panel height: 640px cap, a readable 320px floor, never taller than the
+    // space above the bubble (bottom 5rem + 1rem top margin).
+    "height:clamp(320px, calc(100vh - 7rem), 640px);height:clamp(320px, calc(100dvh - 7rem), 640px);" +
+    "max-height:calc(100vh - 6rem);max-height:calc(100dvh - 6rem)}" +
     "@media (max-width: 480px)" +
     "{.chatbot-widget-frame{bottom:0;width:calc(100vw - 1rem);border-radius:1rem 1rem 0 0;" +
-    "height:min(640px, calc(100vh - 1rem));height:min(640px, calc(100dvh - 1rem))}}";
+    "height:clamp(320px, calc(100vh - 1rem), 640px);height:clamp(320px, calc(100dvh - 1rem), 640px);" +
+    "max-height:calc(100vh - 1rem);max-height:calc(100dvh - 1rem)}}";
   document.head.appendChild(css);
   styleButton();
 })();
