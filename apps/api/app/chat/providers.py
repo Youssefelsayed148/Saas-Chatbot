@@ -79,6 +79,72 @@ def _names_parameter(response: httpx.Response) -> bool:
     return any(hint in text for hint in _PARAMETER_HINTS)
 
 
+_CODE_SHAPE = re.compile(r"^[a-z0-9][a-z0-9_.-]{0,63}$")
+_CODE_ALIASES = {
+    "rate_limit_exceeded": "rate_limited",
+    "rate_limit": "rate_limited",
+    "too_many_requests": "rate_limited",
+    "insufficient_credits": "insufficient_quota",
+}
+# (pattern over the provider's message, code). The message itself is never kept.
+_MESSAGE_CODES = (
+    (re.compile(r"rate[ _-]?limit|too many requests"), "rate_limited"),
+    (re.compile(r"quota|insufficient (?:credit|fund)|billing"), "insufficient_quota"),
+    (re.compile(r"api key|authentication"), "invalid_api_key"),
+    (
+        re.compile(r"model.*(?:not found|does not exist)|(?:not found|does not exist).*model"),
+        "model_not_found",
+    ),
+    (re.compile(r"unsupported|not supported"), "unsupported_parameter"),
+)
+_STATUS_CODES = {401: "invalid_api_key", 402: "payment_required", 429: "rate_limited"}
+
+
+def _clean_token(value: object) -> str | None:
+    """A short lowercase identifier (finish reason, error code), or None."""
+    if not isinstance(value, str):
+        return None
+    token = value.strip().lower().replace(" ", "_")
+    token = _CODE_ALIASES.get(token, token)
+    return token if _CODE_SHAPE.match(token) else None
+
+
+def _error_code(response: httpx.Response) -> str | None:
+    """A sanitized error code/type from a provider error body.
+
+    Only a short identifier ever leaves this function: the code/type fields
+    when they look like one, else a code derived from keywords in the message,
+    else one implied by the HTTP status. The body itself is never kept."""
+    try:
+        payload = response.json()
+    except (ValueError, httpx.HTTPError, httpx.StreamError):
+        payload = None
+    error = payload.get("error") if isinstance(payload, dict) else None
+    if isinstance(error, dict):
+        for field_name in ("code", "type", "status"):
+            code = _clean_token(error.get(field_name))
+            if code is not None:
+                return code
+        message = error.get("message")
+        if isinstance(message, str):
+            lowered = message.lower()
+            for pattern, code in _MESSAGE_CODES:
+                if pattern.search(lowered):
+                    return code
+    return _STATUS_CODES.get(response.status_code)
+
+
+def _transport_outcome(error: httpx.HTTPError) -> str:
+    return "timeout" if isinstance(error, httpx.TimeoutException) else "network"
+
+
+def _is_json_object(text: str) -> bool:
+    try:
+        return isinstance(json.loads(text), dict)
+    except ValueError:
+        return False
+
+
 class OpenAICompatibleModel(ChatModel):
     """A simple sync client for OpenAI-compatible chat endpoints.
 
@@ -127,6 +193,35 @@ class OpenAICompatibleModel(ChatModel):
         # Seconds this call may take in total (set per call by the turn budget);
         # None keeps the plain per-request ``timeout_seconds``.
         self.call_timeout: float | None = None
+        # One record per model tried in the latest call (staff trace, #112 batch R3c).
+        self.attempt_log: list[dict[str, object]] = []
+        self._compat_used = False
+        self._stream_finish: str | None = None
+
+    def _log_attempt(
+        self,
+        model: str,
+        outcome: str,
+        *,
+        response: httpx.Response | None = None,
+        finish_reason: str | None = None,
+        content: str | None = None,
+    ) -> None:
+        """Append what happened with ``model`` — status, a sanitized error code,
+        finish reason, content state. Never a key, header, prompt or body."""
+        failed = response is not None and response.status_code != 200
+        self.attempt_log.append(
+            {
+                "attempt": len(self.attempt_log) + 1,
+                "model": model,
+                "outcome": outcome,
+                "http_status": response.status_code if response is not None else None,
+                "error_code": _error_code(response) if failed and response is not None else None,
+                "finish_reason": finish_reason,
+                "content": content,
+                "compat_retry": self._compat_used,
+            }
+        )
 
     def _attempt_timeout(self, started: float) -> float | None:
         """Timeout for the next request, or None when the call budget is spent."""
@@ -147,12 +242,16 @@ class OpenAICompatibleModel(ChatModel):
         if self.blocked:
             raise ProviderError("Provider unavailable for this turn.")
         self.last_cost_usd = None
-        # One attempt per model; at most the immediate next model as fallback.
-        # An auth/payment response (401/402) blocks all subsequent calls on this
+        # One attempt per model, in chain order, bounded by the call budget. An
+        # auth/payment response (401/402) blocks all subsequent calls on this
         # turn's model instance, including preprocessing followed by generation.
-        # A rate limit / forbidden / 5xx on one model moves on to the next one.
+        # A rate limit / forbidden / 5xx / timeout / unusable reply on one model
+        # moves on to the next one.
         self.last_http_status = None
+        self.attempt_log = []
         started = time.monotonic()
+        # (model, text, usage) of the last reply that was not in the JSON shape
+        unusable: tuple[str, str, object] | None = None
         with httpx.Client(
             base_url=self.base_url,
             headers={"Authorization": f"Bearer {self._api_key}"},
@@ -160,47 +259,56 @@ class OpenAICompatibleModel(ChatModel):
             transport=self.transport,
             follow_redirects=False,
         ) as client:
-            for model in [self.model, *self.fallback_models[:1]]:
+            for model in [self.model, *self.fallback_models]:
                 response = self._post(client, model, messages, json_mode, max_tokens, started)
                 if response is None:
                     continue
                 if self._blocks(response.status_code):
+                    self._log_attempt(model, "blocked", response=response)
                     self.blocked = True
                     raise ProviderError("Provider unavailable for this turn.")
                 if response.status_code != 200:
+                    self._log_attempt(model, "failed", response=response)
                     continue
                 try:
                     payload = response.json()
-                    content = payload["choices"][0]["message"]["content"]
-                except (KeyError, IndexError, ValueError, TypeError):
+                    choice = payload["choices"][0]
+                    content = choice["message"].get("content")
+                    finish = _clean_token(choice.get("finish_reason"))
+                except (KeyError, IndexError, ValueError, TypeError, AttributeError):
                     self.ambiguous_attempts += 1
+                    self._log_attempt(model, "unusable", response=response, content="bad_envelope")
                     continue
-                if not isinstance(content, str) or not content.strip():
+                text = content if isinstance(content, str) else ""
+                if not text.strip():
+                    state = "empty"
+                elif json_mode and not _is_json_object(text):
+                    state = "truncated" if finish == "length" else "not_json"
+                else:
+                    state = "ok"
+                if state != "ok":
                     self.ambiguous_attempts += 1
+                    self._log_attempt(
+                        model, "unusable", response=response, finish_reason=finish, content=state
+                    )
+                    if state != "empty":
+                        unusable = (model, text, payload.get("usage"))
                     continue
+                self._log_attempt(
+                    model, "ok", response=response, finish_reason=finish, content=state
+                )
                 usage = payload.get("usage")
                 if isinstance(usage, dict):
-                    try:
-                        cost = Decimal(str(usage.get("cost")))
-                        if cost.is_finite() and cost >= 0:
-                            self.last_cost_usd = cost
-                    except InvalidOperation:
-                        pass
-                    measured = {
-                        key: value
-                        for key, value in usage.items()
-                        if key in ("prompt_tokens", "completion_tokens", "total_tokens")
-                        and isinstance(value, int)
-                        and not isinstance(value, bool)
-                        and value >= 0
-                    }
-                    if measured:
-                        totals = self.usage_totals or {}
-                        self.usage_totals = {
-                            key: totals.get(key, 0) + value for key, value in measured.items()
-                        }
+                    self._record_usage(usage)
                 self.model_used = model
-                return content
+                return text
+        if unusable is not None:
+            # A model answered but not in the JSON shape: the caller classifies it
+            # as an unusable reply (invalid_output), not as a provider failure.
+            self.model_used = unusable[0]
+            if isinstance(unusable[2], dict):
+                self._record_usage(unusable[2])
+            return unusable[1]
         raise ProviderError("All configured models failed.")
 
     def _body(
@@ -232,26 +340,30 @@ class OpenAICompatibleModel(ChatModel):
         max_tokens: int,
         started: float,
     ) -> httpx.Response | None:
-        """One request for ``model``; None when the transport failed.
+        """One request for ``model``; None when no response arrived (the attempt
+        is already logged).
 
         A 400 that blames temperature / max_tokens / an unsupported parameter is
         retried ONCE with the compat profile, and a profile that works is
         remembered for this model name."""
         compat = model in _COMPAT_PROFILE
+        self._compat_used = False
         for attempt in (0, 1):
             body = self._body(model, messages, max_tokens, json_mode=json_mode, compat=compat)
             timeout = self._attempt_timeout(started)
             if timeout is None:
+                self._log_attempt(model, "budget_exhausted")
                 return None
             self.requests_used += 1
             try:
                 response = client.post("chat/completions", json=body, timeout=timeout)
-            except (httpx.ConnectError, httpx.ConnectTimeout):
-                return None
-            except httpx.HTTPError:
-                self.ambiguous_attempts += 1
+            except httpx.HTTPError as error:
+                if not isinstance(error, httpx.ConnectError | httpx.ConnectTimeout):
+                    self.ambiguous_attempts += 1
+                self._log_attempt(model, _transport_outcome(error))
                 return None
             self.last_http_status = response.status_code
+            self._compat_used = compat
             if (
                 response.status_code == 400
                 and attempt == 0
@@ -268,15 +380,16 @@ class OpenAICompatibleModel(ChatModel):
     def stream_complete(self, messages: list[dict[str, str]], *, max_tokens: int) -> Iterator[str]:
         """Streamed JSON-mode completion (OpenAI-compatible SSE).
 
-        Mirrors ``complete``: one attempt per model, at most the next model as
-        fallback, auth/quota responses block the instance. A model is only
-        abandoned for the next one while NO text was yielded yet; a failure
-        after text started raises ``ProviderError`` (the caller must not
-        replay a different model's text on top of released output)."""
+        Mirrors ``complete``: one attempt per model in chain order, auth/quota
+        responses block the instance. A model is only abandoned for the next
+        one while NO text was yielded yet; a failure after text started raises
+        ``ProviderError`` (the caller must not replay a different model's text
+        on top of released output)."""
         if self.blocked:
             raise ProviderError("Provider unavailable for this turn.")
         self.last_cost_usd = None
         self.last_http_status = None
+        self.attempt_log = []
         started = time.monotonic()
         with httpx.Client(
             base_url=self.base_url,
@@ -285,7 +398,7 @@ class OpenAICompatibleModel(ChatModel):
             transport=self.transport,
             follow_redirects=False,
         ) as client:
-            for model in [self.model, *self.fallback_models[:1]]:
+            for model in [self.model, *self.fallback_models]:
                 produced = yield from self._stream_one(client, model, messages, max_tokens, started)
                 if produced:
                     return
@@ -303,21 +416,27 @@ class OpenAICompatibleModel(ChatModel):
         (True: done) or the next model should be tried (False). Same one-shot
         compat retry as ``_post``; a 400 arrives before any text."""
         compat = model in _COMPAT_PROFILE
+        self._compat_used = False
         for attempt in (0, 1):
             body = self._body(model, messages, max_tokens, json_mode=True, compat=compat)
             body["stream"] = True
             body["stream_options"] = {"include_usage": True}
             timeout = self._attempt_timeout(started)
             if timeout is None:
+                self._log_attempt(model, "budget_exhausted")
                 return False
             self.requests_used += 1
             yielded = False
+            self._stream_finish = None
             try:
                 with client.stream(
                     "POST", "chat/completions", json=body, timeout=timeout
                 ) as response:
                     self.last_http_status = response.status_code
+                    self._compat_used = compat
                     if self._blocks(response.status_code):
+                        response.read()
+                        self._log_attempt(model, "blocked", response=response)
                         self.blocked = True
                         raise ProviderError("Provider unavailable for this turn.")
                     if response.status_code == 400 and attempt == 0 and not compat:
@@ -326,6 +445,8 @@ class OpenAICompatibleModel(ChatModel):
                             compat = True
                             continue
                     if response.status_code != 200:
+                        response.read()
+                        self._log_attempt(model, "failed", response=response)
                         return False
                     if compat:
                         _COMPAT_PROFILE.add(model)
@@ -334,6 +455,7 @@ class OpenAICompatibleModel(ChatModel):
                             self.call_timeout is not None
                             and time.monotonic() - started > self.call_timeout
                         ):
+                            self._log_attempt(model, "timeout", response=response)
                             raise ProviderError("The call exceeded its time budget.")
                         fragment = self._stream_line(line)
                         if fragment is None:
@@ -341,14 +463,25 @@ class OpenAICompatibleModel(ChatModel):
                         yielded = True
                         self.model_used = model
                         yield fragment
+                    finish = self._stream_finish
                     if yielded:
+                        self._log_attempt(
+                            model,
+                            "ok",
+                            response=response,
+                            finish_reason=finish,
+                            content="truncated" if finish == "length" else "ok",
+                        )
                         return True
                     self.ambiguous_attempts += 1
+                    self._log_attempt(
+                        model, "unusable", response=response, finish_reason=finish, content="empty"
+                    )
                     return False
-            except (httpx.ConnectError, httpx.ConnectTimeout):
-                return False
             except httpx.HTTPError as error:
-                self.ambiguous_attempts += 1
+                if not isinstance(error, httpx.ConnectError | httpx.ConnectTimeout):
+                    self.ambiguous_attempts += 1
+                self._log_attempt(model, _transport_outcome(error))
                 if yielded:
                     raise ProviderError("The stream was interrupted.") from error
                 return False
@@ -373,6 +506,9 @@ class OpenAICompatibleModel(ChatModel):
         choices = payload.get("choices")
         if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):
             return None
+        finish = _clean_token(choices[0].get("finish_reason"))
+        if finish is not None:
+            self._stream_finish = finish
         delta = choices[0].get("delta")
         content = delta.get("content") if isinstance(delta, dict) else None
         return content if isinstance(content, str) and content else None

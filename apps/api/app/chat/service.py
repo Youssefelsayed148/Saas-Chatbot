@@ -349,6 +349,28 @@ def _provider_http_status(model: ChatModel) -> int | None:
     return status if isinstance(status, int) and not isinstance(status, bool) else None
 
 
+def _provider_attempts(model: ChatModel) -> list[dict[str, object]]:
+    """What the underlying client did on its latest call, one record per model
+    tried (status, sanitized error code, finish reason, content state)."""
+    log = getattr(_provider_client(model), "attempt_log", None)
+    return [dict(item) for item in log] if isinstance(log, list) else []
+
+
+def _generation_max_tokens(model: ChatModel, settings: Settings) -> int:
+    """Completion cap: the free chain gets more headroom for reasoning models."""
+    free = getattr(_provider_client(model), "free_only", False) is True
+    return settings.chat_max_tokens_free if free else settings.chat_max_tokens
+
+
+def _attempts_for_log(attempts: list[dict[str, object]]) -> str:
+    """A compact, key-free line: ``model:outcome:http:code`` per attempt."""
+    return ",".join(
+        f"{item.get('model')}:{item.get('outcome')}:{item.get('http_status')}:"
+        f"{item.get('error_code') or item.get('content') or '-'}"
+        for item in attempts
+    )
+
+
 def chat_answer(
     db: OrmSession,
     *,
@@ -587,7 +609,11 @@ def chat_answer(
     invalid_reason: str | None = None
     try:
         _set_call_timeout(model, budget.generation_timeout())
-        raw = model.complete(messages, json_mode=True, max_tokens=settings.chat_max_tokens)
+        raw = model.complete(
+            messages,
+            json_mode=True,
+            max_tokens=_generation_max_tokens(model, settings),
+        )
         parsed, invalid_reason = _check_reply(raw, evidence)
         trace["parsed_ok"] = parsed is not None
         if parsed is not None:
@@ -600,23 +626,38 @@ def chat_answer(
                 parsed, invalid_reason = None, "post_check_rejected"
     except ProviderError:
         parsed = None
-        # Staff-visible failure detail (Playground trace): status + model name
-        # only — never a key, header, prompt or provider response body.
+        # Staff-visible failure detail (Playground trace): per-attempt status,
+        # sanitized provider error code and finish reason — never a key,
+        # header, prompt or provider response body.
         status = _provider_status(model)
-        detail = {
+        attempts = _provider_attempts(model)
+        last = attempts[-1] if attempts else {}
+        detail: dict[str, object] = {
             "status": status,
-            "http_status": _provider_http_status(model),
-            "model": trace.get("model"),
+            "http_status": last.get("http_status", _provider_http_status(model)),
+            "model": last.get("model") or trace.get("model"),
+            "error_code": last.get("error_code"),
+            "finish_reason": last.get("finish_reason"),
+            "content": last.get("content"),
+            "attempts": attempts,
         }
         trace["provider_error"] = detail
         logger.warning(
-            "chat.provider_failure tenant=%s bot=%s model=%s status=%s tier=%s",
+            "chat.provider_failure tenant=%s bot=%s model=%s status=%s tier=%s "
+            "http_status=%s error_code=%s attempts=%s",
             tenant_id,
             bot.id,
             detail["model"],
             status,
             getattr(bot, "tier", None),
+            detail["http_status"],
+            detail["error_code"],
+            _attempts_for_log(attempts),
         )
+    else:
+        attempts = _provider_attempts(model)
+        if len(attempts) > 1:
+            trace["provider_attempts"] = attempts  # an earlier model failed, a later one answered
     if parsed is None and invalid_reason is not None:
         if order_account_handoff_applies(bot, question):
             trace["invalid_output_reason"] = invalid_reason

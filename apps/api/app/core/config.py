@@ -77,8 +77,13 @@ class Settings(BaseSettings):
     chat_free_model_chain: list[str] = Field(default_factory=list)
     chat_openai_base_url: str = "https://api.openai.com/v1"
     chat_openai_api_key: SecretStr | None = None
-    chat_openai_model: str = ""
+    # Premium default: gpt-4.1-nano was deprecated by OpenAI; gpt-5.4-nano is the verified
+    # replacement (temperature 0.2 + JSON mode answer 200). Override with CHAT_OPENAI_MODEL.
+    chat_openai_model: str = "gpt-5.4-nano"
     chat_max_tokens: int = Field(default=700, ge=64, le=2000)
+    # Completion cap for the free OpenRouter chain only: its reasoning models spend part of the cap
+    # on hidden reasoning and would otherwise run out before the JSON answer is written.
+    chat_max_tokens_free: int = Field(default=1500, ge=64, le=4000)
     # Visitor-turn time budget (#84): whole turn, query embedding wait, and the
     # optional rewrite/translation calls. Generation always gets at least 10 s.
     chat_turn_deadline_seconds: float = Field(default=40.0, ge=5, le=300)
