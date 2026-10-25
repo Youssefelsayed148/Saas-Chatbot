@@ -26,6 +26,14 @@ import {
   type WidgetTheme,
 } from "@/lib/widget-theme";
 import { widgetStyles } from "@/lib/widget-styles";
+import {
+  handoffFromTurn,
+  nextPollDelay,
+  parsePollHint,
+  POLL_HINT_HEADER,
+  shouldPoll,
+  type PollHint,
+} from "@/lib/widget-polling";
 
 type CitedSource = {
   chunk_id: string;
@@ -146,6 +154,7 @@ function localized(key: string, lang: string): string {
 const STREAMING_TURN_ID = "streaming-reply";
 
 interface DonePayload {
+  kind?: string;
   visitor_message: { id: string; created_at: string };
   ai_message: {
     id: string;
@@ -316,6 +325,13 @@ export default function WidgetFramePage() {
   const sessionRef = useRef<{ id: string; token: string } | null>(null);
   const lastPollAtRef = useRef<string | null>(null);
   const pollingRef = useRef(false);
+  // Polling rules (H5): the server's X-Poll-Hint wins; a handoff seen in a turn
+  // keeps polling on until the first hint arrives. Errors back off exponentially.
+  const pollHintRef = useRef<PollHint | null>(null);
+  const handoffRef = useRef(false);
+  const pollErrorsRef = useRef(0);
+  const pollTimerRef = useRef<number | null>(null);
+  const schedulePollRef = useRef<(delayMs?: number) => void>(() => undefined);
   const lang = config?.default_language ?? "en";
   const dir = config?.dir ?? "ltr";
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -329,6 +345,18 @@ export default function WidgetFramePage() {
     if (text) {
       setTurns([{ id: "welcome", role: "assistant", text }]);
     }
+  }
+
+  function applyPollHint(response: Response) {
+    const hint = parsePollHint(response.headers.get(POLL_HINT_HEADER));
+    if (hint) pollHintRef.current = hint;
+  }
+
+  /** A turn that handed over to a human (re)starts polling until the server says idle. */
+  function noteHandoff(kind?: string | null, needsHuman?: boolean | null) {
+    if (!handoffFromTurn(kind, needsHuman)) return;
+    handoffRef.current = true;
+    pollHintRef.current = null;
   }
 
   async function resumeHistory(
@@ -358,6 +386,8 @@ export default function WidgetFramePage() {
       created_at: string;
     }>;
     lastPollAtRef.current = rows.at(-1)?.created_at ?? null;
+    applyPollHint(response);
+    schedulePollRef.current();
     const restored: Turn[] = rows.map((row) => ({
       id: row.id,
       role: row.sender_type === "visitor" ? "visitor" : "assistant",
@@ -386,11 +416,14 @@ export default function WidgetFramePage() {
         { headers: { "X-Session-Token": session.token } },
       );
       if (!response.ok) {
+        pollErrorsRef.current += 1;
         if (widgetDebugEnabled()) {
           console.debug("[widget-debug] poll response", response.status);
         }
         return;
       }
+      pollErrorsRef.current = 0;
+      applyPollHint(response);
       const rows = (await response.json()) as Array<{
         id: string;
         sender_type: string;
@@ -431,20 +464,72 @@ export default function WidgetFramePage() {
         ];
       });
     } catch {
+      pollErrorsRef.current += 1;
       if (widgetDebugEnabled()) {
         console.debug("[widget-debug] poll failed");
       }
-      // Polling is best effort; the next interval retries without changing the thread.
+      // Polling is best effort; the next attempt backs off without changing the thread.
     } finally {
       pollingRef.current = false;
     }
   }
 
+  // Poll only while a reply can arrive without the visitor acting (human
+  // agent, scheduled follow-up); back off on errors; stop when idle or hidden.
   useEffect(() => {
     if (status !== "ready" || !config) return;
-    const timer = window.setInterval(() => void pollSession(), 2000);
-    return () => window.clearInterval(timer);
-    // Session refs change without a render; the interval reads the latest ref.
+    let cancelled = false;
+    const clear = () => {
+      if (pollTimerRef.current !== null) {
+        window.clearTimeout(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
+    };
+    const wanted = () =>
+      shouldPoll({
+        hint: pollHintRef.current,
+        handoff: handoffRef.current,
+        hidden: document.hidden,
+      });
+    const schedule = (delayMs?: number) => {
+      clear();
+      if (cancelled || !wanted()) return;
+      pollTimerRef.current = window.setTimeout(
+        () => void tick(),
+        delayMs ?? nextPollDelay(pollErrorsRef.current),
+      );
+    };
+    const tick = async () => {
+      pollTimerRef.current = null;
+      if (cancelled || !wanted()) return;
+      await pollSession();
+      schedule();
+    };
+    // One immediate look (turn finished, tab visible again), then the hint decides.
+    const probe = async () => {
+      clear();
+      if (cancelled || !sessionRef.current) return;
+      await pollSession();
+      schedule();
+    };
+    schedulePollRef.current = (delayMs) => {
+      if (delayMs === 0) void probe();
+      else schedule(delayMs);
+    };
+    const onVisibility = () => {
+      if (!document.hidden) void probe();
+      else clear();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    schedule();
+    return () => {
+      cancelled = true;
+      clear();
+      document.removeEventListener("visibilitychange", onVisibility);
+      schedulePollRef.current = () => undefined;
+    };
+    // Session refs change without a render; the loop reads the latest refs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, config]);
 
   function setTypedError(code: string, message?: string) {
@@ -645,6 +730,7 @@ export default function WidgetFramePage() {
         }
         const final: Turn = {
           id: ai.id,
+      noteHandoff(payload.kind, payload.ai_message?.needs_human);
           role: "assistant",
           text: ai.text, // authoritative: replaces whatever streamed
           citations: ai.citations,
@@ -805,6 +891,7 @@ export default function WidgetFramePage() {
       setTurns((current) => {
         const withVisitorId = current.map((turn) =>
           turn.id === localTurn.id
+        kind?: string;
             ? { ...turn, id: payload.visitor_message.id }
             : turn,
         );
@@ -814,6 +901,7 @@ export default function WidgetFramePage() {
         ) {
           return withVisitorId;
         }
+      noteHandoff(payload.kind, payload.ai_message?.needs_human);
         return [
           ...withVisitorId,
           {
@@ -855,6 +943,8 @@ export default function WidgetFramePage() {
       current.map((item) =>
         item.id === turn.id ? { ...item, feedback: rating } : item,
       ),
+      // One look right after the turn: a handoff / scheduled follow-up resumes polling.
+      schedulePollRef.current(0);
     );
     const session = sessionRef.current;
     if (!session) return;
@@ -1328,5 +1418,3 @@ export default function WidgetFramePage() {
 function closeWidget() {
   window.parent.postMessage({ type: "chatbot:close" }, window.location.origin);
 }
-
-
