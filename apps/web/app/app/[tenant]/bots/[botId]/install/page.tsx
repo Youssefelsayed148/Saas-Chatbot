@@ -13,7 +13,14 @@ import { useEffect, useState } from "react";
 
 import { LabelBadge } from "@/lib/labels";
 import * as api from "@/lib/api";
-import { Button, Card, Loading, Notice, PageHeader } from "@/lib/ui";
+import {
+  Button,
+  Card,
+  LinkButton,
+  Loading,
+  Notice,
+  PageHeader,
+} from "@/lib/ui";
 import BotWorkspaceNav from "@/lib/bot-workspace-nav";
 
 import "@/app/install-screen.css";
@@ -64,9 +71,13 @@ export default function InstallPage() {
     return (
       <main className="install-page">
         <Notice message={loadError} tone="error" />
-        <Link className="install-back" href={`/app/${tenantId}/bots`}>
+        <LinkButton
+          variant="ghost"
+          className="install-back"
+          href={`/app/${tenantId}/bots`}
+        >
           Back to bots
-        </Link>
+        </LinkButton>
       </main>
     );
   }

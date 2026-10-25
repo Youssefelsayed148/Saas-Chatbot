@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -12,6 +11,7 @@ import {
   Card,
   DataTable,
   Field,
+  LinkButton,
   Loading,
   Notice,
   PageHeader,
@@ -112,9 +112,9 @@ export default function TenantDataPage() {
 
   const PURPOSE = "Export workspace data and review activity.";
   const backLink = (
-    <Link className="quiet-button" href={`/app/${tenantId}`}>
+    <LinkButton variant="ghost" href={`/app/${tenantId}`}>
       Back to overview
-    </Link>
+    </LinkButton>
   );
 
   if (!canAdmin) {

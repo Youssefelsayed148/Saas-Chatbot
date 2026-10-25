@@ -170,11 +170,23 @@ async function fixture(page: Page, role: Role | "staff", hasBot = true) {
     if (suffix.endsWith("/documents")) return respond([]);
     if (suffix.endsWith("/rag"))
       return respond({
+        retrieval_mode: "hybrid",
         tier: "standard",
+        tier_targets: {
+          standard: { provider: "openrouter", model: "fixture:free" },
+          premium: { provider: "openai", model: null },
+        },
+        active_embedding_model: null,
+        embedding_ready: true,
+        backfill: null,
         limits: {},
         effective_limits: {},
         usage: {},
       });
+    if (suffix.endsWith("/readiness"))
+      return respond({ ready: true, items: [] });
+    if (suffix.endsWith("/tone-and-rules"))
+      return respond({ tone_and_rules: null });
     if (suffix.endsWith("/rag/costs")) return respond({ costs: [] });
     if (suffix === "/data/audit") return respond({ events: [] });
     if (suffix === "")
@@ -337,13 +349,20 @@ for (const role of ["admin", "editor", "viewer", "staff"] as const) {
         await expect(
           page.getByRole("heading", { name: "Overview", exact: true }),
         ).toBeVisible();
+        for (const id of [
+          "rag-tier-control",
+          "rag-operator-panel",
+          "rag-diagnostics",
+          "tone-and-rules-section",
+        ])
+          await expect(page.getByTestId(id)).toHaveCount(0);
         await checkText();
       }
       await page.goto(`${base}/bots`);
       await expect(page).toHaveURL(base);
       expect(
         requests.filter((path) =>
-          /\/(sources|jobs|documents|revisions|playground|rag)(\/|$)/.test(
+          /\/(sources|jobs|documents|revisions|playground|rag|readiness|tone-and-rules)(\/|$)/.test(
             path,
           ),
         ),

@@ -8,6 +8,7 @@ import {
   Empty,
   Field,
   FormSection,
+  LinkButton,
   Loading,
   Notice,
   PageHeader,
@@ -176,9 +177,13 @@ export function ChangeRequests({ tenantId }: { tenantId?: string }) {
               </p>
               {!tenantId && (
                 <p className="cr-meta">
-                  <a href={`/app/${row.tenant_id}/settings/data`}>
+                  <LinkButton
+                    href={`/app/${row.tenant_id}/settings/data`}
+                    variant="secondary"
+                    size="sm"
+                  >
                     Organization data and deletion
-                  </a>{" "}
+                  </LinkButton>{" "}
                   · Requester: <bdi dir="ltr">{row.requester_id}</bdi>
                 </p>
               )}

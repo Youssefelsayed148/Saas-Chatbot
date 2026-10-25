@@ -211,3 +211,35 @@ def test_register_without_invite_token_is_invitation_required_when_signup_off(
         assert db.execute(select(User)).scalars().all() == []
     finally:
         guest.close()
+
+
+def test_default_config_keeps_registration_closed(app: Any, db: Any, monkeypatch: Any) -> None:
+    """ADR-021 / ADR-022 default-config guard: with NO override of
+    ``self_serve_signup`` (the shipped default), registration is closed.
+
+    Unlike the tests above, the flag is not forced off by hand: the settings are
+    built from the real ``Settings`` defaults, ignoring any developer ``.env``
+    file and any ``SELF_SERVE_SIGNUP`` environment variable.
+    """
+    from app.core.config import Settings
+    from app.db.models import User
+
+    monkeypatch.delenv("SELF_SERVE_SIGNUP", raising=False)
+    default_settings = Settings(_env_file=None)  # type: ignore[call-arg]
+    assert default_settings.self_serve_signup is False
+
+    app.dependency_overrides[get_settings] = lambda: default_settings
+    guest = TestClient(app)
+    try:
+        config = guest.get("/api/v1/auth/config")
+        assert config.status_code == 200
+        assert config.json() == {"self_serve_signup": False}
+        response = guest.post(
+            "/api/v1/auth/register",
+            json={"email": "default-closed@example.com", "password": PASSWORD},
+        )
+        assert response.status_code == 403
+        assert response.json()["error"]["code"] == "INVITATION_REQUIRED"
+        assert db.execute(select(User)).scalars().all() == []
+    finally:
+        guest.close()

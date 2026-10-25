@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import * as api from "./api";
 import { roleSatisfies, useSession } from "./session";
 import { Icon } from "./icons";
+import { LinkButton } from "./ui";
 import { ThemeToggle } from "./theme";
 
 type Destination = { label: string; href: string; symbol: React.ReactNode };
@@ -327,9 +328,9 @@ export function AppShell({
               {me.is_platform_staff && staffOrganizationsError && (
                 <span role="alert">{staffOrganizationsError}</span>
               )}
-              <Link className="quiet-button" href="/account">
+              <LinkButton href="/account" variant="secondary" size="sm">
                 Account
-              </Link>
+              </LinkButton>
               <button
                 className="quiet-button"
                 type="button"

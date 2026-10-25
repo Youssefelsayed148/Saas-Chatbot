@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { humanLabel } from "@/lib/labels";
 import * as api from "@/lib/api";
 import { useSession } from "@/lib/session";
-import { Empty, Loading, Notice, PageHeader } from "@/lib/ui";
+import { Empty, LinkButton, Loading, Notice, PageHeader } from "@/lib/ui";
 import { Icon } from "@/lib/icons";
 export default function TenantOverview() {
   const { tenant } = useParams<{ tenant: string }>();
@@ -61,9 +61,13 @@ export default function TenantOverview() {
         title="Overview"
         purpose="See what needs attention and keep your assistant ready to help."
         actions={
-          <Link className="primary-link" href={`${base}/inbox`}>
-            Open inbox <Icon name="external" />
-          </Link>
+          <LinkButton
+            variant="primary"
+            iconEnd="external"
+            href={`${base}/inbox`}
+          >
+            Open inbox
+          </LinkButton>
         }
       />
       {error && (
@@ -90,9 +94,13 @@ export default function TenantOverview() {
             <section className="panel">
               <div className="section-heading">
                 <h2>Recent conversations</h2>
-                <Link href={`${base}/inbox`}>
-                  View inbox <Icon name="arrow-right" />
-                </Link>
+                <LinkButton
+                  variant="ghost"
+                  iconEnd="arrow-right"
+                  href={`${base}/inbox`}
+                >
+                  View inbox
+                </LinkButton>
               </div>
               {!data.recent.conversations.length ? (
                 <Empty>
@@ -132,11 +140,15 @@ export default function TenantOverview() {
                         <Icon name="circle" />
                       )}
                     </span>
-                    <Link href={`${base}/bots`}>
+                    <LinkButton
+                      variant="secondary"
+                      size="sm"
+                      href={`${base}/bots`}
+                    >
                       {data.bots.length
                         ? "First bot created"
                         : "Create your first bot"}
-                    </Link>
+                    </LinkButton>
                   </li>
                   {data.bots[0] && canReadKnowledge && (
                     <li>
@@ -147,14 +159,18 @@ export default function TenantOverview() {
                           <Icon name="circle" />
                         )}
                       </span>
-                      <Link href={`${base}/bots/${data.bots[0].id}/knowledge`}>
+                      <LinkButton
+                        variant="secondary"
+                        size="sm"
+                        href={`${base}/bots/${data.bots[0].id}/knowledge`}
+                      >
                         {data.published
                           ? "Knowledge published"
                           : me?.is_platform_staff
                             ? "Publish knowledge"
                             : "Review knowledge"}
                         <small dir="auto">{data.bots[0].name}</small>
-                      </Link>
+                      </LinkButton>
                     </li>
                   )}
                 </ol>

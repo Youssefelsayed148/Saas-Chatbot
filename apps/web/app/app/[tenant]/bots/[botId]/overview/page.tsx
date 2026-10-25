@@ -12,6 +12,7 @@ import {
   DataTable,
   Empty,
   Field,
+  LinkButton,
   Loading,
   Notice,
   PageHeader,
@@ -161,20 +162,22 @@ export default function OverviewPage() {
           </Button>
           {roleSatisfies(role, "admin") && (
             <>
-              <a
+              <LinkButton
+                variant="secondary"
                 className="insights-export"
                 href={`/api/v1/tenants/${tenantId}/bots/${botId}/analytics/conversations.csv${csvSuffix}`}
                 data-testid="export-conversations"
               >
                 Export conversations CSV
-              </a>
-              <a
+              </LinkButton>
+              <LinkButton
+                variant="secondary"
                 className="insights-export"
                 href={`/api/v1/tenants/${tenantId}/bots/${botId}/analytics/leads.csv${csvSuffix}`}
                 data-testid="export-leads"
               >
                 Export leads CSV
-              </a>
+              </LinkButton>
             </>
           )}
         </div>

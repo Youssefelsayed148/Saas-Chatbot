@@ -20,23 +20,42 @@
 .settings-form {
   max-inline-size: 64rem;
   gap: 0;
+  /* Room so the sticky save bar never covers the last section. */
+  padding-block-end: var(--space-6);
+}
+.settings-form > .form-section {
+  scroll-margin-block-start: 4.5rem;
 }
 .settings-form > .form-section {
   margin-block: 0 var(--space-5);
 }
+/* Two columns when the form is wide, one when it is narrow (auto-fit). */
 .settings-form .field-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
-  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: var(--space-4) var(--space-5);
+  align-items: start;
+}
+.settings-form .field-grid > .field-wide {
+  grid-column: 1 / -1;
+}
+.settings-form .char-count {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.settings-form .char-count[data-near="true"] {
+  color: var(--warning);
 }
 .settings-form .form-section > .bot-tone {
   margin: 0;
 }
-.settings-form .form-section textarea,
 .settings-form
   .form-section
-  input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
-.settings-form .form-section select {
+  :where(
+    textarea,
+    input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+    select
+  ) {
   inline-size: 100%;
 }
 .settings-form .theme-appearance {
@@ -46,11 +65,9 @@
   margin-block-end: var(--space-2);
 }
 
-/* Sticky save bar: always reachable, shows whether the form has unsaved edits. */
+/* Clean-state save bar: shows the form is up to date and keeps Save settings
+ * present. When there are unsaved edits the sticky bar replaces it. */
 .settings-savebar {
-  position: sticky;
-  inset-block-end: 0;
-  z-index: 10;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -60,7 +77,6 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
-  box-shadow: var(--shadow);
 }
 .save-state {
   display: inline-flex;
@@ -84,16 +100,34 @@
   background: var(--warning);
 }
 
-/* The AI tier saves on its own, outside the form. */
-.tier-block {
+/* Section nav: stays in view while scrolling; scrolls sideways inside itself
+ * on narrow screens so the page never does. */
+.settings-page > .ui-section-nav {
+  z-index: 15;
+  flex-wrap: nowrap;
+  overflow-x: auto;
   max-inline-size: 64rem;
-  padding: var(--space-5);
-  border: 1px dashed var(--border);
+  padding: var(--space-2);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
+  background: var(--surface);
 }
-.tier-block .tier-note {
-  margin-block: 0 var(--space-3);
+.settings-page > .ui-section-nav a {
+  flex-shrink: 0;
 }
-.tier-block [data-testid="rag-tier-control"] > h2 {
-  font-size: var(--text-md);
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.settings-page) {
+    scroll-behavior: smooth;
+  }
+}
+
+.settings-form .ui-sticky-actions {
+  max-inline-size: 100%;
+}
+@media (max-width: 40rem) {
+  .settings-savebar .button,
+  .settings-savebar button,
+  .settings-form .ui-sticky-actions button {
+    inline-size: 100%;
+  }
 }

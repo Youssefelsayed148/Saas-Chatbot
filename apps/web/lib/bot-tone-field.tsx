@@ -28,27 +28,30 @@ export default function BotToneField({
         wording and style. They cannot override the grounding, safety or answer
         format rules, and customers and organization members never see them.
       </p>
-      <label className="field">
-        Tone and rules
+      <div className="field" data-invalid={error ? "true" : undefined}>
+        <label htmlFor="tone-and-rules-input">Tone and rules</label>
         <textarea
+          id="tone-and-rules-input"
           dir="auto"
           name="tone_and_rules"
           disabled={disabled}
           rows={5}
           maxLength={TONE_MAX}
+          placeholder="Warm, brief, use the customer's name."
           value={value}
           onChange={(event) => onChange(event.target.value)}
           aria-describedby="tone-counter"
+          aria-invalid={error ? true : undefined}
         />
-      </label>
-      <p
-        id="tone-counter"
-        className="muted"
-        data-testid="tone-counter"
-        aria-live="polite"
-      >
-        {value.length} / {TONE_MAX} characters
-      </p>
+        <p
+          id="tone-counter"
+          className="field-hint char-count"
+          data-testid="tone-counter"
+          aria-live="polite"
+        >
+          {value.length} / {TONE_MAX} characters
+        </p>
+      </div>
       {error && (
         <p
           role="alert"

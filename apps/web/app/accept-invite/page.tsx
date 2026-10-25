@@ -1,12 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
 import * as api from "@/lib/api";
 import { useSession } from "@/lib/session";
-import { Button, Loading, Notice } from "@/lib/ui";
+import { Button, LinkButton, Loading, Notice } from "@/lib/ui";
 import "@/app/auth-screen.css";
 
 function AcceptForm() {
@@ -51,7 +50,9 @@ function AcceptForm() {
           scope="item"
         />
         <p className="auth-footer">
-          <Link href="/login">Sign in</Link>
+          <LinkButton variant="primary" href="/login">
+            Sign in
+          </LinkButton>
         </p>
       </main>
     );
@@ -81,24 +82,24 @@ function AcceptForm() {
       {!sessionLoading && !me && !joined && (
         <>
           <p>
-            Open the link, then register or sign in with the invited email
-            address.
+            Sign in to accept this invitation with the invited email address.
           </p>
           <p>
-            <Link href={`/login?next=${encodeURIComponent(next)}`}>
+            <LinkButton
+              variant="primary"
+              href={`/login?next=${encodeURIComponent(next)}`}
+            >
               Sign in
-            </Link>{" "}
-            or{" "}
-            <Link href={`/register?next=${encodeURIComponent(next)}`}>
-              Register
-            </Link>
+            </LinkButton>
           </p>
         </>
       )}
       {joined && (
         <p role="status">
           Welcome aboard! You joined {joined}.{" "}
-          <Link href="/app">Go to your dashboard</Link>
+          <LinkButton variant="primary" href="/app">
+            Go to your dashboard
+          </LinkButton>
         </p>
       )}
       {error && <Notice message={error} tone="error" scope="item" />}

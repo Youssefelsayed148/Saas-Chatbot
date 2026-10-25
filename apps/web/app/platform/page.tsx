@@ -8,6 +8,7 @@ import {
   Button,
   DataTable,
   Field,
+  LinkButton,
   Loading,
   Notice,
   PageHeader,
@@ -75,9 +76,9 @@ export default function PlatformHomePage() {
         }
         purpose="Find and manage organizations."
         actions={
-          <a className="primary-link" href="/platform/operations">
+          <LinkButton variant="primary" href="/platform/operations">
             Operations, analytics, and audit review
-          </a>
+          </LinkButton>
         }
       />
       <form

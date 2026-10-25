@@ -1,32 +1,77 @@
 /**
- * S6: registration is closed by default (self_serve_signup=false in the
- * committed configuration). The E2E harness boots the API with the flag ON
- * (SELF_SERVE_SIGNUP=true) so this spec verifies the flagged-on UI: the
- * Register link stays reachable and /register still offers workspace
- * creation. The flagged-off hide behaviour is asserted per code contract in
- * the backend suite (INVITATION_REQUIRED) — the E2E environment cannot boot
- * a second API with the flag off.
+ * UI polish B2 (ADR-021 / ADR-022): registration is closed in the UI. There is
+ * no Register link on / or /login, /register forwards to /login (keeping a safe
+ * `next`), and the login screen has inline errors, a password toggle and the
+ * "contact your administrator" hint (no email reset).
  */
 
 import { expect, test } from "@playwright/test";
 
-test.describe("Login and register visibility (S6)", () => {
-  test("login page shows the Register link while self-serve signup is on", async ({
+test.describe("Landing, login and register redirect", () => {
+  test("landing shows the product and a Sign in button, no Register", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+      "Website Chatbot",
+    );
+    await expect(page.getByText("Application foundation")).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Register" })).toHaveCount(0);
+    const signIn = page.getByRole("link", { name: "Sign in" });
+    await expect(signIn).toBeVisible();
+    await expect(signIn).toHaveAttribute("href", "/login");
+  });
+
+  test("login page has no Register link and shows the admin hint", async ({
     page,
   }) => {
     await page.goto("/login");
-    const link = page.getByRole("link", { name: "Register" });
-    await expect(link).toBeVisible();
-    await expect(link).toHaveAttribute("href", "/register");
+    await expect(page.getByRole("link", { name: "Register" })).toHaveCount(0);
+    await expect(
+      page.getByText("Forgot your password? Contact your administrator."),
+    ).toBeVisible();
+    await expect(page.getByLabel("Email")).toBeVisible();
+    await expect(page.getByLabel("Password", { exact: true })).toBeVisible();
   });
 
-  test("register page offers workspace creation while signup is on", async ({
+  test("login shows inline field errors for an empty submit", async ({
     page,
   }) => {
+    await page.goto("/login");
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await expect(page.getByText("Enter your email address.")).toBeVisible();
+    await expect(page.getByText("Enter your password.")).toBeVisible();
+    await expect(page).toHaveURL(/\/login$/);
+  });
+
+  test("password field toggles visibility", async ({ page }) => {
+    await page.goto("/login");
+    const password = page.getByLabel("Password", { exact: true });
+    await password.fill("Str0ngPass!");
+    await expect(password).toHaveAttribute("type", "password");
+    await page.getByRole("button", { name: "Show password" }).click();
+    await expect(password).toHaveAttribute("type", "text");
+    await page.getByRole("button", { name: "Hide password" }).click();
+    await expect(password).toHaveAttribute("type", "password");
+  });
+
+  test("/register redirects to /login", async ({ page }) => {
     await page.goto("/register");
-    await expect(
-      page.getByText("Create your workspace and first website assistant."),
-    ).toBeVisible();
-    await expect(page.getByLabel("Organization name")).toBeVisible();
+    await expect(page).toHaveURL(/\/login$/);
+    await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
+  });
+
+  test("/register keeps a safe next parameter", async ({ page }) => {
+    await page.goto("/register?next=%2Faccept-invite%3Ftoken%3Dabc");
+    await expect(page).toHaveURL(
+      /\/login\?next=%2Faccept-invite%3Ftoken%3Dabc$/,
+    );
+  });
+
+  test("/register drops an unsafe next parameter", async ({ page }) => {
+    await page.goto("/register?next=%2F%2Fevil.example.com");
+    await expect(page).toHaveURL(/\/login$/);
+    await page.goto("/register?next=https%3A%2F%2Fevil.example.com");
+    await expect(page).toHaveURL(/\/login$/);
   });
 });

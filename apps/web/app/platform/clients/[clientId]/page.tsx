@@ -11,6 +11,7 @@ import {
   DataTable,
   Dialog,
   Field,
+  LinkButton,
   Loading,
   Notice,
   PageHeader,
@@ -21,7 +22,6 @@ import {
 import { ConfirmAction } from "@/lib/ui";
 import { OrganizationMembers, focusAfterRemoval } from "@/lib/staff-members";
 import { BotLinks, CreateBotForm } from "@/lib/staff-bots";
-import { Icon } from "@/lib/icons";
 import "@/app/staff-screens.css";
 
 /** Client detail (P4-06, docs/11): bots + status, failed jobs, members and
@@ -252,9 +252,9 @@ export default function PlatformClientPage() {
           </span>
         }
         eyebrow={
-          <a href="/platform">
-            <Icon name="arrow-left" /> Back to Organizations
-          </a>
+          <LinkButton variant="ghost" icon="arrow-left" href="/platform">
+            Back to Organizations
+          </LinkButton>
         }
         purpose="Inspect organization health and manage plans, quotas and bot availability."
       />
@@ -307,12 +307,15 @@ export default function PlatformClientPage() {
               · {detail.counts.members} members · {detail.counts.bots} bots
             </p>
             <p className="action-row">
-              <a className="primary-link" href={`/app/${clientId}/bots`}>
+              <LinkButton variant="primary" href={`/app/${clientId}/bots`}>
                 Operate bots
-              </a>
-              <a href={`/app/${clientId}/settings/data`}>
+              </LinkButton>
+              <LinkButton
+                variant="secondary"
+                href={`/app/${clientId}/settings/data`}
+              >
                 Organization data and deletion
-              </a>
+              </LinkButton>
             </p>
             <section className="form-section">
               <header>
@@ -753,9 +756,13 @@ export default function PlatformClientPage() {
                       key: "open",
                       header: "Open",
                       cell: (bot) => (
-                        <a href={`/app/${clientId}/bots/${bot.id}/knowledge`}>
+                        <LinkButton
+                          variant="secondary"
+                          size="sm"
+                          href={`/app/${clientId}/bots/${bot.id}/knowledge`}
+                        >
                           Open Knowledge
-                        </a>
+                        </LinkButton>
                       ),
                     },
                   ]}

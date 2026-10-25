@@ -20,12 +20,8 @@ test("self-service disabled hides public registration and organization creation"
     }),
   );
   await page.goto("/register");
-  await expect(
-    page.getByText("Registration is available by invitation only."),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Create account" }),
-  ).toHaveCount(0);
+  await expect(page).toHaveURL(/\/login$/);
+  await expect(page.getByRole("link", { name: "Register" })).toHaveCount(0);
 
   await page.unroute("**/api/v1/auth/config");
   await registerAdmin(page, "self-serve-toggle");

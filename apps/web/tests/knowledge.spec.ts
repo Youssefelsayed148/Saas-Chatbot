@@ -24,9 +24,7 @@ async function openKnowledgeAsOperator(
   });
   if (starter) await assignStarterPlan(page, tenantId, email);
   await page
-    .getByRole("row", { name: new RegExp(botName) })
-    .getByRole("link")
-    .first()
+    .getByRole("link", { name: new RegExp(`Open ${botName}`) })
     .click();
   await page.waitForURL(/\/settings$/);
   await page.getByRole("link", { name: "Knowledge" }).click();

@@ -1,12 +1,18 @@
 "use client";
 
-import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import * as api from "@/lib/api";
 import { useSession } from "@/lib/session";
-import { Card, Loading, Notice, PageHeader, StatusBadge } from "@/lib/ui";
+import {
+  Card,
+  LinkButton,
+  Loading,
+  Notice,
+  PageHeader,
+  StatusBadge,
+} from "@/lib/ui";
 
 import "@/app/convo-screen.css";
 
@@ -50,9 +56,12 @@ export default function ConversationDetailPage() {
     <main className="convo-page">
       <PageHeader
         eyebrow={
-          <Link href={`/app/${tenantId}/bots/${botId}/conversations`}>
+          <LinkButton
+            variant="ghost"
+            href={`/app/${tenantId}/bots/${botId}/conversations`}
+          >
             Back to conversations
-          </Link>
+          </LinkButton>
         }
         title={
           <span data-testid="conversation-detail-title">Conversation</span>

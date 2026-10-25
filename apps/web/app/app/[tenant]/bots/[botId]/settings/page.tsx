@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
@@ -15,19 +14,45 @@ import {
   ConfirmAction,
   Field,
   FormSection,
+  LinkButton,
   Loading,
   Notice,
   PageHeader,
+  SectionNav,
+  StickyActionBar,
+  Switch,
 } from "@/lib/ui";
 import BotWorkspaceNav from "@/lib/bot-workspace-nav";
 import RagTierControl from "@/lib/rag-tier-control";
 import BotToneField from "@/lib/bot-tone-field";
 import BotReadinessCard from "@/lib/bot-readiness-card";
-import WidgetThemeEditor, { type ThemeDraft } from "@/lib/widget-theme-editor";
+import WidgetThemeEditor, {
+  BrandColourField,
+  type ThemeDraft,
+} from "@/lib/widget-theme-editor";
 import WidgetPreview from "@/lib/widget-preview";
 import { THEME_SLOTS, isHex, type ThemeSlots } from "@/lib/widget-theme";
 import "@/app/bot-settings-c.css";
 import "@/app/settings-screen.css";
+
+/** In-page sections, in page order (ids are the anchors of the section nav). */
+const SECTIONS = [
+  { id: "identity", label: "Identity" },
+  { id: "appearance", label: "Appearance" },
+  { id: "messages", label: "Messages" },
+  { id: "handoff", label: "Handoff" },
+  { id: "access", label: "Access" },
+  { id: "ai", label: "AI" },
+];
+
+/** "12 / 100" style counter shown in a field hint. */
+function Count({ value, max }: { value: string; max: number }) {
+  return (
+    <span className="char-count" data-near={value.length >= max * 0.9}>
+      {value.length} / {max}
+    </span>
+  );
+}
 
 /** API field paths (dotted, without the body root) → form input keys.
  * Unmatched fields render in the form-level error area instead. */
@@ -196,6 +221,30 @@ export default function BotSettingsPage() {
     return () => clearTimeout(timer);
   }, [load, canEdit]);
 
+  // Section nav: the section nearest the top of the viewport is the current one.
+  const [activeSection, setActiveSection] = useState(SECTIONS[0].id);
+  const loaded = bot !== null;
+  useEffect(() => {
+    if (!loaded || typeof IntersectionObserver === "undefined") return;
+    const visible = new Set<string>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) visible.add(entry.target.id);
+          else visible.delete(entry.target.id);
+        }
+        const first = SECTIONS.find((section) => visible.has(section.id));
+        if (first) setActiveSection(first.id);
+      },
+      { rootMargin: "-15% 0px -65% 0px" },
+    );
+    for (const section of SECTIONS) {
+      const element = document.getElementById(section.id);
+      if (element) observer.observe(element);
+    }
+    return () => observer.disconnect();
+  }, [loaded]);
+
   async function onSave(event: React.FormEvent) {
     event.preventDefault();
     setSaveError(null);
@@ -319,7 +368,9 @@ export default function BotSettingsPage() {
     return (
       <main>
         <Notice message={loadError} tone="error" />
-        <Link href={`/app/${tenantId}/bots`}>Back to bots</Link>
+        <LinkButton variant="ghost" href={`/app/${tenantId}/bots`}>
+          Back to bots
+        </LinkButton>
       </main>
     );
   }
@@ -407,115 +458,159 @@ export default function BotSettingsPage() {
       {!canEdit && (
         <Notice message="Only platform operators can edit bot settings." />
       )}
+      <SectionNav
+        items={SECTIONS}
+        active={activeSection}
+        label="Settings sections"
+        onClick={(event) => {
+          const target = (event.target as HTMLElement).closest("a");
+          const id = target?.getAttribute("href")?.slice(1);
+          if (id) setActiveSection(id);
+        }}
+      />
       <form
         className="settings-form"
+        id="bot-settings-form"
         onSubmit={onSave}
         onChange={() => setSaved(false)}
       >
         <FormSection
+          id="identity"
           title="Identity"
           description="How the assistant introduces itself and the business it speaks for."
         >
-          <Field label="Assistant name" {...err("assistant_name")}>
-            {(control) => (
-              <input
-                {...control}
-                name="assistant_name"
-                disabled={!canEdit}
-                required
-                maxLength={100}
-                value={assistantName}
-                onChange={(event) => setAssistantName(event.target.value)}
-              />
-            )}
-          </Field>
-          <Field
-            label="Business name"
-            hint="Defaults to the organization name; edit it if customers know the business by another name."
-            {...err("business_name")}
-          >
-            {(control) => (
-              <input
-                {...control}
-                name="business_name"
-                disabled={!canEdit}
-                maxLength={100}
-                value={businessName}
-                onChange={(event) => setBusinessNameEdit(event.target.value)}
-              />
-            )}
-          </Field>
-          <Field label="Business description" {...err("business_description")}>
-            {(control) => (
-              <textarea
-                {...control}
-                dir="auto"
-                name="business_description"
-                disabled={!canEdit}
-                rows={3}
-                maxLength={1000}
-                value={businessDescription}
-                onChange={(event) => setBusinessDescription(event.target.value)}
-              />
-            )}
-          </Field>
-          <Field label="Default language" {...err("default_language")}>
-            {(control) => (
-              <select
-                {...control}
-                name="default_language"
-                disabled={!canEdit}
-                value={defaultLanguage}
-                onChange={(event) =>
-                  setDefaultLanguage(event.target.value as "en" | "ar")
-                }
-              >
-                <option value="en">English</option>
-                <option value="ar">العربية</option>
-              </select>
-            )}
-          </Field>
-          <Field
-            label="Knowledge language"
-            hint="The language your knowledge base is written in. Used to find answers when a visitor writes in the other language. Leave as the default language if they match."
-            {...err("knowledge_language")}
-          >
-            {(control) => (
-              <select
-                {...control}
-                name="knowledge_language"
-                disabled={!canEdit}
-                value={knowledgeLanguage}
-                onChange={(event) =>
-                  setKnowledgeLanguage(event.target.value as "" | "en" | "ar")
-                }
-              >
-                <option value="">Same as default language</option>
-                <option value="en">English</option>
-                <option value="ar">العربية</option>
-              </select>
-            )}
-          </Field>
+          <div className="field-grid">
+            <Field
+              label="Assistant name"
+              hint={<Count value={assistantName} max={100} />}
+              {...err("assistant_name")}
+            >
+              {(control) => (
+                <input
+                  {...control}
+                  name="assistant_name"
+                  disabled={!canEdit}
+                  required
+                  maxLength={100}
+                  placeholder="e.g. Aida"
+                  value={assistantName}
+                  onChange={(event) => setAssistantName(event.target.value)}
+                />
+              )}
+            </Field>
+            <Field
+              label="Business name"
+              hint={
+                <>
+                  Defaults to the organization name; edit it if customers know
+                  the business by another name.{" "}
+                  <Count value={businessName} max={100} />
+                </>
+              }
+              {...err("business_name")}
+            >
+              {(control) => (
+                <input
+                  {...control}
+                  name="business_name"
+                  disabled={!canEdit}
+                  maxLength={100}
+                  value={businessName}
+                  onChange={(event) => setBusinessNameEdit(event.target.value)}
+                />
+              )}
+            </Field>
+            <Field
+              className="field-wide"
+              label="Business description"
+              hint={
+                <>
+                  A short summary of what the business does and who it serves.{" "}
+                  <Count value={businessDescription} max={1000} />
+                </>
+              }
+              {...err("business_description")}
+            >
+              {(control) => (
+                <textarea
+                  {...control}
+                  dir="auto"
+                  name="business_description"
+                  disabled={!canEdit}
+                  rows={3}
+                  maxLength={1000}
+                  placeholder="e.g. A family-run bakery in Cairo, open daily."
+                  value={businessDescription}
+                  onChange={(event) =>
+                    setBusinessDescription(event.target.value)
+                  }
+                />
+              )}
+            </Field>
+            <Field
+              label="Default language"
+              hint="The language the assistant and widget use by default."
+              {...err("default_language")}
+            >
+              {(control) => (
+                <select
+                  {...control}
+                  name="default_language"
+                  disabled={!canEdit}
+                  value={defaultLanguage}
+                  onChange={(event) =>
+                    setDefaultLanguage(event.target.value as "en" | "ar")
+                  }
+                >
+                  <option value="en">English</option>
+                  <option value="ar">العربية</option>
+                </select>
+              )}
+            </Field>
+            <Field
+              label="Knowledge language"
+              hint="The language your knowledge base is written in. Used to find answers when a visitor writes in the other language. Leave as the default language if they match."
+              {...err("knowledge_language")}
+            >
+              {(control) => (
+                <select
+                  {...control}
+                  name="knowledge_language"
+                  disabled={!canEdit}
+                  value={knowledgeLanguage}
+                  onChange={(event) =>
+                    setKnowledgeLanguage(event.target.value as "" | "en" | "ar")
+                  }
+                >
+                  <option value="">Same as default language</option>
+                  <option value="en">English</option>
+                  <option value="ar">العربية</option>
+                </select>
+              )}
+            </Field>
+          </div>
         </FormSection>
 
         <FormSection
+          id="appearance"
           title="Appearance"
           description="Colour, avatar, position and the widget theme, with a live preview."
           data-testid="settings-appearance"
         >
           <div className="field-grid">
-            <Field label="Widget colour (hex, e.g. #1a2b3c)" {...err("colour")}>
-              {(control) => (
-                <input
-                  {...control}
-                  name="colour"
-                  disabled={!canEdit}
-                  value={colour}
-                  onChange={(event) => setColour(event.target.value)}
-                />
-              )}
-            </Field>
-            <Field label="Widget position" {...err("position")}>
+            <BrandColourField
+              label="Widget colour (hex, e.g. #1a2b3c)"
+              value={colour}
+              onChange={setColour}
+              disabled={!canEdit}
+              error={fieldErrors["colour"] ?? null}
+              errorTestId="field-error-colour"
+            />
+            <Field
+              label="Widget position"
+              hint="Which side of the page the launcher sits on."
+              {...err("position")}
+            >
               {(control) => (
                 <select
                   {...control}
@@ -531,21 +626,24 @@ export default function BotSettingsPage() {
                 </select>
               )}
             </Field>
+            <Field
+              className="field-wide"
+              label="Widget avatar (public http(s) image URL)"
+              hint="Optional. A square image works best."
+              {...err("avatar")}
+            >
+              {(control) => (
+                <input
+                  {...control}
+                  name="avatar"
+                  disabled={!canEdit}
+                  placeholder="https://example.com/avatar.png"
+                  value={avatar}
+                  onChange={(event) => setAvatar(event.target.value)}
+                />
+              )}
+            </Field>
           </div>
-          <Field
-            label="Widget avatar (public http(s) image URL)"
-            {...err("avatar")}
-          >
-            {(control) => (
-              <input
-                {...control}
-                name="avatar"
-                disabled={!canEdit}
-                value={avatar}
-                onChange={(event) => setAvatar(event.target.value)}
-              />
-            )}
-          </Field>
           <section
             aria-label="Widget appearance"
             className="theme-appearance"
@@ -589,57 +687,70 @@ export default function BotSettingsPage() {
         </FormSection>
 
         <FormSection
+          id="messages"
           title="Messages"
           description="What visitors see when the widget opens."
         >
-          <Field
-            id="field-welcome_en"
-            label="Welcome message (EN)"
-            {...err("welcome_message.en")}
-          >
-            {(control) => (
-              <input
-                {...control}
-                name="welcome_en"
-                disabled={!canEdit}
-                maxLength={500}
-                value={welcomeEn}
-                onChange={(event) => setWelcomeEn(event.target.value)}
-              />
-            )}
-          </Field>
-          <Field label="Welcome message (AR)" {...err("welcome_message.ar")}>
-            {(control) => (
-              <input
-                {...control}
-                name="welcome_ar"
-                dir="auto"
-                disabled={!canEdit}
-                maxLength={500}
-                value={welcomeAr}
-                onChange={(event) => setWelcomeAr(event.target.value)}
-              />
-            )}
-          </Field>
-          <Field
-            label="Opening questions (one per line, max 10)"
-            {...err("opening_questions")}
-          >
-            {(control) => (
-              <textarea
-                {...control}
-                dir="auto"
-                name="opening_questions"
-                disabled={!canEdit}
-                rows={4}
-                value={openingQuestions}
-                onChange={(event) => setOpeningQuestions(event.target.value)}
-              />
-            )}
-          </Field>
+          <div className="field-grid">
+            <Field
+              id="field-welcome_en"
+              label="Welcome message (EN)"
+              hint={<Count value={welcomeEn} max={500} />}
+              {...err("welcome_message.en")}
+            >
+              {(control) => (
+                <input
+                  {...control}
+                  name="welcome_en"
+                  disabled={!canEdit}
+                  maxLength={500}
+                  placeholder="Hi! How can I help you today?"
+                  value={welcomeEn}
+                  onChange={(event) => setWelcomeEn(event.target.value)}
+                />
+              )}
+            </Field>
+            <Field
+              label="Welcome message (AR)"
+              hint={<Count value={welcomeAr} max={500} />}
+              {...err("welcome_message.ar")}
+            >
+              {(control) => (
+                <input
+                  {...control}
+                  name="welcome_ar"
+                  dir="auto"
+                  disabled={!canEdit}
+                  maxLength={500}
+                  value={welcomeAr}
+                  onChange={(event) => setWelcomeAr(event.target.value)}
+                />
+              )}
+            </Field>
+            <Field
+              className="field-wide"
+              label="Opening questions (one per line, max 10)"
+              hint={`${openingQuestions.split("\n").filter((line) => line.trim()).length} / 10 questions. Shown as suggestions when the widget opens.`}
+              {...err("opening_questions")}
+            >
+              {(control) => (
+                <textarea
+                  {...control}
+                  dir="auto"
+                  name="opening_questions"
+                  disabled={!canEdit}
+                  rows={4}
+                  placeholder={"What are your opening hours?\nHow do I book?"}
+                  value={openingQuestions}
+                  onChange={(event) => setOpeningQuestions(event.target.value)}
+                />
+              )}
+            </Field>
+          </div>
         </FormSection>
 
         <FormSection
+          id="handoff"
           title="Contact & handoff"
           description="Where customers are sent when the assistant cannot help."
         >
@@ -647,6 +758,7 @@ export default function BotSettingsPage() {
             <Field
               id="field-support_email"
               label="Support email"
+              hint="Shown to visitors when the assistant cannot answer."
               {...err("support_email")}
             >
               {(control) => (
@@ -655,18 +767,24 @@ export default function BotSettingsPage() {
                   name="support_email"
                   type="email"
                   disabled={!canEdit}
+                  placeholder="support@example.com"
                   value={supportEmail}
                   onChange={(event) => setSupportEmail(event.target.value)}
                 />
               )}
             </Field>
-            <Field label="Support phone" {...err("support_phone")}>
+            <Field
+              label="Support phone"
+              hint={<Count value={supportPhone} max={30} />}
+              {...err("support_phone")}
+            >
               {(control) => (
                 <input
                   {...control}
                   name="support_phone"
                   disabled={!canEdit}
                   maxLength={30}
+                  placeholder="+20 100 000 0000"
                   value={supportPhone}
                   onChange={(event) => setSupportPhone(event.target.value)}
                 />
@@ -674,16 +792,16 @@ export default function BotSettingsPage() {
             </Field>
           </div>
           <div className="field">
-            <label className="check-control">
-              Human handoff enabled
-              <input
-                name="handoff_enabled"
-                type="checkbox"
-                disabled={!canEdit}
-                checked={handoffEnabled}
-                onChange={(event) => setHandoffEnabled(event.target.checked)}
-              />
-            </label>
+            <Switch
+              label="Human handoff enabled"
+              hint="Lets visitors ask to talk to a person."
+              disabled={!canEdit}
+              checked={handoffEnabled}
+              onChange={(next) => {
+                setHandoffEnabled(next);
+                setSaved(false);
+              }}
+            />
             {fieldErrors["handoff_enabled"] && (
               <p
                 role="alert"
@@ -697,13 +815,14 @@ export default function BotSettingsPage() {
         </FormSection>
 
         <FormSection
+          id="access"
           title="Access"
           description="Which websites may show this widget."
         >
           <Field
             id="field-allowed_domains"
             label="Allowed domains (one per line, max 50)"
-            hint="Paste hostnames or full URLs; they are reduced to bare hostnames on save. Leave empty to allow any site."
+            hint={`Paste hostnames or full URLs; they are reduced to bare hostnames on save. Leave empty to allow any site. ${allowedDomains.split("\n").filter((line) => line.trim()).length} / 50 domains.`}
             {...err("allowed_domains")}
           >
             {(control) => (
@@ -713,6 +832,7 @@ export default function BotSettingsPage() {
                 name="allowed_domains"
                 disabled={!canEdit}
                 rows={3}
+                placeholder={"example.com\nshop.example.com"}
                 value={allowedDomains}
                 onChange={(event) => setAllowedDomains(event.target.value)}
               />
@@ -722,8 +842,9 @@ export default function BotSettingsPage() {
 
         {canEdit && (
           <FormSection
+            id="ai"
             title="AI"
-            description="Tone and rules are saved with the form. The AI tier below saves instantly on its own."
+            description="Tone and rules are saved with Save settings. The AI tier below saves immediately on its own."
           >
             <BotToneField
               value={toneAndRules}
@@ -731,34 +852,35 @@ export default function BotSettingsPage() {
               disabled={!canEdit}
               error={fieldErrors["tone_and_rules"] ?? null}
             />
+            <div id="settings-ai-tier" className="tier-block">
+              <RagTierControl tenantId={tenantId} botId={botId} />
+            </div>
           </FormSection>
         )}
         {saveError && <Notice message={saveError} tone="error" />}
         {saved && <Notice message="Settings saved." />}
-        {canEdit && (
-          <div className="settings-savebar" data-testid="settings-savebar">
-            <span className="save-state" data-dirty={dirty ? "true" : "false"}>
-              {saving
-                ? "Saving form changes…"
-                : dirty
-                  ? "Unsaved form changes"
-                  : "Form is up to date"}
-            </span>
-            <Button type="submit" disabled={saving}>
-              {saving ? "Saving…" : "Save settings"}
-            </Button>
-          </div>
-        )}
+        {canEdit &&
+          (dirty ? (
+            <StickyActionBar
+              dirty
+              message={saving ? "Saving form changes…" : "Unsaved form changes"}
+              data-testid="settings-savebar"
+            >
+              <Button type="submit" disabled={saving}>
+                {saving ? "Saving…" : "Save settings"}
+              </Button>
+            </StickyActionBar>
+          ) : (
+            <div className="settings-savebar" data-testid="settings-savebar">
+              <span className="save-state" data-dirty="false">
+                Form is up to date
+              </span>
+              <Button type="submit" disabled={saving}>
+                {saving ? "Saving…" : "Save settings"}
+              </Button>
+            </div>
+          ))}
       </form>
-      {canEdit && (
-        <div id="settings-ai-tier" className="tier-block">
-          <p className="muted tier-note">
-            <strong>Saves instantly:</strong> changing the AI tier below does
-            not need the Save settings button.
-          </p>
-          <RagTierControl tenantId={tenantId} botId={botId} />
-        </div>
-      )}
       {bot.status === "archived" && <Notice message="This bot is archived." />}
     </main>
   );

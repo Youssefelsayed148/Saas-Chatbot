@@ -134,9 +134,7 @@ async function createOrgAndBot(
 ): Promise<{ tenantId: string; botId: string; locator: string }> {
   const { tenantId } = await registerOperator(page, "Widget", { botName });
   await page
-    .getByRole("row", { name: new RegExp(botName) })
-    .getByRole("link")
-    .first()
+    .getByRole("link", { name: new RegExp(`Open ${botName}`) })
     .click();
   await page.waitForURL(/\/settings$/);
   const botId = new URL(page.url()).pathname.split("/")[4];

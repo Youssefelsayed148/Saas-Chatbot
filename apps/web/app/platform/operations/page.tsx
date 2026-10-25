@@ -10,6 +10,7 @@ import {
   DataTable,
   Empty,
   Field,
+  LinkButton,
   Loading,
   Notice,
   PageHeader,
@@ -79,9 +80,9 @@ export default function PlatformOperationsPage() {
         title="Platform operations"
         purpose="Review measured platform activity, job health and audited operations."
         actions={
-          <a className="quiet-button" href="/platform">
+          <LinkButton variant="ghost" icon="arrow-left" href="/platform">
             Back to Organizations
-          </a>
+          </LinkButton>
         }
       />
       {error && <Notice message={error} tone="error" />}

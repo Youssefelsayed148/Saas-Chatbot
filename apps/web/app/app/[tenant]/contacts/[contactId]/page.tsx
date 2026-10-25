@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -12,11 +11,11 @@ import {
   Card,
   Field,
   FormSection,
+  LinkButton,
   Loading,
   Notice,
   PageHeader,
 } from "@/lib/ui";
-import { Icon } from "@/lib/icons";
 
 import "@/app/contacts-screen.css";
 
@@ -161,9 +160,13 @@ export default function ContactPage() {
     <main className="contact-profile contacts-page">
       <PageHeader
         eyebrow={
-          <Link href={`/app/${tenantId}/contacts`}>
-            <Icon name="arrow-left" /> Contacts
-          </Link>
+          <LinkButton
+            variant="ghost"
+            icon="arrow-left"
+            href={`/app/${tenantId}/contacts`}
+          >
+            Contacts
+          </LinkButton>
         }
         title={
           profile ? (

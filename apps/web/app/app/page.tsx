@@ -1,16 +1,17 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import * as api from "@/lib/api";
 import { useSession } from "@/lib/session";
+import "@/app/bots-list.css";
 import {
   Button,
   DataTable,
   Empty,
   Field,
+  LinkButton,
   Loading,
   Notice,
   PageHeader,
@@ -82,10 +83,15 @@ export default function OrgSelectorPage() {
           purpose="Open a client workspace or create an organization."
           actions={
             <>
-              <Link href="/platform#create-organization">
+              <LinkButton
+                variant="primary"
+                href="/platform#create-organization"
+              >
                 Create organization
-              </Link>
-              <Link href="/platform">Platform admin</Link>
+              </LinkButton>
+              <LinkButton variant="secondary" href="/platform">
+                Platform admin
+              </LinkButton>
             </>
           }
         />
@@ -135,7 +141,9 @@ export default function OrgSelectorPage() {
                 key: "workspace",
                 header: "Workspace",
                 cell: (org) => (
-                  <Link
+                  <LinkButton
+                    variant="secondary"
+                    size="sm"
                     href={
                       org.status === "archived"
                         ? `/platform/clients/${org.id}`
@@ -144,7 +152,7 @@ export default function OrgSelectorPage() {
                     aria-label={`Open ${org.name}`}
                   >
                     Open
-                  </Link>
+                  </LinkButton>
                 ),
               },
             ]}
@@ -173,13 +181,19 @@ export default function OrgSelectorPage() {
           </Empty>
         )}
       {!loading && !error && me && me.memberships.length > 0 && (
-        <ul className="org-list">
+        <ul className="bots-grid" aria-label="Your organizations">
           {me.memberships.map((membership) => (
-            <li key={membership.tenant_id}>
-              <Link href={`/app/${membership.tenant_id}`}>
-                {membership.tenant_name}
-              </Link>
-              <span className="muted"> — your role: {membership.role}</span>
+            <li key={membership.tenant_id} className="bot-card">
+              <h2 className="bot-card-name">{membership.tenant_name}</h2>
+              <span className="muted">Your role: {membership.role}</span>
+              <LinkButton
+                variant="primary"
+                size="sm"
+                href={`/app/${membership.tenant_id}`}
+                aria-label={`Open ${membership.tenant_name}`}
+              >
+                Open
+              </LinkButton>
             </li>
           ))}
         </ul>

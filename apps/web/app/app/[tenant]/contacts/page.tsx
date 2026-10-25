@@ -15,6 +15,7 @@ import {
   Empty,
   Field,
   FormSection,
+  LinkButton,
   Loading,
   Notice,
   PageHeader,
@@ -74,12 +75,13 @@ export default function ContactsPage() {
         purpose="Keep visitor details, consent and conversation history together."
         actions={
           canExport && contacts && contacts.length > 0 ? (
-            <a
+            <LinkButton
+              variant="secondary"
               className="contacts-export"
               href={`/api/v1/tenants/${tenantId}/contacts/export.csv`}
             >
               Export CSV
-            </a>
+            </LinkButton>
           ) : undefined
         }
       />

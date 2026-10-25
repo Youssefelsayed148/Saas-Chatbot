@@ -2928,3 +2928,19 @@ Commands (cwd apps/api, disposable DB `b3_polish_test` on the 55462 test server,
 - `ruff check` on touched app files: clean except pre-existing E501 at quotas/service.py:206 (and quotas/sentiment.py, db/models, none mine); `ruff format --check` clean for touched files (3 untouched model files would be reformatted, pre-existing).
 - `mypy` on touched files: only pre-existing errors in app/knowledge/ingest.py (os.setsid/killpg/SIGKILL on Windows); none in touched files.
 NOT run: rag_gate/rag_evaluation/traces suites, full pytest, any frontend or Playwright.
+
+## UI polish B6 - settings, forms, bots, organizations (2026-10-25, branch feat/ui-polish)
+Implemented (3 parallel agents, integrated by orchestrator):
+- AI costs and limits (lib/rag-operator-panel.tsx, app/rag-operator-panel.css): LimitField groups (Content / Monthly usage / Embedding and OCR) with meters, StickyActionBar only when dirty, "Reset to plan defaults" via ConfirmAction, cost table with unreported-cost semantics ("Not reported" instead of $0).
+- Bot settings (settings/page.tsx, readiness card, tone field, theme editor, rag-tier-control, css): SectionNav, sticky Save bar on dirty (inline "Form is up to date" bar when clean so "Save settings" always exists), two-column fields, counters, Switch for handoff, local BrandColourField (shared ColorField would break getByLabel selectors and cannot be cleared), AI tier inside the AI section with inline "AI tier saved." feedback, staff-only Diagnostics `<details>` (closed by default), readiness "n/N ready" with failing first, StatusPill, Fix as LinkButton, model-failure banner.
+- Bots list: card grid, compact plan-usage Meters, single "Open" button, "Request a change" button to /app/{tenant}/settings/requests. Organizations: client cards; staff buttons already done in B2.
+- Role audit: no server-side gap found for rag/tone/readiness/playground/platform endpoints (report in chat). Low-severity note for owner: GET tenants/{id}/quota (viewer) returns measured_tokens_this_month and placeholder to client roles via direct API call.
+- Test fixes: e2e-helpers and 6 specs now open a bot via link "Open {botName}" (table row removed); roles-control uses getByRole("spinbutton") for AI tokens; group-b fixture mock updated to full RagStatus shape (root cause of the B2-era failure "rag-tier-control not visible", by code reading, not confirmed by run). New specs: b6-limits (3 tests), b6-settings (8 tests); extra 403/404 cases in roles-control and group-b-client-visibility.
+Verified (observed):
+- `npm run typecheck` and `npm run lint` in apps/web: clean (orchestrator run after integration).
+- Agent B: b6-settings + c-bot-settings against a throwaway dev server with mocked API: 20/20 passed (reported by subagent, not re-run by me).
+NOT run / not verified:
+- The combined Playwright run (c-bot-settings group-a-operator group-a-members group-b-client-visibility roles-control install staff-bots platform organizations dashboard ui-redesign ui-characterization b6-limits b6-settings overview knowledge playground) was started twice: the first attempt failed at `next build` with Next's security notice; the retry was stopped by the owner. 0 tests from it executed. b6-limits, the new role/403 cases, the e2e-helpers link change and the other specs are therefore untested at runtime.
+- No before/after screenshots at 1280/375 dark/light were captured.
+- Next.js build prints a known-vulnerability notice; `next upgrade` was not run (owner decision).
+Owner follow-up: the full re-run planned after B4/B5 is the first real check of these changes.

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
@@ -9,8 +8,14 @@ import { humanLabel } from "@/lib/labels";
 import * as api from "@/lib/api";
 import type { InboxThread, Member } from "@/lib/api";
 import { roleSatisfies, useSession } from "@/lib/session";
-import { Button, Loading, Notice, PageHeader, StatusBadge } from "@/lib/ui";
-import { Icon } from "@/lib/icons";
+import {
+  Button,
+  LinkButton,
+  Loading,
+  Notice,
+  PageHeader,
+  StatusBadge,
+} from "@/lib/ui";
 import "@/app/inbox-screen.css";
 
 export default function InboxConversationPage() {
@@ -87,11 +92,13 @@ export default function InboxConversationPage() {
     return (
       <main>
         <p className="eyebrow">
-          <Link
+          <LinkButton
+            variant="ghost"
+            icon="arrow-left"
             href={`/app/${tenantId}/inbox${search.toString() ? `?${search.toString()}` : ""}`}
           >
-            <Icon name="arrow-left" /> Inbox
-          </Link>
+            Inbox
+          </LinkButton>
         </p>
         {error ? (
           <Notice message={error} tone="error" />
@@ -126,11 +133,13 @@ export default function InboxConversationPage() {
       <main className="conversation-pane">
         <PageHeader
           eyebrow={
-            <Link
+            <LinkButton
+              variant="ghost"
+              icon="arrow-left"
               href={`/app/${tenantId}/inbox${search.toString() ? `?${search.toString()}` : ""}`}
             >
-              <Icon name="arrow-left" /> Back to inbox
-            </Link>
+              Back to inbox
+            </LinkButton>
           }
           title="Conversation"
           purpose="Read the thread, coordinate with your team and help the visitor."

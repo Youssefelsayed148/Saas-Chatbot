@@ -63,7 +63,7 @@
 
 /* Password show/hide: keep the toggle inside the control, focus visible. */
 .password-field input {
-  padding-inline-end: 4.5rem;
+  padding-inline-end: 3rem;
 }
 .password-field button:focus-visible {
   outline: 2px solid var(--focus);
@@ -137,5 +137,76 @@
   }
   .account-page .form-section > form > button[type="submit"] {
     align-self: stretch;
+  }
+}
+
+/* Login: split layout (brand panel + form). Tokens only; logical properties. */
+.auth-split {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  max-inline-size: 60rem;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.auth-split .auth-page {
+  max-inline-size: none;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  padding: var(--space-7) var(--space-6);
+  justify-content: center;
+}
+.auth-split .auth-brand {
+  margin-block-end: var(--space-2);
+}
+.auth-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-7) var(--space-6);
+  background: linear-gradient(160deg, var(--accent-soft), var(--surface-raised));
+  border-inline-end: 1px solid var(--border);
+}
+.auth-panel > * {
+  margin-block: 0;
+}
+.auth-panel .brand-mark {
+  margin-block-end: var(--space-3);
+}
+.auth-panel-name {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  line-height: var(--leading-tight);
+}
+.auth-panel-copy {
+  color: var(--muted);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+}
+.auth-page .field[data-invalid="true"] input {
+  border-color: var(--danger);
+}
+.auth-split .auth-footer a {
+  color: var(--accent);
+}
+@media (max-width: 760px) {
+  .auth-split {
+    grid-template-columns: 1fr;
+    margin: var(--space-4);
+  }
+  .auth-panel {
+    padding: var(--space-5);
+    border-inline-end: 0;
+    border-block-end: 1px solid var(--border);
+  }
+  .auth-split .auth-page {
+    padding: var(--space-5);
   }
 }

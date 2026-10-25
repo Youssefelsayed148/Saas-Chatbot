@@ -1,10 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import * as api from "./api";
 import { OrganizationSelect } from "./staff-members";
-import { Button, Field, FormSection, Notice } from "./ui";
+import { Button, Field, FormSection, LinkButton, Notice } from "./ui";
 import "@/app/staff-screens.css";
 
 export function BotLinks({
@@ -16,9 +15,20 @@ export function BotLinks({
 }) {
   return (
     <span className="bot-links">
-      <Link href={`/app/${organization}/bots/${bot}/knowledge`}>Knowledge</Link>
-      {" · "}
-      <Link href={`/app/${organization}/bots/${bot}/settings`}>Settings</Link>
+      <LinkButton
+        href={`/app/${organization}/bots/${bot}/knowledge`}
+        variant="secondary"
+        size="sm"
+      >
+        Knowledge
+      </LinkButton>{" "}
+      <LinkButton
+        href={`/app/${organization}/bots/${bot}/settings`}
+        variant="secondary"
+        size="sm"
+      >
+        Settings
+      </LinkButton>
     </span>
   );
 }

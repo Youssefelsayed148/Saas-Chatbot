@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
@@ -19,11 +18,9 @@ function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  // Registration is closed by default: the self-serve signup flag comes from
-  // /auth/config, as on /register. While unknown or on fetch failure the link
-  // stays hidden (fail closed).
-  const [selfServeSignup, setSelfServeSignup] = useState(false);
   const next = searchParams.get("next") ?? "";
 
   // The session-expired redirect lands here with the original path preserved.
@@ -31,10 +28,6 @@ function LoginForm() {
     next.startsWith("/") && !next.startsWith("//") ? next : "/app";
 
   useEffect(() => {
-    void api
-      .authConfig()
-      .then((features) => setSelfServeSignup(features.self_serve_signup))
-      .catch(() => setSelfServeSignup(false));
     void api.me().then((existing) => {
       if (existing) router.replace("/app");
     });
@@ -43,6 +36,11 @@ function LoginForm() {
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
+    const missingEmail = email.trim() ? null : "Enter your email address.";
+    const missingPassword = password ? null : "Enter your password.";
+    setEmailError(missingEmail);
+    setPasswordError(missingPassword);
+    if (missingEmail || missingPassword) return;
     setSubmitting(true);
     try {
       await api.login(email, password);
@@ -56,56 +54,60 @@ function LoginForm() {
   }
 
   return (
-    <main className="auth-page">
-      <div className="auth-brand">
+    <main className="auth-split">
+      <aside className="auth-panel">
         <span className="brand-mark" aria-hidden="true">
           <Icon name="sparkle" size={22} />
         </span>
-        <span>Website Chatbot SaaS</span>
-        <ThemeToggle />
-      </div>
-      <p className="eyebrow">YOUR AI WORKSPACE</p>
-      <h1>Sign in</h1>
-      <p className="page-purpose">
-        Welcome back. Continue helping your visitors.
-      </p>
-      <form onSubmit={onSubmit}>
-        <Field label="Email">
-          {(control) => (
-            <input
-              {...control}
-              type="email"
-              name="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-            />
-          )}
-        </Field>
-        <Field label="Password">
-          {(control) => (
-            <PasswordField
-              {...control}
-              type="password"
-              name="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          )}
-        </Field>
-        {error && <Notice message={error} tone="error" scope="item" />}
-        <Button type="submit" disabled={submitting}>
-          {submitting ? "Signing in…" : "Sign in"}
-        </Button>
-      </form>
-      {selfServeSignup && (
-        <p className="auth-footer">
-          No account yet? <Link href="/register">Register</Link>
+        <p className="auth-panel-name">Website Chatbot</p>
+        <p className="auth-panel-copy">
+          Answer visitors instantly, hand off to your team when it matters.
         </p>
-      )}
+      </aside>
+      <div className="auth-page">
+        <div className="auth-brand">
+          <ThemeToggle />
+        </div>
+        <h1>Sign in</h1>
+        <p className="page-purpose">
+          Welcome back. Continue helping your visitors.
+        </p>
+        <form onSubmit={onSubmit} noValidate>
+          <Field label="Email" error={emailError}>
+            {(control) => (
+              <input
+                {...control}
+                type="email"
+                name="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+              />
+            )}
+          </Field>
+          <Field label="Password" error={passwordError}>
+            {(control) => (
+              <PasswordField
+                {...control}
+                type="password"
+                name="password"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+              />
+            )}
+          </Field>
+          {error && <Notice message={error} tone="error" scope="item" />}
+          <Button type="submit" disabled={submitting}>
+            {submitting ? "Signing in…" : "Sign in"}
+          </Button>
+        </form>
+        <p className="auth-footer">
+          Forgot your password? Contact your administrator.
+        </p>
+      </div>
     </main>
   );
 }
