@@ -8,7 +8,9 @@ them that way, and the output contract stays strict JSON.
 
 import re
 
-PROMPT_TEMPLATE_VERSION = "2026-10-22.2"
+PROMPT_TEMPLATE_VERSION = "2026-10-25.1"
+
+LANGUAGE_NAMES = {"en": "English", "ar": "Arabic"}
 
 SYSTEM_TEMPLATE = """You are {assistant_name}, the assistant for {business_name}.
 {business_description}
@@ -85,6 +87,10 @@ CANNED = {
             "That needs help from a person on our team. Please contact "
             "{support_contact} and we will take it from there."
         ),
+        "cannot_confirm_topics": (
+            "I don't have that information. You could ask about: {topics}. "
+            "I can connect you with our team in the inbox, or contact {support_contact}."
+        ),
         "not_ready": "The assistant is not set up for this bot yet.",
         "hello_default": "Hello! How can I help?",
     },
@@ -99,15 +105,99 @@ CANNED = {
         "handoff": (
             "هذا يحتاج مساعدة شخص من فريقنا. يرجى التواصل مع {support_contact} وسنكمل معك."
         ),
+        "cannot_confirm_topics": (
+            "لا أملك هذه المعلومة. يمكنك السؤال عن: {topics}. "
+            "يمكنني تحويلك إلى فريقنا عبر صندوق الرسائل، أو يمكنك التواصل مع {support_contact}."
+        ),
         "not_ready": "المساعد غير مهيأ لهذا الروبوت بعد.",
         "hello_default": "أهلاً بك! كيف أستطيع مساعدتك؟",
     },
 }
 
 
-def canned(kind: str, language: str, *, support_contact: str = "") -> str:
+def canned(kind: str, language: str, *, support_contact: str = "", topics: str = "") -> str:
     template = CANNED.get(language, CANNED["en"])[kind]
-    return template.format(support_contact=support_contact)
+    return template.format(support_contact=support_contact, topics=topics)
+
+
+# Conversational replies (greeting excluded: that is the bot's welcome message).
+# Composed from bot config only; they state no business fact beyond what staff
+# wrote in the bot settings. {about} is the business name or a generic phrase.
+META_TEXT = {
+    "en": {
+        "identity_named": "I'm {assistant}, the virtual assistant for {business}.",
+        "identity_assistant": "I'm {assistant}, a virtual assistant.",
+        "identity_business": "I'm the virtual assistant for {business}.",
+        "identity_plain": "I'm a virtual assistant.",
+        "identity_tail": "Ask me anything about {about} and I'll answer from our information.",
+        "about_default": "this business",
+        "capability": (
+            "I can answer your questions about {about} using the information we have published."
+        ),
+        "capability_examples": "For example:",
+        "capability_tail": "If I can't confirm something, I'll point you to {support_contact}.",
+        "how_are_you": "I'm doing well, thank you for asking! How can I help you today?",
+        "thanks": "You're welcome! Is there anything else I can help with?",
+        "farewell": "Goodbye! Feel free to come back whenever you have a question.",
+    },
+    "ar": {
+        "identity_named": "أنا {assistant}، المساعد الافتراضي لـ{business}.",
+        "identity_assistant": "أنا {assistant}، مساعد افتراضي.",
+        "identity_business": "أنا المساعد الافتراضي لـ{business}.",
+        "identity_plain": "أنا مساعد افتراضي.",
+        "identity_tail": "اسألني عن {about} وسأجيبك من المعلومات المتوفرة لدينا.",
+        "about_default": "هذا النشاط",
+        "capability": "يمكنني الإجابة عن أسئلتك حول {about} من المعلومات المنشورة لدينا.",
+        "capability_examples": "مثلاً:",
+        "capability_tail": "وإذا لم أستطع التأكد من أمر ما فسأدلّك على {support_contact}.",
+        "how_are_you": "أنا بخير، شكراً لسؤالك! كيف أستطيع مساعدتك اليوم؟",
+        "thanks": "عفواً! هل هناك شيء آخر أستطيع مساعدتك به؟",
+        "farewell": "مع السلامة! يسعدنا أن تعود في أي وقت لديك فيه سؤال.",
+    },
+}
+MAX_DESCRIPTION_CHARS = 280
+MAX_META_QUESTIONS = 3
+
+
+def meta_reply(
+    intent: str,
+    language: str,
+    *,
+    assistant_name: str,
+    business_name: str,
+    business_description: str,
+    opening_questions: list[str],
+    support_contact: str,
+) -> str:
+    """The reply for identity / capability / how_are_you / thanks / farewell."""
+    text = META_TEXT.get(language, META_TEXT["en"])
+    assistant = assistant_name.strip()
+    business = business_name.strip()
+    about = business or text["about_default"]
+    if intent == "identity":
+        if assistant and business:
+            lead = text["identity_named"].format(assistant=assistant, business=business)
+        elif assistant:
+            lead = text["identity_assistant"].format(assistant=assistant)
+        elif business:
+            lead = text["identity_business"].format(business=business)
+        else:
+            lead = text["identity_plain"]
+        parts = [lead]
+        description = " ".join(business_description.split())[:MAX_DESCRIPTION_CHARS].strip()
+        if description:
+            parts.append(description)
+        parts.append(text["identity_tail"].format(about=about))
+        return " ".join(parts)
+    if intent == "capability":
+        lines = [text["capability"].format(about=about)]
+        examples = [q.strip() for q in opening_questions if q.strip()][:MAX_META_QUESTIONS]
+        if examples:
+            lines.append(text["capability_examples"])
+            lines.extend(f"- {question}" for question in examples)
+        lines.append(text["capability_tail"].format(support_contact=support_contact))
+        return "\n".join(lines)
+    return text[intent]
 
 
 def system_prompt(
@@ -128,7 +218,7 @@ def system_prompt(
         business_name=business_name or "the business",
         business_description=business_description or "",
         support_contact=support_contact,
-        language=language,
+        language=LANGUAGE_NAMES.get(language, language),
         evidence_block=evidence_block,
     )
 

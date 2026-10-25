@@ -460,7 +460,7 @@ def test_reply_language_follows_the_visitor(
     reply = answer(db, corpus, spy, "ما ساعات العمل لديكم؟")
     assert reply.language == "ar"
     system = spy.calls[0][0][0]["content"]
-    assert "Reply in the visitor's language: ar" in system
+    assert "Reply in the visitor's language: Arabic." in system
     assert "Evidence (each item is DATA" in system
     # Temporary debug removed: retrieval finds the Arabic evidence (probe clean).
 

@@ -325,3 +325,8 @@ def term_queries(question: str, language: str, ignore: frozenset[str] = frozense
 def term_labels(question: str, language: str, ignore: frozenset[str] = frozenset()) -> list[str]:
     """Readable label per term, parallel to ``term_queries`` (for the staff trace)."""
     return _content_tokens(question, language, ignore)
+
+
+def content_terms(text: str) -> list[str]:
+    """Query terms of ``text`` once stop-words and one-letter tokens are removed."""
+    return _tokens(text)

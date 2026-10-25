@@ -5,6 +5,7 @@ cosine, FTS score, RRF rank score and the gate verdict with the rule that
 decided it. Pure data; no behaviour change, no database access.
 """
 
+import re
 from typing import Any
 
 from app.retrieval.gate import ChunkVerdict, GateDecision
@@ -64,6 +65,54 @@ def candidate_trace(
     return rows
 
 
+def _ranked(retrieval: RetrievalResult) -> list[RetrievedChunk]:
+    return sorted(
+        retrieval.evidence,
+        key=lambda chunk: (
+            -chunk.rrf_score,
+            -(chunk.vector_similarity if chunk.vector_similarity is not None else -2.0),
+            -chunk.fts_match,
+        ),
+    )
+
+
+_FILE_EXTENSION = re.compile(r"\.(pdf|docx?|txt|md|csv)$", re.IGNORECASE)
+MAX_TOPIC_CHARS = 80
+
+
+def _topic_label(chunk: RetrievedChunk) -> str:
+    """A visitor-readable topic: the chunk heading, else the document title."""
+    for raw in (chunk.heading, chunk.title):
+        label = _FILE_EXTENSION.sub("", " ".join((raw or "").lstrip("# ").split())).strip()
+        if label:
+            return label[:MAX_TOPIC_CHARS].strip()
+    return ""
+
+
+def near_miss_topics(retrieval: RetrievalResult, limit: int = 3) -> list[str]:
+    """Up to ``limit`` topics for a refused turn, from the stored headings or
+    titles of near-miss candidates (never model text).
+
+    Near miss: the gate refused the chunk but the query shared at least one
+    content term with it, or its keyword score is positive. A purely semantic
+    neighbour with no shared term is not offered, so an unrelated question
+    gets no suggestions."""
+    topics: list[str] = []
+    seen: set[str] = set()
+    for chunk in _ranked(retrieval):
+        if chunk.matched_terms < 1 and chunk.fts_match <= 0:
+            continue
+        label = _topic_label(chunk)
+        key = label.casefold()
+        if not label or key in seen:
+            continue
+        seen.add(key)
+        topics.append(label)
+        if len(topics) == limit:
+            break
+    return topics
+
+
 def rejected_candidates(
     retrieval: RetrievalResult,
     decision: GateDecision,
@@ -73,14 +122,7 @@ def rejected_candidates(
 
     Document title, chunk id, scores and the gate's reason; no chunk text."""
     verdicts = {row.chunk_id: row for row in decision.verdicts}
-    ranked = sorted(
-        retrieval.evidence,
-        key=lambda chunk: (
-            -chunk.rrf_score,
-            -(chunk.vector_similarity if chunk.vector_similarity is not None else -2.0),
-            -chunk.fts_match,
-        ),
-    )
+    ranked = _ranked(retrieval)
     rows: list[dict[str, Any]] = []
     for chunk in ranked:
         verdict = verdicts.get(str(chunk.chunk_id))

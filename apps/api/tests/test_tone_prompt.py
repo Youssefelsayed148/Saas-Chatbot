@@ -16,8 +16,9 @@ KWARGS = dict(
     evidence_block=f"[{CHUNK}] Policy p1\nReturns within 30 days.",
 )
 # SHA-256 of the prompt rendered by the template as it was BEFORE the tone
-# section existed (version 2026-10-22.1) for KWARGS.
-BASELINE_SHA256 = "a95b3eb9c6e474849cead7306216a612f71dafb9c8e587eab2ce7daa3a60f03e"
+# section existed (version 2026-10-22.1) for KWARGS, with the one H3 change
+# (2026-10-25.1): the language line carries the name "English", not the code "en".
+BASELINE_SHA256 = "2cd35a176580ccec0f5d7a5a2a4c4595c559079675f48d227007cbea8928cebe"
 
 
 def test_empty_tone_leaves_prompt_body_byte_identical() -> None:
@@ -26,7 +27,7 @@ def test_empty_tone_leaves_prompt_body_byte_identical() -> None:
         assert hashlib.sha256(body.encode()).hexdigest() == BASELINE_SHA256
     default = prompts.system_prompt(**KWARGS)
     assert hashlib.sha256(default.encode()).hexdigest() == BASELINE_SHA256
-    assert prompts.PROMPT_TEMPLATE_VERSION == "2026-10-22.2"
+    assert prompts.PROMPT_TEMPLATE_VERSION == "2026-10-25.1"
 
 
 def test_tone_section_sits_between_rules_and_evidence() -> None:

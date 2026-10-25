@@ -2793,3 +2793,39 @@ Tests (disposable DB 127.0.0.1:55462, TEST_DATABASE_URL per process, `PYTHONUTF8
 - ruff check / ruff format --check / mypy on touched app files: clean. Web `npm run typecheck` and `npm run lint`: clean.
 - NOT run (owner policy): full pytest, full evals, Playwright. apps/web/tests/widget-layout.spec.ts is new and was NOT run.
 Deviations: items 1-3 share one commit (their hunks interleave in providers.py/service.py); the config.py default for gpt-5.4-nano landed in that commit while its docs/fixtures are in item 6. Cost for gpt-5.4-nano stays "Unmeasured" (no price table in the repo). gpt-4.1-nano remains only in the ADR note, .env.example and config comments explaining the deprecation, history docs and the owner's .env.local (not touched).
+
+## H2 - Knowledge hygiene (working tree on fix/r3c-provider-widget, on top of the uncommitted H1 changes; NOT committed)
+Implemented: migration 0022 (`sources.status` gains `removed`; `documents.duplicates_removed`); upload dedupe by sha256 per bot
+(200/201, `duplicate` + `message` on the returned source); replace (`POST .../sources/{id}/replace`, refreshes `created_at` so the new
+version counts as "newer"); soft delete (`DELETE .../sources/{id}`: draft rows + source_pages removed, status `removed`, size 0, file
+deleted after commit, audit row); cross-source duplicate chunks (newer source wins, `duplicates_removed` warning in the document list,
+`_copy_revision_snapshot` skips removed sources); always-include by stable source id (`config.always_include_source_ids`, PUT on the
+source or PATCH bot config, resolved to live-revision document ids per chat turn, capped to `retrieval_final_k - 1` chunks, 3 sources);
+knowledge UI controls (always include, replace, remove with confirmation) and the duplicate message; permissions table entries.
+Legacy `config.always_include_document_ids` is no longer read by chat (nothing could set it).
+Verified by me: `ruff check app` (only the pre-existing E501s remain: db/models/chat.py, quotas/*, db/models/knowledge.py:87), `ruff format` on touched
+knowledge/bots/chat files, `python -c "import app.main"`, web `npx tsc --noEmit` clean.
+NOT RUN: any pytest (no TEST_DATABASE_URL in this session), the new `apps/api/tests/test_knowledge_hygiene.py` (written, never executed),
+migration 0022 against a database, Playwright (`knowledge.spec.ts` new test written, not run), the post-green review agent.
+Open: publishing a draft with zero chunks is still 409 KNOWLEDGE_EMPTY, so removing the only source cannot be published.
+
+## H3 - Conversation intelligence (working tree on fix/r3c-provider-widget, on top of the uncommitted H1/H2 changes; NOT committed)
+Implemented: conversational intents in `chat/routing.py` (identity, capability, how_are_you, thanks, farewell, greeting; whole-token, EN+AR,
+fillers allowed, 8-token cap; any leftover token sends the message to retrieval). Replies are composed from bot config only
+(`prompts.meta_reply`, `service.conversational_reply`); `kind` stays `smalltalk` (no consumer changes), trace `meta_intent`,
+`can_answer=true`, `needs_human=false`. Refusal with direction (`retrieval/trace.near_miss_topics`, `service.refusal_text`, canned
+`cannot_confirm_topics`; trace `suggested_topics`). Follow-ups: `service.rewrite_reason` (opener regex, back-references, <2 content terms),
+one retry on the condensed query after a refusal (not when a trigger rewrite already ran), `rewrite_plan_allowed` (empty/`*` = all plans,
+unknown labels keep the rewrite, a blocked plan is traced as `rewrite_skipped`). Prompt passes the language NAME, `PROMPT_TEMPLATE_VERSION`
+2026-10-25.1 (pinned hash in `test_tone_prompt.py` updated; the only body change is "en" -> "English"). History skips conversational
+exchanges. Docs: dated note in docs/14 section 6.
+Disposable DB: docker `saas-test-db` 127.0.0.1:55462, database `h3_test`; env `PYTHONUTF8=1 ENVIRONMENT=test`; one pytest process at a time
+(two at once deadlock on TRUNCATE).
+Tests (exact outcomes):
+- `pytest tests/test_conversation_intelligence.py tests/test_routing.py tests/test_rag_gate.py tests/test_chat.py tests/test_playground_parity.py tests/test_tone_prompt.py tests/test_handoff.py tests/test_trace_context.py tests/test_cross_script.py tests/test_chat_streaming_unit.py tests/test_turn_deadline.py` -> 253 passed, 7 failed. Five were my own stale assertions or bugs, fixed afterwards.
+- Rerun `pytest tests/test_conversation_intelligence.py tests/test_tone_prompt.py tests/test_turn_deadline.py tests/test_chat.py::test_reply_language_follows_the_visitor` -> 94 passed.
+- `tests/test_rag_gate.py::test_provider_has_no_retries_and_only_one_fallback` FAILS (requests_used 3 != 2). `chat/providers.py` is unmodified, so this is not from H3; not investigated.
+- NOT rerun after the final fixes: the other files in the first list (test_routing, test_rag_gate, test_chat, test_playground_parity, test_handoff, test_trace_context, test_cross_script, test_chat_streaming_unit), and the wider suite (test_widget_*, test_conversations, analytics, web/Playwright).
+- Eval stub (`tests/eval/test_eval.py`): NOT obtained. Working tree: fails in `tests/knowledge_helpers.py:147` (DetachedInstanceError on an ingest Job) before any chat call, probably the uncommitted H2 ingest work. HEAD checkout: alembic cannot load the revisions the shared test DB already has. So no before/after numbers; none are claimed.
+Review agent (read-only, 20+ EN/AR adversarial messages, traced by reading code): found one real bug of mine (FOLLOW_UP regex had lost its `\b`), fixed with regression tests; also fixed "are you a real person" being handed off, the Arabic "...ورحمة الله وبركاته" greeting, a double condense call after a refusal, and "كم سعره" not being condensed. Left as is: informational questions that name staff ("customer service hours, any agent available") still hand off pre-retrieval (existing documented rule: an explicit person request outranks informational wording); pure-filler messages over 8 tokens go to retrieval.
+Known behaviour: conversational turns are can_answer=true, so they never count as unanswered, but like greetings before they also break a run of unanswered turns.

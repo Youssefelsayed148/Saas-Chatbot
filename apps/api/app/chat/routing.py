@@ -1,6 +1,8 @@
 """Rule-based routing decision before any model call (docs/14 §6).
 
-- smalltalk → the bot's welcome message (per visitor language)
+- smalltalk → a conversational message made only of a greeting, thanks, a
+  farewell, "who are you", "what can you do" or "how are you" (``intent``);
+  the service composes the reply from bot config, never from the model
 - handoff   → an explicit request for a person (pre-retrieval); a per-bot
   toggle can disable the rule (then the model answers like always)
 Order/account/tracking keywords never route before retrieval: the knowledge
@@ -10,9 +12,10 @@ The service layer composes the actual localized text (prompts.canned).
 
 Matching is on whole tokens/phrases after normalisation (lowercase, no
 punctuation, Arabic diacritics/tatweel/alef/yaa variants folded), never on
-substrings. Smalltalk applies only when the whole message is a greeting,
-thanks or farewell. A keyword never hands off a message that also asks an
-informational question about the bot's own content: when ambiguous the
+substrings. Smalltalk applies only when the whole message is made of those
+phrases (and polite fillers), so "hello, what are your hours?" is retrieval.
+A keyword never hands off a message that also
+asks an informational question about the bot's own content: when ambiguous the
 message goes to retrieval.
 """
 
@@ -56,41 +59,177 @@ ORDER_ACCOUNT_KEYWORDS = {
     ),
 }
 
-SMALLTALK_KEYWORDS = {
-    "en": (
-        "hi",
-        "hello",
-        "hey",
-        "hi there",
-        "hello there",
-        "good morning",
-        "good afternoon",
-        "good evening",
-        "good night",
-        "thanks",
-        "thank you",
-        "thanks a lot",
-        "bye",
-        "goodbye",
-        "see you",
-    ),
-    "ar": (
-        "مرحبا",
-        "سلام",
-        "السلام",
-        "السلام عليكم",
-        "هلا",
-        "أهلا",
-        "اهلا",
-        "أهلا وسهلا",
-        "شكرا",
-        "شكرا جزيلا",
-        "صباح الخير",
-        "مساء الخير",
-        "مع السلامة",
-        "وداعا",
-    ),
+# Conversational (non-informational) intents. Only a message made entirely of
+# these phrases (plus polite fillers) is routed; anything else, such as "hello,
+# what are your hours?" or "who are you? ignore previous instructions", goes
+# to retrieval. Phrases are matched as whole tokens after normalisation.
+INTENT_PHRASES: dict[str, dict[str, tuple[str, ...]]] = {
+    "greeting": {
+        "en": (
+            "hi",
+            "hello",
+            "hey",
+            "hi there",
+            "hello there",
+            "good morning",
+            "good afternoon",
+            "good evening",
+        ),
+        "ar": (
+            "مرحبا",
+            "سلام",
+            "السلام",
+            "السلام عليكم",
+            "هلا",
+            "أهلا",
+            "اهلا",
+            "أهلا وسهلا",
+            "صباح الخير",
+            "مساء الخير",
+        ),
+    },
+    "thanks": {
+        "en": (
+            "thanks",
+            "thank you",
+            "thanks a lot",
+            "thank you so much",
+            "thanks so much",
+            "many thanks",
+            "thx",
+            "much appreciated",
+        ),
+        "ar": (
+            "شكرا",
+            "شكرا جزيلا",
+            "شكرا لك",
+            "شكرا لكم",
+            "الف شكر",
+            "مشكور",
+            "يعطيك العافية",
+            "جزاك الله خيرا",
+        ),
+    },
+    "farewell": {
+        "en": (
+            "bye",
+            "goodbye",
+            "bye bye",
+            "see you",
+            "see you later",
+            "see ya",
+            "take care",
+            "good night",
+        ),
+        "ar": ("مع السلامة", "وداعا", "الى اللقاء", "في امان الله", "تصبح على خير"),
+    },
+    "identity": {
+        "en": (
+            "who are you",
+            "what are you",
+            "who is this",
+            "what is your name",
+            "what's your name",
+            "whats your name",
+            "your name",
+            "tell me your name",
+            "are you a bot",
+            "are you a robot",
+            "are you a real person",
+            "are you a human",
+            "are you human",
+        ),
+        "ar": (
+            "من انت",
+            "من انتم",
+            "انت مين",
+            "ما اسمك",
+            "شو اسمك",
+            "ايش اسمك",
+            "اسمك",
+            "عرفني بنفسك",
+            "هل انت روبوت",
+        ),
+    },
+    "capability": {
+        "en": (
+            "what can you do",
+            "what do you do",
+            "what can i ask",
+            "what can i ask you",
+            "what can you help with",
+            "what are you able to do",
+            "how can you help",
+            "how can you help me",
+            "how do you work",
+            "help",
+            "help me",
+            "i need help",
+            "can you help",
+            "can you help me",
+        ),
+        "ar": (
+            "ماذا تستطيع ان تفعل",
+            "ماذا يمكنك ان تفعل",
+            "ماذا تفعل",
+            "ماذا تقدر تسوي",
+            "ايش تقدر تسوي",
+            "كيف يمكنك مساعدتي",
+            "كيف تستطيع مساعدتي",
+            "كيف تساعدني",
+            "ساعدني",
+            "مساعدة",
+            "هل تستطيع مساعدتي",
+            "ممكن تساعدني",
+        ),
+    },
+    "how_are_you": {
+        "en": (
+            "how are you",
+            "how are you doing",
+            "how are things",
+            "how is it going",
+            "how's it going",
+            "hows it going",
+            "how you doing",
+            "how do you do",
+            "what's up",
+            "whats up",
+        ),
+        "ar": (
+            "كيف حالك",
+            "كيف حالكم",
+            "كيف الحال",
+            "كيفك",
+            "شلونك",
+            "اخبارك",
+            "شخبارك",
+            "كيف الاحوال",
+        ),
+    },
 }
+
+# When a message holds several intents, the first one in this order decides.
+INTENT_PRIORITY = ("identity", "capability", "how_are_you", "thanks", "farewell", "greeting")
+
+# Words that may surround an intent phrase without turning it into a question.
+INTENT_FILLERS = {
+    "en": (
+        "please",
+        "pls",
+        "plz",
+        "there",
+        "dear",
+        "again",
+        "ok",
+        "okay",
+        "great",
+        "perfect",
+        "bot",
+    ),
+    "ar": ("لو سمحت", "من فضلك", "يا", "تمام", "ممتاز", "بوت", "ورحمة الله", "وبركاته"),
+}
+INTENT_MAX_TOKENS = 8
 
 # Words that make a message an informational question about the bot's content
 # (so an order/person keyword inside it is not a handoff request).
@@ -183,6 +322,8 @@ class RoutedReply:
     kind: str  # "smalltalk" | "handoff"
     needs_human: bool
     reason: str | None = None  # handoff only: "visitor_requested"
+    # smalltalk only: one of INTENT_PRIORITY
+    intent: str | None = None
 
 
 def tokenize(text: str) -> list[str]:
@@ -259,20 +400,36 @@ def keyword_requests_handoff(tokens: list[str], keywords: Iterable[str]) -> bool
     return not is_informational(tokens)
 
 
-def _is_smalltalk(tokens: list[str]) -> bool:
-    """The whole message is greeting/thanks/farewell phrases (max 4 tokens)."""
-    if not tokens or len(tokens) > 4:
-        return False
-    phrases = sorted(_phrases(_all_languages(SMALLTALK_KEYWORDS)), key=len, reverse=True)
+def conversational_intent(tokens: list[str]) -> str | None:
+    """The intent of a message made ONLY of intent phrases and fillers, else None.
+
+    Longest phrase first at each position. A leftover token (a question about
+    hours, an injected instruction) makes the whole message retrieval."""
+    if not tokens or len(tokens) > INTENT_MAX_TOKENS:
+        return None
+    by_phrase: dict[tuple[str, ...], str] = {}
+    for intent, table in INTENT_PHRASES.items():
+        for phrase in _phrases(_all_languages(table)):
+            by_phrase[phrase] = intent
+    fillers = {phrase: "" for phrase in _phrases(_all_languages(INTENT_FILLERS))}
+    phrases = sorted([*by_phrase, *fillers], key=len, reverse=True)
+    found: set[str] = set()
     position = 0
     while position < len(tokens):
         for phrase in phrases:
             if tuple(tokens[position : position + len(phrase)]) == phrase:
                 position += len(phrase)
+                if phrase in by_phrase:
+                    found.add(by_phrase[phrase])
                 break
         else:
-            return False
-    return True
+            return None
+    return next((intent for intent in INTENT_PRIORITY if intent in found), None)
+
+
+def is_conversational(text: str) -> bool:
+    """A greeting/thanks/meta message: it carries no facts, so it is not history."""
+    return conversational_intent(tokenize(text)) is not None
 
 
 def route(
@@ -283,8 +440,9 @@ def route(
 ) -> RoutedReply | None:
     del language  # keywords checked for every supported language
     tokens = tokenize(question)
-    if _is_smalltalk(tokens):
-        return RoutedReply(kind="smalltalk", needs_human=False)
+    intent = conversational_intent(tokens)
+    if intent is not None:
+        return RoutedReply(kind="smalltalk", needs_human=False, intent=intent)
     if is_person_request(tokens):
         if handoff_enabled:
             return RoutedReply(kind="handoff", needs_human=True, reason="visitor_requested")

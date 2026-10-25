@@ -6,7 +6,9 @@ message plus the AI reply to it, and the assistant turn is the reply text alone
 
 Exchanges whose AI reply was a refusal or a failure (can_answer false,
 needs_human true: cannot_confirm, busy, invalid_output, handoff) are skipped, as is a visitor
-message with no AI reply. Replies from human agents are never assistant turns.
+message with no AI reply. So are conversational exchanges (a greeting, thanks, "who are
+you"): the router answered them from bot settings, they carry no facts and would only
+use up a history slot. Replies from human agents are never assistant turns.
 """
 
 from dataclasses import dataclass, field
@@ -17,6 +19,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
+from app.chat.routing import is_conversational
 from app.core.config import Settings
 from app.db.models import Conversation, Message
 
@@ -102,6 +105,7 @@ def history_for_turn(
             or reply.can_answer is not True
             or reply.needs_human
             or not reply.text.strip()
+            or is_conversational(visitor.text)
         ):
             skipped += 1
             continue

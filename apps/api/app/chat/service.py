@@ -1,7 +1,8 @@
 """Chat service (docs/14 §6): grounded answers with a strict output contract.
 
-Pipeline: detect language → rule routing (smalltalk/handoff) → optional
-follow-up condensation → retrieval (P3-01) → ChatModel call in strict JSON
+Pipeline: detect language → rule routing (conversational/handoff) → optional
+follow-up condensation → retrieval (P3-01, one retry on a condensed query
+when the first pass is refused and history exists) → ChatModel call in strict JSON
 mode → validate/repair → localized fallbacks (never a stack trace).
 
 Business facts only come from the knowledge base (via retrieval); the tiger
@@ -26,30 +27,88 @@ from app.chat import prompts
 from app.chat.deadline import TurnBudget
 from app.chat.history import HistoryMessage, normalize_history, visitor_texts
 from app.chat.providers import ChatModel, OpenAICompatibleModel, ProviderError
-from app.chat.routing import order_account_requested, route
+from app.chat.routing import order_account_requested, route, tokenize
 from app.chat.tracing import TracedModel
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
 from app.db.models import Bot, Tenant
 from app.knowledge.language import detect_language
-from app.retrieval.gate import relevance_gate, select_evidence
+from app.knowledge.service import always_include_document_ids
+from app.quotas.plans import PLAN_LABELS
+from app.retrieval.gate import GateDecision, relevance_gate, select_evidence
 from app.retrieval.hybrid import retrieve_hybrid as retrieve
+from app.retrieval.query import content_terms
 from app.retrieval.service import RetrievalResult, RetrievedChunk
-from app.retrieval.trace import candidate_trace, document_trace, rejected_candidates
+from app.retrieval.trace import (
+    candidate_trace,
+    document_trace,
+    near_miss_topics,
+    rejected_candidates,
+)
 
 MAX_TOKENS = 700
 logger = logging.getLogger(__name__)
 
-# Conservative heuristic: history alone is not a reason to spend a rewrite.
+# History alone is not a reason to spend a rewrite. A message is condensed when
+# it opens like a follow-up, points back at something earlier (a pronoun or
+# "the same/other one"), or carries fewer than two content terms once
+# stop-words are removed ("tell me more", "كم سعره", "ماذا عن الأحد").
 FOLLOW_UP = re.compile(
     r"^(?:and\b|what about\b|how about\b|also\b|then\b|that\b|those\b|it\b|they\b|"
     r"وماذا|ومتى|وهل|وبالنسبة|وكام|وكم|و يوم|طيب)|\b(?:it|them|those|that one)\b",
     re.IGNORECASE,
 )
+# Whole-token back-references. "that/this/other/another/more" only count in a
+# short message: they are ordinary words in a self-contained question.
+BACK_REFERENCES = frozenset(
+    {"it", "its", "they", "them", "their", "those", "these", "one", "ones", "same", "he", "she"}
+    | {"هذا", "هذه", "هذي", "ذلك", "تلك", "نفس", "الاخر", "الاخرى"}
+)
+WEAK_BACK_REFERENCES = frozenset({"that", "this", "other", "another", "more", "also"})
+# Arabic question words are not stop-words for retrieval, but they say nothing
+# about the topic: "كم سعره" has one content term, not two.
+ARABIC_QUESTION_WORDS = frozenset({"كم", "متى", "اين", "وين", "كيف", "ما", "هل"})
+MIN_CONTENT_TERMS = 2
+WEAK_REFERENCE_MAX_TERMS = 3
+
+
+def rewrite_reason(question: str, history: list[str]) -> str | None:
+    """Why a follow-up should be condensed (None: search the message as written)."""
+    if not history:
+        return None
+    text = question.strip()
+    if FOLLOW_UP.search(text):
+        return "follow_up"
+    tokens = tokenize(text)
+    terms = [term for term in content_terms(text) if term not in ARABIC_QUESTION_WORDS]
+    if any(token in BACK_REFERENCES for token in tokens):
+        return "back_reference"
+    if len(terms) < MIN_CONTENT_TERMS:
+        return "few_content_terms"
+    if len(terms) <= WEAK_REFERENCE_MAX_TERMS and any(
+        token in WEAK_BACK_REFERENCES for token in tokens
+    ):
+        return "back_reference"
+    return None
 
 
 def needs_rewrite(question: str, history: list[str]) -> bool:
-    return bool(history and FOLLOW_UP.search(question.strip()))
+    return rewrite_reason(question, history) is not None
+
+
+def rewrite_plan_allowed(plan: str | None, settings: Settings) -> bool:
+    """Is the rewrite enabled for this plan label?
+
+    ``chat_rewrite_plans`` lists the plans that get it. An empty list or ``*``
+    means every plan. A label that is not one of the platform's known plans (or
+    a missing one) is never treated as "not listed": the list can only switch
+    off plans it was written for, so a new label cannot silently lose rewrite."""
+    allowed = settings.chat_rewrite_plans
+    if not allowed or "*" in allowed:
+        return True
+    if plan is None or plan not in PLAN_LABELS:
+        return True
+    return plan in allowed
 
 
 CONDENSE_SYSTEM = (
@@ -58,7 +117,7 @@ CONDENSE_SYSTEM = (
     "ellipsis. Output ONE line: the standalone query, nothing else."
 )
 
-LANGUAGE_NAMES = {"en": "English", "ar": "Arabic"}
+LANGUAGE_NAMES = prompts.LANGUAGE_NAMES
 
 TRANSLATE_SYSTEM_TEMPLATE = (
     "You translate a customer question so it can be searched in the "
@@ -105,6 +164,45 @@ def _welcome_for(bot: Bot, language: str) -> str:
         if isinstance(text, str) and text.strip():
             return text
     return prompts.canned("hello_default", language)
+
+
+def _config_text(bot: Bot, key: str) -> str:
+    value = _config_get(bot, key, "")
+    return value.strip() if isinstance(value, str) else ""
+
+
+def conversational_reply(bot: Bot, intent: str, language: str) -> str:
+    """The reply to a greeting/thanks/farewell/identity/capability/how-are-you
+    message. Built from the bot's settings only (never the model, never the
+    knowledge base), in the visitor's language."""
+    if intent == "greeting":
+        return _welcome_for(bot, language)
+    questions = _config_get(bot, "opening_questions", [])
+    return prompts.meta_reply(
+        intent,
+        language,
+        assistant_name=_config_text(bot, "assistant_name"),
+        business_name=_config_text(bot, "business_name"),
+        business_description=_config_text(bot, "business_description"),
+        opening_questions=[q for q in questions if isinstance(q, str)]
+        if isinstance(questions, list)
+        else [],
+        support_contact=_support_contact(bot),
+    )
+
+
+def refusal_text(bot: Bot, language: str, topics: list[str]) -> str:
+    """The canned cannot-confirm text, with up to three suggested topics when
+    the gate had near-miss candidates."""
+    if topics:
+        separator = "، " if language == "ar" else ", "
+        return prompts.canned(
+            "cannot_confirm_topics",
+            language,
+            support_contact=_support_contact(bot),
+            topics=separator.join(topics),
+        )
+    return prompts.canned("cannot_confirm", language, support_contact=_support_contact(bot))
 
 
 def _default_answer_language(bot: Bot) -> str:
@@ -412,6 +510,11 @@ def chat_answer(
         "retrieval_query": None,
         "fallback_query": None,
         "rewrite_text": None,
+        "rewrite_trigger": None,
+        "rewrite_retry": False,
+        "rewrite_skipped": None,
+        "meta_intent": None,
+        "suggested_topics": [],
         "handoff_reason": None,
         "routing_stage": None,  # "pre_retrieval" | "post_retrieval" when routed to a handoff
         "routed_handoff_reason": None,
@@ -437,9 +540,9 @@ def chat_answer(
     if routed is not None:
         contact = _support_contact(bot)
         if routed.kind == "smalltalk":
-            text = _welcome_for(bot, language) or prompts.canned(
-                "cannot_confirm", language, support_contact=contact
-            )
+            trace["routing_stage"] = "pre_retrieval"
+            trace["meta_intent"] = routed.intent
+            text = conversational_reply(bot, routed.intent or "greeting", language)
         else:
             text = prompts.canned("handoff", language, support_contact=contact)
             trace["routing_stage"] = "pre_retrieval"
@@ -454,31 +557,45 @@ def chat_answer(
             trace=trace,
         )
 
-    # 2) Rewrite only context-dependent follow-ups, if enabled for this plan.
+    # 2) Rewrite context-dependent follow-ups (and, below, a refused first pass).
     condensed = None
-    if settings.chat_rewrite_enabled and needs_rewrite(question, history_visitor):
-        plan = db.scalar(
-            select(Tenant.plan_label)
-            .join(Bot, Bot.tenant_id == Tenant.id)
-            .where(Tenant.id == tenant_id, Bot.id == bot.id)
-        )
-        if plan in settings.chat_rewrite_plans:
-            if budget.optional_allowed():
-                _set_call_timeout(model, budget.aux_timeout())
-                condensed = condense(
-                    model, history=history_visitor, question=question, language=language
-                )
-            else:
-                _skip_step(trace, "rewrite")
+    plan_checked: list[bool] = []
+
+    def rewrite_allowed() -> bool:
+        """Rewrite switched on for this deployment and this tenant's plan (one lookup)."""
+        if not settings.chat_rewrite_enabled:
+            return False
+        if not plan_checked:
+            plan = db.scalar(
+                select(Tenant.plan_label)
+                .join(Bot, Bot.tenant_id == Tenant.id)
+                .where(Tenant.id == tenant_id, Bot.id == bot.id)
+            )
+            allowed = rewrite_plan_allowed(plan, settings)
+            plan_checked.append(allowed)
+            if not allowed:
+                trace["rewrite_skipped"] = "plan"
+        return plan_checked[0]
+
+    trigger = rewrite_reason(question, history_visitor)
+
+    def run_condense(reason: str) -> str | None:
+        if not budget.optional_allowed():
+            _skip_step(trace, "rewrite")
+            return None
+        trace["rewrite_trigger"] = reason
+        _set_call_timeout(model, budget.aux_timeout())
+        return condense(model, history=history_visitor, question=question, language=language)
+
+    if trigger is not None and rewrite_allowed():
+        condensed = run_condense(trigger)
     trace["rewrite_used"] = condensed is not None
     trace["rewrite_text"] = condensed
 
     # 3) Retrieval on the condensed (or raw) question.
     revision_id = bot.published_revision_id
-    always_include = _config_get(bot, "always_include_document_ids", [])
-    if not isinstance(always_include, list):
-        always_include = []
     retrieval: RetrievalResult | None = None
+    decision: GateDecision | None = None
     evidence: list[RetrievedChunk] = []
 
     def translate_within_budget(raw: str, target: str) -> str | None:
@@ -488,25 +605,45 @@ def chat_answer(
         _set_call_timeout(model, budget.aux_timeout())
         return translate_query(model, question=raw, target_language=target)
 
-    if revision_id is not None:
-        retrieval = retrieve(
+    def search(query: str) -> tuple[RetrievalResult, GateDecision, list[RetrievedChunk]]:
+        assert revision_id is not None
+        found = retrieve(
             db,
             tenant_id=tenant_id,
             bot_id=bot.id,
             revision_id=revision_id,
-            question=condensed or question,
+            question=query,
             question_language=language,
             bot_primary_language=knowledge_language(bot),
             settings=settings,
-            always_include_document_ids={str(value) for value in always_include},
+            always_include_document_ids=always_include_document_ids(db, bot, revision_id, settings),
             channel=str(getattr(model, "channel", "website")),
             # Cross-script bridge (P4-00): translate with ONE model call only
             # when the language pass is empty and the languages differ.
             translate_query=translate_within_budget,
             embed_timeout=budget.embed_timeout(),
         )
-        decision = relevance_gate(retrieval, settings)
-        evidence = select_evidence(decision, settings)
+        verdict = relevance_gate(found, settings)
+        return found, verdict, select_evidence(verdict, settings)
+
+    if revision_id is not None:
+        retrieval, decision, evidence = search(condensed or question)
+        if (
+            not evidence
+            and condensed is None
+            and trigger is None
+            and history_visitor
+            and rewrite_allowed()
+        ):
+            # One more try: a refused message that was searched as written may
+            # be a follow-up the trigger did not recognise.
+            retry_query = run_condense("retry_after_refusal")
+            if retry_query is not None and retry_query.casefold() != question.strip().casefold():
+                condensed = retry_query
+                trace["rewrite_used"] = True
+                trace["rewrite_text"] = condensed
+                trace["rewrite_retry"] = True
+                retrieval, decision, evidence = search(condensed)
         trace.update(
             retrieval_mode=retrieval.mode,
             degradation_reason=retrieval.degradation_reason,
@@ -538,8 +675,10 @@ def chat_answer(
 
     if not evidence:
         trace["gate"] = "refused"
-        if retrieval is not None:
+        topics: list[str] = []
+        if retrieval is not None and decision is not None:
             trace["rejected_candidates"] = rejected_candidates(retrieval, decision)
+            topics = near_miss_topics(retrieval)
         if order_account_handoff_applies(bot, question):
             return post_retrieval_handoff(
                 bot,
@@ -548,9 +687,9 @@ def chat_answer(
                 used_fallback=bool(retrieval and retrieval.used_fallback),
                 trace=trace,
             )
-        contact = _support_contact(bot)
+        trace["suggested_topics"] = topics
         return ChatReply(
-            answer=prompts.canned("cannot_confirm", language, support_contact=contact),
+            answer=refusal_text(bot, language, topics),
             can_answer=False,
             needs_human=True,
             language=language,
