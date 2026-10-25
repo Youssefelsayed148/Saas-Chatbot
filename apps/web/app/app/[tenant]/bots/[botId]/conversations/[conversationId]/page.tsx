@@ -4,15 +4,9 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import * as api from "@/lib/api";
+import BotWorkspaceNav from "@/lib/bot-workspace-nav";
 import { useSession } from "@/lib/session";
-import {
-  Card,
-  LinkButton,
-  Loading,
-  Notice,
-  PageHeader,
-  StatusBadge,
-} from "@/lib/ui";
+import { Card, LinkButton, Loading, Notice, StatusBadge } from "@/lib/ui";
 
 import "@/app/convo-screen.css";
 
@@ -28,6 +22,11 @@ export default function ConversationDetailPage() {
   const tenantId = params.tenant;
   const botId = params.botId;
   const conversationId = params.conversationId;
+
+  const isStaff = Boolean(me?.is_platform_staff);
+  const backHref = isStaff
+    ? `/app/${tenantId}/bots/${botId}/conversations`
+    : `/app/${tenantId}/conversations`;
 
   const [detail, setDetail] = useState<api.ConversationDetailResponse | null>(
     null,
@@ -53,21 +52,14 @@ export default function ConversationDetailPage() {
   }, [tenantId, botId, conversationId]);
 
   return (
-    <main className="convo-page">
-      <PageHeader
-        eyebrow={
-          <LinkButton
-            variant="ghost"
-            href={`/app/${tenantId}/bots/${botId}/conversations`}
-          >
-            Back to conversations
-          </LinkButton>
-        }
-        title={
-          <span data-testid="conversation-detail-title">Conversation</span>
-        }
-        purpose="Read this visitor’s conversation and replies."
-      />
+    <div className="convo-page">
+      {isStaff && <BotWorkspaceNav tenantId={tenantId} botId={botId} />}
+      <div className="convo-detail-head">
+        <LinkButton variant="ghost" icon="arrow-left" href={backHref}>
+          Back to conversations
+        </LinkButton>
+        <h2 data-testid="conversation-detail-title">Conversation</h2>
+      </div>
       {error && <Notice message={error} tone="error" />}
       {detail ? (
         <Card aria-label="Thread" data-testid="conversation-thread">
@@ -92,7 +84,7 @@ export default function ConversationDetailPage() {
                 <div dir="auto" className="convo-text">
                   {message.text}
                 </div>
-                {me?.is_platform_staff && message.citations.length > 0 && (
+                {isStaff && message.citations.length > 0 && (
                   <ul data-testid="thread-citations" aria-label="Sources">
                     {message.citations.map((citation) => (
                       <li key={citation.chunk_id}>
@@ -124,6 +116,6 @@ export default function ConversationDetailPage() {
       ) : (
         !error && <Loading label="Loading the conversation…" />
       )}
-    </main>
+    </div>
   );
 }

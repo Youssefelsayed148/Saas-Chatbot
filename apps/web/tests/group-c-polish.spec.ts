@@ -25,7 +25,8 @@ const confirmations = [
   {
     name: "conversation deletion",
     path: `${botBase}/conversations`,
-    trigger: "Delete",
+    trigger: "Delete conversation",
+    menu: `row-menu-${conversationId}`,
     title: "Delete conversation?",
     endpoint: `tenants/${tenant}/bots/${botId}/conversations/${conversationId}`,
     method: "DELETE",
@@ -83,6 +84,12 @@ for (const item of confirmations) {
       name: item.trigger,
       exact: true,
     });
+    // Row actions live in an overflow menu that must be open to reach them.
+    const openMenu = async () => {
+      if (item.menu && !(await trigger.isVisible()))
+        await page.getByTestId(item.menu).click();
+    };
+    await openMenu();
     await trigger.click();
     const dialog = page.getByRole("dialog", { name: item.title, exact: true });
     await expect(dialog).toBeVisible();
@@ -98,10 +105,12 @@ for (const item of confirmations) {
     await expect(dialog).not.toBeVisible();
     await expect(trigger).toBeFocused();
     expect(state.writes).toEqual([]);
+    await openMenu();
     await trigger.click();
     await page.keyboard.press("Escape");
     await expect(dialog).not.toBeVisible();
     expect(state.writes).toEqual([]);
+    await openMenu();
     await trigger.click();
     if (item.platform)
       await dialog

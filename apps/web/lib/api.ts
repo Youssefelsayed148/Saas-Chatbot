@@ -260,6 +260,8 @@ export interface Tenant {
   name: string;
   slug: string;
   status: string;
+  /** Message retention override in days; null means the deployment default. */
+  retention_days?: number | null;
   created_at: string;
 }
 
@@ -614,7 +616,7 @@ export interface InboxThread {
 
 export async function listInbox(
   tenantId: string,
-  filters: Record<string, string | boolean | undefined> = {},
+  filters: Record<string, string | number | boolean | undefined> = {},
 ): Promise<InboxResponse> {
   const query = new URLSearchParams();
   for (const [key, value] of Object.entries(filters)) {

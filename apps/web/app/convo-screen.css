@@ -37,7 +37,138 @@
   margin-block-end: var(--space-4);
 }
 
-/* Retention: label above the control, hint below, action beside it. */
+/* Retention: collapsible panel; content stays in the DOM when closed. */
+.retention-panel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.retention-panel > summary {
+  display: flex;
+  align-items: center;
+  min-block-size: var(--control-height);
+  padding-inline: var(--space-4);
+  cursor: pointer;
+  font-weight: 650;
+  border-radius: var(--radius);
+}
+.retention-panel > summary .retention-value {
+  margin-inline-start: var(--space-1);
+  color: var(--muted);
+  font-weight: 500;
+  white-space: pre;
+}
+.retention-panel > summary:focus-visible,
+.row-menu-trigger:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.retention-body {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4) var(--space-4);
+}
+.retention-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+/* History toolbar and pagination. */
+.history-toolbar {
+  display: flex;
+  flex-direction: row;
+  max-inline-size: none;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+.history-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-inline-size: 0;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.history-field input,
+.history-field select {
+  min-block-size: var(--control-height);
+  inline-size: 100%;
+}
+.history-search {
+  flex: 1 1 14rem;
+}
+.history-field:not(.history-search) {
+  flex: 0 1 9.5rem;
+}
+.history-preview {
+  max-inline-size: 22rem;
+}
+.history-preview-text {
+  display: block;
+  max-inline-size: 22rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.history-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-block-start: var(--space-4);
+}
+
+/* Row overflow menu: native details, fixed popover placed from the trigger. */
+.history-actions {
+  inline-size: 1%;
+  white-space: nowrap;
+}
+.row-menu {
+  display: inline-block;
+}
+.row-menu > summary {
+  list-style: none;
+}
+.row-menu > summary::-webkit-details-marker {
+  display: none;
+}
+.row-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--control-height);
+  block-size: var(--control-height);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  cursor: pointer;
+}
+.row-menu-trigger:hover,
+.row-menu[open] > .row-menu-trigger {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+.row-menu-panel {
+  position: fixed;
+  z-index: 20;
+  inset-block-start: 0;
+  inset-inline-end: 0;
+  min-inline-size: 12rem;
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow);
+}
+.row-menu-panel > button {
+  inline-size: 100%;
+  justify-content: flex-start;
+}
+
+/* Retention form: label above the control, action below it. */
 .convo-retention {
   display: flex;
   flex-direction: column;
@@ -155,7 +286,16 @@
   margin-block-start: var(--space-3);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .row-menu-trigger {
+    transition: none;
+  }
+}
+
 @media (max-width: 640px) {
+  .history-field:not(.history-search) {
+    flex: 1 1 8rem;
+  }
   .convo-page .ui-card {
     padding: var(--space-4);
   }

@@ -1,21 +1,14 @@
 "use client";
 
 import { useParams, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { InboxList } from "@/lib/inbox-list";
 import { humanLabel } from "@/lib/labels";
 import * as api from "@/lib/api";
 import type { InboxThread, Member } from "@/lib/api";
 import { roleSatisfies, useSession } from "@/lib/session";
-import {
-  Button,
-  LinkButton,
-  Loading,
-  Notice,
-  PageHeader,
-  StatusBadge,
-} from "@/lib/ui";
+import { Button, LinkButton, Loading, Notice, StatusBadge } from "@/lib/ui";
 import "@/app/inbox-screen.css";
 
 export default function InboxConversationPage() {
@@ -75,6 +68,13 @@ export default function InboxConversationPage() {
     return () => clearTimeout(timer);
   }, [tenantId, canEdit]);
 
+  const threadRef = useRef<HTMLElement>(null);
+  const messageCount = thread?.messages.length ?? 0;
+  useEffect(() => {
+    const el = threadRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messageCount]);
+
   async function run(action: () => Promise<unknown>) {
     if (busy) return;
     setBusy(true);
@@ -88,24 +88,31 @@ export default function InboxConversationPage() {
     }
   }
 
+  const backHref = `/app/${tenantId}/inbox${search.toString() ? `?${search.toString()}` : ""}`;
   if (!thread)
     return (
-      <main>
-        <p className="eyebrow">
-          <LinkButton
-            variant="ghost"
-            icon="arrow-left"
-            href={`/app/${tenantId}/inbox${search.toString() ? `?${search.toString()}` : ""}`}
-          >
-            Inbox
-          </LinkButton>
-        </p>
-        {error ? (
-          <Notice message={error} tone="error" />
-        ) : (
-          <Loading label="Loading conversation…" />
-        )}
-      </main>
+      <div className="inbox-workspace">
+        <div className="inbox-side">
+          <InboxList compact selectedId={conversationId} />
+        </div>
+        <section className="conversation-pane" aria-label="Conversation">
+          <div className="conversation-head">
+            <LinkButton
+              variant="ghost"
+              size="sm"
+              icon="arrow-left"
+              href={backHref}
+            >
+              Back to inbox
+            </LinkButton>
+          </div>
+          {error ? (
+            <Notice message={error} tone="error" />
+          ) : (
+            <Loading label="Loading conversation…" />
+          )}
+        </section>
+      </div>
     );
   const conversation = thread.conversation;
   const sendReply = () =>
@@ -130,20 +137,20 @@ export default function InboxConversationPage() {
       <div className="inbox-side">
         <InboxList compact selectedId={conversationId} />
       </div>
-      <main className="conversation-pane">
-        <PageHeader
-          eyebrow={
-            <LinkButton
-              variant="ghost"
-              icon="arrow-left"
-              href={`/app/${tenantId}/inbox${search.toString() ? `?${search.toString()}` : ""}`}
-            >
-              Back to inbox
-            </LinkButton>
-          }
-          title="Conversation"
-          purpose="Read the thread, coordinate with your team and help the visitor."
-        />
+      <section className="conversation-pane" aria-label="Conversation">
+        <div className="conversation-head">
+          <LinkButton
+            variant="ghost"
+            size="sm"
+            icon="arrow-left"
+            href={backHref}
+          >
+            Back to inbox
+          </LinkButton>
+          <h2 dir="auto">
+            {conversation.contact_name?.trim() || "Conversation"}
+          </h2>
+        </div>
         {me?.is_platform_staff && (
           <p role="note" className="staff-note">
             Staff view is read-only; replies come from client team members
@@ -276,7 +283,12 @@ export default function InboxConversationPage() {
             </form>
           )}
         </section>
-        <section aria-label="Thread" data-testid="inbox-thread">
+        <section
+          ref={threadRef}
+          aria-label="Thread"
+          data-testid="inbox-thread"
+          className="inbox-thread-scroll"
+        >
           <ol className="chat-thread">
             {thread.messages.map((message) => {
               const isNote =
@@ -411,7 +423,7 @@ export default function InboxConversationPage() {
             Viewer access: replies and conversation changes are disabled.
           </p>
         )}
-      </main>
+      </section>
     </div>
   );
 }

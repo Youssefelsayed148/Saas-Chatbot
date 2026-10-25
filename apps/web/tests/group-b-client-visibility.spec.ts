@@ -123,8 +123,8 @@ async function fixture(page: Page, role: Role | "staff", hasBot = true) {
       });
     if (suffix === "/inbox" || suffix === `/bots/${botId}/conversations`)
       return respond({
-        conversations: [conversation],
-        total: 1,
+        conversations: hasBot ? [conversation] : [],
+        total: hasBot ? 1 : 0,
         limit: 50,
         offset: 0,
       });
@@ -249,8 +249,8 @@ for (const role of ["admin", "editor", "viewer", "staff"] as const) {
       .getByRole("navigation", { name: "Workspace navigation" });
     const expected = [
       "Overview",
-      client ? "Conversations" : "Bots",
-      "Inbox",
+      ...(client ? [] : ["Bots"]),
+      "Conversations",
       "Contacts",
       "Insights",
       ...(admin ? ["Request a change", "Team", "Tenant data and audit"] : []),
@@ -259,13 +259,16 @@ for (const role of ["admin", "editor", "viewer", "staff"] as const) {
     await expect(nav.getByRole("link")).toHaveText(
       expected.map((label) => new RegExp(label)),
     );
+    await expect(
+      nav.getByRole("link", { name: "Conversations", exact: true }),
+    ).toHaveAttribute("href", `${base}/inbox`);
     if (client) {
-      await expect(
-        nav.getByRole("link", { name: "Conversations", exact: true }),
-      ).toHaveAttribute("href", `${botBase}/conversations`);
       await page.keyboard.press("Control+k");
       const palette = page.getByRole("dialog", { name: "Go to a page" });
-      await expect(palette.getByRole("option")).toHaveCount(expected.length);
+      // Sidebar items plus the palette-only "Inbox" and "Conversation history".
+      await expect(palette.getByRole("option")).toHaveCount(
+        expected.length + 2,
+      );
       await noOperatorText(page);
       await page.keyboard.press("Escape");
     }
@@ -273,6 +276,8 @@ for (const role of ["admin", "editor", "viewer", "staff"] as const) {
     await expect(page.getByTestId("conversations")).toContainText(
       "Visibility contact",
     );
+    // Retention content and the row delete stay in the DOM when their
+    // disclosure (panel / row menu) is closed, and are absent for non-admins.
     await expect(page.getByTestId("retention-save")).toHaveCount(admin ? 1 : 0);
     await expect(page.getByTestId(`delete-${conversationId}`)).toHaveCount(
       admin ? 1 : 0,
@@ -391,8 +396,9 @@ test("client with no current assistant has a Conversations empty state", async (
   await fixture(page, "viewer", false);
   await page.goto(`${base}/conversations`);
   await expect(
-    page.getByText("No conversations available yet.", { exact: true }),
+    page.getByRole("heading", { name: "Conversations", exact: true }),
   ).toBeVisible();
+  await expect(page.getByText(/No conversations/i).first()).toBeVisible();
   await noOperatorText(page);
 });
 
