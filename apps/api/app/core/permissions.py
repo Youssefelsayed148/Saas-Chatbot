@@ -132,4 +132,5 @@ TENANT_ROUTE_ROLES: dict[tuple[str, str], str] = {
     ("GET", "/api/v1/tenants/{tenant_id}/bots/{bot_id}/analytics/conversations.csv"): "admin",
     ("GET", "/api/v1/tenants/{tenant_id}/bots/{bot_id}/analytics/leads.csv"): "admin",
     ("GET", "/api/v1/tenants/{tenant_id}/analytics"): "viewer",
+    ("GET", "/api/v1/tenants/{tenant_id}/analytics/timeseries"): "viewer",
 }

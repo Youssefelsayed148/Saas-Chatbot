@@ -157,6 +157,9 @@ def usage_snapshot(db: OrmSession, tenant: Tenant, *, bot_id: UUID | None = None
         "usage": {},
         "limits": {},
     }
+    # Tenant-wide, provider-reported chat tokens only (message events). It is NOT the per-bot
+    # `monthly_tokens` AI limit counter in quotas/rag.py, which also holds embeddings and
+    # conservative reservations for unreported usage (see docs/05).
     result["measured_tokens_this_month"] = measured_tokens
     for name in COUNTERS:
         used = usage[name]
@@ -167,6 +170,12 @@ def usage_snapshot(db: OrmSession, tenant: Tenant, *, bot_id: UUID | None = None
         name
         for name in COUNTERS
         if getattr(limits, name) > 0 and result["usage"][name] >= getattr(limits, name) * 0.8
+    ]
+    # Subset of `warnings` that has reached the limit (used >= limit); the rest are approaching.
+    result["at_limit"] = [
+        name
+        for name in COUNTERS
+        if getattr(limits, name) > 0 and result["usage"][name] >= getattr(limits, name)
     ]
     return result
 
