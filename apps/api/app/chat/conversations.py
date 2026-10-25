@@ -83,6 +83,28 @@ def get_or_create_playground_conversation(
     return conversation
 
 
+def resolve_preview_revision(
+    db: OrmSession, *, tenant_id: UUID, bot_id: UUID, knowledge: str
+) -> UUID | None:
+    """The revision the playground should answer from. "published" -> None (the
+    normal pointer); "draft" -> this bot's draft revision id, or 409 when the bot
+    has no draft. Scoped by tenant + bot like every knowledge query."""
+    if knowledge == "published":
+        return None
+    from app.db.models import KnowledgeRevision
+
+    draft_id = db.scalar(
+        select(KnowledgeRevision.id).where(
+            KnowledgeRevision.tenant_id == tenant_id,
+            KnowledgeRevision.bot_id == bot_id,
+            KnowledgeRevision.status == "draft",
+        )
+    )
+    if draft_id is None:
+        raise ApiError(409, "NO_DRAFT_REVISION", "This bot has no draft knowledge to preview.")
+    return draft_id
+
+
 def reset_playground_conversation(
     db: OrmSession, *, tenant_id: UUID, bot_id: UUID, user_id: UUID
 ) -> Conversation:
@@ -324,9 +346,17 @@ def visitor_chat_turn(
     language_hint: str | None = None,
     model: ChatModel | None = None,
     settings: Settings | None = None,
+    preview_revision_id: UUID | None = None,
 ) -> dict[str, Any]:
-    """Persist a visitor turn and run the pipeline only in AI mode."""
+    """Persist a visitor turn and run the pipeline only in AI mode.
+
+    ``preview_revision_id`` (staff playground only) answers from that DRAFT
+    revision instead of the published one; any other conversation source is
+    refused here, so the public widget can never reach unpublished knowledge."""
     settings = settings or get_settings()
+    if preview_revision_id is not None and conversation.source != "playground":
+        raise ApiError(403, "FORBIDDEN", "Draft knowledge is only available in the playground.")
+    event_source = "playground" if conversation.source == "playground" else None
     if not question.strip():
         raise ApiError(422, "VALIDATION_ERROR", "The message is empty.")
     if len(question) > 1000:
@@ -398,6 +428,7 @@ def visitor_chat_turn(
         event_type="message",
         model=None,
         channel=conversation.channel,
+        source=event_source,
     )
     model = MeteredChatModel(model, db, tenant_id, bot.id, settings, conversation.channel)
     started = datetime.now(UTC)
@@ -412,6 +443,7 @@ def visitor_chat_turn(
             language_hint=language_hint,
             model=model,
             settings=settings,
+            preview_revision_id=preview_revision_id,
         )
     except BaseException:
         # Aborted turn: no answer was stored, so the message must not count.
@@ -452,6 +484,7 @@ def visitor_chat_turn(
             "provider_usage": model.usage_totals,
             "rag_trace": reply.trace,
             "ai_metered": True,
+            **({"source": event_source} if event_source else {}),
         },
     )
     settle(

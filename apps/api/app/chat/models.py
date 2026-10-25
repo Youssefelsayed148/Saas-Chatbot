@@ -37,10 +37,16 @@ def model_from_settings(settings: Settings, bot: Bot | None = None) -> ChatModel
         and settings.chat_openai_api_key is not None
         and (override or settings.chat_openai_model)
     ):
+        primary = override or settings.chat_openai_model
         return OpenAICompatibleModel(
             base_url=settings.chat_openai_base_url,
             api_key=settings.chat_openai_api_key.get_secret_value(),
-            model=override or settings.chat_openai_model,
+            model=primary,
+            # Ordered fallbacks (H5): one attempt each, same attempt log. 401/402
+            # still block the whole turn (the provider's own rule), never fall back.
+            fallback_models=[
+                name for name in settings.chat_openai_fallback_models if name != primary
+            ],
             free_only=False,
             timeout_seconds=25.0,
             retries=0,

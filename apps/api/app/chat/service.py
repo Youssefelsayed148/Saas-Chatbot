@@ -482,9 +482,14 @@ def chat_answer(
     settings: Settings | None = None,
     history_skipped: int = 0,
     post_check: Callable[[str, list[RetrievedChunk]], bool] | None = None,
+    preview_revision_id: UUID | None = None,
 ) -> ChatReply:
+    """``preview_revision_id``: staff-playground draft preview. When set, retrieval
+    reads that revision (validated against tenant + bot as a draft); None keeps
+    the published pointer, which is the only thing the widget path ever uses."""
     settings = settings or get_settings()
     budget = TurnBudget.start(settings)
+    answering_revision = preview_revision_id or bot.published_revision_id
     trace: dict[str, object] = {
         "retrieval_mode": "not_run",
         "gate": "not_run",
@@ -504,7 +509,8 @@ def chat_answer(
         "reconciled": False,
         "skipped_steps": [],
         # Why-this-answer facts for staff (no prompt text, no raw model output).
-        "revision_id": str(bot.published_revision_id) if bot.published_revision_id else None,
+        "revision_id": str(answering_revision) if answering_revision else None,
+        "revision_kind": "draft" if preview_revision_id else "published",
         "tier": getattr(bot, "tier", None),
         "generation_provider": getattr(bot, "generation_provider", None),
         "applied_language": None,
@@ -595,7 +601,7 @@ def chat_answer(
     trace["rewrite_text"] = condensed
 
     # 3) Retrieval on the condensed (or raw) question.
-    revision_id = bot.published_revision_id
+    revision_id = answering_revision
     retrieval: RetrievalResult | None = None
     decision: GateDecision | None = None
     evidence: list[RetrievedChunk] = []
@@ -624,6 +630,7 @@ def chat_answer(
             # when the language pass is empty and the languages differ.
             translate_query=translate_within_budget,
             embed_timeout=budget.embed_timeout(),
+            preview=preview_revision_id is not None,
         )
         verdict = relevance_gate(found, settings)
         return found, verdict, select_evidence(verdict, settings)

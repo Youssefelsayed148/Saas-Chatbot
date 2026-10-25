@@ -25,6 +25,7 @@ The coding agent builds exactly this. Values marked **default** are starting poi
 - Dedupe: SHA-256 of normalised chunk text per (bot, source); identical chunks are stored once; re-ingesting an unchanged source changes nothing.
 
 ## 4. Chunking
+- PDF page breaks (H5): when a page ends without terminal punctuation and the next page opens with a lowercase or uncased letter, the previous page's unfinished sentence (≤300 chars, cut on a word boundary) leads the next page's FIRST chunk. The document, its text and its `Page N` citation stay on the page the text belongs to.
 - Sections (above) → recursive character splitter: `chunk_size=1500`, `chunk_overlap=200`, separators `["\n\n", "\n", ". ", "! ", "? ", "؟ ", "، ", " ", ""]`.
 - Each chunk keeps `title`, `heading`, `source_id`, `page/section ref`, `priority`, `language`, `content_hash`.
 - Indexed text = title + heading + text, so short sections stay findable.
@@ -41,6 +42,8 @@ The coding agent builds exactly this. Values marked **default** are starting poi
 
 ## 6. Answer generation
 - Providers behind two small interfaces: `ChatModel.complete(messages, json_mode, max_tokens)` (and later `Embedder`). OpenAI-compatible client with base URL, key, model, optional ordered fallback model list, `free_only` guard (reject non-`:free` model IDs and send zero price ceiling for OpenRouter).
+- Premium resilience (H5): `CHAT_OPENAI_FALLBACK_MODELS` (JSON array, ≤3 unique ids, no whitespace) is an ordered fallback list for the OpenAI tier. Same rules as the free chain: one attempt per model, same attempt log and trace; 401/402 block the whole turn and never fall back; 403/429 fall back when a next model exists; a turn served by a fallback is a normal answer (no handoff). A per-bot model override is the primary and a fallback equal to it is dropped. The Standard tier keeps the `free_only` guard and ignores this list.
+- Draft preview (H5): the staff playground may answer from the bot's draft revision (`knowledge: "draft"`); retrieval gets the explicit revision id and only accepts a DRAFT of the same tenant and bot. The public widget path cannot pass it. The trace shows `revision_id` and `revision_kind`.
 - ADR-013: default = OpenRouter free models with a fallback chain (starter/free plans). Paid plans use OpenAI API models via the platform key (model per plan in config). When every attempt fails: localized "busy" message with the bot's support contact, `needs_human=true`, never a stack trace.
 - Defaults: temperature 0.2, `max_tokens=700`, timeout 25 s, 2 retries.
 - Output contract (strict): `{"answer": str(non-empty), "can_answer": bool, "sources": [chunk_id, ...≤8]}`. Invalid JSON/shape → fallback reply. Only `sources` matching retrieved chunk IDs are kept; `can_answer=true` with no valid citation → fallback reply. `can_answer=false` → `needs_human=true`; the reply becomes the canned cannot-confirm text with no citations on every path (buffered and streamed; R0, 2026-10-24).

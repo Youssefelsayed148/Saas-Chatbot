@@ -18,6 +18,7 @@ from app.db.models import (
     UsageEvent,
 )
 from app.quotas.plans import PLACEHOLDER_PLAN_LIMITS, PLAN_LABELS, PlanLimits
+from app.quotas.rag import counts_toward_message_quota
 
 COUNTERS = (
     "bots",
@@ -111,8 +112,10 @@ def usage_snapshot(db: OrmSession, tenant: Tenant, *, bot_id: UUID | None = None
             UsageEvent.tenant_id == tenant.id,
             UsageEvent.kind == "message",
             UsageEvent.created_at >= month_start,
+            counts_toward_message_quota(),
         ),
     )
+    # Tokens stay measured for every turn (playground included): they are real spend.
     measured_token_payloads = db.execute(
         select(UsageEvent.payload).where(
             UsageEvent.tenant_id == tenant.id,

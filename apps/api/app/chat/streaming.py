@@ -273,6 +273,8 @@ class StreamTurn:
     settings: Settings
     model: ChatModel | None  # None: no model configured (canned busy reply)
     extra: dict[str, Any] = field(default_factory=dict)
+    # Staff playground draft preview only; visitor_chat_turn refuses it on any other source.
+    preview_revision_id: UUID | None = None
 
 
 def run_turn(
@@ -315,6 +317,7 @@ def run_turn(
             language_hint=turn.language_hint,
             model=model,
             settings=turn.settings,
+            preview_revision_id=turn.preview_revision_id,
         )
         ai_message = result.get("ai_message")
         if ai_message and model is not None:
@@ -438,13 +441,20 @@ def prepare_playground_stream(
     user_id: UUID,
     text: str,
     settings: Settings,
+    knowledge: str = "published",
 ) -> StreamTurn:
     """The staff playground's twin of ``prepare_widget_stream``: same worker,
     wrapper model and reconciliation, with the conversation scoped to
     (bot, user). Failures before the stream opens are ordinary HTTP errors."""
-    from app.chat.conversations import get_or_create_playground_conversation
+    from app.chat.conversations import (
+        get_or_create_playground_conversation,
+        resolve_preview_revision,
+    )
     from app.chat.models import model_from_settings
 
+    preview_revision_id = resolve_preview_revision(
+        db, tenant_id=tenant_id, bot_id=bot.id, knowledge=knowledge
+    )
     model = model_from_settings(settings, bot)
     if model is None:
         raise ApiError(
@@ -463,4 +473,5 @@ def prepare_playground_stream(
         language_hint=None,
         settings=settings,
         model=model,
+        preview_revision_id=preview_revision_id,
     )

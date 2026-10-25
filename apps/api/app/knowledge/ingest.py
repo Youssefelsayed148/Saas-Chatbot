@@ -38,7 +38,7 @@ from app.db.models import (
     Tenant,
 )
 from app.embeddings.providers import EmbeddingError
-from app.knowledge.chunking import split_text
+from app.knowledge.chunking import page_break_splits_sentence, split_text, trailing_sentence
 from app.knowledge.csv_qa import parse_qa_csv
 from app.knowledge.language import content_hash, detect_language, normalise_text
 from app.knowledge.parsers import ParseLimits, parse_docx, parse_pdf, parse_text
@@ -299,8 +299,16 @@ def plan_source(
     document_plans: list[DocumentPlan] = []
     seen_hashes: set[str] = set()
     fallback = _fallback_language(bot)
+    previous_text = ""
 
     for page in pages:
+        # PDF pages are separate sections; when a sentence runs across the page
+        # break, the previous page's unfinished sentence leads this page's first
+        # chunk so retrieval keeps its context. The citation stays this page.
+        carry = ""
+        if source.kind == "pdf" and page_break_splits_sentence(previous_text, page.text):
+            carry = trailing_sentence(previous_text)
+        previous_text = page.text
         page_language = (
             page.language
             if page.language in ("en", "ar")
@@ -333,7 +341,11 @@ def plan_source(
             if source.kind == "qa_csv":
                 chunk_texts = [text]
             else:
-                chunk_texts = split_text(text, settings.chunk_size, settings.chunk_overlap)
+                chunk_texts = split_text(
+                    f"{carry} {text}" if carry and section_index == 1 else text,
+                    settings.chunk_size,
+                    settings.chunk_overlap,
+                )
             planned_chunks: list[ChunkPlanRow] = []
             for chunk_ordinal, chunk_text in enumerate(chunk_texts):
                 # Indexed text = title + heading + text (docs/14 §4); the

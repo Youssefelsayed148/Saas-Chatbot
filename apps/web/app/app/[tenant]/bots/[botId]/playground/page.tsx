@@ -104,6 +104,9 @@ export default function PlaygroundPage() {
   const [messages, setMessages] = useState<PlaygroundMessage[] | null>(null);
   const [threadError, setThreadError] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
+  // Which knowledge the next turn answers from (staff preview of the draft).
+  const [knowledge, setKnowledge] =
+    useState<api.PlaygroundKnowledge>("published");
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   // The turn in flight: the question and the answer text streamed so far.
@@ -182,19 +185,25 @@ export default function PlaygroundPage() {
     try {
       let turn: api.PlaygroundTurnResponse;
       try {
-        turn = await api.playgroundTurnStream(tenantId, botId, text, {
-          signal: controller.signal,
-          onDelta: (piece) =>
-            setPending((current) =>
-              current
-                ? { ...current, answer: current.answer + piece }
-                : current,
-            ),
-          onCannotConfirm: (canned) =>
-            setPending((current) =>
-              current ? { ...current, answer: canned } : current,
-            ),
-        });
+        turn = await api.playgroundTurnStream(
+          tenantId,
+          botId,
+          text,
+          {
+            signal: controller.signal,
+            onDelta: (piece) =>
+              setPending((current) =>
+                current
+                  ? { ...current, answer: current.answer + piece }
+                  : current,
+              ),
+            onCannotConfirm: (canned) =>
+              setPending((current) =>
+                current ? { ...current, answer: canned } : current,
+              ),
+          },
+          knowledge,
+        );
       } catch (caught) {
         // A broken stream falls back to the buffered turn; HTTP refusals and
         // a user stop do not.
@@ -202,7 +211,7 @@ export default function PlaygroundPage() {
         setPending((current) =>
           current ? { ...current, answer: "" } : current,
         );
-        turn = await api.playgroundTurn(tenantId, botId, text);
+        turn = await api.playgroundTurn(tenantId, botId, text, knowledge);
       }
       void loadTraces();
       setDraft("");
@@ -456,6 +465,42 @@ export default function PlaygroundPage() {
             : { retryLabel: "Reload page" })}
         />
       )}
+      {canChat && (
+        <fieldset
+          className="knowledge-choice"
+          data-testid="playground-knowledge"
+          disabled={sending}
+        >
+          <legend>Knowledge to test</legend>
+          <label>
+            <input
+              type="radio"
+              name="playground-knowledge"
+              value="published"
+              checked={knowledge === "published"}
+              onChange={() => setKnowledge("published")}
+            />{" "}
+            Published
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="playground-knowledge"
+              value="draft"
+              checked={knowledge === "draft"}
+              onChange={() => setKnowledge("draft")}
+            />{" "}
+            Draft
+          </label>
+          {knowledge === "draft" && (
+            <p className="muted" role="note">
+              Preview only: answers use the unpublished draft. Visitors keep
+              seeing the published knowledge. Playground turns do not count
+              toward the client&apos;s message quota.
+            </p>
+          )}
+        </fieldset>
+      )}
       <form
         onSubmit={onSend}
         aria-label="Playground input"
@@ -595,7 +640,10 @@ export default function PlaygroundPage() {
             {(trace.revision_id !== undefined || trace.retrieval_query) && (
               <dl className="trace-facts" data-testid="trace-context">
                 <dt>Knowledge revision</dt>
-                <dd>{trace.revision_id ?? "None published"}</dd>
+                <dd data-testid="trace-revision">
+                  {trace.revision_id ?? "None published"}
+                  {trace.revision_kind ? ` (${trace.revision_kind})` : ""}
+                </dd>
                 <dt>Tier / provider</dt>
                 <dd>
                   {trace.tier ?? "n/a"} · {trace.generation_provider ?? "n/a"}

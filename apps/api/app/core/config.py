@@ -3,7 +3,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.quotas.rag_contracts import RagLimits
@@ -80,6 +80,9 @@ class Settings(BaseSettings):
     # Premium default: gpt-4.1-nano was deprecated by OpenAI; gpt-5.4-nano is the verified
     # replacement (temperature 0.2 + JSON mode answer 200). Override with CHAT_OPENAI_MODEL.
     chat_openai_model: str = "gpt-5.4-nano"
+    # Premium resilience (H5): optional ORDERED fallback models tried after the primary,
+    # one attempt each (JSON array in CHAT_OPENAI_FALLBACK_MODELS). Empty = no fallback.
+    chat_openai_fallback_models: list[str] = Field(default_factory=list)
     chat_max_tokens: int = Field(default=700, ge=64, le=2000)
     # Completion cap for the free OpenRouter chain only: its reasoning models spend part of the cap
     # on hidden reasoning and would otherwise run out before the JSON answer is written.
@@ -150,6 +153,19 @@ class Settings(BaseSettings):
     worker_heartbeat_file: str = "/tmp/chatbot-worker-heartbeat"
     # E2E/test harness guard: when set, the worker refuses a non-_test database.
     worker_allow_only_test_db: bool = False
+
+    @field_validator("chat_openai_fallback_models")
+    @classmethod
+    def _valid_fallback_models(cls, value: list[str]) -> list[str]:
+        """Plain model ids, no duplicates, at most 3 (each is one more attempt per turn)."""
+        cleaned = [name.strip() for name in value]
+        if any(not name or any(ch.isspace() for ch in name) for name in cleaned):
+            raise ValueError("Fallback model ids must be non-empty and contain no whitespace.")
+        if len(set(cleaned)) != len(cleaned):
+            raise ValueError("Fallback model ids must be unique.")
+        if len(cleaned) > 3:
+            raise ValueError("At most 3 fallback models are supported.")
+        return cleaned
 
 
 @lru_cache

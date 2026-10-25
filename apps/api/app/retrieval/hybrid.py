@@ -201,6 +201,20 @@ def _revision_embedding_model(
     )
 
 
+def _is_draft_revision(db: OrmSession, tenant_id: UUID, bot_id: UUID, revision_id: UUID) -> bool:
+    return (
+        db.scalar(
+            select(KnowledgeRevision.id).where(
+                KnowledgeRevision.tenant_id == tenant_id,
+                KnowledgeRevision.bot_id == bot_id,
+                KnowledgeRevision.id == revision_id,
+                KnowledgeRevision.status == "draft",
+            )
+        )
+        is not None
+    )
+
+
 def retrieve_hybrid(
     db: OrmSession,
     *,
@@ -216,19 +230,26 @@ def retrieve_hybrid(
     mode_override: str | None = None,
     channel: str = "website",
     embed_timeout: float | None = None,
+    preview: bool = False,
 ) -> RetrievalResult:
+    """``preview=True`` (staff playground) reads an explicit DRAFT revision of this
+    tenant + bot instead of the published pointer. Anything that is not such a
+    draft returns an empty result, so a preview id can never expose another
+    bot's, tenant's or the live revision through this switch."""
     settings = settings or get_settings()
     bot = db.scalar(
         select(Bot)
         .where(
             Bot.tenant_id == tenant_id,
             Bot.id == bot_id,
-            Bot.published_revision_id == revision_id,
+            *(() if preview else (Bot.published_revision_id == revision_id,)),
             Bot.status != "archived",
         )
         .execution_options(populate_existing=True)
     )
     if bot is None:
+        return RetrievalResult(question_language, question_language, False)
+    if preview and not _is_draft_revision(db, tenant_id, bot_id, revision_id):
         return RetrievalResult(question_language, question_language, False)
 
     def keyword() -> RetrievalResult:
@@ -345,7 +366,7 @@ def retrieve_hybrid(
     )
     if (
         bot is None
-        or bot.published_revision_id != revision_id
+        or (not preview and bot.published_revision_id != revision_id)
         or _revision_embedding_model(db, tenant_id, bot_id, revision_id) != identity
     ):
         result.degradation_reason = "backfill_changed_during_query"

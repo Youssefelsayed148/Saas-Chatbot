@@ -1617,12 +1617,16 @@ export async function playgroundTurn(
   tenantId: string,
   botId: string,
   text: string,
+  knowledge: PlaygroundKnowledge = "published",
 ): Promise<PlaygroundTurnResponse> {
   return api<PlaygroundTurnResponse>(
     `tenants/${tenantId}/bots/${botId}/playground/messages`,
-    { method: "POST", body: { text } },
+    { method: "POST", body: { text, knowledge } },
   );
 }
+
+/** Which knowledge a playground turn answers from (staff preview of the draft). */
+export type PlaygroundKnowledge = "published" | "draft";
 
 /** The stream broke before a `done` event arrived (network, provider or
  * server error inside the stream). The caller falls back to the buffered turn. */
@@ -1648,6 +1652,7 @@ export async function playgroundTurnStream(
   botId: string,
   text: string,
   handlers: PlaygroundStreamHandlers,
+  knowledge: PlaygroundKnowledge = "published",
 ): Promise<PlaygroundTurnResponse> {
   const response = await fetch(
     `/api/v1/tenants/${tenantId}/bots/${botId}/playground/messages/stream`,
@@ -1655,7 +1660,7 @@ export async function playgroundTurnStream(
       method: "POST",
       headers: { "Content-Type": "application/json", ...csrfHeader() },
       credentials: "same-origin",
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, knowledge }),
       signal: handlers.signal,
     },
   );
@@ -1790,6 +1795,8 @@ export interface RagTrace {
     kept_source_count?: number;
     reconciled?: boolean;
     revision_id?: string | null;
+    /** "draft" when a staff playground turn answered from draft knowledge. */
+    revision_kind?: "published" | "draft";
     tier?: string | null;
     generation_provider?: string | null;
     applied_language?: string | null;

@@ -41,6 +41,7 @@ from app.db.models import (
     UsageEvent,
     VisitorSession,
 )
+from app.quotas.rag import counts_toward_message_quota
 from app.quotas.service import lock_tenant, require_capacity
 
 RETIRED_WINDOW = 60  # fixed-window width used by the public counters (seconds)
@@ -324,6 +325,7 @@ def check_daily_message_quota(db: OrmSession, bot: Bot, settings: Settings) -> N
                 UsageEvent.bot_id == bot.id,
                 UsageEvent.kind == "message",
                 UsageEvent.created_at >= start_of_day,
+                counts_toward_message_quota(),  # staff playground turns never use the cap
             )
         )
         .scalars()
@@ -415,6 +417,38 @@ def session_history(
     return list(
         db.execute(statement.order_by(Message.created_at.asc(), Message.id).limit(limit)).scalars()
     )
+
+
+def session_poll_hint(db: OrmSession, *, visitor_session: VisitorSession) -> str:
+    """``active`` while a reply can still arrive without the visitor acting (the
+    conversation waits for / is with a human, or a follow-up is scheduled), else
+    ``idle``. The widget polls only while this is ``active`` (H5)."""
+    from app.db.models import FollowUp
+
+    conversation = (
+        db.execute(
+            select(Conversation).where(
+                Conversation.tenant_id == visitor_session.tenant_id,
+                Conversation.session_id == visitor_session.id,
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if conversation is None:
+        return "idle"
+    if conversation.mode == "human" or conversation.status == "waiting_human":
+        return "active"
+    pending = db.scalar(
+        select(FollowUp.id)
+        .where(
+            FollowUp.tenant_id == visitor_session.tenant_id,
+            FollowUp.conversation_id == conversation.id,
+            FollowUp.status.in_(("scheduled", "ready")),
+        )
+        .limit(1)
+    )
+    return "active" if pending is not None else "idle"
 
 
 CONSENT_TEXT_VERSION = "widget-lead/v1 2026-10"

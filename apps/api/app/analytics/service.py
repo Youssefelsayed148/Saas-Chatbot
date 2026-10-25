@@ -46,6 +46,7 @@ def summary(
         WITH ev AS (
             SELECT kind, count(*) AS n FROM usage_events
             WHERE tenant_id = CAST(:t AS uuid) AND bot_id = CAST(:b AS uuid)
+              AND COALESCE(payload->>'source', '') <> 'playground'
               AND created_at >= :start AND created_at <= :end
             GROUP BY kind
         ),

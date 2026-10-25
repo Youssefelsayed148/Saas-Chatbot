@@ -46,6 +46,7 @@ from app.db.session import get_session
 from app.jobs.queue import request_cancel, requeue_for_retry
 from app.platform.bots import bot_summary
 from app.platform.staff import PlatformStaffDep
+from app.quotas.rag import counts_toward_message_quota
 from app.quotas.service import PLACEHOLDER_PLAN_LIMITS, PLAN_LABELS
 
 router = APIRouter(prefix="/api/v1/platform")
@@ -193,6 +194,7 @@ def platform_tenants(
                     UsageEvent.tenant_id == tenant.id,
                     UsageEvent.kind == "message",
                     UsageEvent.created_at >= month_start,
+                    counts_toward_message_quota(),
                 )
             ).scalar_one()
         )
@@ -498,6 +500,20 @@ def platform_analytics(staff: PlatformStaffDep, db: DbSession) -> dict[str, Any]
             .group_by(UsageEvent.kind)
         )
         events = {kind: int(count) for kind, count in event_rows}
+        # Source label: staff playground turns are listed apart from client traffic.
+        playground = int(
+            db.execute(
+                select(func.count())
+                .select_from(UsageEvent)
+                .where(
+                    UsageEvent.tenant_id == tenant_id,
+                    UsageEvent.kind == "message",
+                    ~counts_toward_message_quota(),
+                )
+            ).scalar_one()
+        )
+        events["message"] = max(0, events.get("message", 0) - playground)
+        events["playground_message"] = playground
         per_client.append(
             {
                 "tenant_id": str(tenant_id),

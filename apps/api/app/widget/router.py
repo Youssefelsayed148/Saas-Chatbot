@@ -17,7 +17,7 @@ from datetime import datetime
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, Query, Request
+from fastapi import APIRouter, Depends, Header, Query, Request, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -207,9 +207,7 @@ def send_message(
     return MessageTurnResponse(
         conversation_id=payload["conversation_id"],
         visitor_message=payload["visitor_message"],
-        ai_message=(
-            {**payload["ai_message"], "citations": []} if payload["ai_message"] else None
-        ),
+        ai_message=({**payload["ai_message"], "citations": []} if payload["ai_message"] else None),
         kind=payload["kind"],
         language=payload["language"],
     )
@@ -263,14 +261,19 @@ def session_messages(
     session_id: UUID,
     db: DbSession,
     settings: CurrentSettings,
+    response: Response,
     x_session_token: Annotated[str | None, Header()] = None,
     since: Annotated[datetime | None, Query()] = None,
 ) -> list[SessionMessageOut]:
-    """Thread recovery/history for the visitor's own session (docs/09)."""
+    """Thread recovery/history for the visitor's own session (docs/09).
+
+    ``X-Poll-Hint: active|idle`` tells the widget whether more can arrive
+    without the visitor acting (human reply, scheduled follow-up)."""
     visitor_session = _session_or_401(db, session_id, settings, x_session_token)
     rows = service.session_history(
         db, visitor_session=visitor_session, settings=settings, since=since
     )
+    response.headers["X-Poll-Hint"] = service.session_poll_hint(db, visitor_session=visitor_session)
     return [
         SessionMessageOut(
             id=row.id,

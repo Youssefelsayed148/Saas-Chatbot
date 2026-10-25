@@ -1,7 +1,7 @@
 """Playground + feedback endpoints (P3-03/04): the dashboard chat surface
 over the same pipeline the public widget will use (P4-01)."""
 
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
@@ -15,6 +15,7 @@ from app.chat.conversations import (
     messages_of,
     record_feedback,
     reset_playground_conversation,
+    resolve_preview_revision,
     visitor_chat_turn,
 )
 from app.core.config import Settings, get_settings
@@ -28,6 +29,8 @@ CsrfOk = Annotated[None, Depends(cookies.require_csrf)]
 
 class PlaygroundTurnRequest(BaseModel):
     text: str = Field(min_length=1, max_length=1000)
+    # Staff-only: answer from the bot's draft knowledge instead of the published one.
+    knowledge: Literal["published", "draft"] = "published"
 
 
 class MessageOut(BaseModel):
@@ -85,6 +88,9 @@ def playground_turn(
         raise ApiError(
             503, "MODEL_NOT_CONFIGURED", "No chat model is configured for this deployment."
         )
+    preview_revision_id = resolve_preview_revision(
+        context.db, tenant_id=context.tenant_id, bot_id=bot_id, knowledge=body.knowledge
+    )
     conversation = get_or_create_playground_conversation(
         context.db, tenant_id=context.tenant_id, bot_id=bot_id, user_id=context.user.id
     )
@@ -96,6 +102,7 @@ def playground_turn(
         question=body.text,
         model=model,
         settings=settings,
+        preview_revision_id=preview_revision_id,
     )
     return PlaygroundTurnResponse(
         conversation_id=str(result["conversation_id"]),
@@ -143,6 +150,7 @@ def playground_turn_stream(
         user_id=context.user.id,
         text=body.text,
         settings=settings,
+        knowledge=body.knowledge,
     )
     return StreamingResponse(
         streaming.stream_events(turn, _playground_payload),
