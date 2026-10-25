@@ -207,7 +207,7 @@ export async function safetyFixture(page: Page, platform = false) {
         embedding_ready: false,
         tier_targets: {
           standard: { provider: "openrouter", model: null },
-          premium: { provider: "openai", model: "gpt-4.1-nano" },
+          premium: { provider: "openai", model: "gpt-5.4-nano" },
         },
       });
     if (suffix === `/bots/${botId}/readiness`)

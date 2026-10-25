@@ -32,7 +32,7 @@ def test_tier_targets_are_reported_from_the_api(app: FastAPI, db: Session) -> No
     users = seeded_tenant(app, db, "tier-targets")
     settings = build_test_settings(
         chat_free_model_chain=["chain-one:free", "chain-two:free"],
-        chat_openai_model="gpt-4.1-nano",
+        chat_openai_model="gpt-5.4-nano",
     )
     app.dependency_overrides[get_settings] = lambda: settings
     try:
@@ -41,7 +41,7 @@ def test_tier_targets_are_reported_from_the_api(app: FastAPI, db: Session) -> No
         status = users.call("staff", "GET", path).json()
         assert status["tier_targets"] == {
             "standard": {"provider": "openrouter", "model": "chain-one:free"},
-            "premium": {"provider": "openai", "model": "gpt-4.1-nano"},
+            "premium": {"provider": "openai", "model": "gpt-5.4-nano"},
         }
         # Tier switching itself is unchanged: same provider mapping.
         patched = users.call("staff", "PATCH", path, json={"tier": "premium"})
