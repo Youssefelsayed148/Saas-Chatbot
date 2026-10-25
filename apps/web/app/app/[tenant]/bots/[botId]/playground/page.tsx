@@ -20,6 +20,23 @@ import "@/app/playground-screen.css";
 
 type Chunk = api.RagTrace["trace"]["chunks"][number];
 
+/** Staff-only wording for a turn whose model call failed (the visitor text is
+ * unchanged): the provider's error code, or the HTTP status / outcome when it
+ * sent none, and the model it came from. */
+function providerFailureNotice(failure: api.ProviderError): string {
+  if (failure.status === "not_configured") {
+    return "The model call failed: no chat model is configured for this bot.";
+  }
+  const last = failure.attempts?.[failure.attempts.length - 1];
+  const reason =
+    failure.error_code ??
+    (failure.http_status ? `HTTP ${failure.http_status}` : null) ??
+    last?.outcome ??
+    "no response";
+  const where = failure.model ? ` on ${failure.model}` : "";
+  return `The model call failed: ${reason}${where}.`;
+}
+
 function TraceChunk({ chunk }: { chunk: Chunk }) {
   const gate = chunk.gate;
   return (
@@ -345,9 +362,21 @@ export default function PlaygroundPage() {
                       ))}
                     </ul>
                   )}
-                  {message.needs_human && (
-                    <Notice message="The assistant could not answer this from the knowledge." />
-                  )}
+                  {message.needs_human &&
+                    (() => {
+                      const failure = traces.find(
+                        (item) => item.message_id === message.id,
+                      )?.trace.provider_error;
+                      return failure ? (
+                        <Notice
+                          message={providerFailureNotice(failure)}
+                          tone="error"
+                          scope="item"
+                        />
+                      ) : (
+                        <Notice message="The assistant could not answer this from the knowledge." />
+                      );
+                    })()}
                   <div className="message-meta">
                     {message.response_ms !== null && (
                       <span className="muted">{message.response_ms} ms</span>

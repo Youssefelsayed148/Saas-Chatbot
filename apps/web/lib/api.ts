@@ -1671,6 +1671,29 @@ export interface PlaygroundConversation {
   messages: PlaygroundMessage[];
 }
 
+export interface ProviderAttempt {
+  attempt: number;
+  model: string;
+  /** ok | failed | blocked | unusable | timeout | network | budget_exhausted */
+  outcome: string;
+  http_status: number | null;
+  error_code: string | null;
+  finish_reason: string | null;
+  /** ok | empty | not_json | truncated | bad_envelope (200 responses only). */
+  content: string | null;
+  compat_retry: boolean;
+}
+
+export interface ProviderError {
+  status: number | string | null;
+  model: string | null;
+  http_status?: number | null;
+  error_code?: string | null;
+  finish_reason?: string | null;
+  content?: string | null;
+  attempts?: ProviderAttempt[];
+}
+
 export interface RagTrace {
   message_id: string;
   created_at: string;
@@ -1681,8 +1704,9 @@ export interface RagTrace {
     model: string | null;
     tokens: Record<string, number> | null;
     cost_usd: string | null;
-    /** Present when the provider call failed: status and model only. */
-    provider_error?: { status: number | string | null; model: string | null };
+    /** Present when the provider call failed: status, the last attempt's model,
+     * HTTP status and sanitized error code, plus one record per model tried. */
+    provider_error?: ProviderError;
     degradation_reason?: string | null;
     streamed?: boolean;
     stream_mode?: string;
