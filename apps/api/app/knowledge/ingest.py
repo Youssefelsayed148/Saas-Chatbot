@@ -10,6 +10,7 @@ as-is). The job re-validates tenant + bot before doing anything; a bot of
 another tenant (or any missing resource) fails the job permanently.
 """
 
+import logging
 import os
 import signal
 import subprocess
@@ -36,6 +37,7 @@ from app.db.models import (
     SourcePage,
     Tenant,
 )
+from app.embeddings.providers import EmbeddingError
 from app.knowledge.chunking import split_text
 from app.knowledge.csv_qa import parse_qa_csv
 from app.knowledge.language import content_hash, detect_language, normalise_text
@@ -44,6 +46,8 @@ from app.knowledge.parsing import ParsedPage, ParsedSection, ParseError
 from app.knowledge.storage import Storage
 from app.quotas.rag import check_resources
 from app.quotas.service import limits_for, lock_tenant
+
+logger = logging.getLogger(__name__)
 
 
 class JobFatal(Exception):
@@ -250,6 +254,7 @@ class DocumentPlan:
         "text",
         "total_chars",
         "chunks",
+        "duplicates_removed",
     )
 
     def __init__(
@@ -275,6 +280,7 @@ class DocumentPlan:
         self.text = text
         self.total_chars = total_chars
         self.chunks = chunks
+        self.duplicates_removed = 0
 
 
 def _fallback_language(bot: Bot) -> str:
@@ -417,6 +423,14 @@ def get_or_create_draft_revision(
         _copy_revision_snapshot(
             db, bot, from_revision_id=bot.published_revision_id, to_revision_id=revision.id
         )
+        # Chunks are copied with their embeddings, so the draft starts as ready as
+        # the published revision; ingest clears this when it adds new chunks.
+        revision.embedding_model = db.scalar(
+            select(KnowledgeRevision.embedding_model).where(
+                KnowledgeRevision.tenant_id == bot.tenant_id,
+                KnowledgeRevision.id == bot.published_revision_id,
+            )
+        )
     db.flush()
     return revision
 
@@ -428,7 +442,12 @@ def _copy_revision_snapshot(
     documents = (
         db.execute(
             select(Document)
-            .where(Document.tenant_id == bot.tenant_id, Document.revision_id == from_revision_id)
+            .join(Source, Source.id == Document.source_id)
+            .where(
+                Document.tenant_id == bot.tenant_id,
+                Document.revision_id == from_revision_id,
+                Source.status != "removed",  # a removed source never reappears in a new draft
+            )
             .order_by(Document.ordinal, Document.created_at)
         )
         .scalars()
@@ -450,6 +469,7 @@ def _copy_revision_snapshot(
             priority=document.priority,
             text=document.text,
             total_chars=document.total_chars,
+            duplicates_removed=document.duplicates_removed,
         )
         db.add(clone)
         id_map[document.id] = clone
@@ -464,6 +484,8 @@ def _copy_revision_snapshot(
         .all()
     )
     for chunk in chunks:
+        if chunk.document_id not in id_map:
+            continue  # belonged to a removed source
         db.add(
             Chunk(
                 tenant_id=chunk.tenant_id,
@@ -513,6 +535,7 @@ def _existing_state(
             document.priority,
             document.text,
             document.total_chars,
+            document.duplicates_removed,
         )
         for document in documents
     ]
@@ -553,6 +576,7 @@ def _planned_state(
             plan.priority,
             plan.text,
             plan.total_chars,
+            plan.duplicates_removed,
         )
         for plan in document_plans
     ]
@@ -573,6 +597,81 @@ def _planned_state(
     return doc_rows, chunk_rows
 
 
+def _plan_cross_source_dedupe(
+    db: OrmSession,
+    source: Source,
+    revision: KnowledgeRevision,
+    document_plans: list[DocumentPlan],
+) -> tuple[list[DocumentPlan], list[tuple[UUID, UUID]]]:
+    """Keep one copy of identical chunks that two sources produce in this draft (H2).
+
+    The newer source (``created_at``, ``id``; a replace refreshes ``created_at``) keeps
+    its chunk. Returns the filtered plans and the (chunk_id, document_id) rows of OTHER
+    sources to delete once the plan is applied. Both sides count the removal so the
+    document list can warn about it.
+    """
+    hashes = {chunk.content_hash for plan in document_plans for chunk in plan.chunks}
+    if not hashes:
+        return document_plans, []
+    rows = db.execute(
+        select(Chunk.id, Chunk.document_id, Chunk.content_hash, Source.created_at, Source.id)
+        .join(Source, Source.id == Chunk.source_id)
+        .where(
+            Chunk.tenant_id == source.tenant_id,
+            Chunk.bot_id == source.bot_id,
+            Chunk.revision_id == revision.id,
+            Chunk.source_id != source.id,
+            Chunk.content_hash.in_(hashes),
+            Source.status != "removed",
+        )
+    ).all()
+    mine = (source.created_at, source.id)
+    other_newer: set[str] = set()
+    losers: list[tuple[UUID, UUID]] = []
+    for chunk_id, document_id, digest, other_created, other_id in rows:
+        if (other_created, other_id) > mine:
+            other_newer.add(digest)
+        else:
+            losers.append((chunk_id, document_id))
+    losing_hashes = {digest for _, _, digest, created, other in rows if (created, other) <= mine}
+    kept: list[DocumentPlan] = []
+    for plan in document_plans:
+        before = len(plan.chunks)
+        plan.chunks = [chunk for chunk in plan.chunks if chunk.content_hash not in other_newer]
+        plan.duplicates_removed = before - len(plan.chunks)
+        plan.duplicates_removed += sum(
+            1 for chunk in plan.chunks if chunk.content_hash in losing_hashes
+        )
+        if plan.chunks:
+            plan.ordinal = len(kept)
+            kept.append(plan)
+    return kept, losers
+
+
+def _apply_cross_source_losers(
+    db: OrmSession, revision: KnowledgeRevision, losers: list[tuple[UUID, UUID]]
+) -> None:
+    """Drop the older sources' duplicate chunks; empty documents go with them."""
+    if not losers:
+        return
+    chunk_ids = [chunk_id for chunk_id, _ in losers]
+    per_document: dict[UUID, int] = {}
+    for _, document_id in losers:
+        per_document[document_id] = per_document.get(document_id, 0) + 1
+    db.execute(delete(Chunk).where(Chunk.revision_id == revision.id, Chunk.id.in_(chunk_ids)))
+    db.flush()
+    for document_id, removed in per_document.items():
+        remaining = db.scalar(
+            select(func.count()).select_from(Chunk).where(Chunk.document_id == document_id)
+        )
+        if remaining:
+            document = db.get(Document, document_id)
+            if document is not None:
+                document.duplicates_removed += removed
+        else:
+            db.execute(delete(Document).where(Document.id == document_id))
+
+
 def process_source(
     db: OrmSession,
     bot: Bot,
@@ -582,6 +681,8 @@ def process_source(
     storage: Storage,
 ) -> str | None:
     """Ingest one source into the draft revision. Returns an error message or None."""
+    if source.status == "removed":
+        return "The source was removed."
     try:
         data = storage.open(source.storage_key)
     except (FileNotFoundError, ValueError):
@@ -644,6 +745,10 @@ def process_source(
         db.commit()
         return source.error
 
+    document_plans, cross_source_losers = _plan_cross_source_dedupe(
+        db, source, revision, document_plans
+    )
+
     # Unchanged re-ingest is a no-op (docs/14 §3).
     planned_docs, planned_chunks = _planned_state(document_plans)
     existing_docs, existing_chunks = _existing_state(db, revision.id, source.id)
@@ -681,6 +786,7 @@ def process_source(
         db.commit()
         return source.error
 
+    _apply_cross_source_losers(db, revision, cross_source_losers)
     db.execute(delete(Chunk).where(Chunk.revision_id == revision.id, Chunk.source_id == source.id))
     db.execute(
         delete(Document).where(Document.revision_id == revision.id, Document.source_id == source.id)
@@ -717,6 +823,7 @@ def process_source(
             priority=plan.priority,
             text=plan.text,
             total_chars=plan.total_chars,
+            duplicates_removed=plan.duplicates_removed,
         )
         db.add(document)
         # Documents must exist before their chunks (composite FK) resolves.
@@ -740,7 +847,9 @@ def process_source(
             for chunk in plan.chunks
         )
     source.status = "ingested"
-    source.error = None
+    source.error = (
+        None if document_plans else "All of this file's content is already in a newer file."
+    )
     db.commit()
     return None
 
@@ -798,6 +907,20 @@ def run_ingest_batch(
     if ingested:
         from app.embeddings.backfill import queue_backfill
 
-        queue_backfill(db, job.tenant_id, job.bot_id, settings, created_by=job.created_by)
+        # New chunks have no vectors: only the DRAFT stops being fully embedded.
+        # The published revision (and so live hybrid retrieval) is untouched.
+        draft_revision.embedding_model = None
         db.commit()
+        try:
+            queue_backfill(db, job.tenant_id, job.bot_id, settings, created_by=job.created_by)
+            db.commit()
+        except (ApiError, EmbeddingError) as error:
+            # The ingest itself succeeded; surface the embedding problem as a warning.
+            db.rollback()
+            message = error.message if isinstance(error, ApiError) else str(error)
+            logger.warning("ingest.backfill_not_queued job=%s", job.id)
+            current: dict[str, Any] = job.payload if isinstance(job.payload, dict) else {}
+            earlier = list(current.get("warnings") or [])
+            job.payload = {**current, "warnings": [*earlier, f"Embedding not queued: {message}"]}
+            db.commit()
     return None

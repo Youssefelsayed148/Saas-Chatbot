@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session as OrmSession
 
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
-from app.db.models import Bot, Job
+from app.db.models import Bot, KnowledgeRevision
 from app.embeddings.providers import EmbeddingBatch, EmbeddingError, from_settings, validate_vector
 from app.quotas.ai import metered_embed
 from app.retrieval.service import (
@@ -186,19 +186,18 @@ def _fusion_order(
     )
 
 
-def _active_backfill(db: OrmSession, tenant_id: UUID, bot_id: UUID) -> bool:
-    return (
-        db.scalar(
-            select(Job.id)
-            .where(
-                Job.tenant_id == tenant_id,
-                Job.bot_id == bot_id,
-                Job.type == "reembed_backfill",
-                Job.status.in_(("pending", "running")),
-            )
-            .limit(1)
+def _revision_embedding_model(
+    db: OrmSession, tenant_id: UUID, bot_id: UUID, revision_id: UUID
+) -> str | None:
+    """The identity every chunk of this revision carries, or None (keyword-only)."""
+    return db.scalar(
+        select(KnowledgeRevision.embedding_model)
+        .where(
+            KnowledgeRevision.tenant_id == tenant_id,
+            KnowledgeRevision.bot_id == bot_id,
+            KnowledgeRevision.id == revision_id,
         )
-        is not None
+        .execution_options(populate_existing=True)
     )
 
 
@@ -247,19 +246,21 @@ def retrieve_hybrid(
         )
 
     reason = None
+    identity: str | None = None
     if (mode_override or bot.retrieval_mode) == "fts_only":
         reason = "operator_fts_only"
-    elif not bot.embedding_ready or not bot.active_embedding_model:
-        reason = "embedding_index_unavailable"
-    elif _active_backfill(db, tenant_id, bot_id):
-        reason = "backfill_active"
+    else:
+        # Only the PUBLISHED revision's completeness matters; draft backfill
+        # progress and ingest never degrade the live bot.
+        identity = _revision_embedding_model(db, tenant_id, bot_id, revision_id)
+        if not identity:
+            reason = "embedding_index_unavailable"
     if reason:
         result = keyword()
         result.degradation_reason = reason
         logger.info("rag.fts_only reason=%s tenant=%s bot=%s", reason, tenant_id, bot_id)
         return result
 
-    identity = bot.active_embedding_model
     assert identity is not None
     if _vector_leg_suspended(identity):
         result = keyword()
@@ -335,8 +336,8 @@ def retrieve_hybrid(
     finally:
         executor.shutdown(wait=False, cancel_futures=True)
     _record_embed_success(identity)
-    # A concurrent backfill may start after the first readiness check. Never use
-    # its partial/new model index with the previously captured query identity.
+    # A model-change backfill may rewrite this revision after the first check;
+    # never mix the previously captured query identity with a new index.
     bot = db.scalar(
         select(Bot)
         .where(Bot.tenant_id == tenant_id, Bot.id == bot_id)
@@ -345,9 +346,7 @@ def retrieve_hybrid(
     if (
         bot is None
         or bot.published_revision_id != revision_id
-        or not bot.embedding_ready
-        or bot.active_embedding_model != identity
-        or _active_backfill(db, tenant_id, bot_id)
+        or _revision_embedding_model(db, tenant_id, bot_id, revision_id) != identity
     ):
         result.degradation_reason = "backfill_changed_during_query"
         logger.info(

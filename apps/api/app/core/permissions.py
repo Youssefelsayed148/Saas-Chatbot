@@ -40,6 +40,18 @@ TENANT_ROUTE_ROLES: dict[tuple[str, str], str] = {
     ("GET", "/api/v1/tenants/{tenant_id}/bots/{bot_id}/sources/qa-template"): "platform_staff_only",
     ("POST", "/api/v1/tenants/{tenant_id}/bots/{bot_id}/sources/files"): "platform_staff_only",
     ("GET", "/api/v1/tenants/{tenant_id}/bots/{bot_id}/sources/{source_id}"): "platform_staff_only",
+    (
+        "DELETE",
+        "/api/v1/tenants/{tenant_id}/bots/{bot_id}/sources/{source_id}",
+    ): "platform_staff_only",
+    (
+        "POST",
+        "/api/v1/tenants/{tenant_id}/bots/{bot_id}/sources/{source_id}/replace",
+    ): "platform_staff_only",
+    (
+        "PUT",
+        "/api/v1/tenants/{tenant_id}/bots/{bot_id}/sources/{source_id}/always-include",
+    ): "platform_staff_only",
     ("POST", "/api/v1/tenants/{tenant_id}/bots/{bot_id}/ingestion"): "platform_staff_only",
     ("GET", "/api/v1/tenants/{tenant_id}/bots/{bot_id}/jobs"): "platform_staff_only",
     ("GET", "/api/v1/tenants/{tenant_id}/bots/{bot_id}/jobs/{job_id}"): "platform_staff_only",

@@ -18,6 +18,10 @@ JSON error: `{ "error": {"code":"FORBIDDEN","message":"...","request_id":"..."}}
 | POST /api/v1/tenants/{tenant_id}/bots/{bot_id}/ingestion | editor+ | Start job |
 | POST /api/v1/tenants/{tenant_id}/bots/{bot_id}/sources/files | editor+ | Upload PDF/DOCX/TXT/MD/CSV (multipart) |
 | GET /api/v1/tenants/{tenant_id}/bots/{bot_id}/sources/qa-template | editor+ | Q&A CSV template |
+| POST .../bots/{bot_id}/sources/files (dedupe, H2) | platform staff | A file whose sha256 matches a live source of the same bot stores nothing and returns that source with `duplicate: true` and a `message`; 200 when every file was a duplicate, else 201 |
+| POST .../bots/{bot_id}/sources/{source_id}/replace (H2) | platform staff | Multipart `file`; same source id, new bytes, status `stored`; identical bytes return `duplicate: true`; ingest again to apply to the draft; 409 `SOURCE_BUSY` while queued |
+| DELETE .../bots/{bot_id}/sources/{source_id} (H2) | platform staff | 204. Removes the source's documents/chunks from the DRAFT revision, marks it `removed` (404 afterwards), deletes the stored file, audit `knowledge.source_removed`. Published/archived revisions are untouched until publish |
+| PUT .../bots/{bot_id}/sources/{source_id}/always-include (H2) | platform staff | Body `{enabled}`; stored as `config.always_include_source_ids` (max 3 live sources of the bot). Also settable through PATCH bot `config.always_include_source_ids` (422 for unknown/foreign/over-cap ids) |
 | POST /api/public/v1/sessions/{session_id}/messages/{message_id}/feedback | session capability | Thumbs up/down |
 | GET /api/v1/tenants/{tenant_id}/bots/{bot_id}/analytics/{summary,volume,top-questions,unanswered,leads} | member | Measured analytics |
 | POST /api/v1/tenants/{tenant_id}/bots/{bot_id}/revisions/{id}/publish | admin+ | Publish knowledge |

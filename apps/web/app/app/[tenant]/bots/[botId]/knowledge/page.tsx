@@ -12,7 +12,15 @@ import type {
   KnowledgeSource,
 } from "@/lib/api";
 import { useSession } from "@/lib/session";
-import { Button, Empty, Field, Loading, Notice, PageHeader } from "@/lib/ui";
+import {
+  Button,
+  ConfirmAction,
+  Empty,
+  Field,
+  Loading,
+  Notice,
+  PageHeader,
+} from "@/lib/ui";
 import BotWorkspaceNav from "@/lib/bot-workspace-nav";
 import "@/app/knowledge-screen.css";
 
@@ -125,13 +133,20 @@ export default function KnowledgePage() {
     setUploading(true);
     try {
       const created = await api.uploadSources(tenantId, botId, selectedFiles);
+      const skipped = created.filter((source) => source.duplicate);
+      const stored = created.length - skipped.length;
       setSelectedFiles([]);
       const input = document.getElementById(
         "knowledge-file-input",
       ) as HTMLInputElement | null;
       if (input) input.value = "";
       setActionDone(
-        `Stored ${created.length} file${created.length === 1 ? "" : "s"}. Start the ingest job when ready.`,
+        [
+          stored > 0
+            ? `Stored ${stored} file${stored === 1 ? "" : "s"}. Start the ingest job when ready.`
+            : "Nothing new was stored.",
+          ...skipped.map((source) => source.message ?? "Duplicate skipped."),
+        ].join(" "),
       );
       await loadAll(revisionView);
     } catch (caught) {
@@ -205,6 +220,73 @@ export default function KnowledgePage() {
       );
     } finally {
       setPublishing(null);
+    }
+  }
+
+  async function onDeleteSource(source: KnowledgeSource) {
+    setActionError(null);
+    setActionDone(null);
+    try {
+      await api.deleteSource(tenantId, botId, source.id);
+      setActionDone(
+        `Removed ${source.original_name} from the draft. Publish to apply it to visitors.`,
+      );
+      await loadAll(revisionView);
+    } catch (caught) {
+      setActionError(
+        caught instanceof Error ? caught.message : "Could not remove the file.",
+      );
+    }
+  }
+
+  async function onReplaceSource(source: KnowledgeSource, file: File | null) {
+    if (!file) return;
+    setActionError(null);
+    setActionDone(null);
+    if (
+      !window.confirm(
+        `Replace ${source.original_name} with ${file.name}? The old version stops being used after you ingest and publish.`,
+      )
+    )
+      return;
+    try {
+      const next = await api.replaceSource(tenantId, botId, source.id, file);
+      setActionDone(
+        next.duplicate
+          ? (next.message ?? "That file is already uploaded.")
+          : "New version stored. Start the ingest job to apply it.",
+      );
+      await loadAll(revisionView);
+    } catch (caught) {
+      setActionError(
+        caught instanceof Error
+          ? caught.message
+          : "Could not replace the file.",
+      );
+    }
+  }
+
+  async function onToggleAlwaysInclude(source: KnowledgeSource) {
+    setActionError(null);
+    setActionDone(null);
+    const enable = !source.always_include;
+    if (
+      !window.confirm(
+        enable
+          ? `Always include ${source.original_name}? Its text is reserved in every answer's evidence (use for contact details, hours, policies).`
+          : `Stop always including ${source.original_name}?`,
+      )
+    )
+      return;
+    try {
+      await api.setSourceAlwaysInclude(tenantId, botId, source.id, enable);
+      await loadAll(revisionView);
+    } catch (caught) {
+      setActionError(
+        caught instanceof Error
+          ? caught.message
+          : "Could not change always-include.",
+      );
     }
   }
 
@@ -384,6 +466,45 @@ export default function KnowledgePage() {
                 </span>
                 {source.error && (
                   <Notice message={source.error} tone="error" scope="item" />
+                )}
+                {canEdit && (
+                  <div className="action-row source-actions">
+                    <label className="field-inline">
+                      <input
+                        type="checkbox"
+                        data-testid="source-always-include"
+                        checked={source.always_include}
+                        disabled={source.status === "queued"}
+                        onChange={() => void onToggleAlwaysInclude(source)}
+                      />{" "}
+                      Always include
+                    </label>
+                    <label className="quiet-button">
+                      Replace file
+                      <input
+                        type="file"
+                        data-testid="source-replace-input"
+                        hidden
+                        accept={ACCEPTED_FILES}
+                        disabled={source.status === "queued"}
+                        onChange={(event) => {
+                          const file = event.target.files?.[0] ?? null;
+                          event.target.value = "";
+                          void onReplaceSource(source, file);
+                        }}
+                      />
+                    </label>
+                    <ConfirmAction
+                      title="Remove this file?"
+                      description={`${source.original_name} is removed from the draft and its stored file is deleted. Visitors keep the published answers until you publish.`}
+                      confirmLabel="Remove file"
+                      testId="source-delete"
+                      disabled={source.status === "queued"}
+                      onConfirm={() => void onDeleteSource(source)}
+                    >
+                      Remove
+                    </ConfirmAction>
+                  </div>
                 )}
                 {source.row_errors && source.row_errors.length > 0 && (
                   <div data-testid="row-errors">
@@ -581,6 +702,14 @@ export default function KnowledgePage() {
                   {revision.id === revisions.published_revision_id
                     ? " · current"
                     : ""}
+                  {revision.embedding && revision.status !== "archived" && (
+                    <span data-testid="revision-embedding">
+                      {" · "}
+                      {revision.embedding.retrieval_mode === "hybrid"
+                        ? "search: hybrid"
+                        : `search: keyword-only until embeddings finish (${revision.embedding.embedded_chunks}/${revision.embedding.chunk_count})`}
+                    </span>
+                  )}
                 </span>
                 {canPublish &&
                   (revision.status === "draft" ||

@@ -25,7 +25,7 @@ from sqlalchemy.orm import Session as OrmSession
 from app.chat.providers import ChatModel, ExtractiveStubModel
 from app.chat.service import chat_answer
 from app.core.config import Settings
-from app.db.models import Bot, Chunk
+from app.db.models import Bot, Chunk, KnowledgeRevision
 from app.embeddings.providers import TestHashEmbedder
 from tests.eval import nile_metrics
 from tests.eval.nile_metrics import judge_case, locate_source
@@ -77,6 +77,15 @@ def prepare_hybrid(db: OrmSession, seeded: dict[str, Any]) -> int:
         update(Bot)
         .where(Bot.tenant_id == users.tenant_id, Bot.id == bot_id)
         .values(embedding_ready=True, active_embedding_model=EMBEDDING_IDENTITY)
+    )
+    db.execute(
+        update(KnowledgeRevision)
+        .where(
+            KnowledgeRevision.tenant_id == users.tenant_id,
+            KnowledgeRevision.bot_id == bot_id,
+            KnowledgeRevision.status.in_(("draft", "published")),
+        )
+        .values(embedding_model=EMBEDDING_IDENTITY)
     )
     db.commit()
     return len(chunks)

@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, File, Query, Response, UploadFile
 from app.auth import cookies
 from app.core.config import Settings, get_settings
 from app.core.tenancy import TenantContextDep
-from app.db.models import Job
+from app.db.models import Bot, Job, Source
 from app.knowledge import schemas, service
 from app.knowledge.storage import get_storage
 
@@ -23,8 +23,17 @@ router = APIRouter(prefix="/api/v1/tenants/{tenant_id}/bots/{bot_id}")
 CsrfOk = Annotated[None, Depends(cookies.require_csrf)]
 
 
-def _sources_out(rows: Any) -> list[schemas.SourceOut]:
-    return [schemas.SourceOut.model_validate(row) for row in rows]
+def _source_out(source: Source, bot: Bot, *, duplicate: bool = False) -> schemas.SourceOut:
+    out = schemas.SourceOut.model_validate(source)
+    out.always_include = str(source.id) in service.always_include_source_ids(bot)
+    if duplicate:
+        out.duplicate = True
+        out.message = service.DUPLICATE_MESSAGE.format(name=source.original_name)
+    return out
+
+
+def _sources_out(rows: Any, bot: Bot) -> list[schemas.SourceOut]:
+    return [_source_out(row, bot) for row in rows]
 
 
 def _job_out(job: Job) -> schemas.JobOut:
@@ -54,7 +63,8 @@ def _job_out(job: Job) -> schemas.JobOut:
 def list_sources(
     tenant_id: UUID, bot_id: UUID, context: TenantContextDep
 ) -> list[schemas.SourceOut]:
-    return _sources_out(service.list_sources(context, bot_id))
+    bot = service.get_bot(context, bot_id)
+    return _sources_out(service.list_sources(context, bot_id), bot)
 
 
 @router.get("/sources/qa-template")
@@ -71,6 +81,7 @@ def download_qa_template(tenant_id: UUID, bot_id: UUID, context: TenantContextDe
 def upload_sources(
     tenant_id: UUID,
     bot_id: UUID,
+    response: Response,
     context: TenantContextDep,
     _: CsrfOk,
     settings: Annotated[Settings, Depends(get_settings)],
@@ -79,15 +90,77 @@ def upload_sources(
     """Store uploaded files as sources (platform staff). Parsing happens in a worker job."""
     context.require_operator()
     uploads: list[tuple[str | None, Any]] = [(file.filename, file.file) for file in files]
-    rows = service.upload_files(context, bot_id, uploads, settings, storage=get_storage(settings))
-    return _sources_out(rows)
+    outcomes = service.upload_files(
+        context, bot_id, uploads, settings, storage=get_storage(settings)
+    )
+    if all(outcome.duplicate for outcome in outcomes):
+        response.status_code = 200  # nothing new was stored
+    bot = service.get_bot(context, bot_id)
+    return [_source_out(o.source, bot, duplicate=o.duplicate) for o in outcomes]
+
+
+@router.post("/sources/{source_id}/replace", response_model=schemas.SourceOut)
+def replace_source(
+    tenant_id: UUID,
+    bot_id: UUID,
+    source_id: UUID,
+    context: TenantContextDep,
+    _: CsrfOk,
+    settings: Annotated[Settings, Depends(get_settings)],
+    file: Annotated[UploadFile, File(description="The new version of this file")],
+) -> schemas.SourceOut:
+    """Upload a new version of a source (platform staff); ingest again to apply it."""
+    context.require_operator()
+    outcome = service.replace_source(
+        context,
+        bot_id,
+        source_id,
+        file.filename,
+        file.file,
+        settings,
+        storage=get_storage(settings),
+    )
+    return _source_out(
+        outcome.source, service.get_bot(context, bot_id), duplicate=outcome.duplicate
+    )
+
+
+@router.delete("/sources/{source_id}", status_code=204)
+def delete_source(
+    tenant_id: UUID,
+    bot_id: UUID,
+    source_id: UUID,
+    context: TenantContextDep,
+    _: CsrfOk,
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> Response:
+    """Remove a file from the draft (platform staff); published knowledge is unchanged."""
+    context.require_operator()
+    service.delete_source(context, bot_id, source_id, storage=get_storage(settings))
+    return Response(status_code=204)
+
+
+@router.put("/sources/{source_id}/always-include", response_model=schemas.SourceOut)
+def set_always_include(
+    tenant_id: UUID,
+    bot_id: UUID,
+    source_id: UUID,
+    body: schemas.AlwaysIncludeRequest,
+    context: TenantContextDep,
+    _: CsrfOk,
+) -> schemas.SourceOut:
+    context.require_operator()
+    source = service.set_source_always_include(context, bot_id, source_id, body.enabled)
+    return _source_out(source, service.get_bot(context, bot_id))
 
 
 @router.get("/sources/{source_id}", response_model=schemas.SourceOut)
 def get_source(
     tenant_id: UUID, bot_id: UUID, source_id: UUID, context: TenantContextDep
 ) -> schemas.SourceOut:
-    return schemas.SourceOut.model_validate(service.get_source(context, bot_id, source_id))
+    return _source_out(
+        service.get_source(context, bot_id, source_id), service.get_bot(context, bot_id)
+    )
 
 
 # --- ingestion jobs ----------------------------------------------------------
@@ -143,6 +216,16 @@ def retry_job(
 # --- documents and chunk preview ---------------------------------------------
 
 
+def _document_warnings(duplicates_removed: int, chunk_count: int) -> list[str]:
+    warnings = [] if chunk_count else ["No searchable chunks were produced."]
+    if duplicates_removed:
+        warnings.append(
+            f"{duplicates_removed} identical chunk(s) from another file were removed "
+            "so the same text is not retrieved twice."
+        )
+    return warnings
+
+
 @router.get("/documents", response_model=list[schemas.DocumentOut])
 def list_documents(
     tenant_id: UUID,
@@ -165,7 +248,7 @@ def list_documents(
             text=document.text,
             total_chars=document.total_chars,
             chunk_count=count,
-            warnings=[] if count else ["No searchable chunks were produced."],
+            warnings=_document_warnings(document.duplicates_removed, count),
             created_at=document.created_at,
         )
         for document, count in rows
@@ -187,10 +270,13 @@ def list_document_chunks(
 
 @router.get("/revisions", response_model=schemas.RevisionsResponse)
 def list_revisions(
-    tenant_id: UUID, bot_id: UUID, context: TenantContextDep
+    tenant_id: UUID,
+    bot_id: UUID,
+    context: TenantContextDep,
+    settings: Annotated[Settings, Depends(get_settings)],
 ) -> schemas.RevisionsResponse:
     bot = service.get_bot(context, bot_id)
-    out = service.list_revisions(context, bot_id)
+    out = service.list_revisions(context, bot_id, settings)
     return schemas.RevisionsResponse(
         revisions=[schemas.RevisionOut.model_validate(revision) for revision in out],
         published_revision_id=bot.published_revision_id,
@@ -204,7 +290,8 @@ def publish_revision(
     revision_id: UUID,
     context: TenantContextDep,
     _: CsrfOk,
+    settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, object]:
     """Publish the revision (platform staff); publishing an archived one rolls back."""
     context.require_operator()
-    return service.publish_revision(context, bot_id, revision_id)
+    return service.publish_revision(context, bot_id, revision_id, settings)

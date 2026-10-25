@@ -116,6 +116,8 @@ class Settings(BaseSettings):
     embedding_ollama_base_url: str = "http://host.docker.internal:11434"
     embedding_timeout_seconds: float = Field(default=25.0, gt=0, le=120)
     embedding_test_stub: bool = False
+    # Chunks per provider call in the backfill (<=128 keeps requests under provider limits).
+    embedding_batch_size: int = Field(default=32, ge=1, le=128)
     retrieval_rrf_k: int = Field(default=60, ge=1)
     retrieval_hnsw_max_scan_tuples: int = Field(default=20_000, ge=1)
     rag_plan_limits: dict[str, RagLimits] = Field(default_factory=dict)

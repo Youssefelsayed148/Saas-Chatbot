@@ -7,16 +7,19 @@ docs/06: file uploads and ingest are editor+; publish is admin+.
 """
 
 import hashlib
+import logging
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import PurePosixPath
 from typing import BinaryIO
 from uuid import UUID, uuid4
 
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
+from sqlalchemy.orm import Session as OrmSession
 
 from app.core.audit import record_audit
-from app.core.config import Settings
+from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
 from app.core.tenancy import TenantContext
 from app.db.models import (
@@ -26,15 +29,21 @@ from app.db.models import (
     Job,
     KnowledgeRevision,
     Source,
+    SourcePage,
 )
+from app.embeddings.backfill import queue_backfill, sync_bot_readiness
+from app.embeddings.providers import EmbeddingError, configured_identity
 from app.jobs.queue import enqueue_job, request_cancel, requeue_for_retry
 from app.knowledge.csv_qa import CsvStructureError, parse_qa_csv, qa_template_csv
+from app.knowledge.ingest import get_or_create_draft_revision
 from app.knowledge.parsers import detect_and_validate
 from app.knowledge.storage import Storage, get_storage
-from app.quotas.service import lock_tenant, limits_for
 from app.quotas.rag import check_resources
+from app.quotas.service import limits_for, lock_tenant
 
 UPLOAD_CHUNK_SIZE = 256 * 1024
+
+logger = logging.getLogger(__name__)
 
 
 # --- helpers ---------------------------------------------------------------
@@ -66,6 +75,32 @@ def _digest(data: bytes) -> str:
 
 # --- upload ----------------------------------------------------------------
 
+ALWAYS_INCLUDE_KEY = "always_include_source_ids"
+# Reserved whole-document slots must leave room for ranked evidence (docs/14 §5).
+ALWAYS_INCLUDE_MAX_SOURCES = 3
+DUPLICATE_MESSAGE = "This file was already uploaded as “{name}”; nothing new was stored."
+
+
+@dataclass
+class UploadOutcome:
+    source: Source
+    duplicate: bool = False
+
+
+def _find_duplicate(db: OrmSession, tenant_id: UUID, bot_id: UUID, digest: str) -> Source | None:
+    """The bot's live source with identical bytes, if any (other bots/tenants never match)."""
+    return db.execute(
+        select(Source)
+        .where(
+            Source.tenant_id == tenant_id,
+            Source.bot_id == bot_id,
+            Source.sha256 == digest,
+            Source.status != "removed",
+        )
+        .order_by(Source.created_at, Source.id)
+        .limit(1)
+    ).scalar_one_or_none()
+
 
 def upload_files(
     context: TenantContext,
@@ -73,8 +108,11 @@ def upload_files(
     files: Sequence[tuple[str | None, BinaryIO]],
     settings: Settings,
     storage: Storage | None = None,
-) -> list[Source]:
+) -> list[UploadOutcome]:
     """Validate every file (atomic batch), then store and register sources.
+
+    A file whose bytes (sha256) match a live source of the same bot is not stored
+    again: that existing source is returned flagged as a duplicate.
 
     The user-supplied filename is kept as a display label only — file storage
     keys are generated; user input never reaches the filesystem path.
@@ -107,12 +145,35 @@ def upload_files(
             _reject_all_invalid_csv(data)
         checked.append((display, kind, data))
 
-    check_resources(context.db, context.tenant_id, bot_id, settings,
-                    additions={"storage_bytes": sum(len(data) for _, _, data in checked)})
+    # Dedupe by content hash: against the bot's sources and inside this batch.
+    outcomes: list[UploadOutcome | None] = []
+    fresh: list[tuple[int, str, str, bytes, str]] = []
+    batch_digests: dict[str, int] = {}
+    for index, (display, kind, data) in enumerate(checked):
+        digest = _digest(data)
+        existing = _find_duplicate(context.db, context.tenant_id, bot.id, digest)
+        if existing is not None:
+            outcomes.append(UploadOutcome(existing, duplicate=True))
+        elif digest in batch_digests:
+            outcomes.append(None)  # resolved to the batch's first copy below
+        else:
+            batch_digests[digest] = index
+            outcomes.append(None)
+            fresh.append((index, display, kind, data, digest))
+    if not fresh:
+        return [outcome for outcome in outcomes if outcome is not None] or []
+
+    check_resources(
+        context.db,
+        context.tenant_id,
+        bot_id,
+        settings,
+        additions={"storage_bytes": sum(len(data) for _, _, _, data, _ in fresh)},
+    )
     created: list[Source] = []
     saved_keys: list[str] = []
     try:
-        for display, kind, data in checked:
+        for index, display, kind, data, _digest_value in fresh:
             storage_key = storage.save(context.tenant_id, bot.id, kind, data)
             saved_keys.append(storage_key)
             source = Source(
@@ -134,6 +195,12 @@ def upload_files(
                 source.valid_rows = parsed.valid_rows
             context.db.add(source)
             created.append(source)
+            outcomes[index] = UploadOutcome(source)
+        for index, (_display, _kind, data) in enumerate(checked):
+            if outcomes[index] is None:
+                first = outcomes[batch_digests[_digest(data)]]
+                assert first is not None
+                outcomes[index] = UploadOutcome(first.source, duplicate=True)
         context.db.flush()
         record_audit(
             context.db,
@@ -145,10 +212,11 @@ def upload_files(
             metadata={
                 "count": len(created),
                 "source_ids": [str(source.id) for source in created],
+                "duplicates_skipped": sum(1 for o in outcomes if o is not None and o.duplicate),
             },
         )
         context.db.commit()
-        return created
+        return [outcome for outcome in outcomes if outcome is not None]
     except ApiError:
         context.db.rollback()
         for key in saved_keys:
@@ -159,7 +227,6 @@ def upload_files(
         for key in saved_keys:  # atomic batch: nothing remains stored
             storage.delete(key)
         raise ApiError(500, "INTERNAL_ERROR", "The upload could not be stored.") from None
-    return created
 
 
 def read_upload(stream: BinaryIO, settings: Settings) -> bytes:
@@ -326,6 +393,7 @@ def retry_job(context: TenantContext, bot_id: UUID, job_id: UUID, settings: Sett
                 Source.tenant_id == context.tenant_id,
                 Source.bot_id == bot.id,
                 Source.id.in_(raw_ids),
+                Source.status != "removed",
             )
         ).scalars()
     )
@@ -353,7 +421,11 @@ def list_sources(context: TenantContext, bot_id: UUID) -> Sequence[Source]:
     return list(
         context.db.execute(
             select(Source)
-            .where(Source.tenant_id == context.tenant_id, Source.bot_id == bot_id)
+            .where(
+                Source.tenant_id == context.tenant_id,
+                Source.bot_id == bot_id,
+                Source.status != "removed",
+            )
             .order_by(Source.created_at.desc(), Source.id)
             .limit(500)
         ).scalars()
@@ -366,11 +438,266 @@ def get_source(context: TenantContext, bot_id: UUID, source_id: UUID) -> Source:
             Source.id == source_id,
             Source.tenant_id == context.tenant_id,
             Source.bot_id == bot_id,
+            Source.status != "removed",
         )
     ).scalar_one_or_none()
     if source is None:
         raise ApiError(404, "NOT_FOUND", "Resource not found.")
     return source
+
+
+def always_include_source_ids(bot: Bot) -> list[str]:
+    """The bot's reserved-evidence source ids (stable across draft copies and re-ingest)."""
+    raw = bot.config.get(ALWAYS_INCLUDE_KEY) if isinstance(bot.config, dict) else None
+    return [str(value) for value in raw] if isinstance(raw, list) else []
+
+
+def _is_uuid(value: str) -> bool:
+    try:
+        UUID(value)
+    except (ValueError, TypeError):
+        return False
+    return True
+
+
+def validate_always_include(
+    db: OrmSession, tenant_id: UUID, bot_id: UUID, source_ids: Sequence[UUID]
+) -> None:
+    """Every id must be a live source of this bot; the list is capped (reserved slots)."""
+    unique = set(source_ids)
+    if len(unique) > ALWAYS_INCLUDE_MAX_SOURCES:
+        raise ApiError(
+            422,
+            "VALIDATION_ERROR",
+            f"At most {ALWAYS_INCLUDE_MAX_SOURCES} files can be always included.",
+        )
+    if not unique:
+        return
+    found = db.scalar(
+        select(func.count())
+        .select_from(Source)
+        .where(
+            Source.tenant_id == tenant_id,
+            Source.bot_id == bot_id,
+            Source.id.in_(unique),
+            Source.status != "removed",
+        )
+    )
+    if found != len(unique):
+        raise ApiError(
+            422, "VALIDATION_ERROR", "An always-include file was not found for this bot."
+        )
+
+
+def _write_always_include(bot: Bot, ids: list[str]) -> None:
+    config = dict(bot.config)
+    if ids:
+        config[ALWAYS_INCLUDE_KEY] = ids
+    else:
+        config.pop(ALWAYS_INCLUDE_KEY, None)
+    bot.config = config
+    bot.updated_at = datetime.now(UTC)
+
+
+def set_source_always_include(
+    context: TenantContext, bot_id: UUID, source_id: UUID, enabled: bool
+) -> Source:
+    bot = _get_editable_bot(context, bot_id)
+    source = get_source(context, bot_id, source_id)
+    ids = always_include_source_ids(bot)
+    key = str(source.id)
+    if enabled and key not in ids:
+        validate_always_include(
+            context.db,
+            context.tenant_id,
+            bot.id,
+            [*(UUID(value) for value in ids if _is_uuid(value)), source.id],
+        )
+        ids.append(key)
+    elif not enabled:
+        ids = [value for value in ids if value != key]
+    _write_always_include(bot, ids)
+    record_audit(
+        context.db,
+        action="knowledge.always_include_changed",
+        tenant_id=context.tenant_id,
+        actor_user_id=context.user.id,
+        target_type="source",
+        target_id=key,
+        metadata={"enabled": enabled},
+    )
+    context.db.commit()
+    return source
+
+
+def always_include_document_ids(
+    db: OrmSession, bot: Bot, revision_id: UUID, settings: Settings
+) -> set[str]:
+    """Documents of the live revision that belong to always-include sources.
+
+    Resolved by source (stable) at query time, because document ids change with every
+    draft copy. Capped so ranked evidence keeps at least one slot (docs/14 §5).
+    """
+    source_ids = [UUID(value) for value in always_include_source_ids(bot) if _is_uuid(value)]
+    if not source_ids:
+        return set()
+    rows = db.execute(
+        select(Document.id, func.count(Chunk.id))
+        .join(Source, Source.id == Document.source_id)
+        .outerjoin(Chunk, Chunk.document_id == Document.id)
+        .where(
+            Document.tenant_id == bot.tenant_id,
+            Document.bot_id == bot.id,
+            Document.revision_id == revision_id,
+            Document.source_id.in_(source_ids),
+            Source.status != "removed",
+        )
+        .group_by(Document.id, Document.ordinal)
+        .order_by(Document.ordinal, Document.id)
+    ).all()
+    budget = max(settings.retrieval_final_k - 1, 1)
+    chosen: set[str] = set()
+    used = 0
+    for document_id, chunks in rows:
+        if chosen and used + int(chunks) > budget:
+            break
+        chosen.add(str(document_id))
+        used += int(chunks)
+    return chosen
+
+
+# --- replace / delete --------------------------------------------------------
+
+
+def replace_source(
+    context: TenantContext,
+    bot_id: UUID,
+    source_id: UUID,
+    filename: str | None,
+    stream: BinaryIO,
+    settings: Settings,
+    storage: Storage | None = None,
+) -> UploadOutcome:
+    """Upload a new version of a source: same identity, new bytes, status ``stored``.
+
+    The next ingest swaps its documents/chunks in the draft; published knowledge is
+    untouched until publish. Identical bytes change nothing.
+    """
+    bot = _get_editable_bot(context, bot_id)
+    tenant = lock_tenant(context.db, context.tenant_id)
+    source = get_source(context, bot_id, source_id)
+    if source.status == "queued":
+        raise ApiError(409, "SOURCE_BUSY", "This file is being ingested; try again shortly.")
+    storage = storage or get_storage()
+    upload_settings = settings.model_copy(
+        update={"max_upload_file_bytes": limits_for(tenant).upload_file_mb * 1024 * 1024}
+    )
+    data = read_upload(stream, upload_settings)
+    try:
+        kind = detect_and_validate(filename, data)
+    except ValueError as error:
+        raise ApiError(415, "UNSUPPORTED_FILE", str(error)) from None
+    if kind == "qa_csv":
+        _reject_all_invalid_csv(data)
+    digest = _digest(data)
+    if digest == source.sha256:
+        return UploadOutcome(source, duplicate=True)
+    other = _find_duplicate(context.db, context.tenant_id, bot.id, digest)
+    if other is not None:
+        return UploadOutcome(other, duplicate=True)
+    check_resources(
+        context.db,
+        context.tenant_id,
+        bot_id,
+        settings,
+        additions={"storage_bytes": max(len(data) - source.size_bytes, 0)},
+    )
+    old_key = source.storage_key
+    new_key = storage.save(context.tenant_id, bot.id, kind, data)
+    try:
+        source.kind = kind
+        source.original_name = safe_display_name(filename or source.original_name)
+        source.storage_key = new_key
+        source.size_bytes = len(data)
+        source.sha256 = digest
+        source.status = "stored"
+        source.error = None
+        source.created_at = datetime.now(UTC)  # the new version is the "newer" source
+        if kind == "qa_csv":
+            parsed = parse_qa_csv(data)
+            source.row_errors = parsed.errors[:200]
+            source.total_rows = parsed.total_rows
+            source.valid_rows = parsed.valid_rows
+        else:
+            source.row_errors = None
+            source.total_rows = None
+            source.valid_rows = None
+        record_audit(
+            context.db,
+            action="knowledge.source_replaced",
+            tenant_id=context.tenant_id,
+            actor_user_id=context.user.id,
+            target_type="source",
+            target_id=str(source.id),
+        )
+        context.db.commit()
+    except Exception:  # noqa: BLE001 - storage/db failures never leak details
+        context.db.rollback()
+        storage.delete(new_key)
+        raise ApiError(500, "INTERNAL_ERROR", "The file could not be replaced.") from None
+    storage.delete(old_key)  # only after the commit, so a rollback never loses the file
+    return UploadOutcome(source)
+
+
+def delete_source(
+    context: TenantContext, bot_id: UUID, source_id: UUID, storage: Storage | None = None
+) -> None:
+    """Remove a source from the DRAFT revision and mark it ``removed`` (soft delete).
+
+    Published and archived revisions keep their rows, so live answers and rollback are
+    unchanged until the next publish. The stored file is deleted after the commit.
+    """
+    bot = _get_editable_bot(context, bot_id)
+    source = get_source(context, bot_id, source_id)
+    if source.status == "queued":
+        raise ApiError(409, "SOURCE_BUSY", "This file is being ingested; try again shortly.")
+    storage = storage or get_storage()
+    draft = get_or_create_draft_revision(context.db, bot, context.user.id)
+    context.db.execute(
+        delete(Chunk).where(
+            Chunk.tenant_id == context.tenant_id,
+            Chunk.revision_id == draft.id,
+            Chunk.source_id == source.id,
+        )
+    )
+    context.db.execute(
+        delete(Document).where(
+            Document.tenant_id == context.tenant_id,
+            Document.revision_id == draft.id,
+            Document.source_id == source.id,
+        )
+    )
+    context.db.execute(
+        delete(SourcePage).where(
+            SourcePage.tenant_id == context.tenant_id, SourcePage.source_id == source.id
+        )
+    )
+    storage_key = source.storage_key
+    source.status = "removed"
+    source.error = None
+    source.size_bytes = 0  # the file is gone: its bytes stop counting against the quota
+    ids = [value for value in always_include_source_ids(bot) if value != str(source.id)]
+    _write_always_include(bot, ids)
+    record_audit(
+        context.db,
+        action="knowledge.source_removed",
+        tenant_id=context.tenant_id,
+        actor_user_id=context.user.id,
+        target_type="source",
+        target_id=str(source.id),
+    )
+    context.db.commit()
+    storage.delete(storage_key)
 
 
 def list_documents(
@@ -443,7 +770,9 @@ def _lookup_revision(
     return context.db.get(KnowledgeRevision, bot.published_revision_id)
 
 
-def list_revisions(context: TenantContext, bot_id: UUID) -> list[dict[str, object]]:
+def list_revisions(
+    context: TenantContext, bot_id: UUID, settings: Settings | None = None
+) -> list[dict[str, object]]:
     bot = get_bot(context, bot_id)
     revisions = (
         context.db.execute(
@@ -458,6 +787,11 @@ def list_revisions(context: TenantContext, bot_id: UUID) -> list[dict[str, objec
         .scalars()
         .all()
     )
+    try:
+        configured: str | None = configured_identity(settings or get_settings())
+    except EmbeddingError:
+        configured = None
+    fts_only = bot.retrieval_mode == "fts_only"
     result: list[dict[str, object]] = []
     for revision in revisions:
         document_count = int(
@@ -472,6 +806,22 @@ def list_revisions(context: TenantContext, bot_id: UUID) -> list[dict[str, objec
                 select(func.count()).select_from(Chunk).where(Chunk.revision_id == revision.id)
             ).scalar_one()
         )
+        identity = revision.embedding_model or configured
+        embedded = 0
+        if identity and chunk_count:
+            embedded = int(
+                context.db.execute(
+                    select(func.count())
+                    .select_from(Chunk)
+                    .where(
+                        Chunk.tenant_id == context.tenant_id,
+                        Chunk.revision_id == revision.id,
+                        Chunk.embedding.is_not(None),
+                        Chunk.embedding_model == identity,
+                    )
+                ).scalar_one()
+            )
+        ready = revision.embedding_model is not None
         result.append(
             {
                 "id": str(revision.id),
@@ -483,6 +833,12 @@ def list_revisions(context: TenantContext, bot_id: UUID) -> list[dict[str, objec
                 "is_current": revision.id == bot.published_revision_id,
                 "document_count": document_count,
                 "chunk_count": chunk_count,
+                "embedding": {
+                    "ready": ready,
+                    "embedded_chunks": embedded,
+                    "chunk_count": chunk_count,
+                    "retrieval_mode": "hybrid" if ready and not fts_only else "keyword_only",
+                },
             }
         )
     return result
@@ -491,7 +847,9 @@ def list_revisions(context: TenantContext, bot_id: UUID) -> list[dict[str, objec
 # --- publish / rollback ----------------------------------------------------
 
 
-def publish_revision(context: TenantContext, bot_id: UUID, revision_id: UUID) -> dict[str, object]:
+def publish_revision(
+    context: TenantContext, bot_id: UUID, revision_id: UUID, settings: Settings | None = None
+) -> dict[str, object]:
     """Atomic knowledge pointer swap (docs/08): demote current, promote target.
 
     Admin+ only (docs/06). Publishing an archived revision is a rollback.
@@ -569,9 +927,26 @@ def publish_revision(context: TenantContext, bot_id: UUID, revision_id: UUID) ->
         target_id=str(bot.id),
         metadata={"revision_id": str(revision.id)},
     )
+    sync_bot_readiness(context.db, bot)
     try:
         context.db.commit()
     except Exception:  # noqa: BLE001 - concurrent publish raced the unique index
         context.db.rollback()
         raise ApiError(409, "CONFLICT", "The revision pointer changed concurrently.") from None
-    return {"revision_id": str(revision.id), "status": "published", "changed": True}
+    embedding_ready = revision.embedding_model is not None
+    if not embedding_ready:
+        # Publishing never waits for vectors: FTS serves the revision meanwhile and
+        # the backfill (re)embeds it (this also covers a rollback to an archived one).
+        try:
+            queue_backfill(context.db, context.tenant_id, bot.id, settings or get_settings())
+            context.db.commit()
+        except (ApiError, EmbeddingError):
+            context.db.rollback()
+            logger.warning("publish.backfill_not_queued bot=%s", bot.id)
+    return {
+        "revision_id": str(revision.id),
+        "status": "published",
+        "changed": True,
+        "embedding_ready": embedding_ready,
+        "retrieval_mode": "hybrid" if embedding_ready else "keyword_only",
+    }

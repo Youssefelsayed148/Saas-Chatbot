@@ -126,6 +126,9 @@ class BotConfig(BaseModel):
     handoff_keywords_ar: list[str] | None = Field(default=None, max_length=20)
     allowed_domains: list[str] | None = Field(default=None, max_length=50)
     theme: WidgetTheme | None = None
+    # Files whose documents get reserved evidence slots (docs/14 §5). Source ids are
+    # stable across draft copies; the service checks they are live sources of this bot.
+    always_include_source_ids: list[UUID] | None = Field(default=None, max_length=3)
 
     @field_validator("opening_questions")
     @classmethod

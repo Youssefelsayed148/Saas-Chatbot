@@ -8,11 +8,11 @@ from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy import select, text
+from sqlalchemy import select, text, update
 from sqlalchemy.orm import Session
 
 import tests.retrieval_helpers as helpers
-from app.db.models import Bot, Chunk, Job
+from app.db.models import Bot, Chunk, Job, KnowledgeRevision
 from app.embeddings.providers import EmbeddingBatch, EmbeddingError
 from app.retrieval import hybrid
 from app.retrieval.service import RetrievedChunk, retrieve
@@ -37,6 +37,14 @@ def ready(db: Session, corpus: dict[str, Any]) -> Bot:
     assert bot is not None
     bot.embedding_ready = True
     bot.active_embedding_model = "ollama:bge-m3"
+    db.execute(
+        update(KnowledgeRevision)
+        .where(
+            KnowledgeRevision.tenant_id == bot.tenant_id,
+            KnowledgeRevision.id == bot.published_revision_id,
+        )
+        .values(embedding_model="ollama:bge-m3")
+    )
     db.commit()
     return bot
 
@@ -179,7 +187,7 @@ def test_rrf_tie_is_decided_by_cosine_then_fts_rank_then_ordinal_deterministical
     assert [c.chunk_id for c in same] == [low, high]  # chunk id is the last resort
 
 
-@pytest.mark.parametrize("reason", ["forced", "backfill", "failure"])
+@pytest.mark.parametrize("reason", ["forced", "unready", "failure"])
 def test_degradation_is_logged_and_does_not_call_unneeded_provider(
     db: Session, corpus: dict[str, Any], monkeypatch: Any, caplog: Any, reason: str
 ) -> None:
@@ -191,8 +199,12 @@ def test_degradation_is_logged_and_does_not_call_unneeded_provider(
         raise EmbeddingError("safe synthetic failure")
 
     monkeypatch.setattr(hybrid, "from_settings", factory)
-    if reason == "backfill":
-        db.add(Job(tenant_id=bot.tenant_id, bot_id=bot.id, type="reembed_backfill"))
+    if reason == "unready":
+        db.execute(
+            update(KnowledgeRevision)
+            .where(KnowledgeRevision.id == bot.published_revision_id)
+            .values(embedding_model=None)
+        )
         db.commit()
     with caplog.at_level("INFO"):
         result = run(db, corpus, mode_override="fts_only" if reason == "forced" else None)
@@ -325,3 +337,32 @@ def test_query_embedding_events_carry_the_real_channel(
         if row.payload["event_type"] == "embed_query"
     }
     assert channels == {"playground"}
+
+
+def test_active_backfill_and_unready_draft_do_not_degrade_live_hybrid(
+    db: Session, corpus: dict[str, Any], monkeypatch: Any
+) -> None:
+    """H1: draft progress / a running backfill never affect the published revision."""
+    bot = ready(db, corpus)
+    db.add(
+        Job(
+            tenant_id=bot.tenant_id,
+            bot_id=bot.id,
+            type="reembed_backfill",
+            payload={"embedding_model": "ollama:bge-m3"},
+        )
+    )
+    db.execute(
+        update(KnowledgeRevision)
+        .where(KnowledgeRevision.tenant_id == bot.tenant_id, KnowledgeRevision.status == "draft")
+        .values(embedding_model=None)
+    )
+    db.commit()
+
+    class Fake:
+        def embed(self, texts: list[str]) -> EmbeddingBatch:
+            return EmbeddingBatch([VECTOR])
+
+    monkeypatch.setattr(hybrid, "from_settings", lambda *args: Fake())
+    result = run(db, corpus)
+    assert result.mode == "hybrid" and result.degradation_reason is None

@@ -24,6 +24,12 @@ class SourceOut(BaseModel):
     valid_rows: int | None = None
     total_rows: int | None = None
     created_at: datetime
+    # Reserved evidence slots for this source's documents (bot setting, H2).
+    always_include: bool = False
+    # Upload only: this file matched an existing source (same bytes), so nothing new
+    # was stored and this is that existing source.
+    duplicate: bool = False
+    message: str | None = None
 
 
 class SourceDetailOut(SourceOut):
@@ -36,6 +42,10 @@ class SourceDetailOut(SourceOut):
 class SourceFilesResponse(BaseModel):
     sources: list[SourceOut]
     created_job_id: UUID | None = None
+
+
+class AlwaysIncludeRequest(BaseModel):
+    enabled: bool
 
 
 class IngestionStartRequest(BaseModel):
@@ -93,6 +103,15 @@ class ChunkOut(BaseModel):
     ordinal: int
 
 
+class RevisionEmbeddingOut(BaseModel):
+    """Embedding progress and the retrieval mode this revision serves (no model identity)."""
+
+    ready: bool = False
+    embedded_chunks: int = 0
+    chunk_count: int = 0
+    retrieval_mode: str = "keyword_only"
+
+
 class RevisionOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -103,6 +122,7 @@ class RevisionOut(BaseModel):
     is_current: bool = False
     document_count: int = 0
     chunk_count: int = 0
+    embedding: RevisionEmbeddingOut = RevisionEmbeddingOut()
 
 
 class RevisionsResponse(BaseModel):

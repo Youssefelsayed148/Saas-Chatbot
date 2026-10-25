@@ -314,6 +314,13 @@ class BotService:
     def _merge_config(self, bot: Bot, patch: BotConfig) -> dict[str, object]:
         merged: dict[str, object] = dict(bot.config)
         provided = patch.model_dump(exclude_unset=True, exclude_none=True)
+        if patch.always_include_source_ids is not None:
+            from app.knowledge.service import validate_always_include
+
+            validate_always_include(self.db, bot.tenant_id, bot.id, patch.always_include_source_ids)
+            provided["always_include_source_ids"] = [
+                str(value) for value in dict.fromkeys(patch.always_include_source_ids)
+            ]
         if "knowledge_language" in patch.model_fields_set and patch.knowledge_language is None:
             merged.pop("knowledge_language", None)  # null clears it: back to default_language
         for key, value in provided.items():

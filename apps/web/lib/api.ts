@@ -724,13 +724,13 @@ export function csrfHeader(): Record<string, string> {
 }
 
 interface ApiOptions {
-  method?: "GET" | "POST" | "PATCH" | "DELETE";
+  method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   body?: unknown;
   /** Accept 401 responses instead of triggering the global sign-out redirect. */
   tolerate401?: boolean;
 }
 
-const WRITES_REQUIRING_CSRF = new Set(["POST", "PATCH", "DELETE"]);
+const WRITES_REQUIRING_CSRF = new Set(["POST", "PATCH", "PUT", "DELETE"]);
 
 export async function api<T>(
   path: string,
@@ -1294,7 +1294,8 @@ export async function acceptInvitation(token: string): Promise<Me> {
 // --- knowledge (P2) ---------------------------------------------------------
 
 export type KnowledgeSourceKind = "pdf" | "docx" | "txt" | "md" | "qa_csv";
-export type KnowledgeSourceStatus = "stored" | "queued" | "ingested" | "failed";
+export type KnowledgeSourceStatus =
+  "stored" | "queued" | "ingested" | "failed" | "removed";
 
 export interface KnowledgeSource {
   id: string;
@@ -1309,6 +1310,11 @@ export interface KnowledgeSource {
   valid_rows: number | null;
   total_rows: number | null;
   created_at: string;
+  /** Reserved evidence slots for this file's documents. */
+  always_include: boolean;
+  /** Upload only: this file matched an existing source, nothing new was stored. */
+  duplicate: boolean;
+  message: string | null;
 }
 
 export type KnowledgeJobStatus =
@@ -1365,6 +1371,12 @@ export interface KnowledgeRevision {
   is_current: boolean;
   document_count: number;
   chunk_count: number;
+  embedding?: {
+    ready: boolean;
+    embedded_chunks: number;
+    chunk_count: number;
+    retrieval_mode: "hybrid" | "keyword_only";
+  };
 }
 
 export interface RevisionsResponse {
@@ -1410,6 +1422,61 @@ export async function uploadSources(
     );
   }
   return (payload ?? []) as KnowledgeSource[];
+}
+
+/** Upload a new version of a source; ingest again to apply it. */
+export async function replaceSource(
+  tenantId: string,
+  botId: string,
+  sourceId: string,
+  file: File,
+): Promise<KnowledgeSource> {
+  const form = new FormData();
+  form.append("file", file);
+  const response = await fetch(
+    `/api/v1/${KNOWLEDGE_ROOT(tenantId, botId)}/sources/${sourceId}/replace`,
+    {
+      method: "POST",
+      headers: csrfHeader(),
+      credentials: "same-origin",
+      body: form,
+    },
+  );
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    const error = (
+      payload as { error?: { code?: string; message?: string } } | null
+    )?.error;
+    throw new ApiError(
+      error?.code ?? "UNKNOWN_ERROR",
+      response.status,
+      error?.message ?? `Replace failed (${response.status}).`,
+    );
+  }
+  return payload as KnowledgeSource;
+}
+
+/** Remove a file from the draft; published knowledge is unchanged until publish. */
+export async function deleteSource(
+  tenantId: string,
+  botId: string,
+  sourceId: string,
+): Promise<void> {
+  await api<void>(`${KNOWLEDGE_ROOT(tenantId, botId)}/sources/${sourceId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function setSourceAlwaysInclude(
+  tenantId: string,
+  botId: string,
+  sourceId: string,
+  enabled: boolean,
+): Promise<KnowledgeSource> {
+  return api<KnowledgeSource>(
+    `${KNOWLEDGE_ROOT(tenantId, botId)}/sources/${sourceId}/always-include`,
+    { method: "PUT", body: { enabled } },
+  );
 }
 
 export async function qaTemplateHref(

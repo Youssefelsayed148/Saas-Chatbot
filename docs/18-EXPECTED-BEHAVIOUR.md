@@ -17,6 +17,7 @@ A business signs up, creates an organization and a bot, gives it its data (uploa
 - See the extracted documents and chunks (preview), counts, and which source each came from.
 - Click Publish: the bot's knowledge switches to the new revision atomically. Roll back to the previous revision works. A failed ingest never changes what is published.
 - Uploading the same file twice does not duplicate content. Another organization with the same file shares nothing.
+- Uploading a file the bot already has (same bytes, any name) stores nothing and tells you which existing file it matches. A new version of a file can replace it in place (Replace file, then Ingest), and a file can be removed (Remove): both change the draft only, visitors keep the published answers until you publish, and Roll back restores the removed content. When two different files produce identical text, one copy is kept (the newer file's) and the document list shows a warning. Tick "Always include" on up to three files (contact details, hours, policies) to reserve their text in every answer's evidence; the setting follows the file through replace, re-ingest and publish.
 ### After P3 — Chat
 - In the Playground, ask a question: streamed or complete answer with source citations (file/page or URL).
 - Ask something not in the data: the bot says it doesn't have that information — no invention.

@@ -140,7 +140,7 @@ class Slow(TestHashEmbedder):
         time.sleep(0.5)
         return super().embed(texts)
 backfill.from_settings = lambda settings, identity: Slow(identity)
-s = Settings(_env_file=None, embedding_test_stub=True, storage_root='/tmp/rag-kill-storage')
+s = Settings(_env_file=None, embedding_test_stub=True, embedding_batch_size=1, storage_root='/tmp/rag-kill-storage')
 e = create_db_engine(s)
 with session_factory(e)() as db:
     job = claim_job(db, 'killed-worker', s)
