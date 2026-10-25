@@ -2784,3 +2784,12 @@ Disposable DB 127.0.0.1:55462, TEST_DATABASE_URL per process, `PYTHONUTF8=1`.
   `answer` with a retrieval hit (the stub cites a different chunk, so cited_hit stays false); the Arabic pair has a
   retrieval hit but the extractive stub refuses Arabic, so they end in a post-retrieval handoff (stub limitation).
   gate_compare is retrieval-only: unaffected by routing.
+
+## R3c - provider failures self-explaining, free chain, model defaults, widget layout (branch fix/r3c-provider-widget, local commits only)
+Base check: R0, R2, R3 and R3b are all merged on main (958b48e). Commits: e1a7a8c (items 1-3), 0abd779 (4), f066949 (5), f3c199a (6), 71c5857 (7).
+Tests (disposable DB 127.0.0.1:55462, TEST_DATABASE_URL per process, `PYTHONUTF8=1`, ENVIRONMENT=test):
+- `pytest tests/test_free_chain.py tests/test_provider_attempts.py` -> 19 passed.
+- `pytest tests/test_provider_params.py tests/test_chat.py tests/test_chat_streaming_unit.py tests/test_model_not_configured.py tests/test_rag_traces.py tests/test_playground_parity.py tests/test_bot_readiness.py tests/test_rag_limits.py` -> first run 103 passed, 1 failed (test_rag_traces::test_premium_and_standard_provider_contracts_are_mocked: plain-text reply in JSON mode lost its usage totals; fixed by recording usage on the unusable-reply fallback). Re-run of test_rag_traces, test_provider_attempts, test_free_chain, test_provider_params, test_chat_streaming_unit, test_model_not_configured -> 67 passed. The other four files passed in the first run.
+- ruff check / ruff format --check / mypy on touched app files: clean. Web `npm run typecheck` and `npm run lint`: clean.
+- NOT run (owner policy): full pytest, full evals, Playwright. apps/web/tests/widget-layout.spec.ts is new and was NOT run.
+Deviations: items 1-3 share one commit (their hunks interleave in providers.py/service.py); the config.py default for gpt-5.4-nano landed in that commit while its docs/fixtures are in item 6. Cost for gpt-5.4-nano stays "Unmeasured" (no price table in the repo). gpt-4.1-nano remains only in the ADR note, .env.example and config comments explaining the deprecation, history docs and the owner's .env.local (not touched).
