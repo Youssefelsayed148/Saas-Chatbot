@@ -2957,3 +2957,10 @@ Verified (observed): `npm run typecheck` and `npm run lint` in apps/web: no erro
 NOT verified at commit time: the wider run (b4-dashboards overview dashboard group-b-client-visibility ui-redesign ui-characterization followups) had been started but its result was not read; the other specs of the suite were not run. The first build of each Playwright run still exits 1 on Next's one-off security notice; the retry builds; `next upgrade` not run.
 NOT done: screenshots (skipped on the owner's instruction), 375px/RTL/light visual checks, keyboard/tooltip behaviour of TrendChart in a browser (Recharts accessibilityLayer inside an aria-hidden wrapper is an axe aria-hidden-focus risk), the dataviz palette validator (token palette from B2 was contrast-checked then).
 Known gaps: `Notice` has no warning tone (Overview uses its own alert style); old `.stat-grid`/`.usage-grid`/progress rules in globals.css may now be unused; Insights has no Notice retry.
+
+### B4 follow-up (observed after the commit)
+Wider run `npx playwright test b4-dashboards overview dashboard group-b-client-visibility ui-redesign ui-characterization followups` (same env vars as above): 23 passed, 7 failed.
+- group-b-client-visibility (4 role variants): failed because Plan usage meters had no visible text label (aria-label only). Fixed in the tenant Overview (visible label per meter); re-run `npx playwright test group-b-client-visibility followups`: all 7 group-b tests pass.
+- overview.spec (2 tests) and followups.spec (1 test) fail in their setup, before any B4 page loads: the uploaded source's ingest job stays "pending" (overview) / the jobs poll times out (followups), so the measured-overview and Insights assertions of those specs did NOT run. Not confirmed pre-existing (I did not re-run them on the pre-B4 commit); likely an environment issue with the disposable worker/ingestion. Those three tests are therefore unverified against the new pages.
+- b4-dashboards, dashboard, ui-redesign, ui-characterization all passed in that run.
+- `npm run typecheck` and `npm run lint`: clean after the fix.

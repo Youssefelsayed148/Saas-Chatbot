@@ -342,12 +342,14 @@ export default function TenantOverview() {
                     (canReadKnowledge || key !== "bots"),
                 )
                 .map(([key, value]) => (
-                  <Meter
-                    key={key}
-                    label={humanLabel(key)}
-                    used={value}
-                    limit={data.quota.limits[key]}
-                  />
+                  <div key={key} className="usage-item">
+                    <span className="usage-label">{humanLabel(key)}</span>
+                    <Meter
+                      label={humanLabel(key)}
+                      used={value}
+                      limit={data.quota.limits[key]}
+                    />
+                  </div>
                 ))}
             </div>
             {atLimit.length > 0 && (

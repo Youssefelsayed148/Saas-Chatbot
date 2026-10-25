@@ -121,6 +121,15 @@
   grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
   gap: var(--space-3) var(--space-5);
 }
+.usage-item {
+  display: grid;
+  gap: 0.35rem;
+  min-inline-size: 0;
+}
+.usage-label {
+  font-size: var(--text-sm);
+  font-weight: 550;
+}
 .usage-meters .ui-meter > .ui-meter-text {
   font-size: 0.78rem;
 }
