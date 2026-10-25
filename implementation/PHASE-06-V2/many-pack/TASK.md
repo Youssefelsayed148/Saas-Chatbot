@@ -1,19 +1,10 @@
-# Prompt: ManyOsirisChat side of the SaaS channel (delegated mode), for a Claude Code cloud session
+# Task: SaaS delegation for ManyOsirisChat (Many side)
 
-How to use: paste MANY-CLOUD-PROMPT-PASTE.md (this prompt with the contract appended) into a Claude Code cloud session on Youssefelsayed148/ManyOsirisChat. This file is the editable source; read the owner checklist at the bottom first.
+You are on branch `feature/saas-delegation`, already created from `main` and pushed by the owner. Work only on this branch.
 
----
+You are a senior engineer in the ManyOsirisChat repo (FastAPI + SQLAlchemy + Alembic + Celery/Redis, Next.js dashboard, Postgres). Implement the Many side of the channel contract (v1 plus the v1.1 delta, in `docs/saas-delegation/CONTRACT-V1.md` and `docs/saas-delegation/CONTRACT-V1.1-DELTA.md`; the delta wins): a per-channel "delegated mode" where an external SaaS generates the AI replies and Many keeps everything Meta. The contract files are the source of truth for payloads, signing, retries and error codes. If the contract is unclear or contradicts the code, STOP and ask.
 
-You are a senior engineer in the ManyOsirisChat repo (FastAPI + SQLAlchemy + Alembic + Celery/Redis, Next.js dashboard, Postgres). Implement the Many side of the channel contract (v1 plus the v1.1 delta, both appended below the line "CONTRACT"): a per-channel "delegated mode" where an external SaaS generates the AI replies and Many keeps everything Meta. The appended contract is the source of truth for payloads, signing, retries and error codes. If the contract is unclear or contradicts the code, STOP and ask.
-
-RULES
-1. First commit on the branch: add a `CLAUDE.md` with these rules (the repo has none).
-2. Branch `feature/saas-delegation` cut from `main`. First check whether `fix/facebook-instagram-app-separation` is already merged into `main` (`git merge-base --is-ancestor`); if it is not, STOP and ask which base to use. Small commits, one concern each. You MAY push only `feature/saas-delegation` to origin so the owner can review; never push `main`, never force-push, no tags, no merges, no PR merge.
-3. Never open, print, copy or commit `popeye access token.txt` (tracked in the repo root) or any `.env`/token/secret. Tell the owner in your report that it must be rotated and purged from git history; do not do that yourself.
-4. Tests: `backend/tests/conftest.py` calls `Base.metadata.drop_all()` at the end of the session against `TEST_DATABASE_URL or DATABASE_URL`. NEVER let it resolve to anything but a disposable local Postgres you start in the session. Set `TEST_DATABASE_URL` and `APP_ENV=test` explicitly for every test command, and confirm the URL before running. If no disposable Postgres can be started in the cloud environment, STOP and report; do not point tests anywhere else. No real Meta or OpenAI calls. No docker.
-5. Instagram is live and used by the owner. Do not refactor the existing handlers. Add one early delegation branch per platform that calls a shared helper. Any change to Instagram dispatch/send code beyond that branch requires the owner's confirmation: STOP and ask.
-6. Everything is OFF by default: `saas_delegation_enabled=false`. With delegation off every code path must behave exactly as today (assert this in tests).
-7. Never fabricate results. Report exact commands and outcomes. Migrations are reversible and chained on the real head (`alembic heads`; the latest seen was `0022_whatsapp_opt_in`, and note there is no 0016).
+RULES: see CLAUDE.md in the repo root (loaded automatically). They are binding.
 
 WHAT STAYS UNCHANGED: Meta tokens, OAuth/connect flows, webhook verification and storage, campaigns, automations, comment-to-DM, follow gates, templates, WhatsApp outreach, consent/window services, dashboards, and all existing routes.
 
@@ -24,7 +15,7 @@ FINDINGS ABOUT THE CURRENT CODE (verified on `main` 5cc60c7; re-verify in M-00)
 - Existing send paths to reuse: `MetaMessagingClient.send_direct_message` (Instagram), the WhatsApp Cloud client `send_text_message`, and the Facebook `send_direct_message`. WhatsApp 24 h window helpers: `services/whatsapp_window_service.py`. Secret handling: `utils/crypto.py` (Fernet via `TOKEN_ENCRYPTION_KEY`; reuse it for delegation secrets). Beat schedule: `workers/beat_schedule.py` and `workers/whatsapp_beat_schedule.py`. Take Over / Resume Bot: `api/routes_conversations.py` and `services/conversation_service.py` (`hand_off`, `resume_bot`).
 
 TICKETS (one per turn; after each report in five lines and wait for "continue")
-M-00 Read-only: confirm branch/base, map the exact hook points above (file and line), the status-webhook paths, send paths, secret handling, beat, the dashboard conversation page (`dashboard/app/(dashboard)/conversations/page.tsx`) and account settings pages; start the disposable DB; run the baseline tests; list files you will change; list any contract question. Add CLAUDE.md. No feature code.
+M-00 Read-only: confirm branch/base, map the exact hook points above (file and line), the status-webhook paths, send paths, secret handling, beat, the dashboard conversation page (`dashboard/app/(dashboard)/conversations/page.tsx`) and account settings pages; start the disposable DB; run the baseline tests; list files you will change; list any contract question. Confirm CLAUDE.md is in place. No feature code.
 M-01 Delegation config: columns on Instagram account, WhatsApp account and Facebook page (`saas_delegation_enabled` default false, `saas_connection_id`, `saas_base_url` validated https in production and no private/loopback hosts, encrypted current and previous secret + previous expiry), migration, schemas, API endpoints (admin role only), dashboard settings section per channel (enable, connection id, base URL, secret input never echoed back, last forward status, queue depth, degraded badge). Disabling returns to today's behaviour immediately and drops queued, unsent forwards (A13).
 M-02 Signing + forwarder: HMAC module (contract section 3; constant-time compare on bytes), `forward_event` Celery task (signed POST to `{saas_base_url}/api/channels/manyosiris/events`, retry on network error/5xx/429 honoring Retry-After, exponential backoff with jitter, same `event_id`, up to 24 h, no retry on other 4xx, per-conversation ordering per A7, degraded health while retrying, never any AI fallback), event ids stable and unique, payload builder for `message.received` (A5, A6, A11). Then the delegation branch for WhatsApp and Facebook. Instagram branch LAST and only after the owner confirms the diff (rule 5).
 M-03 `POST /api/saas/messages`: signed (current or unexpired previous secret), 5 min skew, generic 401, 64 KB cap, 202 `{"id": ...}`, dedupe on `message_id` for >= 7 days, refuse (generic error, no oracle) when the channel is not delegated or not linked to the given `connection_id`; sends through the existing send paths; WhatsApp window/template enforcement via the existing services; `message_too_long` instead of silent truncation (A4); records the outbound message with the SaaS `message_id`.
@@ -35,11 +26,3 @@ M-07 Contract tests against a FAKE SaaS server (verifies signatures, records req
 
 FIRST ACTION: M-00 only, then report.
 
----
-CONTRACT (appended below by the owner: docs/17 v1, then CONTRACT-V1.1-DELTA.md)
-
-## Owner checklist before starting the cloud session
-- In the cloud environment, confirm Postgres and Redis can run (service containers or apt) and that the repo's Python version matches `backend/Dockerfile`; otherwise tell the agent which one to use. Provide only dummy env values; no real Meta/OpenAI keys in the session.
-- Rotate the Meta token inside `popeye access token.txt`, then remove the file from history (BFG or filter-repo) on your side. Until then, treat that token as compromised and do not give the cloud session access to anything that contains it other than the repo itself.
-- Decide whether the cloud session may push the `feature/saas-delegation` branch (the prompt allows it). Remove that sentence if you want local-only work.
-- Instagram is live: you review the M-02 Instagram diff before it is merged.
