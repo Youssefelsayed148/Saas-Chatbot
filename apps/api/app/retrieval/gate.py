@@ -28,6 +28,10 @@ class ChunkVerdict:
     fts_minimum: float
     fts_pass: bool
     top_result_pass: bool | None = None
+    # Rules this candidate failed: "cosine" (below the floor or no score),
+    # "cosine_disabled" (the model has no usable floor), "terms", "fts".
+    # Empty when accepted. Diagnostics only: acceptance never reads it.
+    failed_rules: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -138,6 +142,9 @@ def relevance_gate(result: RetrievalResult, settings: Settings) -> GateDecision:
                 fts_minimum=min_fts,
                 fts_pass=fts_pass,
                 top_result_pass=top_ok if top_rule_on else None,
+                failed_rules=()
+                if accepted_by
+                else failed_rules(floor, cosine_pass, terms_pass, fts_pass),
             )
         )
     return _document_level(result, passed, verdicts, floor, min_fts)
@@ -228,6 +235,22 @@ def select_evidence(decision: GateDecision, settings: Settings) -> list[Retrieve
             break
         selected.extend(document_chunks)
     return selected
+
+
+def failed_rules(
+    floor: float | None, cosine_pass: bool | None, terms_pass: bool, fts_pass: bool
+) -> tuple[str, ...]:
+    """Names of the gate rules a rejected candidate did not satisfy."""
+    failed: list[str] = []
+    if floor is None:
+        failed.append("cosine_disabled")
+    elif not cosine_pass:
+        failed.append("cosine")
+    if not terms_pass:
+        failed.append("terms")
+    if not fts_pass:
+        failed.append("fts")
+    return tuple(failed)
 
 
 def _reason(

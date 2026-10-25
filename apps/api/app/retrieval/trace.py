@@ -60,6 +60,7 @@ def candidate_trace(
                     "passed": verdict.fts_pass,
                 },
                 "top_result": verdict.top_result_pass,
+                "failed_rules": list(verdict.failed_rules),
             }
         rows.append(row)
     return rows
@@ -142,6 +143,77 @@ def rejected_candidates(
         if len(rows) == limit:
             break
     return rows
+
+
+def _shortfall(verdict: ChunkVerdict) -> dict[str, float | int | None]:
+    """How far the candidate was from each rule (positive = missed by that much)."""
+    cosine = (
+        round(verdict.cosine_floor - verdict.cosine, 4)
+        if verdict.cosine is not None and verdict.cosine_floor is not None
+        else None
+    )
+    return {
+        "cosine": cosine,
+        "terms": max(0, verdict.required_terms - verdict.matched_terms),
+        "fts": round(max(0.0, verdict.fts_minimum - verdict.fts_match), 4),
+    }
+
+
+def refusal_diagnosis(retrieval: RetrievalResult, decision: GateDecision) -> dict[str, Any]:
+    """Which gate rule failed for a refused turn and how near the best candidate came.
+
+    ``nearest`` is the top-ranked candidate (same order as ``rejected_candidates``);
+    ``best`` holds the maximum of each signal over ALL candidates, so a staff member
+    can see whether any single chunk came close even when the ranking leader did not.
+    Numbers only; no chunk text."""
+    ranked = _ranked(retrieval)
+    verdicts = {row.chunk_id: row for row in decision.verdicts}
+    counts = {"cosine": 0, "cosine_disabled": 0, "terms": 0, "fts": 0}
+    for verdict in decision.verdicts:
+        for rule in verdict.failed_rules:
+            counts[rule] = counts.get(rule, 0) + 1
+    if not ranked:
+        return {
+            "outcome": "no_candidates",
+            "candidates": 0,
+            "failed_rules": [],
+            "rule_counts": counts,
+            "nearest": None,
+            "best": None,
+        }
+    lead = ranked[0]
+    lead_verdict = verdicts.get(str(lead.chunk_id))
+    nearest: dict[str, Any] = {
+        "document_title": lead.title,
+        "chunk_id": str(lead.chunk_id),
+        "locator": lead.page_ref,
+        "cosine": lead.vector_similarity,
+        "fts_match": lead.fts_match,
+        "matched_terms": lead.matched_terms,
+        "query_terms": lead.query_terms,
+        "rrf_score": lead.rrf_score,
+    }
+    if lead_verdict is not None:
+        nearest.update(
+            cosine_floor=lead_verdict.cosine_floor,
+            required_terms=lead_verdict.required_terms,
+            fts_minimum=lead_verdict.fts_minimum,
+            failed_rules=list(lead_verdict.failed_rules),
+            shortfall=_shortfall(lead_verdict),
+        )
+    sims = [c.vector_similarity for c in ranked if c.vector_similarity is not None]
+    return {
+        "outcome": "gate_rejected_all",
+        "candidates": len(ranked),
+        "failed_rules": list(lead_verdict.failed_rules) if lead_verdict is not None else [],
+        "rule_counts": counts,
+        "nearest": nearest,
+        "best": {
+            "cosine": max(sims) if sims else None,
+            "fts_match": max(c.fts_match for c in ranked),
+            "matched_terms": max(c.matched_terms for c in ranked),
+        },
+    }
 
 
 def document_trace(

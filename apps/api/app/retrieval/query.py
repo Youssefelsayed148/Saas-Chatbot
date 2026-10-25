@@ -221,8 +221,47 @@ ARABIC_STOP_WORDS = frozenset(
     }
 )
 
+# Low-information words for the matched-TERM COUNT only (H4). They stay in the
+# ranking query (``build_tsquery`` is unchanged) but never count as a query term,
+# so "please tell me ..." or "عايز اعرف ..." cannot satisfy the "2 matched terms"
+# rule on politeness alone. Kept apart from ENGLISH_STOP_WORDS, which must stay
+# identical to PostgreSQL's english.stop list. ``retrieval_gate_ignore_terms``
+# (store names) applies on top. Arabic entries are written as spoken (MSA plus
+# Gulf, Egyptian and Levantine fillers) and normalised once below.
+ENGLISH_FILLER_TERMS = frozenset(
+    {
+        "please", "pls", "plz", "kindly", "hi", "hello", "hey", "thanks", "thank",
+        "tell", "know", "want", "wanna", "need", "get", "let", "would", "could",
+        "may", "might", "must", "shall", "also", "ok", "okay", "yes", "yeah",
+    }
+)  # fmt: skip
+_ARABIC_FILLER_SOURCE = (
+    # question words with no topic
+    "ايه", "إيه", "ايش", "إيش", "شو", "شنو", "وش", "ليش", "لماذا", "كم", "كام",
+    "ازاي", "إزاي", "فين", "اين", "أين", "امتى", "إمتى", "متى", "ليه", "لية",
+    # wanting / asking / knowing
+    "عايز", "عايزة", "عايزه", "عاوز", "عاوزة", "عاوزه", "بدي", "بدنا", "ابغى", "أبغى",
+    "ابي", "أبي", "اريد", "أريد", "نريد", "محتاج", "محتاجة", "محتاجه", "ودي", "حابب",
+    "اعرف", "أعرف", "عرفني", "قولي", "قلي", "اخبرني", "أخبرني", "ابلغني", "نفسي",
+    # politeness / permission
+    "ممكن", "لو", "سمحت", "سمحتي", "ياريت", "يا", "ريت", "فضلك", "رجاء", "رجاءً", "يرجى",
+    # greetings
+    "مرحبا", "اهلا", "أهلا", "هلا", "السلام", "عليكم", "سلام",
+    # pronouns / demonstratives / connectors in dialect
+    "انا", "أنا", "انت", "أنت", "انتي", "انتم", "نحن", "احنا", "إحنا", "اني", "إني",
+    "ده", "دي", "دا", "هاد", "هاي", "هادا", "هاذا", "هادي", "اللي", "الي", "كده", "برضو",
+    "يعني", "طيب", "بقى", "عندكم", "عندك", "عندكو", "عندنا", "عندي", "معكم",
+)  # fmt: skip
+
 # A leading Arabic article stripped as an additional match variant.
 _ARABIC_ARTICLE = "ال"
+
+ARABIC_FILLER_TERMS = frozenset(normalise_text(word) for word in _ARABIC_FILLER_SOURCE)
+# The Arabic pass normalises the question before the stop-word test, so stop words
+# spelt with أ إ ى (على, إلى, الى, أو) never matched. The term COUNT compares their
+# normalised forms; the ranking query is deliberately left as it was.
+_ARABIC_STOP_NORMALISED = frozenset(normalise_text(word) for word in ARABIC_STOP_WORDS)
+FILLER_TERMS = ENGLISH_FILLER_TERMS | ARABIC_FILLER_TERMS | _ARABIC_STOP_NORMALISED
 
 
 def _tokens(question: str) -> list[str]:
@@ -279,13 +318,12 @@ def build_tsquery(question: str, language: str) -> str | None:
 
 
 def _content_tokens(question: str, language: str, ignore: frozenset[str]) -> list[str]:
-    """Distinct content tokens, minus the configured store-name/filler words."""
+    """Distinct content tokens, minus the built-in filler terms and the configured ignore list."""
     if language == "ar":
         question = normalise_text(question)
     tokens = list(dict.fromkeys(_tokens(question)))
-    if not ignore:
-        return tokens
-    return [token for token in tokens if not _is_ignored(token, language, ignore)]
+    drop = FILLER_TERMS | ignore
+    return [token for token in tokens if not _is_ignored(token, language, drop)]
 
 
 def normalise_ignore_terms(values: Iterable[str]) -> frozenset[str]:
@@ -313,8 +351,9 @@ def _is_ignored(token: str, language: str, ignore: frozenset[str]) -> bool:
 def term_queries(question: str, language: str, ignore: frozenset[str] = frozenset()) -> list[str]:
     """One OR query per distinct content term; Arabic variants count only once.
 
-    ``ignore`` (normalised, see ``normalise_ignore_terms``) drops store-name and
-    filler words from the term count only; the ranking query is unchanged.
+    Built-in low-information fillers (``FILLER_TERMS``) and ``ignore`` (normalised,
+    see ``normalise_ignore_terms``; store names) leave the term count only; the
+    ranking query is unchanged.
     """
     return [
         " | ".join(_arabic_variants(token)) if language == "ar" else token

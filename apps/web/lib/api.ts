@@ -1808,6 +1808,29 @@ export interface RagTrace {
       rrf_score: number;
       reason: string;
     }[];
+    /** Which gate rule failed for a refused turn and how near the leader came. */
+    refusal_diagnosis?: {
+      outcome: "no_candidates" | "gate_rejected_all";
+      candidates: number;
+      failed_rules: string[];
+      rule_counts: Record<string, number>;
+      nearest: {
+        document_title: string;
+        locator: string;
+        cosine: number | null;
+        cosine_floor?: number | null;
+        fts_match: number;
+        fts_minimum?: number;
+        matched_terms: number;
+        required_terms?: number;
+        failed_rules?: string[];
+      } | null;
+      best: {
+        cosine: number | null;
+        fts_match: number;
+        matched_terms: number;
+      } | null;
+    } | null;
     chunks: {
       chunk_id: string;
       title: string;

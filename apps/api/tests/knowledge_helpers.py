@@ -112,6 +112,9 @@ def drain_jobs(engine: Any, tmp_root: Path) -> list[Job]:
             if job is None:
                 break
             execute_claimed_job(session, job, settings, storage)
+            # Commits expire the row and close() detaches it: load it, then detach it loaded.
+            session.refresh(job)
+            session.expunge(job)
             jobs.append(job)
     finally:
         session.close()

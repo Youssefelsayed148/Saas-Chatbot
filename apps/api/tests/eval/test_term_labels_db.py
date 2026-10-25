@@ -100,3 +100,25 @@ def test_stop_word_only_overlap_cannot_pass_and_stems_collapse(
     hit = next(c for c in result.evidence if "returned within 14 days" in c.text)
     assert hit.query_terms == 1 and hit.matched_terms == 1
     assert relevance_gate(result, corpus["settings"]).verdicts[0].required_terms <= 1
+
+
+def test_english_fillers_are_a_separate_layer_from_postgres_stop_words(db: Any) -> None:
+    """H4: a filler is a word PostgreSQL KEEPS (so it could count as a term) that we drop."""
+    from app.retrieval.query import ENGLISH_FILLER_TERMS, ENGLISH_STOP_WORDS
+
+    assert not ENGLISH_FILLER_TERMS & ENGLISH_STOP_WORDS
+    for word in ENGLISH_FILLER_TERMS:
+        lexemes = db.execute(text("SELECT ts_lexize('english_stem', :w)"), {"w": word}).scalar()
+        assert lexemes, f"{word!r} is already dropped by PostgreSQL; remove it from the fillers"
+
+
+def test_fillers_change_the_count_but_not_the_ranking(db: Any, corpus: dict[str, Any]) -> None:
+    plain = _retrieve(db, corpus, "opening hours")
+    polite = _retrieve(db, corpus, "please tell me the opening hours")
+    assert [c.chunk_id for c in plain.evidence] == [c.chunk_id for c in polite.evidence]
+    for chunk in polite.evidence:
+        assert chunk.query_term_labels == ["opening", "hours"]
+        assert chunk.query_terms == 2
+    assert max(c.matched_terms for c in polite.evidence) == max(
+        c.matched_terms for c in plain.evidence
+    )

@@ -2829,3 +2829,42 @@ Tests (exact outcomes):
 - Eval stub (`tests/eval/test_eval.py`): NOT obtained. Working tree: fails in `tests/knowledge_helpers.py:147` (DetachedInstanceError on an ingest Job) before any chat call, probably the uncommitted H2 ingest work. HEAD checkout: alembic cannot load the revisions the shared test DB already has. So no before/after numbers; none are claimed.
 Review agent (read-only, 20+ EN/AR adversarial messages, traced by reading code): found one real bug of mine (FOLLOW_UP regex had lost its `\b`), fixed with regression tests; also fixed "are you a real person" being handed off, the Arabic "...ورحمة الله وبركاته" greeting, a double condense call after a refusal, and "كم سعره" not being condensed. Left as is: informational questions that name staff ("customer service hours, any agent available") still hand off pre-retrieval (existing documented rule: an explicit person request outranks informational wording); pure-filler messages over 8 tokens go to retrieval.
 Known behaviour: conversational turns are can_answer=true, so they never count as unanswered, but like greetings before they also break a run of unanswered turns.
+
+## H4 Part A - retrieval term quality and measurement (commit on feat/rag-hardening-h1-h3; Part B not started, needs owner spend approval)
+Implemented (offline): built-in EN/AR (MSA, Gulf, Egyptian, Levantine) filler list used only for the matched-TERM count (`retrieval/query.py`; ranking query unchanged; `retrieval_gate_ignore_terms` applies on top);
+Arabic stop words spelt with أ إ ى (على، إلى، أو، متى) now leave the count (they never matched after normalisation; ranking query deliberately untouched);
+`ChunkVerdict.failed_rules`, `trace.refusal_diagnosis` (nearest candidate, shortfalls, best per signal), playground line; `evaluation.page_sweep` + `scripts/rag_threshold_sweep.py` (prints, applies nothing);
+42 recall cases `tests/eval/nile_recall_eval.jsonl` (paraphrase/typo/dialect/mixed/unanswerable) with `recall_metrics.py`, `recall_runner.py`, `test_recall_eval.py`; docs/14 section 5 H4 note.
+Verified (exact): `PYTHONUTF8=1 ENVIRONMENT=test python -m pytest tests/eval/offline -q` -> 52 passed; `ruff check` clean on touched files; mypy on touched files: only the existing ingest.py Windows setsid/killpg errors; web `npx tsc --noEmit` clean.
+Fix outside the feature: `tests/knowledge_helpers.py::drain_jobs` now `refresh`+`expunge`s each Job (it returned expired, detached rows -> DetachedInstanceError that blocked every eval seeding, as noted under H3).
+Disposable DB: docker `saas-test-db` 127.0.0.1:55462, database `h4_test`; `PYTHONUTF8=1 ENVIRONMENT=test`, one pytest process at a time.
+DB tests (exact): `pytest tests/test_rag_gate.py tests/test_rag_traces.py tests/test_trace_context.py tests/test_retrieval.py tests/test_conversation_intelligence.py tests/test_chat.py tests/eval` -> 218 passed, 1 failed in 865.9 s.
+The failure, `test_rag_gate.py::test_provider_has_no_retries_and_only_one_fallback` (requests_used 3 != 2), is the same one recorded under H3; `chat/providers.py` is unmodified. Not investigated.
+Recall eval (retrieval + gate only, no provider, no chat model): `RECALL_EVAL_WRITE=1 pytest tests/eval/test_recall_eval.py -q -s` -> report `tests/eval/results/recall-2026-10-25-1603.{md,json}` (42 cases: 34 answerable, 8 unanswerable).
+CAVEAT: hybrid uses the deterministic test embedder (token hash), NOT semantic. Its cosine numbers are plumbing only; real Arabic/dialect semantic recall is unmeasured (needs Part B).
+| | fts_only hit@3 / hit@8 / wrong refusals | hybrid (test embedder) hit@3 / hit@8 / wrong refusals | leaks (8 unanswerable) |
+|---|---|---|---|
+| all | 26/34, 26/34, 12/34 | 18/34, 21/34, 11/34 | 3 / 3 |
+| paraphrase | 12/14, 12/14, 1/14 | 7/14, 9/14, 2/14 | |
+| typo | 9/10, 9/10, 6/10 | 8/10, 8/10, 6/10 | |
+| dialect (AR) | 4/8, 4/8, 4/8 | 1/8, 2/8, 3/8 | |
+| mixed | 1/2, 1/2, 1/2 | 2/2, 2/2, 0/2 | |
+| Arabic / English | 14/20 hit, 7/20 refused / 12/14 hit, 5/14 refused | 12/20 hit@8, 5/20 / 9/14, 6/14 | |
+Findings: most wrong refusals are retrieved-but-gated (the expected page is rank 1 or 2 yet only 1 matched term, e.g. typo-return-window-en, typo-cutoff-en, typo-electronics-ar), not retrieval misses. Leaks are the store-name + filler questions (gap-store-fillers-en/ar) and gap-instalments-en.
+Gate compare on the Nile set (`GATE_CANDIDATES`, retrieval only): fts_only defaults 26/27 kept, 6/12 leaks; ignore-store 26/27, 3/12; one-term 27/27, 10/12; one-term+ignore-store 27/27, 9/12. hybrid: defaults 23/27, 5/12; ignore-store 23/27, 2/12; one-term 24/27, 10/12; one-term+ignore-store 24/27, 9/12.
+Sweep (`scripts/rag_threshold_sweep.py` over recall + Nile no-history cases: 57 answerable, 22 unanswerable; chunk-level replay, so absolute leak counts exceed the case-level gate compare). fts floor 0.01, cosine off:
+| min terms | wrong refusals | wrong-evidence only | unanswerable leaks |
+|---|---|---|---|
+| 1 | 2 | 6 | 18 |
+| 2 (current) | 12 | 3 | 10 |
+| 3 | 27 | 4 | 3 |
+FTS floor 0.005-0.2 and (hybrid, test embedder) cosine 0.40-0.60 changed nothing material. 3 leaks remain even at 3 terms (store-name cases).
+RECOMMENDATION TABLE (owner decides; nothing applied, defaults unchanged):
+| Option | Effect on this sample | Risk | Status |
+|---|---|---|---|
+| Keep min terms 2, FTS 0.01, cosine 0.50 | baseline | high wrong refusals on typo/dialect (12/57 chunk-level) | current |
+| Add store-name ignore list per bot (`retrieval_gate_ignore_terms`) | leaks 6/12 -> 3/12 (fts), 5/12 -> 2/12 (hybrid), no recall loss | needs per-bot config | recommended to adopt, owner sign-off |
+| min terms 1 | wrong refusals 12 -> 2 | leaks 10 -> 18 of 22; unsafe alone | not recommended |
+| min terms 3 | leaks 10 -> 3 | wrong refusals 12 -> 27 | not recommended |
+| FTS floor / cosine floor changes | no measurable effect here | cosine needs a real embedder | defer to Part B |
+Next: Part B (real embeddings, both tiers) needs the owner's written spend limit; not started. Nothing committed.

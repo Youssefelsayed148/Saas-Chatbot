@@ -43,6 +43,7 @@ from app.retrieval.trace import (
     candidate_trace,
     document_trace,
     near_miss_topics,
+    refusal_diagnosis,
     rejected_candidates,
 )
 
@@ -519,6 +520,7 @@ def chat_answer(
         "routing_stage": None,  # "pre_retrieval" | "post_retrieval" when routed to a handoff
         "routed_handoff_reason": None,
         "rejected_candidates": [],
+        "refusal_diagnosis": None,
     }
     model = TracedModel(model, trace)
     history_turns = normalize_history(history)
@@ -678,6 +680,7 @@ def chat_answer(
         topics: list[str] = []
         if retrieval is not None and decision is not None:
             trace["rejected_candidates"] = rejected_candidates(retrieval, decision)
+            trace["refusal_diagnosis"] = refusal_diagnosis(retrieval, decision)
             topics = near_miss_topics(retrieval)
         if order_account_handoff_applies(bot, question):
             return post_retrieval_handoff(

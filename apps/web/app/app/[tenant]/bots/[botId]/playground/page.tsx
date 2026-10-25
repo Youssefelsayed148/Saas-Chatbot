@@ -638,6 +638,27 @@ export default function PlaygroundPage() {
                 )}
               </dl>
             )}
+            {trace.refusal_diagnosis && (
+              <p data-testid="trace-diagnosis">
+                {trace.refusal_diagnosis.nearest
+                  ? `Refused: nearest candidate failed ${
+                      trace.refusal_diagnosis.failed_rules.join(", ") ||
+                      "no rule"
+                    } (cosine ${
+                      trace.refusal_diagnosis.nearest.cosine?.toFixed(3) ??
+                      "n/a"
+                    } vs floor ${
+                      trace.refusal_diagnosis.nearest.cosine_floor?.toFixed(
+                        2,
+                      ) ?? "n/a"
+                    }; terms ${trace.refusal_diagnosis.nearest.matched_terms}/${
+                      trace.refusal_diagnosis.nearest.required_terms ?? "?"
+                    }; fts ${trace.refusal_diagnosis.nearest.fts_match.toFixed(3)} vs ${
+                      trace.refusal_diagnosis.nearest.fts_minimum ?? "?"
+                    }).`
+                  : "Refused: retrieval returned no candidates."}
+              </p>
+            )}
             {trace.rejected_candidates &&
               trace.rejected_candidates.length > 0 && (
                 <div data-testid="trace-rejected">
