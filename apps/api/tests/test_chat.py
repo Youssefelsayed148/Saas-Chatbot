@@ -131,20 +131,87 @@ def test_smalltalk_welcomes_in_arabic(app: Any, db: OrmSession, corpus: dict[str
     assert reply.answer
 
 
-def test_order_question_routes_to_handoff_with_contact(
+def test_order_question_with_evidence_is_answered_not_handed_off(
+    app: Any, db: OrmSession, corpus: dict[str, Any]
+) -> None:
+    model = EchoFirstEvidenceId("Returns are accepted within 14 days of delivery.", True)
+    reply = answer(db, corpus, model, "Can I return my order within 14 days of delivery?")
+    assert reply.kind == "answer"
+    assert reply.can_answer is True and reply.citations
+    assert model.calls, "retrieval found evidence, so the model answers"
+    assert reply.trace["routing_stage"] is None
+
+    arabic = EchoFirstEvidenceId("نعمل من الأحد إلى الخميس.", True)
+    reply_ar = answer(db, corpus, arabic, "ما هي ساعات العمل بخصوص طلبي؟")
+    assert reply_ar.kind == "answer" and reply_ar.citations
+    assert reply_ar.trace["routing_stage"] is None
+
+
+def test_order_question_without_evidence_hands_off_after_retrieval(
     app: Any, db: OrmSession, corpus: dict[str, Any]
 ) -> None:
     model = FakeChatModel(responses=["NEVER"])
-    reply = answer(db, corpus, model, "where is my order?")
+    reply = answer(db, corpus, model, "where is my order #123")
     assert reply.kind == "handoff"
     assert reply.can_answer is False
     assert reply.needs_human is True
     assert "support@acme.example.com" in reply.answer
-    assert model.calls == []
+    assert model.calls == []  # no evidence → no model call
+    assert reply.trace["gate"] == "refused"
+    assert reply.trace["routing_stage"] == "post_retrieval"
+    assert reply.trace["routed_handoff_reason"] == "order_account"
+    assert reply.trace["handoff_reason"] == "order_account"
 
     arabic = answer(db, corpus, model, "وين طلبي؟")
-    assert arabic.kind == "handoff"
-    assert arabic.needs_human is True
+    assert arabic.kind == "handoff" and arabic.needs_human is True
+    assert arabic.trace["routing_stage"] == "post_retrieval"
+
+
+def test_model_refusal_or_invalid_output_on_an_order_question_hands_off(
+    app: Any, db: OrmSession, corpus: dict[str, Any]
+) -> None:
+    question = "Can I return my order within 14 days of delivery?"
+    refusal = answer(db, corpus, EchoFirstEvidenceId("I cannot confirm that.", False), question)
+    assert refusal.kind == "handoff" and refusal.needs_human is True
+    assert refusal.citations == []
+    assert refusal.trace["routing_stage"] == "post_retrieval"
+
+    invalid = answer(db, corpus, FakeChatModel(responses=["definitely not json"]), question)
+    assert invalid.kind == "handoff"
+    assert invalid.trace["invalid_output_reason"] == "parse_failed"
+    assert invalid.trace["routing_stage"] == "post_retrieval"
+
+    off = answer(
+        db,
+        corpus,
+        EchoFirstEvidenceId("I cannot confirm that.", False),
+        question,
+        config=bot_config(handoff_enabled=False),
+    )
+    assert off.kind == "cannot_confirm"
+    assert off.trace["routing_stage"] is None
+
+
+@pytest.mark.parametrize("question", ["how do I order a pizza", "accounting services"])
+def test_order_words_in_content_questions_never_hand_off(
+    app: Any, db: OrmSession, corpus: dict[str, Any], question: str
+) -> None:
+    reply = answer(db, corpus, FakeChatModel(responses=["NEVER"]), question)
+    assert reply.kind == "cannot_confirm"
+    assert reply.trace["routing_stage"] is None
+
+
+@pytest.mark.parametrize("question", ["I want to talk to a person", "أريد التحدث مع شخص"])
+def test_explicit_person_request_hands_off_before_retrieval(
+    app: Any, db: OrmSession, corpus: dict[str, Any], question: str
+) -> None:
+    model = FakeChatModel(responses=["NEVER"])
+    reply = answer(db, corpus, model, question)
+    assert reply.kind == "handoff" and reply.needs_human is True
+    assert model.calls == []
+    assert reply.trace["gate"] == "not_run" and reply.trace["retrieval_mode"] == "not_run"
+    assert reply.trace["routing_stage"] == "pre_retrieval"
+    assert reply.trace["routed_handoff_reason"] == "visitor_requested"
 
 
 def test_handoff_toggle_off_falls_through_to_model(

@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.chat.routing import route
+from app.chat.routing import order_account_requested, route
 from app.inbox.handoff import PERSON_KEYWORDS, _contains
 
 RETRIEVAL = [
@@ -16,6 +16,12 @@ RETRIEVAL = [
     "what is the refund policy?",
     "hi, what are your opening hours?",
     "hello what is the delivery fee",
+    "When will I receive my tracking number?",
+    "Can that order be cancelled after the parcel ships?",
+    "where is my order #123",
+    "متى يصلني رقم التتبع؟",
+    "هل يمكن إلغاء الطلب بعد الشحن؟",
+    "وين طلبي؟",
     "ما هي سياسة الطلب",
     "كيف اطلب بيتزا",
     "هل لديكم خدمات المحاسبة",
@@ -34,7 +40,7 @@ SMALLTALK = [
     "السلام عليكم",
     "صباح الخير",
 ]
-HANDOFF = [
+ORDER_ACCOUNT = [
     "where is my order?",
     "track my shipment",
     "I can't login",
@@ -71,11 +77,28 @@ def test_whole_message_greetings_are_smalltalk(question: str) -> None:
     assert routed is not None and routed.kind == "smalltalk" and not routed.needs_human
 
 
-@pytest.mark.parametrize("question", HANDOFF)
-def test_clear_order_questions_hand_off(question: str) -> None:
+@pytest.mark.parametrize("question", ORDER_ACCOUNT)
+def test_order_account_questions_are_not_routed_before_retrieval(question: str) -> None:
+    assert route(question, "en", handoff_enabled=True) is None
+    assert order_account_requested(question)  # they matter only after retrieval
+
+
+@pytest.mark.parametrize("question", ["how do I order a pizza", "accounting services"])
+def test_informational_or_substring_matches_never_request_order_handoff(question: str) -> None:
+    assert not order_account_requested(question)
+
+
+@pytest.mark.parametrize("question", PERSON)
+def test_explicit_person_requests_hand_off_before_retrieval(question: str) -> None:
     routed = route(question, "en", handoff_enabled=True)
     assert routed is not None and routed.kind == "handoff" and routed.needs_human
+    assert routed.reason == "visitor_requested"
     assert route(question, "en", handoff_enabled=False) is None
+
+
+@pytest.mark.parametrize("question", NOT_PERSON)
+def test_content_questions_about_people_are_not_routed(question: str) -> None:
+    assert route(question, "en", handoff_enabled=True) is None
 
 
 @pytest.mark.parametrize("question", PERSON)

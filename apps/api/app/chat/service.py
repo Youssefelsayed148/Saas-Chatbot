@@ -26,7 +26,7 @@ from app.chat import prompts
 from app.chat.deadline import TurnBudget
 from app.chat.history import HistoryMessage, normalize_history, visitor_texts
 from app.chat.providers import ChatModel, OpenAICompatibleModel, ProviderError
-from app.chat.routing import route
+from app.chat.routing import order_account_requested, route
 from app.chat.tracing import TracedModel
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
@@ -277,6 +277,38 @@ def invalid_output_reply(
     )
 
 
+def order_account_handoff_applies(bot: Bot, question: str) -> bool:
+    """After retrieval found nothing usable: is this the visitor's own order or
+    account question, with handoff enabled for the bot?"""
+    return bool(_config_get(bot, "handoff_enabled", True)) and order_account_requested(question)
+
+
+def post_retrieval_handoff(
+    bot: Bot,
+    *,
+    language: str,
+    condensed: str | None,
+    used_fallback: bool,
+    trace: dict[str, object],
+) -> ChatReply:
+    """Nothing could be answered (no evidence, refusal or unusable output) and
+    the message is an order/account question: hand off, not the plain
+    cannot_confirm text. The inbox decision turns this kind into order_account."""
+    trace["routing_stage"] = "post_retrieval"
+    trace["routed_handoff_reason"] = "order_account"
+    trace["handoff_reason"] = "order_account"
+    return ChatReply(
+        answer=prompts.canned("handoff", language, support_contact=_support_contact(bot)),
+        can_answer=False,
+        needs_human=True,
+        language=language,
+        kind="handoff",
+        condensed_question=condensed,
+        used_fallback=used_fallback,
+        trace=trace,
+    )
+
+
 def _set_call_timeout(model: ChatModel, seconds: float) -> None:
     """Cap the next provider call at ``seconds`` (the turn budget, #84)."""
     current: ChatModel | None = model
@@ -359,6 +391,8 @@ def chat_answer(
         "fallback_query": None,
         "rewrite_text": None,
         "handoff_reason": None,
+        "routing_stage": None,  # "pre_retrieval" | "post_retrieval" when routed to a handoff
+        "routed_handoff_reason": None,
         "rejected_candidates": [],
     }
     model = TracedModel(model, trace)
@@ -386,6 +420,9 @@ def chat_answer(
             )
         else:
             text = prompts.canned("handoff", language, support_contact=contact)
+            trace["routing_stage"] = "pre_retrieval"
+            trace["routed_handoff_reason"] = routed.reason
+            trace["handoff_reason"] = routed.reason
         return ChatReply(
             answer=text,
             can_answer=routed.kind != "handoff",
@@ -481,6 +518,14 @@ def chat_answer(
         trace["gate"] = "refused"
         if retrieval is not None:
             trace["rejected_candidates"] = rejected_candidates(retrieval, decision)
+        if order_account_handoff_applies(bot, question):
+            return post_retrieval_handoff(
+                bot,
+                language=language,
+                condensed=condensed,
+                used_fallback=bool(retrieval and retrieval.used_fallback),
+                trace=trace,
+            )
         contact = _support_contact(bot)
         return ChatReply(
             answer=prompts.canned("cannot_confirm", language, support_contact=contact),
@@ -573,6 +618,15 @@ def chat_answer(
             getattr(bot, "tier", None),
         )
     if parsed is None and invalid_reason is not None:
+        if order_account_handoff_applies(bot, question):
+            trace["invalid_output_reason"] = invalid_reason
+            return post_retrieval_handoff(
+                bot,
+                language=language,
+                condensed=condensed,
+                used_fallback=bool(retrieval and retrieval.used_fallback),
+                trace=trace,
+            )
         return invalid_output_reply(
             bot,
             language=language,
@@ -595,6 +649,14 @@ def chat_answer(
     chunk_ids = parsed.sources
     if not parsed.can_answer:
         trace["reconciled"] = True
+        if order_account_handoff_applies(bot, question):
+            return post_retrieval_handoff(
+                bot,
+                language=language,
+                condensed=condensed,
+                used_fallback=bool(retrieval and retrieval.used_fallback),
+                trace=trace,
+            )
         return reconcile_refusal(
             bot,
             language=language,
