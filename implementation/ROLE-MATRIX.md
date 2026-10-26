@@ -11,6 +11,7 @@ without requiring membership. Hidden tenant resources continue to return 404.
 | ManyOsirisChat connection lifecycle and secret management | Yes | No | No | No |
 | Conversations: list and read | Yes | Yes | Yes | Yes |
 | Inbox: view | Yes | Yes | Yes | Yes |
+| Inbox: send again a message that failed while the channel was paused | Read-only operator view* | Yes | Yes | No |
 | Inbox: reply, takeover, resolve, return to AI, tag, note, assign | Read-only operator view* | Yes | Yes | No |
 | Contacts: view | Yes | Yes | Yes | Yes |
 | Contacts: create, edit and follow-ups | Yes | Yes | Yes | No |

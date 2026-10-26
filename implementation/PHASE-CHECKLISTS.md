@@ -84,5 +84,6 @@ Legend: [ ] open · [x] done with evidence. Owner sign-off closes each phase.## 
 - [ ] P6-03: outbound via POST to Many keyed by message_id with retry/backoff; message.status updates delivery_status monotonically (sent < delivered < read); window_closed/template_required shown in the inbox and not blindly retried; Many-down is visible and recovers
 - [ ] P6-04: follow-ups/broadcasts through Many only with recorded opt-in and approved template_ref; owner-approved before first real send
 - [ ] P6-05: contract tests against a fake Many (signature, replay, duplicates, ordering, errors) in CI; Many-side requirements doc handed over; canary plan with one test number in staging; rollback = pause connection
+- Close-out status (2026-10-26): the SaaS-side rebuild R-00..R-07 is on branch `claude/saas-rebuild-r00-jrd3an` (contract v1.1, ADR-023). Boxes below stay unticked until the owner signs off and the staging end-to-end passes; evidence is in PROGRESS.md.
 - [ ] Staging end-to-end: a message from a test WhatsApp number is answered by the bot, handed off, replied to by an agent from the inbox, with delivery status shown
 - [ ] Phase report; owner sign-off

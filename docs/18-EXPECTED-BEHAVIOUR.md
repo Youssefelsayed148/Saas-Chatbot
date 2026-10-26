@@ -65,6 +65,9 @@ A business signs up, creates an organization and a bot, gives it its data (uploa
 ## Always-true rules (every phase)
 1. Cross-tenant access is impossible by ID guessing. 2. Errors are specific and actionable. 3. No secrets or visitor PII in logs. 4. Loading, empty and error states exist on every screen. 5. Archived/paused things behave predictably. 6. No success state without a real backend result.
 
+## Channels (WhatsApp, Messenger, Instagram via Many)
+A channel conversation behaves like a website one: same assistant, knowledge, tone and handoff rules, but replies are short plain text. A human takeover stays in human mode even if the connection is paused or AI is switched off. Paused connection: messages are stored and visible, the AI is silent, the composer is disabled with an explanation, and a reply that failed because of the pause can be sent again once the connection is active. A message Many accepted but never confirmed shows "Not confirmed" (neutral) until a real status arrives. Unsupported media gets a localized text-only notice and a human handoff. Instagram replies are split by bytes (900), so Arabic parts are shorter. A health signal older than 15 minutes shows "Unknown / no recent signal".
+
 ## Not in the product (yet)
 Paid checkout, voice/image messages, email notifications and password-reset emails, deals/pipelines with amounts, automation builder, any Meta API code in this repo (Many owns it).
 

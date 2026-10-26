@@ -40,7 +40,10 @@ JSON error: `{ "error": {"code":"FORBIDDEN","message":"...","request_id":"..."}}
 | POST/GET /api/v1/tenants/{tenant_id}/followups | editor+ | Schedule/list follow-ups (P5) |
 | GET /api/public/v1/sessions/{session_id}/messages?since=cursor | session capability | Widget polls for agent replies (P5) |
 | POST /api/channels/manyosiris/events | HMAC signature (no cookie) | Inbound Many events, 202 then job (P6) |
-| POST/GET /api/v1/tenants/{tenant_id}/channels/connections | admin + staff approval | Link a bot to a Many channel (P6) |
+| GET /api/v1/tenants/{tenant_id}/channels | member | Read-only connected channels for client roles: channel, display name, status, health (stored state, or `unknown/stale` after 15 minutes without a signal), last event. No Many URL, reference or secret |
+| GET/POST /api/v1/platform/channel-connections ; GET/PATCH /{id} ; POST /{id}/{pause,resume,revoke,rotate-secret,check-health} | platform staff + CSRF | Staff channel management. The signing secret is returned once (create, rotate). 409 `CHANNEL_REF_IN_USE` when a non-revoked connection already uses the same `(channel, many_channel_ref)`. Audited |
+| POST /api/v1/tenants/{tenant_id}/conversations/{id}/messages/{message_id}/resend | editor+ | Send again a channel message that failed with `connection_paused`: 404 missing, 409 `NOT_RESENDABLE` (any other message), 409 `CONNECTION_PAUSED` (connection not active). Adds a system message and audit `message.resent` |
+| Inbox list/thread additions (P6) | member | Channel rows carry `connection_name`, `connection_status`, `campaign_name` (origin); thread detail also `contact_name`; channel AI/agent messages carry `delivery_status` (`pending`,`sent`,`delivered`,`read`,`failed`,`unconfirmed`) and `error_code` from a closed set |
 | GET /api/v1/platform/tenants, /tenants/{id} | platform staff | Client list (search/status/pagination) and detail with counts, per-bot summaries, members, invitations, audit (P4-06) |
 | POST /api/v1/platform/tenants; PATCH /api/v1/platform/tenants/{id} | platform staff + CSRF | Create organization; update name/status (S1); audited |
 | PATCH /api/v1/platform/tenants/{id}/plan, /quota-overrides | platform staff + CSRF | Assign plan label / override limits; reason required; audited (P7) |
