@@ -728,7 +728,8 @@ export interface InboxCounts {
 }
 
 export interface InboxMessage {
-  delivery_status?: "pending" | "sent" | "delivered" | "read" | "failed" | null;
+  delivery_status?:
+    "pending" | "sent" | "delivered" | "read" | "failed" | "unconfirmed" | null;
   error_code?: string | null;
   id: string;
   sender_type: string;
@@ -798,6 +799,18 @@ export async function sendAgentReply(
     method: "POST",
     body: { text },
   });
+}
+
+/** Send again a channel message that failed while the connection was paused. */
+export async function resendChannelMessage(
+  tenantId: string,
+  conversationId: string,
+  messageId: string,
+): Promise<{ message: { id: string; delivery_status: string } }> {
+  return api(
+    `tenants/${tenantId}/conversations/${conversationId}/messages/${messageId}/resend`,
+    { method: "POST" },
+  );
 }
 
 export async function addConversationNote(

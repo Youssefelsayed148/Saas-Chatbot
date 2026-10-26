@@ -33,9 +33,7 @@ def _connection(
 ) -> ChannelConnection:
     from cryptography.fernet import Fernet
 
-    key = getattr(app.state, "channel_test_key", None) or Fernet.generate_key().decode(
-        "ascii"
-    )
+    key = getattr(app.state, "channel_test_key", None) or Fernet.generate_key().decode("ascii")
     app.state.channel_test_key = key
     bot = make_bot(users)
     connection = ChannelConnection(
@@ -74,9 +72,7 @@ def _channel_conversation(
         connection_id=connection.id,
         mode=mode,
         status=status,
-        origin=(
-            {"type": "campaign", "campaign_name": campaign} if campaign else None
-        ),
+        origin=({"type": "campaign", "campaign_name": campaign} if campaign else None),
     )
     db.add(conversation)
     db.commit()
@@ -132,22 +128,16 @@ def mixed_channel_data(app: FastAPI, db: OrmSession, request: pytest.FixtureRequ
     wa = _connection(app, db, users_a, channel="whatsapp", display_name="WA Hotline")
     ig = _connection(app, db, users_a, channel="instagram", display_name="Insta Desk")
     website = _website_conversation(db, users_a, bot_id=UUID(make_bot(users_a)["id"]))
-    whatsapp = _channel_conversation(
-        db, users_a, wa, channel="whatsapp", campaign="Spring"
-    )
+    whatsapp = _channel_conversation(db, users_a, wa, channel="whatsapp", campaign="Spring")
     # One measured handoff (human mode), one cannot-answer reply, median 30s.
     whatsapp.mode = "human"
     db.commit()
     _reply_message(db, users_a, whatsapp, 30, can_answer=False)
-    instagram = _channel_conversation(
-        db, users_a, ig, channel="instagram", status="resolved"
-    )
+    instagram = _channel_conversation(db, users_a, ig, channel="instagram", status="resolved")
     from tests.test_conversations_view import seed_setup
 
     seed_setup(app, users_b, db, name="Foreign bot")
-    foreign_wa = _connection(
-        app, db, users_b, channel="whatsapp", display_name="Foreign WA"
-    )
+    foreign_wa = _connection(app, db, users_b, channel="whatsapp", display_name="Foreign WA")
     foreign = _channel_conversation(
         db, users_b, foreign_wa, channel="whatsapp", campaign="Foreign promo"
     )
@@ -180,9 +170,11 @@ def test_inbox_channel_filter_and_connection_name(
     assert by_channel["whatsapp"]["connection_name"] == "WA Hotline"
     assert by_channel["instagram"]["connection_name"] == "Insta Desk"
     assert by_channel["website"]["connection_name"] is None
-    assert by_channel["whatsapp"]["id"] == str(
-        data["conversations"]["whatsapp"].id
-    )
+    # R-06: list rows carry the connection state; website rows carry neither.
+    assert by_channel["whatsapp"]["connection_status"] in {"active", "paused", "revoked"}
+    assert "connection_status" not in by_channel["website"]
+    assert "campaign_name" not in by_channel["website"]
+    assert by_channel["whatsapp"]["id"] == str(data["conversations"]["whatsapp"].id)
 
     filtered = users_a.as_user("viewer").get(url + "?channel=whatsapp")
     assert filtered.status_code == 200, filtered.text
@@ -196,9 +188,7 @@ def test_inbox_channel_filter_and_connection_name(
     assert empty.json()["total"] == 0
     assert empty.json()["conversations"] == []
 
-    combined = users_a.as_user("viewer").get(
-        url + "?channel=whatsapp&mode=human"
-    )
+    combined = users_a.as_user("viewer").get(url + "?channel=whatsapp&mode=human")
     assert combined.status_code == 200
     assert combined.json()["total"] == 1
     combined = users_a.as_user("viewer").get(url + "?channel=whatsapp&status=waiting_human")
@@ -242,9 +232,11 @@ def test_thread_detail_connection_name_and_campaign(
         state = detail.json()["conversation"]
         assert state["connection_name"] == expected_name
         assert state["channel"] == key
-    campaign_state = users_a.as_user("viewer").get(
-        f"/api/v1/tenants/{users_a.tenant_id}/conversations/{conversations['whatsapp'].id}"
-    ).json()["conversation"]
+    campaign_state = (
+        users_a.as_user("viewer")
+        .get(f"/api/v1/tenants/{users_a.tenant_id}/conversations/{conversations['whatsapp'].id}")
+        .json()["conversation"]
+    )
     assert campaign_state["campaign_name"] == "Spring"
     website_detail = users_a.as_user("viewer").get(
         f"/api/v1/tenants/{users_a.tenant_id}/conversations/{conversations['website'].id}"
@@ -293,9 +285,11 @@ def test_insights_campaign_counts_and_channel_filter(
     filtered = _insights(users_a, "?channel=whatsapp").json()
     assert filtered["total_conversations"] == 1
     assert filtered["conversations_by_channel"] == {"whatsapp": 1}
-    assert {
-        row["channel"] for row in filtered["channel_breakdown"]
-    } == {"website", "whatsapp", "instagram"}
+    assert {row["channel"] for row in filtered["channel_breakdown"]} == {
+        "website",
+        "whatsapp",
+        "instagram",
+    }
     assert filtered["conversations_by_campaign"] == {"Spring": 1}
     empty = _insights(users_a, "?channel=messenger").json()
     assert empty["total_conversations"] == 0
@@ -313,17 +307,11 @@ def test_insights_excludes_other_tenants_and_allows_viewer(
     campaigns_b = data_b["conversations_by_campaign"]
     assert campaigns_b == {"Foreign promo": 1}
     assert users_b.tenant_id != users_a.tenant_id
-    wa_rows = [
-        row
-        for row in data_b["channel_breakdown"]
-        if row["channel"] == "whatsapp"
-    ]
+    wa_rows = [row for row in data_b["channel_breakdown"] if row["channel"] == "whatsapp"]
     assert len(wa_rows) == 1 and wa_rows[0]["conversations"] == 1
     # Viewer (client role) reads its own tenant only; foreign viewer gets nothing.
     # A foreign tenant is hidden, not accessible: 404.
-    response = users_a.as_user("viewer").get(
-        f"/api/v1/tenants/{users_b.tenant_id}/analytics"
-    )
+    response = users_a.as_user("viewer").get(f"/api/v1/tenants/{users_b.tenant_id}/analytics")
     assert response.status_code == 404, response.text
 
 
@@ -377,12 +365,8 @@ def test_contacts_channel_column_and_filter(
 ) -> None:
     users_a = mixed_channel_data["users_a"]
     users_b = mixed_channel_data["users_b"]
-    contact_id = _contact_with_identities(
-        app, db, users_a, channels=["website", "whatsapp"]
-    )
-    instagram_id = _contact_with_identities(
-        app, db, users_a, channels=["instagram"]
-    )
+    contact_id = _contact_with_identities(app, db, users_a, channels=["website", "whatsapp"])
+    instagram_id = _contact_with_identities(app, db, users_a, channels=["instagram"])
     _contact_with_identities(app, db, users_b, channels=["whatsapp"])
     url = f"/api/v1/tenants/{users_a.tenant_id}/contacts"
     listing = users_a.as_user("viewer").get(url)

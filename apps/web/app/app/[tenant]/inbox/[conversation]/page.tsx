@@ -3,6 +3,11 @@
 import { useParams, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import {
+  ChannelDelivery,
+  ChannelReplyFields,
+  connectionReplyBlock,
+} from "@/lib/channel-delivery";
 import { InboxList } from "@/lib/inbox-list";
 import { humanLabel } from "@/lib/labels";
 import * as api from "@/lib/api";
@@ -10,6 +15,7 @@ import type { InboxThread, Member } from "@/lib/api";
 import { roleSatisfies, useSession } from "@/lib/session";
 import { Button, LinkButton, Loading, Notice, StatusBadge } from "@/lib/ui";
 import "@/app/inbox-screen.css";
+import "@/app/channels-screen.css";
 
 export default function InboxConversationPage() {
   const params = useParams<{ tenant: string; conversation: string }>();
@@ -162,7 +168,26 @@ export default function InboxConversationPage() {
           className="conversation-controls"
         >
           <span className="conversation-summary">
-            {humanLabel(conversation.channel)} ·{" "}
+            <span className="channel-badge" data-testid="inbox-channel">
+              {humanLabel(conversation.channel)}
+            </span>
+            {conversation.connection_name && (
+              <>
+                {" "}
+                <span dir="auto" data-testid="inbox-connection">
+                  {conversation.connection_name}
+                </span>
+              </>
+            )}
+            {conversation.campaign_name && (
+              <>
+                {" "}
+                <span className="channel-badge" data-testid="inbox-campaign">
+                  From campaign: <bdi>{conversation.campaign_name}</bdi>
+                </span>
+              </>
+            )}{" "}
+            ·{" "}
             <strong
               data-testid="inbox-status"
               title={conversation.status}
@@ -348,6 +373,23 @@ export default function InboxConversationPage() {
                       </ul>
                     </details>
                   )}
+                  <ChannelDelivery
+                    channel={conversation.channel}
+                    message={message}
+                    resendBusy={busy}
+                    onResend={
+                      canEdit && conversation.connection_status === "active"
+                        ? () =>
+                            void run(() =>
+                              api.resendChannelMessage(
+                                tenantId,
+                                conversationId,
+                                message.id,
+                              ),
+                            )
+                        : undefined
+                    }
+                  />
                   {message.can_answer === true &&
                     message.sender_type === "ai" && (
                       <small>Assistant reply</small>
@@ -379,20 +421,15 @@ export default function InboxConversationPage() {
                   if (reply.trim()) void sendReply();
                 }}
               >
-                <label>
-                  Reply
-                  <textarea
-                    dir="auto"
-                    aria-label="Reply"
-                    value={reply}
-                    maxLength={4000}
-                    onChange={(e) => setReply(e.target.value)}
-                    rows={3}
-                  />
-                </label>
-                <Button type="submit" disabled={!reply.trim() || busy}>
-                  Send reply
-                </Button>
+                <ChannelReplyFields
+                  value={reply}
+                  busy={busy}
+                  block={connectionReplyBlock(
+                    conversation.channel,
+                    conversation.connection_status,
+                  )}
+                  onChange={(e) => setReply(e.target.value)}
+                />
               </form>
             )}
             <form

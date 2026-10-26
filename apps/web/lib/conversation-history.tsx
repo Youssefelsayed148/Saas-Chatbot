@@ -28,6 +28,9 @@ export type HistoryRow = {
   preview?: string | null;
   status: string;
   channel: string;
+  /** Channel rows only: the Many connection and the campaign it came from. */
+  connectionName?: string | null;
+  campaignName?: string | null;
   messageCount?: number;
 };
 
@@ -40,6 +43,8 @@ export function rowFromInbox(row: api.InboxConversation): HistoryRow {
     preview: row.last_message ?? null,
     status: row.status,
     channel: row.channel,
+    connectionName: row.connection_name ?? null,
+    campaignName: row.campaign_name ?? null,
   };
 }
 
@@ -242,7 +247,25 @@ export function HistoryTable({
       key: "channel",
       header: "Channel",
       cell: (row: HistoryRow): ReactNode => (
-        <bdi>{formatChannel(row.channel)}</bdi>
+        <>
+          <bdi>{formatChannel(row.channel)}</bdi>
+          {row.connectionName && (
+            <small
+              className="muted"
+              dir="auto"
+              data-testid="history-connection"
+            >
+              <br />
+              {row.connectionName}
+            </small>
+          )}
+          {row.campaignName && (
+            <small className="muted" dir="auto" data-testid="history-campaign">
+              <br />
+              From campaign: <bdi>{row.campaignName}</bdi>
+            </small>
+          )}
+        </>
       ),
     },
     ...(showMessages

@@ -78,6 +78,11 @@ export function AppShell({
           symbol: <Icon name="change" />,
         },
         {
+          label: "Channels",
+          href: "/platform/channels",
+          symbol: <Icon name="conversations" />,
+        },
+        {
           label: "Operations",
           href: "/platform/operations",
           symbol: <Icon name="operations" />,

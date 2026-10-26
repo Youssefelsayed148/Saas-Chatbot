@@ -226,18 +226,22 @@ def list_inbox(
         if row.source == "channel" and row.connection_id is not None
     }
     connection_names: dict[UUID, str] = {}
+    connection_statuses: dict[UUID, str] = {}
     if connection_ids:
         connection_rows = context.db.execute(
-            select(ChannelConnection.id, ChannelConnection.display_name).where(
+            select(
+                ChannelConnection.id, ChannelConnection.display_name, ChannelConnection.status
+            ).where(
                 ChannelConnection.tenant_id == context.tenant_id,
                 ChannelConnection.id.in_(connection_ids),
             )
         )
-        connection_names = {
-            connection_id: display_name for connection_id, display_name in connection_rows
-        }
+        for connection_id, display_name, connection_status in connection_rows:
+            connection_names[connection_id] = display_name
+            connection_statuses[connection_id] = connection_status
     conversations = [
         {
+            **_channel_extras(row, connection_statuses),
             "id": str(row.id),
             "bot_id": str(row.bot_id),
             "contact_id": str(row.contact_id) if row.contact_id else None,
@@ -259,6 +263,21 @@ def list_inbox(
         for row, count, text, name in rows
     ]
     return {"conversations": conversations, "total": total, "limit": limit, "offset": offset}
+
+
+def _channel_extras(row: Conversation, statuses: dict[UUID, str]) -> dict[str, str]:
+    """Channel-only list fields: connection state and the originating campaign."""
+    if row.source != "channel":
+        return {}
+    extras: dict[str, str] = {}
+    if row.connection_id is not None:
+        extras["connection_status"] = statuses.get(row.connection_id, "revoked")
+    origin = row.origin
+    if isinstance(origin, dict):
+        campaign_name = origin.get("campaign_name")
+        if isinstance(campaign_name, str) and campaign_name.strip():
+            extras["campaign_name"] = campaign_name.strip()[:120]
+    return extras
 
 
 @router.get("/counts")

@@ -19,7 +19,16 @@ import {
   rateDelta,
 } from "@/lib/charts";
 import { humanLabel } from "@/lib/labels";
-import { Card, Empty, Loading, Notice, PageHeader, StatCard } from "@/lib/ui";
+import {
+  Card,
+  DataTable,
+  Empty,
+  Loading,
+  Notice,
+  PageHeader,
+  StatCard,
+} from "@/lib/ui";
+import { channelOptions, sortedCampaigns } from "@/lib/insights";
 import { useSession } from "@/lib/session";
 import RagOperatorPanel from "@/lib/rag-operator-panel";
 
@@ -42,27 +51,32 @@ export default function HandoffAnalyticsPage() {
   const { tenant: tenantId } = useParams<{ tenant: string }>();
   const { me } = useSession();
   const [days, setDays] = useState<number>(30);
+  const [channel, setChannel] = useState("");
   const [result, setResult] = useState<{
     days: number;
+    channel: string;
     data: HandoffAnalytics;
   } | null>(null);
-  const [error, setError] = useState<{ days: number; message: string } | null>(
-    null,
-  );
+  const [error, setError] = useState<{
+    days: number;
+    channel: string;
+    message: string;
+  } | null>(null);
   const range = useMemo(() => lastDaysRange(days), [days]);
 
   useEffect(() => {
     let cancelled = false;
     const timer = setTimeout(() => {
       api
-        .handoffAnalytics(tenantId, range.from, range.to)
+        .handoffAnalytics(tenantId, range.from, range.to, channel || undefined)
         .then((data) => {
-          if (!cancelled) setResult({ days, data });
+          if (!cancelled) setResult({ days, channel, data });
         })
         .catch((caught: unknown) => {
           if (cancelled) return;
           setError({
             days,
+            channel,
             message:
               caught instanceof Error
                 ? caught.message
@@ -74,15 +88,24 @@ export default function HandoffAnalyticsPage() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [tenantId, days, range]);
+  }, [tenantId, days, range, channel]);
 
-  const data = result?.days === days ? result.data : null;
-  const failure = error?.days === days ? error.message : null;
+  const data =
+    result?.days === days && result.channel === channel ? result.data : null;
+  const failure =
+    error?.days === days && error.channel === channel ? error.message : null;
   const total = data?.total_conversations ?? 0;
   const previous = data?.previous;
   const compare = `vs previous ${days} days`;
 
   const channels = toItems(data?.conversations_by_channel, true);
+  const breakdown = (data?.channel_breakdown ?? []).filter(
+    (row) => row.conversations > 0,
+  );
+  const campaigns = sortedCampaigns(data?.conversations_by_campaign ?? {});
+  const hasMessagingChannels = breakdown.some(
+    (row) => row.channel !== "website",
+  );
   const workload = toItems(data?.agent_workload, false);
   const sentiment = toItems(data?.sentiment_distribution, true);
   const resolved = data?.resolved_vs_open?.resolved ?? 0;
@@ -108,12 +131,27 @@ export default function HandoffAnalyticsPage() {
             </button>
           ))}
         </div>
+        <label className="insights-channel-filter">
+          <span>Channel</span>
+          <select
+            data-testid="insights-channel-filter"
+            value={channel}
+            onChange={(event) => setChannel(event.target.value)}
+          >
+            {channelOptions().map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.value === "" ? "All channels" : option.label}
+              </option>
+            ))}
+          </select>
+        </label>
         <span className="insights-period-range muted" dir="ltr">
           {range.from} – {range.to}
         </span>
       </div>
       <p className="insights-lede">
-        Measured from website conversations created in the last {days} days.
+        Measured from conversations created in the last {days} days
+        {channel ? ` on ${humanLabel(channel)}` : ""}.
       </p>
       {me?.is_platform_staff && <RagOperatorPanel tenantId={tenantId} />}
       {failure && <Notice tone="error" message={failure} />}
@@ -137,10 +175,14 @@ export default function HandoffAnalyticsPage() {
               <StatCard
                 label="Handoffs"
                 value={formatCount(data.handoff_count ?? 0)}
-                delta={countDelta(data.handoff_count ?? 0, previous?.handoff_count, {
-                  upIsGood: false,
-                  label: compare,
-                })}
+                delta={countDelta(
+                  data.handoff_count ?? 0,
+                  previous?.handoff_count,
+                  {
+                    upIsGood: false,
+                    label: compare,
+                  },
+                )}
               />
               <StatCard
                 label="Handoff rate"
@@ -184,6 +226,74 @@ export default function HandoffAnalyticsPage() {
               <BarList
                 label="Conversations by channel"
                 items={channels}
+                formatValue={formatCount}
+              />
+            </Card>
+          )}
+          {hasMessagingChannels && (
+            <Card
+              title="Channel performance"
+              className="insights-wide"
+              data-testid="channel-performance"
+            >
+              <DataTable
+                data-testid="insights-channel-table"
+                caption="Channel performance"
+                rows={breakdown}
+                rowKey={(row) => row.channel}
+                columns={[
+                  {
+                    key: "channel",
+                    header: "Channel",
+                    cell: (row) => humanLabel(row.channel),
+                  },
+                  {
+                    key: "conversations",
+                    header: "Conversations",
+                    className: "num",
+                    cell: (row) => formatCount(row.conversations),
+                  },
+                  {
+                    key: "handoff",
+                    header: "Handoff rate",
+                    className: "num",
+                    cell: (row) => formatPercent(row.handoff_rate),
+                  },
+                  {
+                    key: "unanswered",
+                    header: "Unanswered",
+                    className: "num",
+                    cell: (row) => formatCount(row.unanswered_questions),
+                  },
+                  {
+                    key: "response",
+                    header: "First response",
+                    className: "num",
+                    cell: (row) =>
+                      formatDuration(row.median_first_response_seconds),
+                  },
+                  {
+                    key: "resolved",
+                    header: "Resolved",
+                    className: "num",
+                    cell: (row) => formatPercent(row.resolved_rate),
+                  },
+                ]}
+              />
+            </Card>
+          )}
+          {campaigns.length > 0 && (
+            <Card
+              title="Conversations by campaign"
+              data-testid="insights-campaign-list"
+            >
+              <BarList
+                label="Conversations by campaign"
+                items={campaigns.map((row) => ({
+                  key: row.campaign,
+                  label: row.campaign,
+                  value: row.conversations,
+                }))}
                 formatValue={formatCount}
               />
             </Card>

@@ -22,12 +22,13 @@ import {
 import { ConfirmAction } from "@/lib/ui";
 import { OrganizationMembers, focusAfterRemoval } from "@/lib/staff-members";
 import { BotLinks, CreateBotForm } from "@/lib/staff-bots";
+import { OrganizationChannels } from "@/lib/staff-channels";
 import "@/app/staff-screens.css";
 
 /** Client detail (P4-06, docs/11): bots + status, failed jobs, members and
  * roles, recent audit rows, usage. Read-only staff view (no impersonation). */
 
-const TABS = ["Overview", "Members", "Bots", "Knowledge"] as const;
+const TABS = ["Overview", "Members", "Bots", "Channels", "Knowledge"] as const;
 
 /** Why a bot is still a draft, derived only from fields the API already
  * returns (a draft bot is not answering visitors yet). */
@@ -134,6 +135,14 @@ export default function PlatformClientPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<string>("Overview");
+  // Deep link from the staff Channels overview (?tab=Channels).
+  useEffect(() => {
+    const wanted = new URLSearchParams(window.location.search).get("tab");
+    if (wanted && (TABS as readonly string[]).includes(wanted)) {
+      const timer = setTimeout(() => setTab(wanted), 0);
+      return () => clearTimeout(timer);
+    }
+  }, []);
   const [name, setName] = useState("");
   const [status, setStatus] = useState("active");
   const [saving, setSaving] = useState(false);
@@ -689,6 +698,9 @@ export default function PlatformClientPage() {
                 <p className="muted">No bots yet.</p>
               )}
             </section>
+          </TabPanel>
+          <TabPanel idPrefix="org" tabId="Channels" active={tab === "Channels"}>
+            <OrganizationChannels tenantId={clientId} bots={detail.bots} />
           </TabPanel>
           <TabPanel
             idPrefix="org"

@@ -14,14 +14,21 @@ const reasons: Record<string, string> = {
   invalid_many_target:
     "The channel delivery address is unavailable. Contact support.",
   previous_part_failed: "A previous part of this reply failed to send.",
+  message_too_long: "The message was too long for this channel.",
+  unknown: "The channel could not deliver this message.",
 };
 
 export function ChannelDelivery({
   channel,
   message,
+  onResend,
+  resendBusy,
 }: {
   channel: string;
   message: Pick<InboxMessage, "sender_type" | "delivery_status" | "error_code">;
+  /** Offered only for messages that failed while the connection was paused. */
+  onResend?: () => void;
+  resendBusy?: boolean;
 }) {
   if (
     channel === "website" ||
@@ -35,18 +42,37 @@ export function ChannelDelivery({
     delivered: "Delivered",
     read: "Read",
     failed: "Failed",
+    unconfirmed: "Not confirmed",
   }[message.delivery_status];
   return (
     <p
-      className="muted"
+      className="delivery-state"
       role="status"
       dir="auto"
       data-testid="channel-delivery"
+      data-state={message.delivery_status}
     >
-      {label}
-      {message.delivery_status === "failed"
-        ? `: ${reasons[message.error_code ?? ""] ?? "The channel could not deliver this message. Contact support."}`
-        : ""}
+      <span>
+        {label}
+        {message.delivery_status === "failed"
+          ? `: ${reasons[message.error_code ?? ""] ?? "The channel could not deliver this message. Contact support."}`
+          : ""}
+        {message.delivery_status === "unconfirmed"
+          ? ": the channel has not confirmed delivery yet."
+          : ""}
+      </span>
+      {onResend &&
+        message.delivery_status === "failed" &&
+        message.error_code === "connection_paused" && (
+          <button
+            type="button"
+            className="quiet-button"
+            disabled={resendBusy}
+            onClick={onResend}
+          >
+            Send again
+          </button>
+        )}
     </p>
   );
 }
@@ -88,7 +114,13 @@ export function ChannelReplyFields({
         />
       </label>
       {block && (
-        <p id="channel-reply-block" role="note" dir="auto">
+        <p
+          id="channel-reply-block"
+          role="note"
+          dir="auto"
+          className="paused-composer"
+          data-testid="paused-composer"
+        >
           {block}
         </p>
       )}

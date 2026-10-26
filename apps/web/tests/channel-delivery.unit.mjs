@@ -23,7 +23,14 @@ const { ChannelDelivery, ChannelReplyFields, connectionReplyBlock } =
 const render = (component, props) =>
   renderToStaticMarkup(React.createElement(component, props));
 
-for (const status of ["pending", "sent", "delivered", "read", "failed"]) {
+for (const status of [
+  "pending",
+  "sent",
+  "delivered",
+  "read",
+  "failed",
+  "unconfirmed",
+]) {
   test(`channel delivery renders ${status}`, () => {
     assert.match(
       render(ChannelDelivery, {

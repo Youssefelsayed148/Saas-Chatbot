@@ -198,21 +198,20 @@ test("mixed channel inbox, insights and contacts at 360px with RTL", async ({
   // connection; the campaign note stays on the thread.
   await page.goto(`/app/${tenantId}/inbox`);
   await expect(page.getByTestId("inbox-list")).toBeVisible();
-  await expect(page.locator("[data-testid=\"inbox-list\"] .inbox-row")).toHaveCount(
-    3,
-    { timeout: 60_000 },
-  );
+  await expect(
+    page.locator('[data-testid="inbox-list"] .inbox-row'),
+  ).toHaveCount(3, { timeout: 60_000 });
   const waRow = page
     .locator(".inbox-row")
     .filter({ hasText: "WhatsApp" })
     .filter({ hasText: "WA Hotline" });
   await expect(waRow).toHaveCount(1);
-  await expect(page.locator(".inbox-row").filter({ hasText: "Instagram" })).toHaveCount(
-    1,
-  );
-  await expect(page.locator(".inbox-row").filter({ hasText: "Website" })).toHaveCount(
-    1,
-  );
+  await expect(
+    page.locator(".inbox-row").filter({ hasText: "Instagram" }),
+  ).toHaveCount(1);
+  await expect(
+    page.locator(".inbox-row").filter({ hasText: "Website" }),
+  ).toHaveCount(1);
 
   // Filter to one channel: the advanced panel starts closed; open it for the
   // select, then narrow the list (360px keeps everything single-column).
@@ -229,18 +228,20 @@ test("mixed channel inbox, insights and contacts at 360px with RTL", async ({
   await advanced.evaluate((element) => {
     (element as HTMLDetailsElement).open = false;
   });
-  await expect(page.locator("[data-testid=\"inbox-list\"] .inbox-row")).toHaveCount(
-    1,
+  await expect(
+    page.locator('[data-testid="inbox-list"] .inbox-row'),
+  ).toHaveCount(1);
+  await expect(page.getByTestId("inbox-row-connection")).toContainText(
+    "WA Hotline",
   );
-  await expect(page.getByTestId("inbox-connection")).toContainText("WA Hotline");
 
   // Thread header keeps the campaign line and shows the connection.
-  await page.locator("[data-testid=\"inbox-list\"] .inbox-row a").first().click();
+  await page.locator('[data-testid="inbox-list"] .inbox-row a').first().click();
   await expect(page.getByTestId("inbox-campaign")).toHaveText(
     "From campaign: Spring",
   );
-  await expect(page.getByTestId("inbox-connection-note")).toContainText(
-    "Via WA Hotline (whatsapp)",
+  await expect(page.getByTestId("inbox-connection")).toContainText(
+    "WA Hotline",
   );
   await expect(page.locator('[data-role="visitor"]').first()).toContainText(
     "مرحبا، أحتاج مساعدة في طلبي",
@@ -251,16 +252,23 @@ test("mixed channel inbox, insights and contacts at 360px with RTL", async ({
   await page.goto(`/app/${tenantId}/analytics`);
   const table = page.getByTestId("insights-channel-table");
   await expect(table).toBeVisible({ timeout: 20_000 });
-  const waRowInsights = page.getByTestId("insights-row-whatsapp");
-  await expect(waRowInsights).toContainText("WhatsApp");
+  const waRowInsights = table.getByRole("row", { name: /WhatsApp/ });
+  await expect(waRowInsights).toBeVisible();
   const campaignList = page.getByTestId("insights-campaign-list");
   await expect(campaignList).toContainText("Spring");
   await expect(campaignList).toContainText("Autumn");
   // Insights narrowly agree with the inbox total for the same channel.
-  await page
-    .getByTestId("insights-channel-filter")
-    .selectOption("whatsapp");
-  await expect(page.getByText("Total: 1")).toBeVisible();
+  await page.getByTestId("insights-channel-filter").selectOption("whatsapp");
+  await expect(
+    page.getByRole("heading", { name: "Conversation outcomes" }),
+  ).toBeVisible();
+  await expect(
+    page
+      .locator(".insights-kpis")
+      .getByText("Conversations", { exact: true })
+      .locator("..")
+      .getByText("1", { exact: true }),
+  ).toBeVisible();
 
   // Contacts: channel column shows the new Meta channel; filter narrows.
   await page.goto(`/app/${tenantId}/contacts`);

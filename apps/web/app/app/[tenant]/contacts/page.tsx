@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
-import { LabelBadge } from "@/lib/labels";
+import { humanLabel, LabelBadge } from "@/lib/labels";
+import { channelOptions } from "@/lib/insights";
 import * as api from "@/lib/api";
 import type { Contact } from "@/lib/api";
 import { roleSatisfies, useSession } from "@/lib/session";
@@ -32,18 +33,21 @@ export default function ContactsPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [channel, setChannel] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      setContacts(await api.listContacts(tenantId));
+      setContacts(
+        await api.listContacts(tenantId, { channel: channel || undefined }),
+      );
       setError(null);
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "Could not load contacts.",
       );
     }
-  }, [tenantId]);
+  }, [tenantId, channel]);
   useEffect(() => {
     const timer = setTimeout(() => void load(), 0);
     return () => clearTimeout(timer);
@@ -138,7 +142,7 @@ export default function ContactsPage() {
       )}
       {contacts === null ? (
         <Loading />
-      ) : contacts.length === 0 ? (
+      ) : contacts.length === 0 && !channel ? (
         <Empty>
           Contacts captured through the widget lead form will appear here.
         </Empty>
@@ -149,10 +153,27 @@ export default function ContactsPage() {
             <span className="contacts-count">{contacts.length} contacts</span>
           }
         >
+          <Field label="Channel">
+            {(control) => (
+              <select
+                {...control}
+                data-testid="contacts-channel-filter"
+                value={channel}
+                onChange={(event) => setChannel(event.target.value)}
+              >
+                {channelOptions().map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.value === "" ? "All channels" : option.label}
+                  </option>
+                ))}
+              </select>
+            )}
+          </Field>
           <DataTable
             caption="Contact list"
             rows={contacts}
             rowKey={(contact) => contact.id}
+            empty={<p className="muted">No contacts on this channel.</p>}
             columns={[
               {
                 key: "name",
@@ -173,6 +194,22 @@ export default function ContactsPage() {
                 key: "phone",
                 header: "Phone",
                 cell: (contact) => <bdi dir="ltr">{contact.phone}</bdi>,
+              },
+              {
+                key: "channels",
+                header: "Channels",
+                cell: (contact) => (
+                  <span data-testid="contact-channels">
+                    {(contact.channels?.length
+                      ? contact.channels
+                      : contact.source_channel
+                        ? [contact.source_channel]
+                        : []
+                    )
+                      .map((value) => humanLabel(value))
+                      .join(", ")}
+                  </span>
+                ),
               },
               {
                 key: "stage",

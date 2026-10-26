@@ -14,6 +14,7 @@ import {
   lastDaysRange,
   rateDelta,
 } from "@/lib/charts";
+import { ConnectedChannelsCard } from "@/lib/channel-card";
 import { humanLabel } from "@/lib/labels";
 import * as api from "@/lib/api";
 import { useSession } from "@/lib/session";
@@ -34,9 +35,15 @@ type Extras = {
   days: api.ConversationTimeseriesDay[];
   analytics: api.HandoffAnalytics | null;
   modelAlert: string | null;
+  channels: api.TenantChannel[];
 };
 
-const EMPTY_EXTRAS: Extras = { days: [], analytics: null, modelAlert: null };
+const EMPTY_EXTRAS: Extras = {
+  days: [],
+  analytics: null,
+  modelAlert: null,
+  channels: [],
+};
 const PREVIOUS_LABEL = "vs previous 30 days";
 
 export default function TenantOverview() {
@@ -77,13 +84,16 @@ export default function TenantOverview() {
       // Charts and the health alert are optional: a failure leaves them out.
       const { from, to } = lastDaysRange(30);
       const firstBot = bots[0];
-      const [series, analytics, readiness] = await Promise.allSettled([
-        api.conversationTimeseries(tenant, from, to),
-        api.handoffAnalytics(tenant, from, to),
-        canReadKnowledge && firstBot
-          ? api.getBotReadiness(tenant, firstBot.id)
-          : Promise.resolve(null),
-      ]);
+      const [series, analytics, readiness, channels] = await Promise.allSettled(
+        [
+          api.conversationTimeseries(tenant, from, to),
+          api.handoffAnalytics(tenant, from, to),
+          canReadKnowledge && firstBot
+            ? api.getBotReadiness(tenant, firstBot.id)
+            : Promise.resolve(null),
+          api.listTenantChannels(tenant),
+        ],
+      );
       const days =
         series.status === "fulfilled" && Array.isArray(series.value?.days)
           ? series.value.days
@@ -95,13 +105,19 @@ export default function TenantOverview() {
           ? analytics.value
           : null;
       const model =
-        readiness.status === "fulfilled" && Array.isArray(readiness.value?.items)
+        readiness.status === "fulfilled" &&
+        Array.isArray(readiness.value?.items)
           ? readiness.value.items.find((item) => item.id === "model_reachable")
           : undefined;
       setExtras({
         days,
         analytics: stats,
         modelAlert: model && model.status !== "ok" ? model.detail : null,
+        channels:
+          channels.status === "fulfilled" &&
+          Array.isArray(channels.value?.items)
+            ? channels.value.items
+            : [],
       });
     } catch (caught) {
       setError(
@@ -117,7 +133,7 @@ export default function TenantOverview() {
   }, [me, loading, router, load]);
   const base = `/app/${tenant}`;
   const firstBot = data?.bots[0];
-  const { days, analytics, modelAlert } = extras;
+  const { days, analytics, modelAlert, channels } = extras;
   const resolved = analytics?.resolved_vs_open?.resolved ?? 0;
   const open = analytics?.resolved_vs_open?.open ?? 0;
   const showTrend = hasChartData(days.map((day) => day.conversations));
@@ -274,7 +290,9 @@ export default function TenantOverview() {
                         </span>
                         <span className="recent-meta">
                           <StatusBadge value={row.status} />
-                          <small>{formatRelativeTime(row.last_message_at)}</small>
+                          <small>
+                            {formatRelativeTime(row.last_message_at)}
+                          </small>
                         </span>
                       </Link>
                     </li>
@@ -282,6 +300,7 @@ export default function TenantOverview() {
                 </ul>
               )}
             </Card>
+            <ConnectedChannelsCard items={channels} />
             {canReadKnowledge && !setupDone && (
               <Card title="Your first assistant">
                 <p className="eyebrow">GET STARTED</p>

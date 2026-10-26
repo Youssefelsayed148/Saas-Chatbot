@@ -303,6 +303,7 @@ export function InboxList({
             <label>
               Channel
               <select
+                data-testid="inbox-channel-filter"
                 value={channel}
                 onChange={(e) => setParams({ channel: e.target.value })}
               >
@@ -429,6 +430,37 @@ export function InboxList({
                         <span className="channel-label" title={row.channel}>
                           {humanLabel(row.channel)}
                         </span>
+                        {row.connection_name && (
+                          <small
+                            className="muted"
+                            dir="auto"
+                            data-testid="inbox-row-connection"
+                          >
+                            {row.connection_name}
+                          </small>
+                        )}
+                        {row.connection_status &&
+                          row.connection_status !== "active" && (
+                            <StatusBadge
+                              value={row.connection_status}
+                              tone={
+                                row.connection_status === "paused"
+                                  ? "warning"
+                                  : "danger"
+                              }
+                            >
+                              {humanLabel(row.connection_status)}
+                            </StatusBadge>
+                          )}
+                        {row.campaign_name && (
+                          <small
+                            className="muted"
+                            dir="auto"
+                            data-testid="inbox-row-campaign"
+                          >
+                            From campaign: <bdi>{row.campaign_name}</bdi>
+                          </small>
+                        )}
                         <small
                           className="muted inbox-row-mode"
                           data-value={row.mode}

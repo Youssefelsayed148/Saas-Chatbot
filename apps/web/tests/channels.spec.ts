@@ -22,6 +22,20 @@ interface Connected {
   displayName: string;
 }
 
+/** The Channels tab of one organization workspace (staff). */
+async function orgChannels(page: Page, tenantId: string): Promise<void> {
+  await page.goto(`/platform/clients/${tenantId}?tab=Channels`);
+  await expect(page.getByTestId("org-channels")).toBeVisible();
+}
+
+/** The table row of the first connection (the testid sits inside its cell). */
+function firstRow(page: Page) {
+  return page
+    .getByRole("row")
+    .filter({ has: page.getByTestId("channel-row") })
+    .first();
+}
+
 async function createConnection(
   page: Page,
   prefix: string,
@@ -29,12 +43,8 @@ async function createConnection(
   const email = `${prefix}.${Date.now()}@example.com`;
   const { tenantId } = await registerAdmin(page, prefix, { email });
   promoteToStaff(email);
-  await page.goto("/platform/channels");
-  await expect(page.getByRole("heading", { name: "Channels" })).toBeVisible();
+  await orgChannels(page, tenantId);
   const displayName = `${prefix} Support WhatsApp`;
-  await page
-    .getByRole("combobox", { name: "Client", exact: true })
-    .selectOption({ index: 1 });
   await page
     .getByRole("combobox", { name: "Assistant", exact: true })
     .selectOption({ index: 1 });
@@ -43,7 +53,7 @@ async function createConnection(
     .selectOption("whatsapp");
   await page.getByLabel("Connection name").fill(displayName);
   await page.getByLabel("Many base URL").fill(MANY_BASE_URL);
-  await page.getByLabel("Many channel reference").fill("wa-001");
+  await page.getByLabel("Many channel reference").fill(`wa-${Date.now()}-${prefix}`);
   await page.getByRole("button", { name: "Create connection" }).click();
   await expect(page.getByTestId("channel-secret")).toBeVisible();
   const reveal = page.getByTestId("channel-secret-reveal");
@@ -79,9 +89,12 @@ test("staff manage a connection end to end at 360px with RTL", async ({
 }) => {
   test.setTimeout(90_000);
   await page.setViewportSize({ width: 360, height: 800 });
-  const { tenantId } = await createConnection(page, "channels-staff");
-  await page.goto("/platform/channels");
-  const row = page.getByTestId("channel-row").first();
+  const { tenantId, secret: initialSecret } = await createConnection(
+    page,
+    "channels-staff",
+  );
+  await orgChannels(page, tenantId);
+  const row = firstRow(page);
   await expect(row).toContainText("Active");
   await expect(row).toContainText("Unknown");
 
@@ -96,32 +109,19 @@ test("staff manage a connection end to end at 360px with RTL", async ({
 
   // The AI toggle flips ai_enabled and survives a reload (controlled input:
   // the state changes when the PATCH lands, so click and wait for the notice).
-  await row.getByLabel(/Allow AI replies/).click();
+  await row.getByRole("switch").click();
   await expect(
     page.locator("main").getByText("AI replies paused."),
   ).toBeVisible();
   await page.reload();
-  await expect(
-    page
-      .getByTestId("channel-row")
-      .first()
-      .getByLabel(/Allow AI replies/),
-  ).not.toBeChecked();
-  await page
-    .getByTestId("channel-row")
-    .first()
-    .getByLabel(/Allow AI replies/)
-    .click();
+  await expect(firstRow(page).getByRole("switch")).not.toBeChecked();
+  await firstRow(page).getByRole("switch").click();
   await expect(
     page.locator("main").getByText("AI replies allowed."),
   ).toBeVisible();
 
   // Rotate the secret: the new value is shown once again.
-  await page
-    .getByTestId("channel-row")
-    .first()
-    .getByRole("button", { name: "Rotate secret" })
-    .click();
+  await firstRow(page).getByRole("button", { name: "Rotate secret" }).click();
   await page
     .getByRole("dialog", { name: /Rotate the connection secret/ })
     .getByRole("button", { name: "Rotate" })
@@ -134,48 +134,49 @@ test("staff manage a connection end to end at 360px with RTL", async ({
   expect(rotated).toBeTruthy();
   await page.getByRole("button", { name: "I saved the secret" }).click();
   await expect(page.getByTestId("channel-secret-reveal")).toHaveCount(0);
-  await expect(
-    page
-      .getByTestId("channel-row")
-      .first()
-      .getByText(/secret version 2/),
-  ).toBeVisible();
+  expect(rotated).not.toBe(initialSecret);
 
   // Revoke through the confirmation dialog; the row stays read-only.
-  await page
-    .getByTestId("channel-row")
-    .first()
-    .getByRole("button", { name: "Revoke" })
-    .click();
+  await firstRow(page).getByRole("button", { name: "Revoke" }).click();
   await page
     .getByRole("dialog", { name: /Revoke this connection/ })
     .getByRole("button", { name: "Revoke" })
     .click();
-  await expect(
-    page.getByTestId("channel-row").first().getByText("Revoked"),
-  ).toBeVisible();
-  await expect(
-    page.getByTestId("channel-row").first().getByRole("button"),
-  ).toHaveCount(0);
+  await expect(firstRow(page).getByText("Revoked")).toBeVisible();
+  await expect(firstRow(page).getByRole("button")).toHaveCount(0);
 
   // The client overview card is read-only and reflects the outage state.
   await page.goto(`/app/${tenantId}`);
   await expect(page.getByTestId("connected-channels")).toBeVisible();
-  await expect(page.getByTestId("channel-overview-row")).toContainText(
+  await expect(page.getByTestId("connected-channel")).toContainText(
     "channels-staff Support WhatsApp",
   );
   await expect(page.getByTestId("connected-channels")).toContainText("Revoked");
 
-  // The whole page fits 360px with the document in RTL (no clipped rows).
+  // The staff overview lists the connection and links to its organization.
   await page.goto("/platform/channels");
-  await page.locator("html").evaluate((el) => el.setAttribute("dir", "rtl"));
-  await page.waitForTimeout(300);
-  expect(
-    await page.evaluate(() => {
-      const element = document.documentElement;
-      return element.scrollWidth <= window.innerWidth + 1;
-    }),
-  ).toBeTruthy();
+  await expect(page.getByTestId("channels-list")).toContainText(
+    "channels-staff Support WhatsApp",
+  );
+  await expect(
+    page.getByRole("link", { name: "Open organization" }).first(),
+  ).toHaveAttribute("href", new RegExp(`/platform/clients/${tenantId}`));
+
+  // Both staff screens fit 360px with the document in RTL (no clipped rows).
+  for (const path of [
+    "/platform/channels",
+    `/platform/clients/${tenantId}?tab=Channels`,
+  ]) {
+    await page.goto(path);
+    await page.locator("html").evaluate((el) => el.setAttribute("dir", "rtl"));
+    await page.waitForTimeout(300);
+    expect(
+      await page.evaluate(() => {
+        const element = document.documentElement;
+        return element.scrollWidth <= window.innerWidth + 1;
+      }),
+    ).toBeTruthy();
+  }
 });
 
 test("fake Many event drives the shared inbox and the overview card", async ({
@@ -225,15 +226,16 @@ test("fake Many event drives the shared inbox and the overview card", async ({
   });
   // The worker ingests the event into the shared inbox pipeline. The row
   // preview may already show the localized handoff reply, so match the
-  // contact ("Visitor …"), not the message text.
+  // contact name carried by the event, not the message text.
   await page.setViewportSize({ width: 360, height: 800 });
   await page.goto(`/app/${tenantId}/inbox`);
-  const threadLink = page.getByRole("link", { name: /Visitor/ }).first();
+  const threadLink = page.getByRole("link", { name: /وسام الإيت/ }).first();
   await expect(threadLink).toBeVisible({ timeout: 30_000 });
   await threadLink.click();
-  await expect(
-    page.getByRole("heading", { name: "Conversation" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "وسام الإيت" })).toBeVisible();
+  await expect(page.getByTestId("inbox-connection")).toContainText(
+    "Support WhatsApp",
+  );
   await expect(page.getByTestId("inbox-campaign")).toHaveText(
     "From campaign: Spring",
   );
@@ -252,12 +254,14 @@ test("fake Many event drives the shared inbox and the overview card", async ({
   // The client Overview shows the read-only connected channels card.
   await page.goto(`/app/${tenantId}`);
   await expect(page.getByTestId("connected-channels")).toBeVisible();
-  await expect(page.getByTestId("channel-overview-row")).toContainText(
+  await expect(page.getByTestId("connected-channel")).toContainText(
     displayName,
   );
-  await expect(page.getByTestId("channel-overview-row")).toContainText(
-    "WhatsApp",
-  );
+  await expect(page.getByTestId("connected-channel")).toContainText("WhatsApp");
+  // The plan-usage meter counts the connection.
+  await expect(
+    page.getByRole("meter", { name: "Connected channels" }),
+  ).toBeVisible();
 
   // RTL layout fits 360px on the thread and the overview.
   for (const path of [`/app/${tenantId}/inbox`, `/app/${tenantId}`]) {

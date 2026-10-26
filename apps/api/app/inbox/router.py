@@ -12,7 +12,14 @@ from app.chat.conversations import append_message, messages_of
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
 from app.core.tenancy import TenantContext, TenantContextDep
-from app.db.models import ChannelConnection, Conversation, Membership, Message, UsageEvent
+from app.db.models import (
+    ChannelConnection,
+    Contact,
+    Conversation,
+    Membership,
+    Message,
+    UsageEvent,
+)
 from app.inbox.handoff import add_system_message
 
 router = APIRouter(prefix="/api/v1/tenants/{tenant_id}/conversations")
@@ -88,6 +95,16 @@ def conversation_detail(
                     "up" if kind == "feedback_up" else "down"
                 )
     state = _state(row)
+    state["contact_name"] = (
+        context.db.scalar(
+            select(Contact.display_name).where(
+                Contact.tenant_id == context.tenant_id, Contact.id == row.contact_id
+            )
+        )
+        or None
+        if row.contact_id
+        else None
+    )
     if row.source == "channel":
         connection = context.db.scalar(
             select(ChannelConnection).where(
