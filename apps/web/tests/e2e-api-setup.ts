@@ -127,6 +127,9 @@ export function startWorker(databaseUrl: string): ChildProcess {
     env: {
       ...process.env,
       DATABASE_URL: databaseUrl,
+      // The guarded test embedder only runs in the test environment; do not rely on the caller
+      // exporting it (CI does not).
+      ENVIRONMENT: "test",
       WORKER_ALLOW_ONLY_TEST_DB: "1",
       CHAT_STUB_MODEL: "1",
       EMBEDDING_TEST_STUB: "1",
