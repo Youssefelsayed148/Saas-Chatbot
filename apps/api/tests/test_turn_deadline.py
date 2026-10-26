@@ -31,7 +31,8 @@ corpus = _rh.corpus
 
 
 def settings_of(corpus: dict[str, Any], **overrides: Any) -> Settings:
-    return corpus["settings"].model_copy(update=overrides)
+    settings: Settings = corpus["settings"]
+    return settings.model_copy(update=overrides)
 
 
 def turn(

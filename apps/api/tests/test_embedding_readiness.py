@@ -3,7 +3,7 @@ live published revision, backfill is batched and scoped to draft + published."""
 
 import math
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 import pytest
@@ -107,9 +107,7 @@ def test_ingest_while_live_keeps_published_hybrid_and_reports_progress(
     assert bot.embedding_ready is True
     assert _revision(db, users, "published").embedding_model == IDENTITY
     assert _revision(db, users, "draft").embedding_model is None
-    pending = db.scalar(
-        select(func.count()).select_from(Job).where(Job.type == "reembed_backfill")
-    )
+    pending = db.scalar(select(func.count()).select_from(Job).where(Job.type == "reembed_backfill"))
     assert pending == 2  # the first one succeeded; the successor is queued
     live = _retrieve(db, users, bot_id, tmp_path)
     assert live.mode == "hybrid" and live.degradation_reason is None
@@ -162,7 +160,8 @@ def test_queue_backfill_error_after_ingest_is_a_job_warning(
     db.expire_all()
     stored = db.get(Job, job.id)
     assert stored is not None and stored.status == "succeeded"
-    assert stored.payload["warnings"] and "Embedding not queued" in stored.payload["warnings"][0]
+    warnings = cast(list[str], stored.payload["warnings"])
+    assert warnings and "Embedding not queued" in warnings[0]
 
 
 def test_backfill_skips_archived_and_rollback_embeds_on_demand(
@@ -180,12 +179,14 @@ def test_backfill_skips_archived_and_rollback_embeds_on_demand(
 
     # Make the archived revision stale; a backfill must leave it alone.
     db.execute(
-        update(Chunk).where(Chunk.revision_id == first_id).values(
-            embedding=None, embedding_model=None, embedding_dim=None
-        )
+        update(Chunk)
+        .where(Chunk.revision_id == first_id)
+        .values(embedding=None, embedding_model=None, embedding_dim=None)
     )
     db.execute(
-        update(KnowledgeRevision).where(KnowledgeRevision.id == first_id).values(embedding_model=None)
+        update(KnowledgeRevision)
+        .where(KnowledgeRevision.id == first_id)
+        .values(embedding_model=None)
     )
     db.commit()
     backfill_job = None
@@ -198,9 +199,9 @@ def test_backfill_skips_archived_and_rollback_embeds_on_demand(
     drain_jobs(_engine(), tmp_path)
     db.expire_all()
     still_pending = db.scalar(
-        select(func.count()).select_from(Chunk).where(
-            Chunk.revision_id == first_id, Chunk.embedding.is_(None)
-        )
+        select(func.count())
+        .select_from(Chunk)
+        .where(Chunk.revision_id == first_id, Chunk.embedding.is_(None))
     )
     assert still_pending and still_pending > 0
 
@@ -242,16 +243,20 @@ def test_batching_checkpoint_resume_and_metering(
     monkeypatch.setattr(backfill, "from_settings", lambda settings, identity: Counting(identity))
     users = seeded_tenant(rooted_app, db, prefix="h1-batch")
     bot_id = str(make_bot(users, "batch")["id"])
-    upload_sources(users, bot_id, [("a.md", MD_EN.read_bytes()), ("b.md", MD_AR.read_bytes())], tmp_path)
+    upload_sources(
+        users, bot_id, [("a.md", MD_EN.read_bytes()), ("b.md", MD_AR.read_bytes())], tmp_path
+    )
     start_ingestion(users, bot_id)
     run_one_ingest_job(_engine(), tmp_path)  # ingest
     run_one_ingest_job(_engine(), tmp_path)  # backfill: batch 2 fails
     db.expire_all()
-    total = db.scalar(select(func.count()).select_from(Chunk).where(Chunk.tenant_id == users.tenant_id))
+    total = db.scalar(
+        select(func.count()).select_from(Chunk).where(Chunk.tenant_id == users.tenant_id)
+    )
     embedded = db.scalar(
-        select(func.count()).select_from(Chunk).where(
-            Chunk.tenant_id == users.tenant_id, Chunk.embedding.is_not(None)
-        )
+        select(func.count())
+        .select_from(Chunk)
+        .where(Chunk.tenant_id == users.tenant_id, Chunk.embedding.is_not(None))
     )
     assert total and total > 4
     assert embedded == 2  # the first batch is checkpointed; the failed one is not lost work
@@ -267,7 +272,9 @@ def test_batching_checkpoint_resume_and_metering(
     # 1 + 1 (failed) + ceil(remaining / 2) provider calls; one metering event per call.
     assert sum(calls) == total + 2  # the failed batch's texts were re-sent once
     events = db.scalar(
-        select(func.count()).select_from(UsageEvent).where(
+        select(func.count())
+        .select_from(UsageEvent)
+        .where(
             UsageEvent.tenant_id == users.tenant_id,
             UsageEvent.payload["event_type"].as_string() == "embed_ingest",
         )
@@ -283,6 +290,9 @@ def test_other_tenant_cannot_see_embedding_state(
     users_b = seeded_tenant(rooted_app, db, prefix="h1-tb")
     base = f"/api/v1/tenants/{users_b.tenant_id}/bots/{bot_a}/revisions"
     assert users_b.call("staff", "GET", base).status_code == 404
-    assert users_a.call(
-        "staff", "GET", f"/api/v1/tenants/{users_a.tenant_id}/bots/{bot_a}/revisions"
-    ).status_code == 200
+    assert (
+        users_a.call(
+            "staff", "GET", f"/api/v1/tenants/{users_a.tenant_id}/bots/{bot_a}/revisions"
+        ).status_code
+        == 200
+    )

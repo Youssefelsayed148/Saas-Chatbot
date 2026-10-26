@@ -96,7 +96,7 @@ def test_provider_quota_auth_stops_fallback_and_subsequent_calls(status: int) ->
     assert len(calls) == model.requests_used == 1
 
 
-def test_provider_has_no_retries_and_only_one_fallback() -> None:
+def test_provider_has_no_retries_and_walks_the_fallback_chain_once() -> None:
     calls = []
 
     def response(request: httpx.Request) -> httpx.Response:
@@ -114,7 +114,8 @@ def test_provider_has_no_retries_and_only_one_fallback() -> None:
     )
     with pytest.raises(ProviderError):
         model.complete([], json_mode=True, max_tokens=120)
-    assert len(calls) == model.requests_used == 2
+    # No retries: exactly one request per configured model (primary + fallback chain).
+    assert len(calls) == model.requests_used == 3
 
 
 def test_failed_gate_never_calls_generation_and_returns_safe_handoff(monkeypatch: Any) -> None:
@@ -145,7 +146,7 @@ def test_stage0_raw_fts_gate_measurements(db: Session, tmp_path: Path) -> None:
     bot = db.scalar(select(Bot).where(Bot.tenant_id == seed.tenant_id, Bot.id == seed.bot_id))
     assert bot is not None and bot.published_revision_id is not None
     cases_file = Path(__file__).parent / "fixtures" / "rag-phase2-eval.jsonl"
-    cases = [json.loads(line) for line in cases_file.read_text().splitlines()]
+    cases = [json.loads(line) for line in cases_file.read_text(encoding="utf-8").splitlines()]
     chunks = list(
         db.scalars(
             select(Chunk).where(

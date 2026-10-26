@@ -241,8 +241,11 @@ def test_create_validation_is_safe_and_atomic(app: Any, db: Any, payload: dict[s
     staff = staff_login(app, db)
     result = create(staff, **payload)
     assert result.status_code == 422, result.text
-    assert "password" not in result.text.lower()
-    assert "phone" not in result.text.lower()
+    # Field names may be reported (A1.2); submitted values must never be echoed.
+    for value in payload.values():
+        if isinstance(value, str) and value:
+            assert value not in result.text
+    assert PASSWORD not in result.text
     assert db.scalar(select(User).where(User.email == "test.owner@example.com")) is None
 
 

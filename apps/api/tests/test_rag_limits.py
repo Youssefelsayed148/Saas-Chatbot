@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from decimal import Decimal
 from pathlib import Path
 from threading import Barrier
+from typing import Any, cast
 from uuid import UUID
 
 import pytest
@@ -189,7 +190,7 @@ def test_reservations_are_serialized_and_unknown_usage_keeps_budget(
     ],
 )
 def test_zero_caps_block_new_work(
-    app: FastAPI, db: Session, counter: str, event_type: str, kwargs: dict[str, int]
+    app: FastAPI, db: Session, counter: str, event_type: str, kwargs: dict[str, Any]
 ) -> None:
     users = seeded_tenant(app, db, "rag-zero-" + counter)
     bid = UUID(make_bot(users)["id"])
@@ -269,7 +270,9 @@ def _event_status(db: Session, tenant_id: UUID, bot_id: UUID) -> list[tuple[str,
             UsageEvent.kind == "ai_usage",
         )
     ).all()
-    return sorted((str(r.payload["status"]), int(r.payload["accounted_tokens"])) for r in rows)
+    return sorted(
+        (str(r.payload["status"]), int(cast(int, r.payload["accounted_tokens"]))) for r in rows
+    )
 
 
 def test_definite_provider_failures_release_reservations(app: FastAPI, db: Session) -> None:

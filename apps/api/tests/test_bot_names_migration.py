@@ -29,8 +29,8 @@ def test_bot_name_backfill_keeps_existing_values(base_url: str) -> None:
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "INSERT INTO tenants(id,name,slug,created_at,updated_at) "
-                    f"VALUES ('{TENANT}','Org','org-names',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)"
+                    "INSERT INTO tenants(id,name,slug,created_at) "
+                    f"VALUES ('{TENANT}','Org','org-names',CURRENT_TIMESTAMP)"
                 )
             )
             _bot(connection, "aaaaaaaa-0000-4000-8000-000000000001", "Legacy", "{}")

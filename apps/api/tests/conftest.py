@@ -12,10 +12,10 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from pydantic import SecretStr
 from alembic.config import Config
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from pydantic import SecretStr
 from sqlalchemy import make_url, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session as OrmSession
