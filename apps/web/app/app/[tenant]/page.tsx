@@ -95,7 +95,8 @@ export default function TenantOverview() {
           ? analytics.value
           : null;
       const model =
-        readiness.status === "fulfilled" && Array.isArray(readiness.value?.items)
+        readiness.status === "fulfilled" &&
+        Array.isArray(readiness.value?.items)
           ? readiness.value.items.find((item) => item.id === "model_reachable")
           : undefined;
       setExtras({
@@ -274,7 +275,9 @@ export default function TenantOverview() {
                         </span>
                         <span className="recent-meta">
                           <StatusBadge value={row.status} />
-                          <small>{formatRelativeTime(row.last_message_at)}</small>
+                          <small>
+                            {formatRelativeTime(row.last_message_at)}
+                          </small>
                         </span>
                       </Link>
                     </li>

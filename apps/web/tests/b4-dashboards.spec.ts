@@ -51,8 +51,7 @@ async function mock(page: Page, options: Options = {}) {
           : [{ tenant_id: tenant, tenant_name: "B4 org", role: "admin" }],
       });
     if (path === "auth/config") return respond({ self_serve_signup: false });
-    if (path === "platform/tenants")
-      return respond({ tenants: [], total: 0 });
+    if (path === "platform/tenants") return respond({ tenants: [], total: 0 });
     const suffix = path.replace(`tenants/${tenant}`, "");
     if (suffix === "/bots")
       return respond([
@@ -307,7 +306,9 @@ test("Insights: an empty period shows one message and no empty cards", async ({
 }) => {
   await mock(page, { empty: true });
   await page.goto(`${base}/analytics`);
-  await expect(page.getByText("No conversations in this period.")).toBeVisible();
+  await expect(
+    page.getByText("No conversations in this period."),
+  ).toBeVisible();
   for (const title of [
     "Conversation outcomes",
     "Conversations by channel",

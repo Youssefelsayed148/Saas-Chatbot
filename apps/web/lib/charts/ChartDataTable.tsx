@@ -4,7 +4,10 @@ import { useSyncExternalStore } from "react";
 import type { ChartColor, ChartDataTableProps } from "./types";
 
 /** Palette slot (1..6) -> CSS token reference. Default slot is index + 1. */
-export function chartColor(color: ChartColor | undefined, index: number): string {
+export function chartColor(
+  color: ChartColor | undefined,
+  index: number,
+): string {
   const slot = color ?? (((index % 6) + 1) as ChartColor);
   return `var(--chart-${slot})`;
 }
@@ -36,7 +39,11 @@ export function usePrefersReducedMotion(): boolean {
 }
 
 /** Visually hidden table: the text alternative of a chart. */
-export function ChartDataTable({ caption, columns, rows }: ChartDataTableProps) {
+export function ChartDataTable({
+  caption,
+  columns,
+  rows,
+}: ChartDataTableProps) {
   return (
     <table className="sr-only chart-sr-only">
       <caption>{caption}</caption>

@@ -134,7 +134,9 @@ test("client admin requests a change and a separate operator triages it", async 
   await operator.goto(`/app/${tenantId}/analytics`);
   const aiPanel = operator.getByTestId("rag-operator-panel");
   await expect(aiPanel).toBeVisible();
-  await aiPanel.getByRole("spinbutton", { name: "AI tokens per month", exact: true }).fill("12345");
+  await aiPanel
+    .getByRole("spinbutton", { name: "AI tokens per month", exact: true })
+    .fill("12345");
   await aiPanel
     .getByRole("button", { name: "Save AI limits", exact: true })
     .click();
@@ -148,7 +150,12 @@ test("client admin requests a change and a separate operator triages it", async 
     .getByRole("dialog", { name: "Reset to plan defaults?" })
     .getByRole("button", { name: "Confirm", exact: true })
     .click();
-  await expect(aiPanel.getByRole("spinbutton", { name: "AI tokens per month", exact: true })).toHaveValue("");
+  await expect(
+    aiPanel.getByRole("spinbutton", {
+      name: "AI tokens per month",
+      exact: true,
+    }),
+  ).toHaveValue("");
   await page.goto(`/app/${tenantId}/bots/${bot.id}/settings`);
   await expect(page.getByTestId("rag-tier-control")).toHaveCount(0);
   await operator.goto(`/app/${tenantId}/bots/${bot.id}/settings`);

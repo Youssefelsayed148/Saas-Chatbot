@@ -133,9 +133,7 @@ async function createOrgAndBot(
   botName: string,
 ): Promise<{ tenantId: string; botId: string; locator: string }> {
   const { tenantId } = await registerOperator(page, "Widget", { botName });
-  await page
-    .getByRole("link", { name: new RegExp(`Open ${botName}`) })
-    .click();
+  await page.getByRole("link", { name: new RegExp(`Open ${botName}`) }).click();
   await page.waitForURL(/\/settings$/);
   const botId = new URL(page.url()).pathname.split("/")[4];
   const bot = (await (
@@ -314,37 +312,45 @@ test("visitor never renders sources even when a response contains citations", as
       },
     }),
   );
-  await page.route("**/api/public/v1/sessions/*/messages", async (route) => {
-    if (route.request().method() !== "POST") {
-      await route.fulfill({ json: [] });
-      return;
-    }
-    await route.fulfill({
-      json: {
-        conversation_id: "00000000-0000-4000-8000-000000000002",
-        visitor_message: {
-          id: "00000000-0000-4000-8000-000000000003",
-          created_at: "2026-01-01T00:00:00Z",
+  // The widget streams first; a 502 makes it fall back to the buffered turn mocked below.
+  await page.route("**/api/public/v1/sessions/*/messages/stream", (route) =>
+    route.fulfill({ status: 502, body: "bad gateway" }),
+  );
+  // Polls carry a ?since= cursor, so match the path with or without a query.
+  await page.route(
+    /\/api\/public\/v1\/sessions\/[^/]+\/messages(\?.*)?$/,
+    async (route) => {
+      if (route.request().method() !== "POST") {
+        await route.fulfill({ json: [] });
+        return;
+      }
+      await route.fulfill({
+        json: {
+          conversation_id: "00000000-0000-4000-8000-000000000002",
+          visitor_message: {
+            id: "00000000-0000-4000-8000-000000000003",
+            created_at: "2026-01-01T00:00:00Z",
+          },
+          ai_message: {
+            id: "00000000-0000-4000-8000-000000000004",
+            text: "Here is the answer.",
+            citations: [
+              {
+                chunk_id: "unsafe-source",
+                title: "Unsafe source",
+                source_url: "javascript:alert(document.domain)",
+                page_ref: null,
+              },
+            ],
+            needs_human: false,
+            created_at: "2026-01-01T00:00:01Z",
+          },
+          kind: "answer",
+          language: "en",
         },
-        ai_message: {
-          id: "00000000-0000-4000-8000-000000000004",
-          text: "Here is the answer.",
-          citations: [
-            {
-              chunk_id: "unsafe-source",
-              title: "Unsafe source",
-              source_url: "javascript:alert(document.domain)",
-              page_ref: null,
-            },
-          ],
-          needs_human: false,
-          created_at: "2026-01-01T00:00:01Z",
-        },
-        kind: "answer",
-        language: "en",
-      },
-    });
-  });
+      });
+    },
+  );
 
   await page.goto(`/widget/frame?locator=${locator}`);
   const frame = page.getByTestId("widget-frame-body");

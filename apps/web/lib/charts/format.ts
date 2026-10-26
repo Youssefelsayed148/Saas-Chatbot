@@ -23,7 +23,8 @@ export function formatDuration(seconds: number | null | undefined): string {
   if (seconds == null || !Number.isFinite(seconds)) return DASH;
   if (seconds < 10) return `${seconds.toFixed(1).replace(/\.0$/, "")} s`;
   if (seconds < 60) return `${Math.round(seconds)} s`;
-  if (seconds < 600) return `${(seconds / 60).toFixed(1).replace(/\.0$/, "")} min`;
+  if (seconds < 600)
+    return `${(seconds / 60).toFixed(1).replace(/\.0$/, "")} min`;
   if (seconds < 3600) return `${Math.round(seconds / 60)} min`;
   return `${(seconds / 3600).toFixed(1).replace(/\.0$/, "")} h`;
 }

@@ -46,7 +46,8 @@ export function StackedBar({
               <bdi dir="auto">{segment.label}</bdi>
             </span>
             <bdi dir="ltr" className="chart-legend-value">
-              {formatValue(segment.value)} · {formatPercent(segment.value / total)}
+              {formatValue(segment.value)} ·{" "}
+              {formatPercent(segment.value / total)}
             </bdi>
           </li>
         ))}

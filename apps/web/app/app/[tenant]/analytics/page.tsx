@@ -137,10 +137,14 @@ export default function HandoffAnalyticsPage() {
               <StatCard
                 label="Handoffs"
                 value={formatCount(data.handoff_count ?? 0)}
-                delta={countDelta(data.handoff_count ?? 0, previous?.handoff_count, {
-                  upIsGood: false,
-                  label: compare,
-                })}
+                delta={countDelta(
+                  data.handoff_count ?? 0,
+                  previous?.handoff_count,
+                  {
+                    upIsGood: false,
+                    label: compare,
+                  },
+                )}
               />
               <StatCard
                 label="Handoff rate"

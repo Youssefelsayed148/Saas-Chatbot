@@ -77,9 +77,7 @@ export async function registerAndPrepareBot(
   });
   promoteToStaff(operatorEmail);
   await page.goto(`/app/${tenantId}/bots`);
-  await page
-    .getByRole("link", { name: new RegExp(`Open ${botName}`) })
-    .click();
+  await page.getByRole("link", { name: new RegExp(`Open ${botName}`) }).click();
   await page.waitForURL(/\/settings$/);
   const botId = new URL(page.url()).pathname.split("/")[4];
   const headers = { "X-CSRF-Token": await csrfToken(page) };

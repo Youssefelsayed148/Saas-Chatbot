@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { registerAdmin, registerAndPrepareBot, registerOperator } from "./e2e-helpers";
+import {
+  registerAdmin,
+  registerAndPrepareBot,
+  registerOperator,
+} from "./e2e-helpers";
 
 test("staff creates bots from the directory and locked organization form", async ({
   page,

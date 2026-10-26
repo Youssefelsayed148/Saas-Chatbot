@@ -20,10 +20,30 @@ const LOADERS = {
 } as const;
 
 const LAYOUTS = [
-  { name: "1920x1140", viewport: { width: 1920, height: 1140 }, lang: "en", dir: "ltr" },
-  { name: "1280x800", viewport: { width: 1280, height: 800 }, lang: "en", dir: "ltr" },
-  { name: "375x667", viewport: { width: 375, height: 667 }, lang: "en", dir: "ltr" },
-  { name: "RTL 1280x800", viewport: { width: 1280, height: 800 }, lang: "ar", dir: "rtl" },
+  {
+    name: "1920x1140",
+    viewport: { width: 1920, height: 1140 },
+    lang: "en",
+    dir: "ltr",
+  },
+  {
+    name: "1280x800",
+    viewport: { width: 1280, height: 800 },
+    lang: "en",
+    dir: "ltr",
+  },
+  {
+    name: "375x667",
+    viewport: { width: 375, height: 667 },
+    lang: "en",
+    dir: "ltr",
+  },
+  {
+    name: "RTL 1280x800",
+    viewport: { width: 1280, height: 800 },
+    lang: "ar",
+    dir: "rtl",
+  },
 ] as const;
 
 async function mockPublicApi(page: Page, lang: string, dir: string) {
@@ -63,7 +83,10 @@ async function mockPublicApi(page: Page, lang: string, dir: string) {
       status: 201,
       json: {
         conversation_id: "c1",
-        visitor_message: { id: `v-${counter}`, created_at: "2026-10-25T10:00:00Z" },
+        visitor_message: {
+          id: `v-${counter}`,
+          created_at: "2026-10-25T10:00:00Z",
+        },
         ai_message: {
           id: `a-${counter}`,
           text: "Returns are accepted within 14 days.\n- Keep the receipt\n- Keep the packaging\n- Contact support to start a return",
@@ -108,7 +131,11 @@ async function ask(frame: FrameLocator, text: string) {
   await expect(frame.getByTestId("widget-input")).toBeEnabled();
 }
 
-async function expectReadablePanel(page: Page, frame: FrameLocator, minThread: number) {
+async function expectReadablePanel(
+  page: Page,
+  frame: FrameLocator,
+  minThread: number,
+) {
   const viewport = page.viewportSize()!;
   const outer = (await page.getByTestId("widget-frame").boundingBox())!;
   // Bounded: inside the viewport, at most 640px, at least a readable minimum.
@@ -117,7 +144,9 @@ async function expectReadablePanel(page: Page, frame: FrameLocator, minThread: n
   expect(outer.x).toBeGreaterThanOrEqual(0);
   expect(outer.x + outer.width).toBeLessThanOrEqual(viewport.width);
   expect(outer.height).toBeLessThanOrEqual(640.5);
-  expect(outer.height).toBeGreaterThanOrEqual(Math.min(480, viewport.height * 0.6));
+  expect(outer.height).toBeGreaterThanOrEqual(
+    Math.min(480, viewport.height * 0.6),
+  );
   // Thread is readable.
   const thread = (await frame.locator(".widget-thread").boundingBox())!;
   expect(thread.height).toBeGreaterThanOrEqual(minThread);
@@ -125,20 +154,27 @@ async function expectReadablePanel(page: Page, frame: FrameLocator, minThread: n
   for (const id of ["widget-input", "widget-send"]) {
     const box = (await frame.getByTestId(id).boundingBox())!;
     expect(box.y, `${id} top`).toBeGreaterThanOrEqual(outer.y);
-    expect(box.y + box.height, `${id} bottom`).toBeLessThanOrEqual(outer.y + outer.height + 0.5);
+    expect(box.y + box.height, `${id} bottom`).toBeLessThanOrEqual(
+      outer.y + outer.height + 0.5,
+    );
   }
 }
 
 for (const loader of ["source", "served"] as const) {
   for (const layout of LAYOUTS) {
-    test(`widget panel is bounded and readable (${loader} loader, ${layout.name})`, async ({ page }) => {
+    test(`widget panel is bounded and readable (${loader} loader, ${layout.name})`, async ({
+      page,
+    }) => {
       await page.setViewportSize(layout.viewport);
       await mockPublicApi(page, layout.lang, layout.dir);
       await openHostPage(page, loader);
       await page.getByTestId("widget-bubble").click();
       const frame = page.frameLocator("[data-testid=widget-frame]");
       await expect(frame.getByTestId("widget-title")).toHaveText("Panel bot");
-      await expect(frame.getByTestId("widget-frame-body")).toHaveAttribute("dir", layout.dir);
+      await expect(frame.getByTestId("widget-frame-body")).toHaveAttribute(
+        "dir",
+        layout.dir,
+      );
 
       for (let index = 1; index <= 6; index += 1) {
         await ask(frame, `Question number ${index}`);
@@ -148,12 +184,15 @@ for (const loader of ["source", "served"] as const) {
       await expect(frame.getByTestId("widget-lead-form")).toHaveCount(0);
       await expectReadablePanel(page, frame, 200);
 
-      const closed = (await page.getByTestId("widget-frame").boundingBox())!.height;
+      const closed = (await page.getByTestId("widget-frame").boundingBox())!
+        .height;
       await frame.getByTestId("widget-lead-open").click();
       await expect(frame.getByTestId("widget-lead-form")).toBeVisible();
       await page.waitForTimeout(400);
       await expectReadablePanel(page, frame, 150);
-      expect((await page.getByTestId("widget-frame").boundingBox())!.height).toBe(closed);
+      expect(
+        (await page.getByTestId("widget-frame").boundingBox())!.height,
+      ).toBe(closed);
 
       // The thread scrollbar is the thin, token-coloured one (no arrow buttons).
       const scrollbar = await frame
@@ -165,5 +204,7 @@ for (const loader of ["source", "served"] as const) {
 }
 
 test("the served loader.js is the source loader.js (sync-loader keeps them identical)", () => {
-  expect(readFileSync(LOADERS.served, "utf8")).toBe(readFileSync(LOADERS.source, "utf8"));
+  expect(readFileSync(LOADERS.served, "utf8")).toBe(
+    readFileSync(LOADERS.source, "utf8"),
+  );
 });

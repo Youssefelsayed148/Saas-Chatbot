@@ -39,10 +39,10 @@ async function createOrgAndBot(
   page: Page,
   botName: string,
 ): Promise<{ tenantId: string; botId: string; locator: string }> {
-  const { tenantId } = await registerOperator(page, "WidgetDomain", { botName });
-  await page
-    .getByRole("link", { name: new RegExp(`Open ${botName}`) })
-    .click();
+  const { tenantId } = await registerOperator(page, "WidgetDomain", {
+    botName,
+  });
+  await page.getByRole("link", { name: new RegExp(`Open ${botName}`) }).click();
   await page.waitForURL(/\/settings$/);
   const botId = new URL(page.url()).pathname.split("/")[4];
   const bot = (await (
@@ -135,9 +135,12 @@ async function publishKnowledge(
 /** A registered+promoted staff session for the sample page on `host`. */
 async function seedStaffOnHost(page: Page, host: string): Promise<void> {
   const email = uniqueEmail("widget-host");
-  const response = await page.request.post(`http://${host}:${PORT}/api/v1/auth/register`, {
-    data: { email, password: PASSWORD },
-  });
+  const response = await page.request.post(
+    `http://${host}:${PORT}/api/v1/auth/register`,
+    {
+      data: { email, password: PASSWORD },
+    },
+  );
   expect(response.status()).toBe(201);
   promoteToStaff(email);
 }
