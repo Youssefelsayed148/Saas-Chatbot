@@ -69,5 +69,12 @@ jobs:
       - run: npm run format:check
       - run: npm run lint
       - run: npm run typecheck
+      # The E2E flow boots the real API and worker with this Python.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/requirements.lock
+      - run: pip install -r apps/api/requirements.lock
       - run: npx playwright install --with-deps chromium
       - run: npm test
