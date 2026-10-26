@@ -23,7 +23,7 @@ Lint/format on `main` (not from channel work): ruff reports 33 errors in `tests/
 
 ## B. Playwright (existing specs)
 
-See section B of the final R-07 report in PROGRESS.md (filled in when the full run finished). Earlier comparison against a clean `origin/main`: conversations.spec:69, group-a-operator:26 and :94, overview.spec:135 and :219 fail on both.
+Full run on the branch: 154 passed, 14 failed. All 14 also fail on a clean `origin/main` build (main failed 11 of the 40 tests in the second comparison, plus 6 in the first): conversations.spec:69; group-a-operator.spec:26 and :94; overview.spec:135 and :219; group-c-polish.spec:129; install.spec:26; knowledge.spec:199; widget-domain.spec:156 and :230; widget-polling.spec:155 and :171; widget-streaming.spec:369; widget.spec:285. Main additionally failed knowledge.spec:45, widget.spec:227 and conversations.spec:12, which passed on the branch. Causes not investigated: widget chat waits time out, two operator tests look for pre-redesign UI, knowledge replace/always-include matches the API hygiene failures.
 
 ## Suggested handling
 1. Quick test-only fixes: bot-names migration, stage0 baseline `preview`, route-matrix count.
