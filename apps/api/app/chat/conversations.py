@@ -15,7 +15,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session as OrmSession
 
 from app.chat import prompts
@@ -26,7 +26,7 @@ from app.chat.service import _support_contact, chat_answer
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
 from app.core.ratelimit import purge_expired_windows
-from app.db.models import Bot, Conversation, Message, UsageEvent
+from app.db.models import Bot, Conversation, InboxEvent, Message, UsageEvent
 from app.inbox.events import add_inbox_event
 from app.inbox.handoff import decide_handoff, start_handoff, visitor_handoff_reply
 from app.knowledge.language import detect_language
@@ -336,6 +336,17 @@ def _unavailable_turn(
     }
 
 
+def _discard_unanswered_message(db: OrmSession, tenant_id: UUID, message_id: UUID) -> None:
+    """Delete a visitor message whose turn was aborted before any answer was stored."""
+    db.execute(
+        delete(InboxEvent).where(
+            InboxEvent.tenant_id == tenant_id, InboxEvent.message_id == message_id
+        )
+    )
+    db.execute(delete(Message).where(Message.tenant_id == tenant_id, Message.id == message_id))
+    db.commit()
+
+
 def visitor_chat_turn(
     db: OrmSession,
     *,
@@ -447,7 +458,10 @@ def visitor_chat_turn(
         )
     except BaseException:
         # Aborted turn: no answer was stored, so the message must not count.
+        # reserve() committed the session, so the visitor message is already durable
+        # and rollback alone would leave it behind unanswered: remove it explicitly.
         db.rollback()
+        _discard_unanswered_message(db, tenant_id, visitor_message.id)
         release(db, tenant_id, bot.id, message_reservation, settings)
         raise
     response_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)

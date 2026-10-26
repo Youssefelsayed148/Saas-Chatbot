@@ -140,10 +140,7 @@ def platform_quotas(staff: PlatformStaffDep) -> dict[str, Any]:
     del staff
     return {
         "placeholder": True,
-        "plans": {
-            name: limits.__dict__
-            for name, limits in PLACEHOLDER_PLAN_LIMITS.items()
-        },
+        "plans": {name: limits.__dict__ for name, limits in PLACEHOLDER_PLAN_LIMITS.items()},
     }
 
 
@@ -422,8 +419,9 @@ def platform_create_bot(
     db: DbSession,
     _: CsrfOk,
 ) -> BotOut:
-    bot = create_bot_record(db, tenant_id=tenant_id, name=payload.name, actor=staff,
-                            audit_action="platform.bot.created")
+    bot = create_bot_record(
+        db, tenant_id=tenant_id, name=payload.name, actor=staff, audit_action="platform.bot.created"
+    )
     db.commit()
     return BotOut.model_validate(bot)
 
@@ -443,8 +441,12 @@ def platform_archive_bot(
         bot.status = "archived"
         bot.updated_at = datetime.now(UTC)
         record_audit(
-            db, action="platform.bot.archived", tenant_id=tenant_id, actor_user_id=staff.id,
-            target_type="bot", target_id=str(bot.id),
+            db,
+            action="platform.bot.archived",
+            tenant_id=tenant_id,
+            actor_user_id=staff.id,
+            target_type="bot",
+            target_id=str(bot.id),
         )
         db.commit()
     return BotOut.model_validate(bot)
@@ -572,8 +574,12 @@ def platform_tenant_detail(
     tenant = db.get(Tenant, tenant_id)
     if tenant is None:
         raise ApiError(404, "NOT_FOUND", "Resource not found.")
-    bots = [bot_summary(db, bot) for bot in db.scalars(
-        select(Bot).where(Bot.tenant_id == tenant.id).order_by(Bot.created_at.desc()))]
+    bots = [
+        bot_summary(db, bot)
+        for bot in db.scalars(
+            select(Bot).where(Bot.tenant_id == tenant.id).order_by(Bot.created_at.desc())
+        )
+    ]
     failed_jobs = [
         {"id": str(job.id), "type": job.type, "error": job.error}
         for job in db.execute(

@@ -14,6 +14,7 @@ import logging
 import os
 import signal
 import subprocess
+import sys
 from collections.abc import Callable
 from multiprocessing import get_context
 from multiprocessing.process import BaseProcess
@@ -111,7 +112,7 @@ def _parse_process_entry(
 ) -> None:
     """Spawn target. It receives bytes only; it has no database or storage handles."""
     try:
-        if os.name == "posix":
+        if sys.platform != "win32":
             # All helpers spawned by untrusted parsers stay in this owned group.
             os.setsid()
         result = parser(kind, original_name, data, limits)
@@ -126,7 +127,7 @@ def _kill_parser_tree(process: BaseProcess) -> None:
     pid = process.pid
     if pid is None:
         return
-    if os.name == "posix":
+    if sys.platform != "win32":
         try:
             os.killpg(pid, signal.SIGKILL)
         except ProcessLookupError:

@@ -260,6 +260,7 @@ def run(args: argparse.Namespace) -> int:
                     ) -> RetrievalResult:
                         keywords.pop("channel", None)  # hybrid-only arguments
                         keywords.pop("embed_timeout", None)
+                        keywords.pop("preview", None)
                         retrieval = retrieve(*positional, **keywords)
                         _captured.append(retrieval)
                         return retrieval

@@ -40,7 +40,10 @@ from app.db.models.types import TSVECTOR, VECTOR1024
 SOURCE_KIND_VALUES = ("pdf", "docx", "txt", "md", "qa_csv")
 SOURCE_STATUS_VALUES = ("stored", "queued", "ingested", "failed", "removed")
 JOB_TYPE_VALUES = (
-    "ingest_batch", "retention_purge", "follow_up_delivery", "sentiment_classify",
+    "ingest_batch",
+    "retention_purge",
+    "follow_up_delivery",
+    "sentiment_classify",
     "reembed_backfill",
 )
 JOB_STATUS_VALUES = ("pending", "running", "succeeded", "failed", "cancelled")
@@ -84,7 +87,8 @@ class Job(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "type IN ('ingest_batch', 'retention_purge', 'follow_up_delivery', 'sentiment_classify')"
+            "type IN ('ingest_batch', 'retention_purge', 'follow_up_delivery', "
+            "'sentiment_classify')"
             " OR type = 'reembed_backfill'",
             name="ck_jobs_type",
         ),
@@ -138,7 +142,7 @@ class Source(Base):
         CheckConstraint("kind IN ('pdf', 'docx', 'txt', 'md', 'qa_csv')", name="ck_sources_kind"),
         CheckConstraint(
             "status IN ('stored', 'queued', 'ingested', 'failed', 'removed')",
-            name="ck_sources_status"
+            name="ck_sources_status",
         ),
         CheckConstraint("size_bytes >= 0", name="ck_sources_size"),
         ForeignKeyConstraint(
@@ -418,9 +422,13 @@ class Chunk(Base):
         Index("ix_chunks_fts_en", "fts_en", postgresql_using="gin"),
         Index("ix_chunks_fts_simple", "fts_simple", postgresql_using="gin"),
         Index("ix_chunks_fts_ar", "fts_ar", postgresql_using="gin"),
-        Index("ix_chunks_embedding_hnsw", "embedding", postgresql_using="hnsw",
-              postgresql_ops={"embedding": "vector_cosine_ops"},
-              postgresql_where=sa_text("embedding IS NOT NULL")),
+        Index(
+            "ix_chunks_embedding_hnsw",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+            postgresql_where=sa_text("embedding IS NOT NULL"),
+        ),
     )
 
 

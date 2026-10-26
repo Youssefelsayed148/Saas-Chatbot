@@ -318,9 +318,12 @@ class BotService:
             from app.knowledge.service import validate_always_include
 
             validate_always_include(self.db, bot.tenant_id, bot.id, patch.always_include_source_ids)
-            provided["always_include_source_ids"] = [
-                str(value) for value in dict.fromkeys(patch.always_include_source_ids)
-            ]
+            provided.pop("always_include_source_ids", None)
+            ids = [str(value) for value in dict.fromkeys(patch.always_include_source_ids)]
+            if ids:
+                provided["always_include_source_ids"] = ids
+            else:  # an empty list clears the setting rather than storing []
+                merged.pop("always_include_source_ids", None)
         if "knowledge_language" in patch.model_fields_set and patch.knowledge_language is None:
             merged.pop("knowledge_language", None)  # null clears it: back to default_language
         for key, value in provided.items():

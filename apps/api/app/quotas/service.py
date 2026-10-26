@@ -203,7 +203,10 @@ def require_capacity(
             (
                 f"Your plan allows {limit} bot(s). Contact us to add another bot."
                 if counter == "bots"
-                else f"The {counter.replace('_', ' ')} limit for the {tenant.plan_label} plan is {limit}."
+                else (
+                    f"The {counter.replace('_', ' ')} limit for the "
+                    f"{tenant.plan_label} plan is {limit}."
+                )
             ),
             details={
                 "counter": counter,
