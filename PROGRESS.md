@@ -10,6 +10,8 @@ Lint: ruff now clean (per-file E501 ignore for tests and old migrations; four ap
 
 Results (exact, one file each): hygiene 12 passed; bot_names_migration 1; staff_members 28; rag_gate + rag_stage0_baseline 45 (with PYTHONUTF8=1, then the utf-8 read fix); route matrix + rag_gate 37; chat_streaming disconnect test 1 passed (full file earlier: 20 passed, 1 failed = this bug); chat 26; conversations 13; widget_public 17; handoff 5; chat_streaming_unit 34; create_platform_staff 3. playground_parity: still running when committed. NOT run: Playwright (13 known failures untouched), embedding/hybrid/RAG-evaluation files.
 
+Follow-up (same branch): playground_parity `test_messages_of_returns_the_newest_100_in_order` failed in the single-file run. Cause: `append_message` used `datetime.now()` per message; equal timestamps (Windows clock) were tie-broken by random uuid, flipping history order. Fix: created_at is strictly increasing within a conversation. After the fix: playground_parity 8 passed, conversations 13, handoff 5, chat 26, widget_public 17 (one file each).
+
 Deploy: `compose.prod.yaml`, `deploy/Caddyfile`, `deploy/backup.sh`, `.env.production.example`, `scripts/deploy.sh`, `DEPLOY.md`. `docker compose config` valid (only 80/443 published); api and web images built; local smoke test with fake keys and no Caddy (project saasprodsmoke, torn down afterwards): db, migrate, staff, api, worker, web all healthy; admin login 200 with Secure cookies; /platform anonymous 307 to login; widget loader 200. Caddy/HTTPS untested until a real domain.
 
 ## 2026-10-22 — A2 widget embedding & domain enforcement batch (branch fix/a2-widget-embedding, created from main)

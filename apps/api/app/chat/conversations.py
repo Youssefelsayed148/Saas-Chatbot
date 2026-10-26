@@ -202,6 +202,11 @@ def append_message(
     response_ms: int | None = None,
 ) -> Message:
     now = datetime.now(UTC)
+    last = conversation.last_message_at
+    if last is not None and now <= last:
+        # Messages are ordered by created_at: never let two share a timestamp, or the
+        # tie would be broken by their random ids and the history order would flip.
+        now = last + timedelta(microseconds=1)
     message = Message(
         id=uuid4(),
         tenant_id=conversation.tenant_id,
