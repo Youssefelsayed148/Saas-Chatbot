@@ -1,5 +1,7 @@
 "use client";
 import { useState, type InputHTMLAttributes } from "react";
+import { Icon } from "@/lib/icons";
+
 export function PasswordField(props: InputHTMLAttributes<HTMLInputElement>) {
   const [visible, setVisible] = useState(false);
   return (
@@ -12,7 +14,7 @@ export function PasswordField(props: InputHTMLAttributes<HTMLInputElement>) {
         aria-pressed={visible}
         onClick={() => setVisible(!visible)}
       >
-        {visible ? "Hide" : "Show"}
+        <Icon name={visible ? "eye-off" : "eye"} size={16} />
       </button>
     </div>
   );

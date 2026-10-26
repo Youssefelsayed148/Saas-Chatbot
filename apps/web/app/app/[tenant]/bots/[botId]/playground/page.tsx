@@ -6,8 +6,93 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import * as api from "@/lib/api";
 import type { PlaygroundMessage } from "@/lib/api";
 import { useSession } from "@/lib/session";
-import { Loading, Notice } from "@/lib/ui";
+import {
+  Button,
+  Field,
+  Loading,
+  Notice,
+  PageHeader,
+  StatusBadge,
+} from "@/lib/ui";
 import BotWorkspaceNav from "@/lib/bot-workspace-nav";
+import { Icon } from "@/lib/icons";
+import "@/app/playground-screen.css";
+
+type Chunk = api.RagTrace["trace"]["chunks"][number];
+
+/** Staff-only wording for a turn whose model call failed (the visitor text is
+ * unchanged): the provider's error code, or the HTTP status / outcome when it
+ * sent none, and the model it came from. */
+function providerFailureNotice(failure: api.ProviderError): string {
+  if (failure.status === "not_configured") {
+    return "The model call failed: no chat model is configured for this bot.";
+  }
+  const last = failure.attempts?.[failure.attempts.length - 1];
+  const reason =
+    failure.error_code ??
+    (failure.http_status ? `HTTP ${failure.http_status}` : null) ??
+    last?.outcome ??
+    "no response";
+  const where = failure.model ? ` on ${failure.model}` : "";
+  return `The model call failed: ${reason}${where}.`;
+}
+
+function TraceChunk({ chunk }: { chunk: Chunk }) {
+  const gate = chunk.gate;
+  return (
+    <li className="trace-chunk" data-accepted={chunk.accepted}>
+      <p className="trace-chunk-title">
+        {chunk.title} ({chunk.locator}) · cosine{" "}
+        {chunk.vector_similarity?.toFixed(3) ?? "—"} · FTS{" "}
+        {chunk.fts_match.toFixed(3)} ·{" "}
+        <StatusBadge
+          value={chunk.accepted ? "used" : "excluded"}
+          tone={chunk.accepted ? "success" : "neutral"}
+        />
+      </p>
+      {(gate || chunk.query_terms || chunk.matched_terms) && (
+        <dl className="trace-facts">
+          {gate && (
+            <>
+              <dt>Gate verdict</dt>
+              <dd>
+                {gate.passed
+                  ? `Passed${gate.accepted_by ? ` by ${gate.accepted_by}` : ""}`
+                  : "Rejected"}
+                {gate.reason ? `: ${gate.reason}` : ""}
+              </dd>
+            </>
+          )}
+          {chunk.query_terms && chunk.query_terms.length > 0 && (
+            <>
+              <dt>Query terms</dt>
+              <dd dir="auto">{chunk.query_terms.join(", ")}</dd>
+            </>
+          )}
+          {chunk.matched_terms && (
+            <>
+              <dt>Matched terms</dt>
+              <dd dir="auto">
+                {chunk.matched_terms.length > 0
+                  ? chunk.matched_terms.join(", ")
+                  : "none"}
+                {gate
+                  ? ` (${gate.terms.matched} of ${gate.terms.required} required)`
+                  : ""}
+              </dd>
+            </>
+          )}
+          {gate?.cosine.floor != null && (
+            <>
+              <dt>Cosine floor</dt>
+              <dd>{gate.cosine.floor.toFixed(2)}</dd>
+            </>
+          )}
+        </dl>
+      )}
+    </li>
+  );
+}
 
 export default function PlaygroundPage() {
   const params = useParams<{ tenant: string; botId: string }>();
@@ -19,8 +104,17 @@ export default function PlaygroundPage() {
   const [messages, setMessages] = useState<PlaygroundMessage[] | null>(null);
   const [threadError, setThreadError] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
+  // Which knowledge the next turn answers from (staff preview of the draft).
+  const [knowledge, setKnowledge] =
+    useState<api.PlaygroundKnowledge>("published");
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  // The turn in flight: the question and the answer text streamed so far.
+  const [pending, setPending] = useState<{
+    question: string;
+    answer: string;
+  } | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const [notReady, setNotReady] = useState(false);
   const [traces, setTraces] = useState<api.RagTrace[]>([]);
   const [traceError, setTraceError] = useState<string | null>(null);
@@ -28,6 +122,7 @@ export default function PlaygroundPage() {
     Record<string, "up" | "down">
   >({});
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const loadThread = useCallback(async () => {
     try {
@@ -61,6 +156,19 @@ export default function PlaygroundPage() {
     return () => clearTimeout(timer);
   }, [loadThread, loadTraces, me?.is_platform_staff]);
 
+  // The input is disabled while an answer is pending, which drops keyboard
+  // focus to the page body; hand it back once the reply (or error) is in.
+  const wasSending = useRef(false);
+  useEffect(() => {
+    if (
+      wasSending.current &&
+      !sending &&
+      document.activeElement === document.body
+    )
+      inputRef.current?.focus();
+    wasSending.current = sending;
+  }, [sending]);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "nearest" });
   }, [messages]);
@@ -71,8 +179,40 @@ export default function PlaygroundPage() {
     if (!text || sending) return;
     setSendError(null);
     setSending(true);
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setPending({ question: text, answer: "" });
     try {
-      const turn = await api.playgroundTurn(tenantId, botId, text);
+      let turn: api.PlaygroundTurnResponse;
+      try {
+        turn = await api.playgroundTurnStream(
+          tenantId,
+          botId,
+          text,
+          {
+            signal: controller.signal,
+            onDelta: (piece) =>
+              setPending((current) =>
+                current
+                  ? { ...current, answer: current.answer + piece }
+                  : current,
+              ),
+            onCannotConfirm: (canned) =>
+              setPending((current) =>
+                current ? { ...current, answer: canned } : current,
+              ),
+          },
+          knowledge,
+        );
+      } catch (caught) {
+        // A broken stream falls back to the buffered turn; HTTP refusals and
+        // a user stop do not.
+        if (!(caught instanceof api.PlaygroundStreamFailure)) throw caught;
+        setPending((current) =>
+          current ? { ...current, answer: "" } : current,
+        );
+        turn = await api.playgroundTurn(tenantId, botId, text, knowledge);
+      }
       void loadTraces();
       setDraft("");
       setNotReady(false);
@@ -101,15 +241,41 @@ export default function PlaygroundPage() {
       ]);
       if (turn.kind !== "answer") {
         setSendError(
-          turn.kind === "smalltalk" ? null : `Assistant state: ${turn.kind}`,
+          turn.kind === "smalltalk"
+            ? null
+            : turn.kind === "invalid_output"
+              ? "The model replied, but the reply was unusable, so the visitor got the standard can't-confirm message. See the answer trace for the reason."
+              : `Assistant state: ${turn.kind}`,
         );
       }
     } catch (caught) {
-      const message = caught instanceof Error ? caught.message : "Send failed.";
-      if (/MODEL_NOT_CONFIGURED|No chat model/.test(message)) setNotReady(true);
-      setSendError(message);
+      // Stop: the server persists nothing for a cancelled stream; the draft stays.
+      if (!controller.signal.aborted) {
+        const message =
+          caught instanceof Error ? caught.message : "Send failed.";
+        if (/MODEL_NOT_CONFIGURED|No chat model/.test(message))
+          setNotReady(true);
+        setSendError(message);
+      }
     } finally {
+      abortRef.current = null;
+      setPending(null);
       setSending(false);
+    }
+  }
+
+  async function onNewSession() {
+    if (sending) return;
+    setSendError(null);
+    try {
+      const thread = await api.playgroundNewSession(tenantId, botId);
+      setMessages(thread.messages);
+      setFeedbackGiven({});
+      setDraft("");
+    } catch (caught) {
+      setSendError(
+        caught instanceof Error ? caught.message : "Could not start a session.",
+      );
     }
   }
 
@@ -129,13 +295,19 @@ export default function PlaygroundPage() {
 
   if (!me?.is_platform_staff) return null;
 
+  // A failed send keeps the typed message in the box, so the existing send
+  // handler can run again as a real retry. Other errors (feedback failure, an
+  // assistant-state note after a successful turn) have nothing to resend and
+  // keep the default page reload, labelled as such.
+  const canRetryTurn = !!draft.trim() && !sending;
+
   return (
-    <main>
+    <main className="playground-page">
       <BotWorkspaceNav tenantId={tenantId} botId={botId} />
-      <h1>Playground</h1>
-      <p className="page-purpose">
-        Test answers against your published knowledge before visitors do.
-      </p>
+      <PageHeader
+        title="Playground"
+        purpose="Test answers against your published knowledge before visitors do."
+      />
       {!canChat && (
         <Notice message="Only platform operators can use the playground." />
       )}
@@ -147,23 +319,38 @@ export default function PlaygroundPage() {
       )}
       {threadError && <Notice message={threadError} tone="error" />}
 
-      <section aria-label="Conversation" data-testid="thread">
+      <section
+        aria-label="Conversation"
+        data-testid="thread"
+        className="ui-card"
+      >
         {messages === null ? (
-          <Loading label="Loading the conversation…" />
-        ) : messages.length === 0 ? (
+          threadError ? null : (
+            <Loading label="Loading the conversation…" />
+          )
+        ) : messages.length === 0 && !pending ? (
           <p className="muted">
             No messages yet — ask something about the published knowledge.
           </p>
         ) : (
-          <ul>
+          <ul
+            className="chat-list"
+            role="log"
+            aria-live="polite"
+            aria-relevant="additions"
+          >
             {messages.map((message) =>
               message.sender_type === "visitor" ? (
                 <li key={message.id} data-role="visitor">
-                  {message.text}
+                  <div dir="auto" className="message-text">
+                    {message.text}
+                  </div>
                 </li>
               ) : (
                 <li key={message.id} data-role={message.sender_type}>
-                  <div dir="auto">{message.text}</div>
+                  <div dir="auto" className="message-text">
+                    {message.text}
+                  </div>
                   {message.citations && message.citations.length > 0 && (
                     <ul data-testid="citations" aria-label="Sources">
                       {message.citations.map((citation) => (
@@ -184,96 +371,370 @@ export default function PlaygroundPage() {
                       ))}
                     </ul>
                   )}
-                  {message.needs_human && (
-                    <Notice message="The assistant could not answer this from the knowledge." />
-                  )}
-                  {message.response_ms !== null && (
-                    <span className="muted">{message.response_ms} ms</span>
-                  )}
-                  {canChat && message.sender_type === "ai" && (
-                    <span>
-                      <button
-                        type="button"
-                        aria-label="Thumbs up"
-                        data-testid={`thumbs-up-${message.id}`}
-                        disabled={feedbackGiven[message.id] !== undefined}
-                        onClick={() => void giveFeedback(message, "up")}
+                  {message.needs_human &&
+                    (() => {
+                      const failure = traces.find(
+                        (item) => item.message_id === message.id,
+                      )?.trace.provider_error;
+                      return failure ? (
+                        <Notice
+                          message={providerFailureNotice(failure)}
+                          tone="error"
+                          scope="item"
+                        />
+                      ) : (
+                        <Notice message="The assistant could not answer this from the knowledge." />
+                      );
+                    })()}
+                  <div className="message-meta">
+                    {message.response_ms !== null && (
+                      <span className="muted">{message.response_ms} ms</span>
+                    )}
+                    {canChat && message.sender_type === "ai" && (
+                      <span
+                        className="feedback-buttons"
+                        role="group"
+                        aria-label="Rate this answer"
                       >
-                        👍
-                      </button>
-                      <button
-                        type="button"
-                        aria-label="Thumbs down"
-                        data-testid={`thumbs-down-${message.id}`}
-                        disabled={feedbackGiven[message.id] !== undefined}
-                        onClick={() => void giveFeedback(message, "down")}
-                      >
-                        👎
-                      </button>
-                    </span>
-                  )}
+                        <button
+                          type="button"
+                          className="icon-button"
+                          aria-label="Thumbs up"
+                          aria-pressed={feedbackGiven[message.id] === "up"}
+                          data-testid={`thumbs-up-${message.id}`}
+                          disabled={feedbackGiven[message.id] !== undefined}
+                          onClick={() => void giveFeedback(message, "up")}
+                        >
+                          <Icon name="thumbs-up" />
+                        </button>
+                        <button
+                          type="button"
+                          className="icon-button"
+                          aria-label="Thumbs down"
+                          aria-pressed={feedbackGiven[message.id] === "down"}
+                          data-testid={`thumbs-down-${message.id}`}
+                          disabled={feedbackGiven[message.id] !== undefined}
+                          onClick={() => void giveFeedback(message, "down")}
+                        >
+                          <Icon name="thumbs-down" />
+                        </button>
+                      </span>
+                    )}
+                  </div>
                 </li>
               ),
             )}
+            {pending && (
+              <>
+                <li data-role="visitor" data-pending="true">
+                  <div dir="auto" className="message-text">
+                    {pending.question}
+                  </div>
+                </li>
+                <li data-role="ai" data-pending="true">
+                  <div
+                    dir="auto"
+                    className="message-text"
+                    data-testid="pending-answer"
+                  >
+                    {pending.answer || "…"}
+                  </div>
+                </li>
+              </>
+            )}
           </ul>
         )}
+        <p className="sr-only" role="status">
+          {sending ? "The assistant is answering…" : ""}
+        </p>
         <div ref={bottomRef} />
       </section>
 
-      <section aria-label="Answer traces" data-testid="answer-traces">
-        <h2>Answer traces</h2>
-        {traceError && <Notice message={traceError} tone="error" />}
-        {traces.length === 0 && (
-          <p className="muted">No recorded answers yet.</p>
-        )}
-        {traces.map(({ message_id, trace }) => (
-          <details key={message_id}>
-            <summary>
-              {trace.retrieval_mode} · {trace.gate} ·{" "}
-              {trace.rewrite_used ? "rewritten" : "original query"}
-            </summary>
-            <p>
-              Model: {trace.model ?? "No generation"}; tokens:{" "}
-              {trace.tokens?.total_tokens ?? "Unmeasured"}; cost:{" "}
-              {trace.cost_usd === null ? "Unmeasured" : `$${trace.cost_usd}`}
+      {sendError && !notReady && (
+        <Notice
+          message={sendError}
+          tone="error"
+          {...(canRetryTurn
+            ? {
+                onRetry: () =>
+                  void onSend({
+                    preventDefault() {},
+                  } as React.FormEvent),
+                retryLabel: "Retry message",
+              }
+            : { retryLabel: "Reload page" })}
+        />
+      )}
+      {canChat && (
+        <fieldset
+          className="knowledge-choice"
+          data-testid="playground-knowledge"
+          disabled={sending}
+        >
+          <legend>Knowledge to test</legend>
+          <label>
+            <input
+              type="radio"
+              name="playground-knowledge"
+              value="published"
+              checked={knowledge === "published"}
+              onChange={() => setKnowledge("published")}
+            />{" "}
+            Published
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="playground-knowledge"
+              value="draft"
+              checked={knowledge === "draft"}
+              onChange={() => setKnowledge("draft")}
+            />{" "}
+            Draft
+          </label>
+          {knowledge === "draft" && (
+            <p className="muted" role="note">
+              Preview only: answers use the unpublished draft. Visitors keep
+              seeing the published knowledge. Playground turns do not count
+              toward the client&apos;s message quota.
             </p>
-            <ul>
-              {trace.chunks.map((chunk) => (
-                <li key={chunk.chunk_id}>
-                  {chunk.title} ({chunk.locator}) · cosine{" "}
-                  {chunk.vector_similarity?.toFixed(3) ?? "—"} · FTS{" "}
-                  {chunk.fts_match.toFixed(3)} ·{" "}
-                  {chunk.accepted ? "used" : "excluded"}
-                </li>
-              ))}
-            </ul>
-          </details>
-        ))}
-      </section>
-
-      {sendError && !notReady && <Notice message={sendError} tone="error" />}
-      <form onSubmit={onSend} aria-label="Playground input">
-        <label>
-          Message
-          <input
-            data-testid="playground-input"
-            dir="auto"
-            value={draft}
-            maxLength={1000}
-            disabled={!canChat || sending}
-            onChange={(event) => setDraft(event.target.value)}
-          />
-        </label>
+          )}
+        </fieldset>
+      )}
+      <form
+        onSubmit={onSend}
+        aria-label="Playground input"
+        className="composer"
+      >
+        <Field label="Message">
+          {(control) => (
+            <input
+              {...control}
+              ref={inputRef}
+              data-testid="playground-input"
+              dir="auto"
+              value={draft}
+              maxLength={1000}
+              disabled={!canChat || sending}
+              onChange={(event) => setDraft(event.target.value)}
+            />
+          )}
+        </Field>
         {canChat && (
-          <button
+          <Button
             type="submit"
             data-testid="playground-send"
             disabled={sending || !draft.trim()}
           >
             {sending ? "Sending…" : "Send"}
-          </button>
+          </Button>
+        )}
+        {canChat && sending && (
+          <Button
+            variant="quiet"
+            data-testid="playground-stop"
+            onClick={() => abortRef.current?.abort()}
+          >
+            Stop
+          </Button>
+        )}
+        {canChat && (
+          <Button
+            variant="quiet"
+            data-testid="playground-new-session"
+            disabled={sending}
+            onClick={() => void onNewSession()}
+          >
+            New session
+          </Button>
         )}
       </form>
+
+      <section
+        aria-label="Answer traces"
+        data-testid="answer-traces"
+        className="ui-card"
+      >
+        <header className="section-heading">
+          <h2>Answer traces</h2>
+        </header>
+        {traceError && <Notice message={traceError} tone="error" />}
+        {traces.length === 0 && !traceError && (
+          <p className="muted">No recorded answers yet.</p>
+        )}
+        {traces.map(({ message_id, trace }) => (
+          <details key={message_id} className="trace">
+            <summary>
+              {trace.retrieval_mode} · {trace.gate} ·{" "}
+              {trace.rewrite_used ? "rewritten" : "original query"}
+            </summary>
+            {trace.provider_error && (
+              <p className="trace-error" role="note">
+                Provider error: status{" "}
+                {trace.provider_error.status ?? "unknown"}
+                {trace.provider_error.model
+                  ? ` on ${trace.provider_error.model}`
+                  : ""}
+                . The visitor saw the temporary-unavailable message.
+              </p>
+            )}
+            <p>
+              Model: {trace.model ?? "No generation"}; tokens:{" "}
+              {trace.tokens?.total_tokens ?? "Unmeasured"}; cost:{" "}
+              {trace.cost_usd === null ? "Unmeasured" : `$${trace.cost_usd}`}
+            </p>
+            {(trace.streamed !== undefined ||
+              trace.degradation_reason ||
+              trace.stream_invalid_reason ||
+              trace.prompt_version) && (
+              <dl className="trace-facts">
+                {trace.prompt_version && (
+                  <>
+                    <dt>Prompt</dt>
+                    <dd>
+                      {trace.prompt_version} · history{" "}
+                      {trace.history_count ?? 0} exchange(s)
+                      {trace.history_skipped_count
+                        ? `, ${trace.history_skipped_count} skipped`
+                        : ""}
+                    </dd>
+                    <dt>Model reply</dt>
+                    <dd>
+                      {trace.parsed_ok ? "parsed" : "not parsed"}
+                      {trace.invalid_output_reason
+                        ? ` (unusable: ${trace.invalid_output_reason})`
+                        : ""}{" "}
+                      · can answer {String(trace.model_can_answer ?? "n/a")} ·{" "}
+                      {trace.model_source_count ?? 0} source(s) cited,{" "}
+                      {trace.kept_source_count ?? 0} kept
+                      {trace.reconciled ? " · replaced by canned refusal" : ""}
+                    </dd>
+                  </>
+                )}
+                {trace.streamed !== undefined && (
+                  <>
+                    <dt>Delivery</dt>
+                    <dd>
+                      {trace.streamed ? "Streamed" : "Not streamed"}
+                      {trace.stream_mode ? ` (${trace.stream_mode})` : ""}
+                      {trace.time_to_first_token_ms != null
+                        ? ` · first token after ${trace.time_to_first_token_ms} ms`
+                        : ""}
+                    </dd>
+                  </>
+                )}
+                {trace.stream_invalid_reason && (
+                  <>
+                    <dt>Stream fallback</dt>
+                    <dd>{trace.stream_invalid_reason}</dd>
+                  </>
+                )}
+                {trace.degradation_reason && (
+                  <>
+                    <dt>Retrieval degraded</dt>
+                    <dd>{trace.degradation_reason}</dd>
+                  </>
+                )}
+              </dl>
+            )}
+            {(trace.revision_id !== undefined || trace.retrieval_query) && (
+              <dl className="trace-facts" data-testid="trace-context">
+                <dt>Knowledge revision</dt>
+                <dd data-testid="trace-revision">
+                  {trace.revision_id ?? "None published"}
+                  {trace.revision_kind ? ` (${trace.revision_kind})` : ""}
+                </dd>
+                <dt>Tier / provider</dt>
+                <dd>
+                  {trace.tier ?? "n/a"} · {trace.generation_provider ?? "n/a"}
+                </dd>
+                {trace.applied_language && (
+                  <>
+                    <dt>Search language</dt>
+                    <dd>{trace.applied_language}</dd>
+                  </>
+                )}
+                {trace.retrieval_query && (
+                  <>
+                    <dt>Search query</dt>
+                    <dd dir="auto">{trace.retrieval_query}</dd>
+                  </>
+                )}
+                {trace.fallback_query && (
+                  <>
+                    <dt>Translated query</dt>
+                    <dd dir="auto">{trace.fallback_query}</dd>
+                  </>
+                )}
+                {trace.rewrite_text && (
+                  <>
+                    <dt>Rewrite</dt>
+                    <dd dir="auto">{trace.rewrite_text}</dd>
+                  </>
+                )}
+                {trace.skipped_steps && trace.skipped_steps.length > 0 && (
+                  <>
+                    <dt>Skipped (time budget)</dt>
+                    <dd>{trace.skipped_steps.join(", ")}</dd>
+                  </>
+                )}
+                {trace.handoff_reason && (
+                  <>
+                    <dt>Handoff</dt>
+                    <dd>{trace.handoff_reason}</dd>
+                  </>
+                )}
+              </dl>
+            )}
+            {trace.refusal_diagnosis && (
+              <p data-testid="trace-diagnosis">
+                {trace.refusal_diagnosis.nearest
+                  ? `Refused: nearest candidate failed ${
+                      trace.refusal_diagnosis.failed_rules.join(", ") ||
+                      "no rule"
+                    } (cosine ${
+                      trace.refusal_diagnosis.nearest.cosine?.toFixed(3) ??
+                      "n/a"
+                    } vs floor ${
+                      trace.refusal_diagnosis.nearest.cosine_floor?.toFixed(
+                        2,
+                      ) ?? "n/a"
+                    }; terms ${trace.refusal_diagnosis.nearest.matched_terms}/${
+                      trace.refusal_diagnosis.nearest.required_terms ?? "?"
+                    }; fts ${trace.refusal_diagnosis.nearest.fts_match.toFixed(3)} vs ${
+                      trace.refusal_diagnosis.nearest.fts_minimum ?? "?"
+                    }).`
+                  : "Refused: retrieval returned no candidates."}
+              </p>
+            )}
+            {trace.rejected_candidates &&
+              trace.rejected_candidates.length > 0 && (
+                <div data-testid="trace-rejected">
+                  <p>
+                    No evidence reached the model. Closest rejected candidates:
+                  </p>
+                  <ul className="trace-chunks">
+                    {trace.rejected_candidates.map((candidate) => (
+                      <li key={candidate.chunk_id}>
+                        {candidate.document_title}
+                        {candidate.locator ? ` (${candidate.locator})` : ""} ·
+                        cosine{" "}
+                        {candidate.vector_similarity?.toFixed(3) ?? "n/a"} · fts{" "}
+                        {candidate.fts_match.toFixed(3)} · rrf{" "}
+                        {candidate.rrf_score.toFixed(4)} — {candidate.reason}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            <ul className="trace-chunks">
+              {trace.chunks.map((chunk) => (
+                <TraceChunk key={chunk.chunk_id} chunk={chunk} />
+              ))}
+            </ul>
+          </details>
+        ))}
+      </section>
     </main>
   );
 }

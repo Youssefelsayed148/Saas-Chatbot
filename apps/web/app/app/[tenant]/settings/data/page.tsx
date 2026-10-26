@@ -1,13 +1,23 @@
 "use client";
 
-import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { auditActionLabel } from "@/lib/labels";
 import * as api from "@/lib/api";
 import { roleSatisfies, useSession } from "@/lib/session";
-import { Loading, Notice } from "@/lib/ui";
+import {
+  Button,
+  Card,
+  DataTable,
+  Field,
+  LinkButton,
+  Loading,
+  Notice,
+  PageHeader,
+} from "@/lib/ui";
+
+import "@/app/team-screen.css";
 
 export default function TenantDataPage() {
   const params = useParams<{ tenant: string }>();
@@ -100,177 +110,217 @@ export default function TenantDataPage() {
     }
   }
 
+  const PURPOSE = "Export workspace data and review activity.";
+  const backLink = (
+    <LinkButton variant="ghost" href={`/app/${tenantId}`}>
+      Back to overview
+    </LinkButton>
+  );
+
   if (!canAdmin) {
     return (
-      <main className="tenant-data-page">
-        <h1>Tenant data and audit</h1>
-        <p className="page-purpose">
-          Export workspace data and review activity.
-        </p>
-        <p>Administrator access is required.</p>
-        <Link href={`/app/${tenantId}`}>Back to overview</Link>
+      <main className="tenant-data-page team-page">
+        <PageHeader
+          title="Tenant data and audit"
+          purpose={PURPOSE}
+          actions={backLink}
+        />
+        <Notice message="Administrator access is required." />
       </main>
     );
   }
 
+  const deletionReady =
+    !!tenant && confirmName === tenant.name && reason.trim().length >= 3;
+
   return (
-    <main className="tenant-data-page">
-      <h1>Tenant data and audit</h1>
-      <p className="page-purpose">Export workspace data and review activity.</p>
-      <p>
-        <Link href={`/app/${tenantId}`}>Back to overview</Link>
-      </p>
+    <main className="tenant-data-page team-page">
+      <PageHeader
+        title="Tenant data and audit"
+        purpose={PURPOSE}
+        actions={backLink}
+      />
       {error && <Notice message={error} tone="error" />}
       {!tenant ? (
         <Loading label="Loading tenant data…" />
       ) : (
         <>
-          <section aria-label="Tenant export">
-            <h2>Export tenant data</h2>
-            <p>
+          <Card title="Export tenant data" aria-label="Tenant export">
+            <p className="team-copy">
               Downloads contacts, identities, conversations, messages, usage,
               and audit history as JSON.
               {isOperator &&
                 " Platform staff exports also include knowledge, jobs and bot configuration."}
             </p>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void downloadExport()}
-            >
-              {busy ? "Working…" : "Download export"}
-            </button>
-          </section>
-          <section aria-label="Tenant audit review">
-            <h2>Audit review</h2>
+            <div className="row-actions">
+              <Button disabled={busy} onClick={() => void downloadExport()}>
+                {busy ? "Working…" : "Download export"}
+              </Button>
+            </div>
+          </Card>
+          <Card title="Audit review" aria-label="Tenant audit review">
             <form
+              className="team-invite"
               onSubmit={(event) => {
                 event.preventDefault();
                 void load();
               }}
             >
-              <label>
-                Search actions
-                <input
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  maxLength={100}
-                />
-              </label>
-              <button type="submit">Search</button>
+              <Field label="Search actions">
+                {(control) => (
+                  <input
+                    {...control}
+                    dir="auto"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    maxLength={100}
+                  />
+                )}
+              </Field>
+              <Button type="submit">Search</Button>
             </form>
-            {audit.length === 0 && (
-              <p className="muted">No audit actions match this search.</p>
-            )}
-            <ul className="audit-list">
-              {audit.map((event) => (
-                <li key={event.id}>
-                  {event.created_at.slice(0, 19)} ·{" "}
-                  {auditActionLabel(event.action)} ·{" "}
-                  {event.target_type ?? "tenant"}:{event.target_id ?? ""}
-                </li>
-              ))}
-            </ul>
-          </section>
+            <DataTable
+              caption="Audit events"
+              rows={audit}
+              rowKey={(event) => event.id}
+              empty={
+                <p className="muted">No audit actions match this search.</p>
+              }
+              columns={[
+                {
+                  key: "when",
+                  header: "When",
+                  cell: (event) => (
+                    <span dir="ltr">{event.created_at.slice(0, 19)}</span>
+                  ),
+                },
+                {
+                  key: "action",
+                  header: "Action",
+                  cell: (event) => auditActionLabel(event.action),
+                },
+                {
+                  key: "target",
+                  header: "Target",
+                  cell: (event) => (
+                    <span dir="ltr">
+                      {event.target_type ?? "tenant"}:{event.target_id ?? ""}
+                    </span>
+                  ),
+                },
+              ]}
+            />
+          </Card>
           {isOperator && (
-            <section aria-label="Delete tenant data" className="danger-zone">
-              <h2>Delete organization and data</h2>
-              <p>
+            <Card
+              title="Delete organization and data"
+              aria-label="Delete tenant data"
+              className="danger-zone"
+            >
+              <p className="team-copy">
                 This permanently removes the organization’s bots, knowledge,
                 contacts, identities, conversations, and messages. The deletion
                 request is audited.
               </p>
               <form
+                className="team-stack"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  if (
-                    tenant &&
-                    isOperator &&
-                    confirmName === tenant.name &&
-                    reason.trim().length >= 3
-                  ) {
+                  if (deletionReady) {
                     setConfirmName("");
                     deleteDialog.current?.showModal();
                   }
                 }}
               >
-                <label>
-                  Type <strong>{tenant.name}</strong> to confirm
-                  <input
-                    value={confirmName}
-                    onChange={(event) => setConfirmName(event.target.value)}
-                    required
-                  />
-                </label>
-                <label>
-                  Reason for deletion
-                  <input
-                    value={reason}
-                    onChange={(event) => setReason(event.target.value)}
-                    minLength={3}
-                    maxLength={500}
-                    required
-                  />
-                </label>
-                <button
-                  type="submit"
-                  disabled={
-                    busy ||
-                    confirmName !== tenant.name ||
-                    reason.trim().length < 3
+                <Field
+                  label={
+                    <>
+                      Type <strong dir="auto">{tenant.name}</strong> to confirm
+                    </>
                   }
                 >
-                  Schedule organization deletion
-                </button>
+                  {(control) => (
+                    <input
+                      {...control}
+                      dir="auto"
+                      value={confirmName}
+                      onChange={(event) => setConfirmName(event.target.value)}
+                      required
+                    />
+                  )}
+                </Field>
+                <Field label="Reason for deletion">
+                  {(control) => (
+                    <input
+                      {...control}
+                      dir="auto"
+                      value={reason}
+                      onChange={(event) => setReason(event.target.value)}
+                      minLength={3}
+                      maxLength={500}
+                      required
+                    />
+                  )}
+                </Field>
+                <div className="row-actions">
+                  <Button
+                    type="submit"
+                    variant="danger"
+                    disabled={busy || !deletionReady}
+                  >
+                    Schedule organization deletion
+                  </Button>
+                </div>
               </form>
-              <dialog ref={deleteDialog} aria-labelledby="delete-tenant-title">
+              <dialog
+                ref={deleteDialog}
+                className="team-dialog"
+                aria-labelledby="delete-tenant-title"
+              >
                 <h2 id="delete-tenant-title">Delete this organization?</h2>
                 <p>
-                  This disables {tenant.name} immediately and schedules data and
-                  storage removal after the grace period.
+                  This disables <bdi>{tenant.name}</bdi> immediately and
+                  schedules data and storage removal after the grace period.
                 </p>
-                <ul>
+                <ul className="team-counts">
                   {Object.entries(counts).map(([kind, count]) => (
                     <li key={kind}>
                       {kind}: {count}
                     </li>
                   ))}
                 </ul>
-                <label>
-                  Type the organization name
-                  <input
-                    aria-label="Confirm organization name"
-                    value={confirmName}
-                    onChange={(event) => setConfirmName(event.target.value)}
-                  />
-                </label>
+                <Field label="Type the organization name">
+                  {(control) => (
+                    <input
+                      {...control}
+                      dir="auto"
+                      aria-label="Confirm organization name"
+                      value={confirmName}
+                      onChange={(event) => setConfirmName(event.target.value)}
+                    />
+                  )}
+                </Field>
                 <div className="action-row">
-                  <button
-                    className="quiet-button"
-                    type="button"
+                  <Button
+                    variant="quiet"
                     autoFocus
                     onClick={() => deleteDialog.current?.close()}
                   >
                     Cancel
-                  </button>
-                  <button
-                    className="danger-button"
-                    type="button"
-                    disabled={
-                      busy ||
-                      confirmName !== tenant.name ||
-                      reason.trim().length < 3
-                    }
+                  </Button>
+                  <Button
+                    variant="danger"
+                    disabled={busy || !deletionReady}
                     onClick={(event) => {
                       deleteDialog.current?.close();
                       void deleteData(event);
                     }}
                   >
                     Delete organization now
-                  </button>
+                  </Button>
                 </div>
               </dialog>
-            </section>
+            </Card>
           )}
         </>
       )}

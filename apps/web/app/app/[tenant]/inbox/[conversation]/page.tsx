@@ -1,21 +1,15 @@
 "use client";
 
-import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-import {
-  ChannelDelivery,
-  ChannelReplyFields,
-  connectionReplyBlock,
-} from "@/lib/channel-delivery";
-import { connectionSuffix } from "@/lib/insights";
 import { InboxList } from "@/lib/inbox-list";
-import { humanLabel, LabelBadge } from "@/lib/labels";
+import { humanLabel } from "@/lib/labels";
 import * as api from "@/lib/api";
 import type { InboxThread, Member } from "@/lib/api";
 import { roleSatisfies, useSession } from "@/lib/session";
-import { Loading, Notice } from "@/lib/ui";
+import { Button, LinkButton, Loading, Notice, StatusBadge } from "@/lib/ui";
+import "@/app/inbox-screen.css";
 
 export default function InboxConversationPage() {
   const params = useParams<{ tenant: string; conversation: string }>();
@@ -54,13 +48,11 @@ export default function InboxConversationPage() {
 
   useEffect(() => {
     const timer = setTimeout(() => void load(), 0);
-    const poll = setInterval(() => void load(), 5000);
     const stream = new EventSource(`/api/v1/tenants/${tenantId}/inbox/events`);
     const refresh = () => void load();
     stream.addEventListener("inbox.update", refresh);
     return () => {
       clearTimeout(timer);
-      clearInterval(poll);
       stream.close();
     };
   }, [load, tenantId]);
@@ -76,6 +68,13 @@ export default function InboxConversationPage() {
     return () => clearTimeout(timer);
   }, [tenantId, canEdit]);
 
+  const threadRef = useRef<HTMLElement>(null);
+  const messageCount = thread?.messages.length ?? 0;
+  useEffect(() => {
+    const el = threadRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messageCount]);
+
   async function run(action: () => Promise<unknown>) {
     if (busy) return;
     setBusy(true);
@@ -89,28 +88,33 @@ export default function InboxConversationPage() {
     }
   }
 
+  const backHref = `/app/${tenantId}/inbox${search.toString() ? `?${search.toString()}` : ""}`;
   if (!thread)
     return (
-      <main>
-        <p className="eyebrow">
-          <Link
-            href={`/app/${tenantId}/inbox${search.toString() ? `?${search.toString()}` : ""}`}
-          >
-            ← Inbox
-          </Link>
-        </p>
-        {error ? (
-          <Notice message={error} tone="error" />
-        ) : (
-          <Loading label="Loading conversation…" />
-        )}
-      </main>
+      <div className="inbox-workspace">
+        <div className="inbox-side">
+          <InboxList compact selectedId={conversationId} />
+        </div>
+        <section className="conversation-pane" aria-label="Conversation">
+          <div className="conversation-head">
+            <LinkButton
+              variant="ghost"
+              size="sm"
+              icon="arrow-left"
+              href={backHref}
+            >
+              Back to inbox
+            </LinkButton>
+          </div>
+          {error ? (
+            <Notice message={error} tone="error" />
+          ) : (
+            <Loading label="Loading conversation…" />
+          )}
+        </section>
+      </div>
     );
   const conversation = thread.conversation;
-  const replyBlock = connectionReplyBlock(
-    conversation.channel,
-    conversation.connection_status,
-  );
   const sendReply = () =>
     run(async () => {
       await api.sendAgentReply(tenantId, conversationId, reply);
@@ -133,47 +137,40 @@ export default function InboxConversationPage() {
       <div className="inbox-side">
         <InboxList compact selectedId={conversationId} />
       </div>
-      <main className="conversation-pane">
-        <p className="eyebrow">
-          <Link
-            href={`/app/${tenantId}/inbox${search.toString() ? `?${search.toString()}` : ""}`}
+      <section className="conversation-pane" aria-label="Conversation">
+        <div className="conversation-head">
+          <LinkButton
+            variant="ghost"
+            size="sm"
+            icon="arrow-left"
+            href={backHref}
           >
-            ← Back to inbox
-          </Link>
-        </p>
-        <h1>Conversation</h1>
+            Back to inbox
+          </LinkButton>
+          <h2 dir="auto">
+            {conversation.contact_name?.trim() || "Conversation"}
+          </h2>
+        </div>
         {me?.is_platform_staff && (
-          <p role="note">
+          <p role="note" className="staff-note">
             Staff view is read-only; replies come from client team members
           </p>
         )}
-        <p className="page-purpose">
-          Read the thread, coordinate with your team and help the visitor.
-        </p>
         {error && <Notice message={error} tone="error" />}
-        {conversation.campaign_name && (
-          <p role="note" data-testid="inbox-campaign">
-            From campaign: {conversation.campaign_name}
-          </p>
-        )}
-        {connectionSuffix(conversation.channel, conversation.connection_name) && (
-          <p role="note" data-testid="inbox-connection-note">
-            Via {connectionSuffix(conversation.channel, conversation.connection_name)} (
-            {conversation.channel})
-          </p>
-        )}
         <section
           aria-label="Conversation controls"
           className="conversation-controls"
         >
-          <span>
+          <span className="conversation-summary">
             {humanLabel(conversation.channel)} ·{" "}
             <strong
               data-testid="inbox-status"
               title={conversation.status}
               data-value={conversation.status}
             >
-              <LabelBadge value={conversation.status} />
+              <StatusBadge value={conversation.status}>
+                {humanLabel(conversation.status)}
+              </StatusBadge>
             </strong>{" "}
             ·{" "}
             <span data-testid="inbox-mode">
@@ -183,7 +180,7 @@ export default function InboxConversationPage() {
           {canEdit && conversation.status !== "resolved" && (
             <>
               {conversation.mode === "human" ? (
-                <button
+                <Button
                   disabled={busy}
                   onClick={() =>
                     void run(() =>
@@ -192,9 +189,9 @@ export default function InboxConversationPage() {
                   }
                 >
                   Return to AI
-                </button>
+                </Button>
               ) : (
-                <button
+                <Button
                   disabled={busy}
                   onClick={() =>
                     void run(() =>
@@ -203,9 +200,10 @@ export default function InboxConversationPage() {
                   }
                 >
                   Take over
-                </button>
+                </Button>
               )}
-              <button
+              <Button
+                variant="quiet"
                 disabled={busy}
                 onClick={() =>
                   void run(() =>
@@ -214,7 +212,7 @@ export default function InboxConversationPage() {
                 }
               >
                 Resolve
-              </button>
+              </Button>
             </>
           )}
           {canEdit && (
@@ -240,23 +238,26 @@ export default function InboxConversationPage() {
         </section>
         <section aria-label="Conversation tags" className="conversation-tags">
           <strong>Tags</strong>{" "}
-          {conversation.tags?.map((value) => (
-            <span key={value}>
-              {value}{" "}
-              {canEdit && (
-                <button
-                  aria-label={`Remove ${value} tag`}
-                  onClick={() =>
-                    void run(() =>
-                      api.removeInboxTag(tenantId, conversationId, value),
-                    )
-                  }
-                >
-                  ×
-                </button>
-              )}
-            </span>
-          ))}
+          <span className="tag-list">
+            {conversation.tags?.map((value) => (
+              <span key={value} className="tag-item">
+                <bdi>{value}</bdi>{" "}
+                {canEdit && (
+                  <Button
+                    variant="quiet"
+                    aria-label={`Remove ${value} tag`}
+                    onClick={() =>
+                      void run(() =>
+                        api.removeInboxTag(tenantId, conversationId, value),
+                      )
+                    }
+                  >
+                    ×
+                  </Button>
+                )}
+              </span>
+            ))}
+          </span>
           {canEdit && (
             <form
               onSubmit={(e) => {
@@ -276,11 +277,18 @@ export default function InboxConversationPage() {
                   onChange={(e) => setTag(e.target.value)}
                 />
               </label>
-              <button disabled={!tag.trim() || busy}>Add</button>
+              <Button type="submit" disabled={!tag.trim() || busy}>
+                Add
+              </Button>
             </form>
           )}
         </section>
-        <section aria-label="Thread" data-testid="inbox-thread">
+        <section
+          ref={threadRef}
+          aria-label="Thread"
+          data-testid="inbox-thread"
+          className="inbox-thread-scroll"
+        >
           <ol className="chat-thread">
             {thread.messages.map((message) => {
               const isNote =
@@ -311,10 +319,6 @@ export default function InboxConversationPage() {
                   <div dir="auto" className="message-text">
                     {noteText}
                   </div>
-                  <ChannelDelivery
-                    channel={conversation.channel}
-                    message={message}
-                  />
                   {me?.is_platform_staff && message.citations.length > 0 && (
                     <details className="source-details" open>
                       <summary>Sources ({message.citations.length})</summary>
@@ -372,15 +376,23 @@ export default function InboxConversationPage() {
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
-                  if (reply.trim() && !replyBlock) void sendReply();
+                  if (reply.trim()) void sendReply();
                 }}
               >
-                <ChannelReplyFields
-                  value={reply}
-                  busy={busy}
-                  block={replyBlock}
-                  onChange={(event) => setReply(event.target.value)}
-                />
+                <label>
+                  Reply
+                  <textarea
+                    dir="auto"
+                    aria-label="Reply"
+                    value={reply}
+                    maxLength={4000}
+                    onChange={(e) => setReply(e.target.value)}
+                    rows={3}
+                  />
+                </label>
+                <Button type="submit" disabled={!reply.trim() || busy}>
+                  Send reply
+                </Button>
               </form>
             )}
             <form
@@ -400,7 +412,9 @@ export default function InboxConversationPage() {
                   rows={2}
                 />
               </label>
-              <button disabled={!note.trim() || busy}>Add note</button>
+              <Button type="submit" disabled={!note.trim() || busy}>
+                Add note
+              </Button>
             </form>
           </section>
         )}
@@ -409,7 +423,7 @@ export default function InboxConversationPage() {
             Viewer access: replies and conversation changes are disabled.
           </p>
         )}
-      </main>
+      </section>
     </div>
   );
 }

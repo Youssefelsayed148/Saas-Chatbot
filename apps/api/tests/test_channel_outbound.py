@@ -471,11 +471,11 @@ def test_redirect_response_cap_and_invalid_ack(
 def test_send_migration_round_trip_and_unique_message_key(db: Session, engine: Engine) -> None:
     url = engine.url.render_as_string(hide_password=False)
     db.close()
-    run_migrations(url, upgrade_to="", downgrade_to="0018_channel_inbound")
+    run_migrations(url, upgrade_to="", downgrade_to="0024_channel_inbound")
     run_migrations(url)
     with engine.connect() as conn:
         version = conn.scalar(text("SELECT version_num FROM alembic_version"))
-        assert version == "0020_channel_health_poll"
+        assert version == "0026_channel_health_poll"
         assert (
             conn.scalar(
                 text("SELECT count(*) FROM pg_indexes WHERE indexname = 'uq_channel_send_message'")

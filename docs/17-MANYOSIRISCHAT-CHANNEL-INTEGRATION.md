@@ -95,9 +95,9 @@ Delegated-mode flag per channel (default off); signed forwarder with retry and d
 
 Meta app review, webhook verification, token storage, template creation/approval UI (all Many). Voice/image/media in v1. Shared tenant identity or shared database with Many. Billing coupling. Meta credentials or webhooks in this repo.
 
-## 11. Contract v1.1 delta (ADR-021)
+## 11. Contract v1.1 delta (ADR-023)
 
-Status: adopted 2026-10-26 (ADR-021, owner approval by issuing the Phase 6 close-out prompt). Where this section and sections 1-10 differ, this section wins. Anything not mentioned stays as in v1. Source text: implementation/PHASE-06-V2/CONTRACT-V1.1-DELTA.md.
+Status: adopted 2026-10-26 (ADR-023, owner approval by issuing the Phase 6 close-out prompt). Where this section and sections 1-10 differ, this section wins. Anything not mentioned stays as in v1. Source text: implementation/PHASE-06-V2/CONTRACT-V1.1-DELTA.md.
 
 A1. Channel must match. `message.received.channel` MUST equal the connection's channel. Otherwise the SaaS returns `422` (signed, malformed; Many must not retry).
 

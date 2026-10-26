@@ -185,6 +185,106 @@ def threshold_sweep(rows: list[dict[str, Any]], mode: str) -> dict[str, Any]:
     }
 
 
+SWEEP_COSINES: tuple[float | None, ...] = (None, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60)
+SWEEP_FTS: tuple[float, ...] = (0.005, 0.01, 0.02, 0.05, 0.1, 0.2)
+SWEEP_TERMS: tuple[int, ...] = (1, 2, 3)
+
+
+def _page_accepts(chunk: dict[str, Any], cosine: float | None, fts: float, terms: int) -> bool:
+    """The gate's chunk rule, replayed on recorded numbers (cosine OR terms+FTS)."""
+    sim = chunk.get("cosine")
+    if cosine is not None and sim is not None and sim >= cosine:
+        return True
+    needed = max(1, min(terms, chunk["query_terms"]) if chunk["query_terms"] else terms)
+    return bool(
+        chunk["matched_terms"] >= needed and chunk["fts_match"] > 0 and chunk["fts_match"] >= fts
+    )
+
+
+def page_sweep(
+    records: list[dict[str, Any]],
+    *,
+    cosines: tuple[float | None, ...] = SWEEP_COSINES,
+    fts_floors: tuple[float, ...] = SWEEP_FTS,
+    min_terms: tuple[int, ...] = SWEEP_TERMS,
+    current: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Replay the gate over recorded candidates for every threshold combination.
+
+    ``records``: one per case with ``behavior`` (grounded|abstain), ``language``,
+    ``expected`` (list of [file stem, page]) and ``candidates`` (each: ``page`` as
+    [stem, page] or None, ``cosine``, ``fts_match``, ``matched_terms``,
+    ``query_terms``). Nothing is applied: this only counts, per combination, how
+    many answerable cases would be wrongly refused, how many would keep only the
+    wrong page, and how many unanswerable cases would leak evidence.
+    """
+    answerable = [r for r in records if r["behavior"] == "grounded"]
+    unanswerable = [r for r in records if r["behavior"] != "grounded"]
+    rows: list[dict[str, Any]] = []
+    for cosine in cosines:
+        for fts in fts_floors:
+            for terms in min_terms:
+                refusals = wrong_only = leaks = 0
+                by_language: dict[str, int] = {}
+                for record in answerable:
+                    passed = {
+                        tuple(c["page"])
+                        for c in record["candidates"]
+                        if c["page"] is not None and _page_accepts(c, cosine, fts, terms)
+                    }
+                    expected = {tuple(page) for page in record["expected"]}
+                    if not passed:
+                        refusals += 1
+                        by_language[record["language"]] = by_language.get(record["language"], 0) + 1
+                    elif not passed & expected:
+                        wrong_only += 1
+                for record in unanswerable:
+                    leaks += any(_page_accepts(c, cosine, fts, terms) for c in record["candidates"])
+                rows.append(
+                    {
+                        "cosine_floor": cosine,
+                        "fts_floor": fts,
+                        "min_matched_terms": terms,
+                        "wrong_refusals": refusals,
+                        "wrong_refusals_by_language": dict(sorted(by_language.items())),
+                        "wrong_evidence_only": wrong_only,
+                        "unanswerable_leaks": leaks,
+                    }
+                )
+    ordered = sorted(
+        rows,
+        key=lambda r: (
+            r["unanswerable_leaks"],
+            r["wrong_refusals"],
+            r["wrong_evidence_only"],
+            -r["min_matched_terms"],
+            -r["fts_floor"],
+            r["cosine_floor"] if r["cosine_floor"] is not None else 2,
+        ),
+    )
+    return {
+        "answerable_cases": len(answerable),
+        "unanswerable_cases": len(unanswerable),
+        "rows": rows,
+        "ranked": ordered[:5],
+        "current": next((r for r in rows if _matches_current(r, current)), None),
+        "selection_rule": "fewest leaks, then wrong refusals, then wrong-evidence-only; "
+        "ties prefer the stricter setting",
+        "status": "recommendation only; pending owner calibration review",
+        "automatically_applied": False,
+    }
+
+
+def _matches_current(row: dict[str, Any], current: dict[str, Any] | None) -> bool:
+    if current is None:
+        return False
+    return bool(
+        row["cosine_floor"] == current.get("cosine_floor")
+        and row["fts_floor"] == current.get("fts_floor")
+        and row["min_matched_terms"] == current.get("min_matched_terms")
+    )
+
+
 class CappedChatTransport(httpx.BaseTransport):
     """Persist a request reservation BEFORE transport; crashes cannot reset cap40."""
 

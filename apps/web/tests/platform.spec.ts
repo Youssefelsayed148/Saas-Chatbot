@@ -4,7 +4,7 @@ import { promoteToStaff } from "./staff-helpers";
 
 /**
  * P4-06 E2E (docs/11): /platform gated SERVER-SIDE (non-staff redirected);
- * staff view the client list, onboard a client end to end (tenant + admin
+ * staff view the list, create organization/user/bot separately (admin
  * one-time invite + bot), and open the client detail (bots, members, audit).
  * The staff flag is not a tenant role and has no self-service path, so the
  * E2E sets it the way the pytest suite does — a direct UPDATE on the SAME
@@ -34,7 +34,7 @@ test("non-staff cannot reach /platform (server-side redirect)", async ({
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
 });
 
-test("staff list, onboard a client end to end, and open the client detail", async ({
+test("staff create an organization, user and bot, and open the client detail", async ({
   page,
 }) => {
   test.setTimeout(180_000);
@@ -52,18 +52,39 @@ test("staff list, onboard a client end to end, and open the client detail", asyn
 
   // Tenant A/B isolation is unaffected: assert a demo tenant exists only via
   // its own tenant name (per-bot/bot isolation covered by the pytest suite).
-  const clientName = `Onboarded Org ${Date.now()}`;
-  await page.getByTestId("ob-client-name").fill(clientName);
-  await page
-    .getByTestId("ob-admin-email")
-    .fill(`admin.${Date.now()}@client.example`);
-  await page.getByTestId("ob-bot-name").fill("First Bot");
-  await page.getByTestId("ob-submit").click();
-  const invite = page.getByTestId("ob-invite-link");
-  await expect(invite).toContainText("/accept-invite?token=", {
-    timeout: 20_000,
+  const clientName = `Managed Org ${Date.now()}`;
+  await page.getByTestId("organization-name").fill(clientName);
+  await page.getByTestId("organization-submit").click();
+  await page.waitForURL(/\/platform\/clients\/[0-9a-f-]{36}$/);
+  const createdId = page.url().split("/").at(-1)!;
+  await page.getByRole("tab", { name: "Bots", exact: true }).click();
+  const createBot = page.getByRole("region", {
+    name: "Create bot",
+    exact: true,
   });
-  await expect(invite).toContainText("Durable request:");
+  await createBot.getByLabel("Bot name", { exact: true }).fill("First Bot");
+  await createBot
+    .getByRole("button", { name: "Create bot", exact: true })
+    .click();
+  await expect(createBot.getByRole("status")).toContainText("Bot created");
+  const headers = { "X-CSRF-Token": await csrfOf(page) };
+  const email = `admin.${Date.now()}@client.example`;
+  const user = await page.request.post("/api/v1/platform/users", {
+    headers,
+    data: { email, password: "Str0ngPass!" },
+  });
+  expect(user.status()).toBe(201);
+  const invite = await page.request.post(
+    `/api/v1/tenants/${createdId}/invitations`,
+    {
+      headers,
+      data: { email, role: "admin" },
+    },
+  );
+  expect(invite.status()).toBe(201);
+  expect((await invite.json()).link_path).toContain("/accept-invite?token=");
+  await page.goto("/platform");
+  await expect(page.getByTestId("onboarding-form")).toHaveCount(0);
 
   // The new client appears in the list (searchable).
   await page.getByTestId("platform-query").fill(clientName);
@@ -80,6 +101,7 @@ test("staff list, onboard a client end to end, and open the client detail", asyn
   await expect(page.getByTestId("client-detail-name")).toContainText(
     clientName,
   );
+  await page.getByRole("tab", { name: "Bots", exact: true }).click();
   await expect(page.getByTestId("client-detail-bots")).toContainText(
     "First Bot",
   );
@@ -89,8 +111,9 @@ test("staff list, onboard a client end to end, and open the client detail", asyn
   await page.getByTestId("client-detail-bots");
   const csrf = await csrfOf(page);
   expect(csrf).toBeTruthy();
+  await page.getByRole("tab", { name: "Overview", exact: true }).click();
 
-  // The onboarded client has no membership for this operator.
+  // The new client has no membership for this operator.
   const clientId = page.url().split("/").at(-1)!;
   const preview = await (
     await page.request.get(`/api/v1/tenants/${clientId}/data/deletion-preview`)

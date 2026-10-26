@@ -1,0 +1,154 @@
+/* Tenant Overview (B4). Tokens only; logical properties for RTL. */
+.overview-screen {
+  display: grid;
+  gap: var(--space-5);
+  align-content: start;
+}
+.overview-screen > * {
+  min-inline-size: 0;
+}
+.overview-alert {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius-sm);
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+.overview-alert p {
+  flex: 1 1 14rem;
+  margin: 0;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+.overview-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--space-3);
+}
+.overview-kpis .stat-card {
+  padding: var(--space-4);
+}
+.overview-charts {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--space-4);
+}
+.overview-charts:has(> :only-child) {
+  grid-template-columns: minmax(0, 1fr);
+}
+.overview-charts > * {
+  min-inline-size: 0;
+}
+.overview-screen .overview-grid {
+  margin: 0;
+  gap: var(--space-4);
+}
+.overview-grid:has(> :only-child) {
+  grid-template-columns: minmax(0, 1fr);
+}
+.overview-grid > * {
+  min-inline-size: 0;
+}
+.overview-screen .recent-list {
+  margin: 0;
+}
+.overview-screen .recent-list li:last-child {
+  border-block-end: 0;
+}
+.overview-screen .recent-list a {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+}
+.recent-main {
+  display: grid;
+  gap: 0.15rem;
+  min-inline-size: 0;
+}
+.recent-main > strong {
+  color: var(--text);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.recent-preview {
+  color: var(--muted);
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.recent-meta {
+  display: grid;
+  justify-items: end;
+  gap: 0.25rem;
+}
+.recent-meta small {
+  color: var(--muted);
+  white-space: nowrap;
+}
+.overview-screen .checklist {
+  margin: 0;
+}
+.overview-screen .checklist li:first-child {
+  margin-block-start: var(--space-2);
+}
+.overview-usage {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.overview-usage .section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.overview-usage .section-heading h2 {
+  margin: 0;
+}
+.usage-meters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: var(--space-3) var(--space-5);
+}
+.usage-item {
+  display: grid;
+  gap: 0.35rem;
+  min-inline-size: 0;
+}
+.usage-label {
+  font-size: var(--text-sm);
+  font-weight: 550;
+}
+.usage-meters .ui-meter > .ui-meter-text {
+  font-size: 0.78rem;
+}
+.usage-warning {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--warning);
+}
+.usage-warning[data-tone="danger"] {
+  color: var(--danger);
+}
+.usage-footnote {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+@media (max-width: 52rem) {
+  .overview-charts,
+  .overview-screen .overview-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

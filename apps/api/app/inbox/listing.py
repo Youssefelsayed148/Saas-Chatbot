@@ -3,7 +3,7 @@
 import json
 import time
 from collections import defaultdict
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
@@ -19,6 +19,7 @@ from app.core.errors import ApiError
 from app.core.tenancy import TenantContext, TenantContextDep
 from app.db.models import (
     ChannelConnection,
+    Contact,
     Conversation,
     ConversationRead,
     ConversationTag,
@@ -118,6 +119,8 @@ def list_inbox(
     tag: str | None = Query(default=None, min_length=1, max_length=32),
     unread: bool | None = None,
     q: str | None = Query(default=None, max_length=200),
+    created_from: date | None = None,
+    created_to: date | None = None,
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0, le=100_000),
 ) -> dict[str, Any]:
@@ -132,6 +135,16 @@ def list_inbox(
         statement = statement.where(Conversation.mode == mode)
     if channel is not None:
         statement = statement.where(Conversation.channel == channel)
+    if created_from is not None:
+        statement = statement.where(
+            Conversation.created_at >= datetime.combine(created_from, datetime.min.time(), UTC)
+        )
+    if created_to is not None:
+        # Inclusive calendar day: everything before the start of the next day.
+        statement = statement.where(
+            Conversation.created_at
+            < datetime.combine(created_to + timedelta(days=1), datetime.min.time(), UTC)
+        )
     if assignee == "me":
         statement = statement.where(Conversation.assigned_user_id == context.user.id)
     elif assignee == "unassigned":
@@ -183,13 +196,19 @@ def list_inbox(
         .correlate(Conversation)
         .scalar_subquery()
     )
+    contact_name = (
+        select(Contact.display_name)
+        .where(Contact.tenant_id == context.tenant_id, Contact.id == Conversation.contact_id)
+        .correlate(Conversation)
+        .scalar_subquery()
+    )
     rows = context.db.execute(
-        statement.add_columns(unread_expr, latest_text)
+        statement.add_columns(unread_expr, latest_text, contact_name)
         .order_by(Conversation.last_message_at.desc().nullslast(), Conversation.id.desc())
         .limit(limit)
         .offset(offset)
     ).all()
-    ids = [row.id for row, _, _ in rows]
+    ids = [row.id for row, _, _, _ in rows]
     tags_by_conversation: dict[UUID, list[str]] = defaultdict(list)
     if ids:
         tag_rows = context.db.execute(
@@ -203,7 +222,7 @@ def list_inbox(
     # P6-05b: connection display name for channel rows (tenant-scoped join).
     connection_ids = {
         row.connection_id
-        for row, _, _ in rows
+        for row, _, _, _ in rows
         if row.source == "channel" and row.connection_id is not None
     }
     connection_names: dict[UUID, str] = {}
@@ -222,6 +241,8 @@ def list_inbox(
             "id": str(row.id),
             "bot_id": str(row.bot_id),
             "contact_id": str(row.contact_id) if row.contact_id else None,
+            "contact_name": name or None,
+            "created_at": row.created_at.isoformat(),
             "channel": row.channel,
             "connection_name": (
                 connection_names.get(row.connection_id) if row.source == "channel" else None
@@ -235,7 +256,7 @@ def list_inbox(
             "unread_count": int(count or 0),
             "tags": sorted(tags_by_conversation[row.id]),
         }
-        for row, count, text in rows
+        for row, count, text, name in rows
     ]
     return {"conversations": conversations, "total": total, "limit": limit, "offset": offset}
 

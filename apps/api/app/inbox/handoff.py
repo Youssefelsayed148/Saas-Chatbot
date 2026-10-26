@@ -7,6 +7,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
+from app.chat.routing import keyword_requests_handoff, tokenize
 from app.core.audit import record_audit
 from app.db.models import Bot, Conversation, Message
 
@@ -23,12 +24,14 @@ class HandoffDecision:
 
 
 def _contains(text: str, words: object) -> bool:
+    """Whole-token/phrase match on the normalised message (never a substring).
+
+    A person keyword inside an informational question about the bot's content
+    ("personal data policy", "how do I contact an agent?") is not a request
+    for a human; ambiguity resolves to retrieval."""
     if not isinstance(words, (list, tuple)):
         return False
-    normalized = text.casefold()
-    return any(
-        isinstance(word, str) and word.strip() and word.casefold() in normalized for word in words
-    )
+    return keyword_requests_handoff(tokenize(text), [w for w in words if isinstance(w, str)])
 
 
 def decide_handoff(
@@ -44,16 +47,22 @@ def decide_handoff(
     """Return the first matching rule for website and channel conversations."""
     if conversation.source not in {"website", "channel"} or conversation.status == "waiting_human":
         return None
+    if reply_kind == "invalid_output":
+        return None  # an unusable model reply is not a provider failure and never hands off
     config = bot.config if isinstance(bot.config, dict) else {}
     if reply_kind == "busy":
         return HandoffDecision("provider_failure", language)
     if not bool(config.get("handoff_enabled", True)):
         return None
-    if reply_kind == "handoff":
-        return HandoffDecision("order_account", language)
     built_in = PERSON_KEYWORDS.get(language, PERSON_KEYWORDS["en"])
     configured = config.get(f"handoff_keywords_{language}", [])
-    if _contains(question, built_in) or _contains(question, configured):
+    asked_for_person = _contains(question, built_in) or _contains(question, configured)
+    if reply_kind == "handoff":
+        # A routed handoff: an explicit person request, else order/account.
+        return HandoffDecision(
+            "visitor_requested" if asked_for_person else "order_account", language
+        )
+    if asked_for_person:
         return HandoffDecision("visitor_requested", language)
     threshold = config.get("handoff_after_unanswered", 2)
     if not isinstance(threshold, int) or isinstance(threshold, bool) or not 1 <= threshold <= 3:

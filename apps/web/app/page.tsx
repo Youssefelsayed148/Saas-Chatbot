@@ -1,20 +1,22 @@
-import Link from "next/link";
+import { Icon } from "@/lib/icons";
+import { LinkButton } from "@/lib/ui";
 
 export default function Home() {
   return (
     <main className="auth-page landing-page">
       <span className="brand-mark" aria-hidden="true">
-        ✧
+        <Icon name="sparkle" size={22} />
       </span>
-      <p className="eyebrow">Website Chatbot SaaS</p>
-      <h1>Application foundation</h1>
-      <p>
-        Give your visitors answers grounded in your knowledge, and help your
-        team continue the conversation.
+      <p className="eyebrow">AI chatbot and human inbox</p>
+      <h1>Website Chatbot</h1>
+      <p className="page-purpose">
+        An AI chatbot for your website with a human inbox. Answer visitors
+        instantly, hand off to your team when it matters.
       </p>
       <nav aria-label="Get started" className="action-row">
-        <Link href="/login">Sign in</Link> ·{" "}
-        <Link href="/register">Register</Link>
+        <LinkButton href="/login" variant="primary" iconEnd="arrow-right">
+          Sign in
+        </LinkButton>
       </nav>
     </main>
   );

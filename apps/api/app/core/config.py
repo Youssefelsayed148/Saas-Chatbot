@@ -3,7 +3,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.quotas.rag_contracts import RagLimits
@@ -41,6 +41,11 @@ class Settings(BaseSettings):
     login_rate_limit_attempts: int = Field(default=10, ge=1, le=1000)
     login_rate_limit_window_seconds: int = Field(default=300, ge=1, le=86400)
 
+    # Change-password throttling (S4): only FAILED current-password attempts
+    # count, per user, in the same Postgres-backed fixed-window service.
+    change_password_rate_limit_attempts: int = Field(default=5, ge=1, le=1000)
+    change_password_rate_limit_window_seconds: int = Field(default=300, ge=1, le=86400)
+
     # --- P2 knowledge ingestion (docs/14 §3–§5 defaults; composable via env) ---
     # Local-disk storage root for uploaded files (shared volume in Compose).
     storage_root: str = str(_DEFAULT_STORAGE_ROOT)
@@ -72,16 +77,32 @@ class Settings(BaseSettings):
     chat_free_model_chain: list[str] = Field(default_factory=list)
     chat_openai_base_url: str = "https://api.openai.com/v1"
     chat_openai_api_key: SecretStr | None = None
-    chat_openai_model: str = ""
+    # Premium default: gpt-4.1-nano was deprecated by OpenAI; gpt-5.4-nano is the verified
+    # replacement (temperature 0.2 + JSON mode answer 200). Override with CHAT_OPENAI_MODEL.
+    chat_openai_model: str = "gpt-5.4-nano"
+    # Premium resilience (H5): optional ORDERED fallback models tried after the primary,
+    # one attempt each (JSON array in CHAT_OPENAI_FALLBACK_MODELS). Empty = no fallback.
+    chat_openai_fallback_models: list[str] = Field(default_factory=list)
     # Comma-separated Fernet keys, newest first; never log or expose this field.
     # repr=False: never render the key name or value in Settings.__repr__
     # (the repr must not leak channel secret material, docs/17 §7 / ADR-020).
     channel_secret_encryption_keys: SecretStr | None = Field(default=None, repr=False)
     chat_max_tokens: int = Field(default=700, ge=64, le=2000)
+    # Completion cap for the free OpenRouter chain only: its reasoning models spend part of the cap
+    # on hidden reasoning and would otherwise run out before the JSON answer is written.
+    chat_max_tokens_free: int = Field(default=1500, ge=64, le=4000)
+    # Visitor-turn time budget (#84): whole turn, query embedding wait, and the
+    # optional rewrite/translation calls. Generation always gets at least 10 s.
+    chat_turn_deadline_seconds: float = Field(default=40.0, ge=5, le=300)
+    chat_embed_timeout_seconds: float = Field(default=5.0, gt=0, le=60)
+    chat_aux_timeout_seconds: float = Field(default=10.0, gt=0, le=60)
     # Message retention (docs/14 §7): configurable days; the worker purges.
     retention_days: int = Field(default=30, ge=1, le=365)
     retention_purge_interval_seconds: int = Field(default=86_400, ge=60)
-    chat_num_history_messages: int = Field(default=6, ge=0, le=20)
+    # Prior exchanges (visitor message + its AI reply) sent as chat turns; 0 disables.
+    chat_history_exchanges: int = Field(default=3, ge=0, le=10)
+    # History window in days; None uses retention_days (never longer than it).
+    chat_history_window_days: int | None = Field(default=None, ge=1, le=365)
     # --- P4 widget public API (docs/09, docs/14 §7 defaults) ---
     # Visitor capability token lifetime (short-lived; the widget requests a
     # new session when expired).
@@ -102,6 +123,8 @@ class Settings(BaseSettings):
     embedding_ollama_base_url: str = "http://host.docker.internal:11434"
     embedding_timeout_seconds: float = Field(default=25.0, gt=0, le=120)
     embedding_test_stub: bool = False
+    # Chunks per provider call in the backfill (<=128 keeps requests under provider limits).
+    embedding_batch_size: int = Field(default=32, ge=1, le=128)
     retrieval_rrf_k: int = Field(default=60, ge=1)
     retrieval_hnsw_max_scan_tuples: int = Field(default=20_000, ge=1)
     rag_plan_limits: dict[str, RagLimits] = Field(default_factory=dict)
@@ -117,6 +140,14 @@ class Settings(BaseSettings):
     retrieval_min_fts_match: float = Field(default=0.01, gt=0)
     retrieval_min_matched_terms: int = Field(default=2, ge=1)
     retrieval_keyword_gates: dict[str, KeywordGate] = Field(default_factory=dict)
+    # B.5 calibration knobs. Defaults reproduce the previous behaviour exactly.
+    # Store-name/filler words left out of the matched/query term counts (not out
+    # of the ranking query). JSON list in the environment.
+    retrieval_gate_ignore_terms: list[str] = Field(default_factory=list)
+    # Top-result rule: the chunk with the highest cosine passes when it reaches
+    # this lower floor AND leads the runner-up by the margin. None = rule off.
+    retrieval_top_result_cosine_floor: float | None = Field(default=None, ge=-1, le=1)
+    retrieval_top_result_margin: float = Field(default=0.0, ge=0, le=2)
     chat_rewrite_enabled: bool = True
     chat_rewrite_plans: list[str] = Field(
         default_factory=lambda: ["free", "starter", "pro", "business"]
@@ -131,6 +162,19 @@ class Settings(BaseSettings):
     channel_health_poll_batch: int = Field(default=100, ge=1)
     # E2E/test harness guard: when set, the worker refuses a non-_test database.
     worker_allow_only_test_db: bool = False
+
+    @field_validator("chat_openai_fallback_models")
+    @classmethod
+    def _valid_fallback_models(cls, value: list[str]) -> list[str]:
+        """Plain model ids, no duplicates, at most 3 (each is one more attempt per turn)."""
+        cleaned = [name.strip() for name in value]
+        if any(not name or any(ch.isspace() for ch in name) for name in cleaned):
+            raise ValueError("Fallback model ids must be non-empty and contain no whitespace.")
+        if len(set(cleaned)) != len(cleaned):
+            raise ValueError("Fallback model ids must be unique.")
+        if len(cleaned) > 3:
+            raise ValueError("At most 3 fallback models are supported.")
+        return cleaned
 
 
 @lru_cache

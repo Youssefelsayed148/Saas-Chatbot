@@ -8,11 +8,11 @@ from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy import select, text
+from sqlalchemy import select, text, update
 from sqlalchemy.orm import Session
 
 import tests.retrieval_helpers as helpers
-from app.db.models import Bot, Chunk, Job
+from app.db.models import Bot, Chunk, Job, KnowledgeRevision
 from app.embeddings.providers import EmbeddingBatch, EmbeddingError
 from app.retrieval import hybrid
 from app.retrieval.service import RetrievedChunk, retrieve
@@ -37,6 +37,14 @@ def ready(db: Session, corpus: dict[str, Any]) -> Bot:
     assert bot is not None
     bot.embedding_ready = True
     bot.active_embedding_model = "ollama:bge-m3"
+    db.execute(
+        update(KnowledgeRevision)
+        .where(
+            KnowledgeRevision.tenant_id == bot.tenant_id,
+            KnowledgeRevision.id == bot.published_revision_id,
+        )
+        .values(embedding_model="ollama:bge-m3")
+    )
     db.commit()
     return bot
 
@@ -161,7 +169,25 @@ def test_rrf_retains_both_scores_without_using_raw_scores_for_rank() -> None:
     assert fused[0].document_id == item.document_id and fused[0].page_ref == "1"
 
 
-@pytest.mark.parametrize("reason", ["forced", "backfill", "failure"])
+def test_rrf_tie_is_decided_by_cosine_then_fts_rank_then_ordinal_deterministically() -> None:
+    low, high = UUID(int=1), UUID(int=2)  # the old tie-break (chunk id) would pick `low`
+    base = RetrievedChunk(uuid4(), uuid4(), "T", None, "x", "en", 0, 0, None, "1", 4, 0)
+    by_fts = replace(base, chunk_id=low, rank=0.9)
+    by_vector = replace(base, chunk_id=high, vector_similarity=0.7)
+    for _ in range(5):
+        fused = hybrid.fuse([by_fts], [by_vector], 8, 60)
+        assert fused[0].rrf_score == fused[1].rrf_score
+        assert [c.chunk_id for c in fused] == [high, low]  # cosine beats the missing score
+    # Same fused score and cosine: FTS rank decides first, then ordinal, then chunk id.
+    first = replace(base, chunk_id=high, ordinal=0, vector_similarity=0.6)
+    second = replace(base, chunk_id=low, ordinal=1, vector_similarity=0.6)
+    both = hybrid.fuse([first], [second], 8, 60)
+    assert [c.chunk_id for c in both] == [high, low]  # ordinal 0 before ordinal 1
+    same = hybrid.fuse([replace(first, ordinal=0)], [replace(second, ordinal=0)], 8, 60)
+    assert [c.chunk_id for c in same] == [low, high]  # chunk id is the last resort
+
+
+@pytest.mark.parametrize("reason", ["forced", "unready", "failure"])
 def test_degradation_is_logged_and_does_not_call_unneeded_provider(
     db: Session, corpus: dict[str, Any], monkeypatch: Any, caplog: Any, reason: str
 ) -> None:
@@ -173,8 +199,12 @@ def test_degradation_is_logged_and_does_not_call_unneeded_provider(
         raise EmbeddingError("safe synthetic failure")
 
     monkeypatch.setattr(hybrid, "from_settings", factory)
-    if reason == "backfill":
-        db.add(Job(tenant_id=bot.tenant_id, bot_id=bot.id, type="reembed_backfill"))
+    if reason == "unready":
+        db.execute(
+            update(KnowledgeRevision)
+            .where(KnowledgeRevision.id == bot.published_revision_id)
+            .values(embedding_model=None)
+        )
         db.commit()
     with caplog.at_level("INFO"):
         result = run(db, corpus, mode_override="fts_only" if reason == "forced" else None)
@@ -307,3 +337,32 @@ def test_query_embedding_events_carry_the_real_channel(
         if row.payload["event_type"] == "embed_query"
     }
     assert channels == {"playground"}
+
+
+def test_active_backfill_and_unready_draft_do_not_degrade_live_hybrid(
+    db: Session, corpus: dict[str, Any], monkeypatch: Any
+) -> None:
+    """H1: draft progress / a running backfill never affect the published revision."""
+    bot = ready(db, corpus)
+    db.add(
+        Job(
+            tenant_id=bot.tenant_id,
+            bot_id=bot.id,
+            type="reembed_backfill",
+            payload={"embedding_model": "ollama:bge-m3"},
+        )
+    )
+    db.execute(
+        update(KnowledgeRevision)
+        .where(KnowledgeRevision.tenant_id == bot.tenant_id, KnowledgeRevision.status == "draft")
+        .values(embedding_model=None)
+    )
+    db.commit()
+
+    class Fake:
+        def embed(self, texts: list[str]) -> EmbeddingBatch:
+            return EmbeddingBatch([VECTOR])
+
+    monkeypatch.setattr(hybrid, "from_settings", lambda *args: Fake())
+    result = run(db, corpus)
+    assert result.mode == "hybrid" and result.degradation_reason is None

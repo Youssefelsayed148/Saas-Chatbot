@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { registerAdmin } from "./e2e-helpers";
 
-test("Arabic inbox rows preserve unread markers and removable filter requests", async ({
+test("Arabic inbox rows preserve unread markers and filter chips drive the request", async ({
   page,
 }) => {
   const { tenantId } = await registerAdmin(page, "Arabic inbox");
@@ -37,9 +37,15 @@ test("Arabic inbox rows preserve unread markers and removable filter requests", 
   await expect(
     row.locator('[data-handoff-reason="visitor_requested"]'),
   ).toContainText("Visitor requested a person");
-  await expect(
-    page.getByRole("button", { name: "Remove status filter" }),
-  ).toBeVisible();
+  // The Waiting chip mirrors status=waiting_human from the URL.
+  await expect(page.getByTestId("inbox-filter-waiting")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(page.getByTestId("inbox-filter-all")).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
   await page.getByText("More filters", { exact: true }).click();
   const modeRequest = page.waitForRequest(
     (request) =>
@@ -48,19 +54,19 @@ test("Arabic inbox rows preserve unread markers and removable filter requests", 
   );
   await page.getByTestId("inbox-mode-filter").selectOption("human");
   await modeRequest;
-  await expect(
-    page.getByRole("button", { name: "Remove mode filter" }),
-  ).toBeVisible();
   await page.getByTestId("inbox-mode-filter").press("Escape");
   await expect(page.getByTestId("inbox-mode-filter")).not.toBeVisible();
-  await page.getByRole("button", { name: "Remove mode filter" }).click();
   const cleared = page.waitForRequest(
     (request) =>
       new URL(request.url()).pathname.endsWith("/inbox") &&
       !new URL(request.url()).searchParams.has("status"),
   );
-  await page.getByRole("button", { name: "Remove status filter" }).click();
+  await page.getByTestId("inbox-filter-all").click();
   await cleared;
+  await expect(page.getByTestId("inbox-filter-all")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
 });
 
 test("tenant Overview reads existing data and is the client signup destination", async ({

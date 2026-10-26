@@ -194,20 +194,45 @@ test("platform client mutations preserve plan, quota and pause reason payloads",
     } else await route.continue();
   });
   await page.goto(`/platform/clients/${tenantId}`);
-  await expect(page.getByRole("button", { name: "Pause bot" })).toBeDisabled();
-  await expect(
-    page.getByRole("button", { name: "Save override with reason" }),
-  ).toBeDisabled();
-  await page.getByLabel("Reason", { exact: true }).fill("Reviewed by staff");
+  // Each action opens its own dialog; Confirm stays disabled without a reason.
   await page.getByLabel("Plan label").fill("starter");
   await page.getByRole("button", { name: "Save plan" }).click();
+  const planDialog = page.getByRole("dialog", { name: "Save plan?" });
+  await expect(
+    planDialog.getByRole("button", { name: "Confirm", exact: true }),
+  ).toBeDisabled();
+  await planDialog
+    .getByLabel("Reason", { exact: true })
+    .fill("Reviewed by staff");
+  await planDialog
+    .getByRole("button", { name: "Confirm", exact: true })
+    .click();
   await expect.poll(() => actions.length).toBe(1);
   await page.getByLabel("Quota overrides (JSON)").fill('{"bots":5}');
   await page.getByRole("button", { name: "Save override with reason" }).click();
+  const quotaDialog = page.getByRole("dialog", {
+    name: "Save quota override?",
+  });
+  await expect(
+    quotaDialog.getByRole("button", { name: "Confirm", exact: true }),
+  ).toBeDisabled();
+  await quotaDialog
+    .getByLabel("Reason", { exact: true })
+    .fill("Reviewed by staff");
+  await quotaDialog
+    .getByRole("button", { name: "Confirm", exact: true })
+    .click();
   await expect.poll(() => actions.length).toBe(2);
+  await page.getByRole("tab", { name: "Bots", exact: true }).click();
   await page.getByRole("button", { name: "Pause bot" }).click();
-  await page
-    .getByRole("dialog", { name: "Pause bot?" })
+  const pauseDialog = page.getByRole("dialog", { name: "Pause bot?" });
+  await expect(
+    pauseDialog.getByRole("button", { name: "Confirm", exact: true }),
+  ).toBeDisabled();
+  await pauseDialog
+    .getByLabel("Reason", { exact: true })
+    .fill("Reviewed by staff");
+  await pauseDialog
     .getByRole("button", { name: "Confirm", exact: true })
     .click();
   await expect.poll(() => actions.length).toBe(3);

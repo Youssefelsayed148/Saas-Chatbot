@@ -9,8 +9,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0017_manyosiris_channels"
-down_revision = "0016_arabic_fts"
+revision = "0023_manyosiris_channels"
+down_revision = "0022_knowledge_hygiene"
 branch_labels = None
 depends_on = None
 
@@ -18,7 +18,10 @@ depends_on = None
 def upgrade() -> None:
     bind = op.get_bind()
     non_null_connection_ids = bind.execute(
-        sa.text("SELECT count(*) FROM conversations WHERE connection_id IS NOT NULL")
+        sa.text(
+            "SELECT count(*) FROM conversations WHERE connection_id IS NOT NULL "
+            "AND source <> 'playground'"
+        )
     ).scalar_one()
     if non_null_connection_ids:
         raise RuntimeError(
@@ -125,6 +128,14 @@ def upgrade() -> None:
         "ix_channel_events_tenant_received", "channel_events", ["tenant_id", "received_at"]
     )
 
+    op.add_column("conversations", sa.Column("external_conversation_id", sa.Text(), nullable=True))
+    # main stores the per-user playground key ``playground:<user_id>`` in the old
+    # free-text connection_id; move it to external_conversation_id before the
+    # column becomes a UUID foreign key to channel_connections.
+    op.execute(
+        "UPDATE conversations SET external_conversation_id = connection_id, "
+        "connection_id = NULL WHERE source = 'playground' AND connection_id IS NOT NULL"
+    )
     op.alter_column(
         "conversations",
         "connection_id",
@@ -132,7 +143,6 @@ def upgrade() -> None:
         type_=postgresql.UUID(as_uuid=True),
         postgresql_using="connection_id::uuid",
     )
-    op.add_column("conversations", sa.Column("external_conversation_id", sa.Text(), nullable=True))
     op.add_column(
         "conversations", sa.Column("origin", postgresql.JSONB(astext_type=sa.Text()), nullable=True)
     )
@@ -205,7 +215,6 @@ def downgrade() -> None:
 
     op.drop_index("uq_conversations_connection_external", table_name="conversations")
     op.drop_constraint("fk_conversations_connection", "conversations", type_="foreignkey")
-    op.drop_column("conversations", "external_conversation_id")
     op.drop_column("conversations", "origin")
     op.alter_column(
         "conversations",
@@ -214,6 +223,11 @@ def downgrade() -> None:
         type_=sa.Text(),
         postgresql_using="connection_id::text",
     )
+    op.execute(
+        "UPDATE conversations SET connection_id = external_conversation_id "
+        "WHERE source = 'playground' AND external_conversation_id IS NOT NULL"
+    )
+    op.drop_column("conversations", "external_conversation_id")
 
     op.drop_index("ix_channel_events_tenant_received", table_name="channel_events")
     op.drop_index("uq_channel_events_connection_event", table_name="channel_events")

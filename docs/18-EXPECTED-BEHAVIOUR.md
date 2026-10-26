@@ -6,7 +6,7 @@ A business signs up, creates an organization and a bot, gives it its data (uploa
 
 ## What you should be able to do at the end of each phase
 ### After P1 — Foundation
-- Open the web app, register, log in, log out. Wrong password → clear error; expired session → sent back to login.
+- Open the web app, register (self-serve signup is flag-gated and closed by default — see the S1–S4 section below), log in, log out. Wrong password → clear error; expired session → sent back to login.
 - Create an organization; you are its admin. Create a second org and switch between them.
 - Create, rename, edit settings of, and archive a bot. Archived bots disappear from the default list but are not deleted.
 - Admins invite teammates with a one-time link (copy and send it yourself; there is no email). The invitee opens it, registers or logs in and joins with the chosen role. Links expire, work once and can be revoked. A viewer sees bots but has no create/edit buttons and the API rejects their writes.
@@ -17,6 +17,7 @@ A business signs up, creates an organization and a bot, gives it its data (uploa
 - See the extracted documents and chunks (preview), counts, and which source each came from.
 - Click Publish: the bot's knowledge switches to the new revision atomically. Roll back to the previous revision works. A failed ingest never changes what is published.
 - Uploading the same file twice does not duplicate content. Another organization with the same file shares nothing.
+- Uploading a file the bot already has (same bytes, any name) stores nothing and tells you which existing file it matches. A new version of a file can replace it in place (Replace file, then Ingest), and a file can be removed (Remove): both change the draft only, visitors keep the published answers until you publish, and Roll back restores the removed content. When two different files produce identical text, one copy is kept (the newer file's) and the document list shows a warning. Tick "Always include" on up to three files (contact details, hours, policies) to reserve their text in every answer's evidence; the setting follows the file through replace, re-ingest and publish.
 ### After P3 — Chat
 - In the Playground, ask a question: streamed or complete answer with source citations (file/page or URL).
 - Ask something not in the data: the bot says it doesn't have that information — no invention.
@@ -37,6 +38,7 @@ A business signs up, creates an organization and a bot, gives it its data (uploa
 - A visitor asks something the bot cannot answer, or asks for a person: the bot says so politely, gives the support contact, and the conversation appears in the Inbox as "waiting for a person" with a notification badge.
 - An admin/editor opens it, clicks Take over (the AI goes silent), types a reply; the visitor sees it in the widget within a few seconds, as plain text. The agent adds a note and a tag, then either Resolves it or Returns it to the bot. A viewer can read but cannot reply. If two agents click Take over, the second is told who has it.
 - The Inbox lists every conversation with filters (status, mode, channel, assignee, tag, unread) and search; it updates live without refreshing.
+- Inbox and Conversations are one module with two tabs: Inbox (live work: filter chips for waiting / assigned to me / unread / all, thread beside the list) and History (every saved conversation: search, status, channel and date filters, pagination with a total, read-only thread with citations; admins can delete a conversation from the row menu and set data retention in a collapsible panel that shows the saved value). The sidebar shows a single "Conversations" item.
 - Contacts: a lead who filled the widget form appears with their details and consent; you can set a stage (new/qualified/customer/lost), add tags and custom fields, see their conversation timeline, merge duplicates, export CSV, and erase a contact.
 - Follow-ups: schedule a message for a lead; on the website the visitor sees it the next time they open the widget.
 - Analytics add handoff rate, time to first human reply, sentiment distribution, resolved vs open, agent workload — measured numbers only.
@@ -52,6 +54,13 @@ A business signs up, creates an organization and a bot, gives it its data (uploa
 - Duplicate or replayed events change nothing; a forged request is rejected; one tenant's connection can never touch another tenant's data. Pausing a connection stops AI replies and sends instantly.
 - Follow-ups and broadcasts to WhatsApp go out only to contacts who opted in, only with an approved template, and only after you approve the first real send.
 - Many handles all Meta-side concerns (tokens, webhooks, window, templates); this app never stores Meta credentials.
+
+### After the account/administration slices (S1–S4, 2026-10-21)
+- **Login and registration:** signing in works for client users and platform staff; a deactivated user cannot sign in. Registration is closed by default: the login screen shows no Register link when `self_serve_signup` is off, `/register` says registration is by invitation only, and the API returns 403 `INVITATION_REQUIRED` without a valid invitation token. With the flag explicitly on, the P7 self-service signup still creates one organization and bot.
+- **Account page:** every signed-in user (client workspace or platform admin) has an Account link in the header; it shows the signed-in email and a change-password form. Wrong current password shows "Current password is incorrect." — nothing leaks. A successful change signs out every OTHER signed-in context of that user, keeps the current session alive, and the old password stops working at login while the new one works.
+- **Staff-managed accounts (S1/S2):** platform staff create organizations, create client users (staff-set or generated password shown once) and assign them to organizations with a role; they can reset a user's password (all sessions revoked), deactivate/reactivate accounts (deactivation signs the user out immediately) and manage memberships with seat and last-admin rules. Every staff write is audited with the staff actor.
+- **Staff bot administration (S3):** platform staff see and create bots across all organizations from /platform/bots, pause a bot with a reason, and open organization workspaces.
+- **Staff-only enforcement:** non-staff (tenant admin, tenant member) get 403 on platform endpoints; anonymous callers get 401. No impersonation: staff act under their own account.
 
 ## Always-true rules (every phase)
 1. Cross-tenant access is impossible by ID guessing. 2. Errors are specific and actionable. 3. No secrets or visitor PII in logs. 4. Loading, empty and error states exist on every screen. 5. Archived/paused things behave predictably. 6. No success state without a real backend result.

@@ -1,13 +1,13 @@
 """Register the durable channel send job and enforce one job per message.
 
-Revision ID: 0019_channel_send
-Revises: 0018_channel_inbound
+Revision ID: 0025_channel_send
+Revises: 0024_channel_inbound
 """
 
 from alembic import op
 
-revision = "0019_channel_send"
-down_revision = "0018_channel_inbound"
+revision = "0025_channel_send"
+down_revision = "0024_channel_inbound"
 branch_labels = None
 depends_on = None
 

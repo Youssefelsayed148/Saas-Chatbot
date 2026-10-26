@@ -18,7 +18,7 @@ ranked hits. Defaults: ``top_k=8`` candidates, ``final_k=4`` chunks,
 ``max_evidence_chunks=8`` (tune only via a dated note in docs/14).
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from decimal import Decimal
 from uuid import UUID
@@ -27,7 +27,13 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session as OrmSession
 
 from app.core.config import Settings, get_settings
-from app.retrieval.query import build_tsquery, term_queries
+from app.knowledge.language import normalise_text
+from app.retrieval.query import (
+    build_tsquery,
+    normalise_ignore_terms,
+    term_labels,
+    term_queries,
+)
 
 SUPPORTED_LANGUAGES = ("en", "ar")
 
@@ -62,6 +68,9 @@ class RetrievedChunk:
     matched_terms: int = 0
     # Distinct content terms in the query that produced matched_terms.
     query_terms: int = 0
+    # Readable labels behind the two counts (staff trace, read-only).
+    query_term_labels: list[str] = field(default_factory=list)
+    matched_term_labels: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -102,46 +111,79 @@ def score_lexical(
     revision_id: UUID,
     question: str,
     language: str,
+    ignore_terms: Iterable[str] = (),
 ) -> None:
     """Score each selected chunk's stored index, with the same scoped SQL.
 
     Collapse English stems and Arabic article/prefix variants into distinct
     content-term groups before counting matches. Never copy a document's score
-    to another chunk that may contain no matching terms.
+    to another chunk that may contain no matching terms. ``ignore_terms`` (the
+    store-name/filler list) leaves the term count only; ranking is unchanged.
     """
+    ignore = normalise_ignore_terms(ignore_terms)
     query = build_tsquery(question, language)
     if not chunks or not query:
         return
     column = _fts_column(language)
+    # Terms are counted on heading + text only: the title (a filename such as
+    # "returns_1.pdf") is searchable for ranking but never satisfies a term.
+    bodies: dict[str, str] = {}
+    for chunk in chunks:
+        body = f"{chunk.heading or ''} {chunk.text}"
+        bodies[str(chunk.chunk_id)] = normalise_text(body) if language == "ar" else body
     rows = db.execute(
         text(f"""
             WITH terms AS (
-                SELECT DISTINCT to_tsquery(:config, term) AS query
-                FROM unnest(CAST(:terms AS text[])) AS term
-                WHERE numnode(to_tsquery(:config, term)) > 0
+                SELECT to_tsquery(:config, t.term) AS query, min(t.label) AS label
+                FROM unnest(CAST(:terms AS text[]), CAST(:labels AS text[])) AS t(term, label)
+                WHERE numnode(to_tsquery(:config, t.term)) > 0
+                GROUP BY to_tsquery(:config, t.term)
+            ), bodies AS (
+                SELECT CAST(b.id AS uuid) AS id, to_tsvector(:config, b.body) AS tsv
+                FROM unnest(CAST(:body_ids AS text[]), CAST(:bodies AS text[])) AS b(id, body)
             )
             SELECT c.id, ts_rank_cd(c.{column}, to_tsquery(:config, :query)) AS score,
-                (SELECT count(*) FROM terms WHERE terms.query @@ c.{column}) AS matched
-            FROM chunks c
+                (SELECT count(*) FROM terms WHERE terms.query @@ bodies.tsv) AS matched,
+                (SELECT array_agg(terms.label ORDER BY terms.label)
+                   FROM terms WHERE terms.query @@ bodies.tsv) AS matched_labels,
+                (SELECT count(*) FROM terms) AS term_total,
+                (SELECT array_agg(terms.label) FROM terms) AS term_group_labels
+            FROM chunks c JOIN bodies ON bodies.id = c.id
             WHERE c.tenant_id=CAST(:tenant AS uuid) AND c.bot_id=CAST(:bot AS uuid)
               AND c.revision_id=CAST(:revision AS uuid)
-              AND c.id=ANY(CAST(:ids AS uuid[]))
         """),
         {
             "config": _tsquery_config(language),
-            "terms": term_queries(question, language),
+            "terms": term_queries(question, language, ignore),
+            "labels": term_labels(question, language, ignore),
             "query": query,
             "tenant": str(tenant_id),
             "bot": str(bot_id),
             "revision": str(revision_id),
-            "ids": [str(c.chunk_id) for c in chunks],
+            "body_ids": list(bodies),
+            "bodies": list(bodies.values()),
         },
     ).mappings()
-    scores = {row["id"]: (float(row["score"]), int(row["matched"])) for row in rows}
-    total = len(term_queries(question, language))
+    rows_seen = list(rows)
+    scores = {
+        row["id"]: (float(row["score"]), int(row["matched"]), list(row["matched_labels"] or []))
+        for row in rows_seen
+    }
+    # The distinct term groups PostgreSQL itself keeps (stems collapsed, stop-words
+    # gone): the count the gate requires against can always be reached.
+    labels = term_labels(question, language, ignore)
+    total = len(labels)
+    for row in rows_seen:
+        total = int(row["term_total"])
+        kept = set(row["term_group_labels"] or [])
+        labels = [label for label in labels if label in kept]
+        break
     for chunk in chunks:
-        chunk.fts_match, chunk.matched_terms = scores.get(chunk.chunk_id, (0.0, 0))
+        chunk.fts_match, chunk.matched_terms, chunk.matched_term_labels = scores.get(
+            chunk.chunk_id, (0.0, 0, [])
+        )
         chunk.query_terms = total
+        chunk.query_term_labels = list(labels)
 
 
 def _best_chunk_per_document(
@@ -185,7 +227,7 @@ def _best_chunk_per_document(
               AND q.query @@ c.{column}
             ORDER BY c.document_id, rank DESC, c.priority DESC, c.ordinal, c.id
         ) best
-        ORDER BY rank DESC, priority DESC, document_id
+        ORDER BY rank DESC, priority DESC, title, page_ref, ordinal, document_id
         LIMIT :top_k
         """
     )
@@ -228,14 +270,15 @@ def _whole_document_chunks(
     tenant_id: UUID,
     bot_id: UUID,
     revision_id: UUID,
-    language: str,
+    language: str | None,
     document_id: UUID,
 ) -> list[RetrievedChunk]:
     """All chunks of one document (retrieved whole), in ordinal order.
 
-    The language filter stays active: a document's chunks in other languages
-    are not dropped from the document, but evidence is kept per-pass
-    consistent (small-document rule, docs/14 §5).
+    ``language`` is the document's own language (the matched chunk's), never
+    the pass language: a cross-language hit must still come back whole. None
+    (reserved always-include documents, whose language is unknown) fetches
+    every chunk of the document.
     """
     rows = db.execute(
         text(
@@ -258,7 +301,7 @@ def _whole_document_chunks(
             WHERE c.tenant_id = CAST(:tenant_id AS uuid)
               AND c.bot_id = CAST(:bot_id AS uuid)
               AND c.revision_id = CAST(:revision_id AS uuid)
-              AND c.language = :language
+              AND (CAST(:language AS text) IS NULL OR c.language = CAST(:language AS text))
               AND c.document_id = CAST(:document_id AS uuid)
             ORDER BY c.ordinal, c.id
             """
@@ -334,6 +377,7 @@ def _retrieve_one_pass(
         revision_id=revision_id,
         question=question,
         language=language,
+        ignore_terms=settings.retrieval_gate_ignore_terms,
     )
     return ranked, evidence
 
@@ -374,7 +418,7 @@ def assemble_evidence(
                 tenant_id=tenant_id,
                 bot_id=bot_id,
                 revision_id=revision_id,
-                language=language,
+                language=None,
                 document_id=document_id,
             )
         )
@@ -390,7 +434,7 @@ def assemble_evidence(
                 tenant_id=tenant_id,
                 bot_id=bot_id,
                 revision_id=revision_id,
-                language=language,
+                language=ranked[0].language,
                 document_id=ranked[0].document_id,
             )
         )
@@ -408,7 +452,7 @@ def assemble_evidence(
                 tenant_id=tenant_id,
                 bot_id=bot_id,
                 revision_id=revision_id,
-                language=language,
+                language=candidate.language,
                 document_id=candidate.document_id,
             )
             if len(whole) <= remaining:
@@ -454,7 +498,7 @@ def retrieve(
         settings=settings,
         always_include_document_ids=always_include_document_ids,
     )
-    if evidence:
+    if candidates:
         return RetrievalResult(
             query_language=question_language,
             applied_language=question_language,
@@ -462,6 +506,9 @@ def retrieve(
             evidence=evidence,
             candidates=candidates,
         )
+    # No ranked hit in the question language. ``evidence`` may still hold the
+    # reserved always-include documents; that must not suppress the fallback.
+    first_pass_evidence = evidence
 
     fallback_language = (
         bot_primary_language if bot_primary_language in SUPPORTED_LANGUAGES else "en"
@@ -472,7 +519,7 @@ def retrieve(
             query_language=question_language,
             applied_language=question_language,
             used_fallback=False,
-            evidence=[],
+            evidence=first_pass_evidence,
         )
     fallback_query: str | None = None
     if translate_query is not None:
@@ -489,6 +536,14 @@ def retrieve(
         settings=settings,
         always_include_document_ids=always_include_document_ids,
     )
+    if not candidates and first_pass_evidence:
+        # The fallback found nothing either: keep the always-include evidence.
+        return RetrievalResult(
+            query_language=question_language,
+            applied_language=question_language,
+            used_fallback=False,
+            evidence=first_pass_evidence,
+        )
     return RetrievalResult(
         query_language=question_language,
         applied_language=fallback_language if evidence else question_language,

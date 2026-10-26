@@ -125,8 +125,15 @@ class TenantService:
         role: str,
         expiry_days: int,
     ) -> tuple[Invitation, str]:
+        email = email.strip().lower()
         tenant = lock_tenant(self.db, context.tenant_id)
         require_capacity(self.db, tenant, "seats")
+        if self.db.scalar(select(User.id).where(User.email == email)) is None:
+            raise ApiError(
+                404,
+                "USER_NOT_FOUND",
+                "No account exists for this email. Ask your platform contact to create it.",
+            )
         if role not in ROLE_LEVELS:
             raise ApiError(422, "VALIDATION_ERROR", f"Unknown role: {role}.")
         if expiry_days > MAX_INVITATION_EXPIRY_DAYS:
@@ -306,7 +313,14 @@ class TenantService:
 
     # --- members -----------------------------------------------------------
 
-    def change_role(self, context: TenantContext, user_id: UUID, new_role: str) -> Membership:
+    def change_role(
+        self,
+        context: TenantContext,
+        user_id: UUID,
+        new_role: str,
+        *,
+        audit_action: str = "member.role_changed",
+    ) -> Membership:
         lock_tenant(self.db, context.tenant_id)
         if new_role not in ROLE_LEVELS:
             raise ApiError(422, "VALIDATION_ERROR", f"Unknown role: {new_role}.")
@@ -329,10 +343,10 @@ class TenantService:
                 raise ApiError(403, "LAST_ADMIN", "The last admin cannot be demoted or removed.")
         record_audit(
             self.db,
-            action="member.role_changed",
+            action=audit_action,
             tenant_id=context.tenant_id,
             actor_user_id=context.user.id,
-            target_type="membership",
+            target_type="user" if audit_action.startswith("platform.user.") else "membership",
             target_id=str(membership.user_id),
             metadata={"from": membership.role, "to": new_role},
         )
@@ -341,17 +355,19 @@ class TenantService:
         self.db.commit()
         return membership
 
-    def remove_member(self, context: TenantContext, user_id: UUID) -> None:
+    def remove_member(
+        self, context: TenantContext, user_id: UUID, *, audit_action: str = "member.removed"
+    ) -> None:
         lock_tenant(self.db, context.tenant_id)
         membership = self._get_membership(context.tenant_id, user_id)
         if membership.role == "admin" and self._admin_count(context.tenant_id) == 1:
             raise ApiError(403, "LAST_ADMIN", "The last admin cannot leave or be removed.")
         record_audit(
             self.db,
-            action="member.removed",
+            action=audit_action,
             tenant_id=context.tenant_id,
             actor_user_id=context.user.id,
-            target_type="membership",
+            target_type="user" if audit_action.startswith("platform.user.") else "membership",
             target_id=str(membership.user_id),
             metadata={"was_role": membership.role},
         )

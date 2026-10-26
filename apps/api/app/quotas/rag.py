@@ -38,6 +38,16 @@ def scope(
     return bot, RagLimits.model_validate(base)
 
 
+PLAYGROUND_SOURCE = "playground"
+
+
+def counts_toward_message_quota() -> Any:
+    """SQL filter: usage events from staff playground conversations are tagged
+    ``payload.source = "playground"`` and never count toward the tenant monthly
+    message quota or the per-bot daily cap (they stay visible in staff usage)."""
+    return func.coalesce(UsageEvent.payload["source"].as_string(), "") != PLAYGROUND_SOURCE
+
+
 def month_scope(tenant_id: UUID, bot_id: UUID) -> tuple[Any, ...]:
     start = datetime.now(UTC).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     return (
@@ -64,6 +74,7 @@ def monthly_usage(db: Session, tenant_id: UUID, bot_id: UUID) -> dict[str, int]:
             .where(
                 *filters,
                 UsageEvent.kind == "message",
+                counts_toward_message_quota(),
             )
         )
         or 0
@@ -77,6 +88,7 @@ def monthly_usage(db: Session, tenant_id: UUID, bot_id: UUID) -> dict[str, int]:
                 UsageEvent.kind == "ai_usage",
                 payload["event_type"].as_string() == "message",
                 payload["status"].as_string() == "reserved",
+                counts_toward_message_quota(),
             )
         )
         or 0
@@ -183,17 +195,20 @@ def reserve(
     channel: str,
     token_bound: int = 0,
     ocr_pages: int = 0,
+    source: str | None = None,
 ) -> UUID:
     if token_bound < 0 or ocr_pages < 0:
         raise ValueError("Usage reservations cannot be negative.")
     _, limits = scope(db, tenant_id, bot_id, settings, lock=True)
     used = monthly_usage(db, tenant_id, bot_id)
     embedding = token_bound if event_type.startswith("embed_") else 0
+    playground = source == PLAYGROUND_SOURCE
     amounts = {
         "monthly_tokens": token_bound,
         "monthly_embedding_tokens": embedding,
         "monthly_ocr_pages": ocr_pages,
-        "monthly_messages": 1 if event_type == "message" else 0,
+        # A playground turn is not a billable message: it neither counts nor is blocked by it.
+        "monthly_messages": 1 if event_type == "message" and not playground else 0,
     }
     for counter, amount in amounts.items():
         limit = getattr(limits, counter)
@@ -208,6 +223,7 @@ def reserve(
             "event_type": event_type,
             "model": model,
             "channel": channel,
+            **({"source": source} if source else {}),
             "status": "reserved",
             "reserved_tokens": token_bound,
             "accounted_tokens": token_bound,

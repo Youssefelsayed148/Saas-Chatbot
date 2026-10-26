@@ -1,54 +1,44 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-
+import { useRouter } from "next/navigation";
 import * as api from "@/lib/api";
 import { useSession } from "@/lib/session";
-import { Loading, Notice } from "@/lib/ui";
-
-/** Staff onboarding form (P4-06, docs/11): one form → ProvisioningService
- * (tenant + admin one-time invite link + optional bot + skill-output files).
- * Idempotency-Key is generated per submit; a retry reuses the SAME key so the
- * durable record cannot be duplicated. The invite link is shown ONCE. */
+import {
+  Button,
+  DataTable,
+  Field,
+  LinkButton,
+  Loading,
+  Notice,
+  PageHeader,
+  StatusBadge,
+} from "@/lib/ui";
+import "@/app/staff-screens.css";
 
 export default function PlatformHomePage() {
+  const router = useRouter();
   const { refresh } = useSession();
   const [rows, setRows] = useState<api.PlatformTenantRow[] | null>(null);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("");
-  const [search, setSearch] = useState<{ q: string; status: string }>({
-    q: "",
-    status: "",
-  });
+  const [search, setSearch] = useState({ q: "", status: "" });
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const [clientName, setClientName] = useState("");
-  const [adminEmail, setAdminEmail] = useState("");
-  const [botName, setBotName] = useState("Website assistant");
-  const [files, setFiles] = useState<FileList | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  const [plan, setPlan] = useState("starter");
+  const [pending, setPending] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [requestId, setRequestId] = useState<string | null>(null);
-
   const load = useCallback(async () => {
     try {
       const params = new URLSearchParams();
       if (search.q) params.set("q", search.q);
       if (search.status) params.set("status", search.status);
-      const payload = await api.platformTenants(params.toString());
-      setRows(payload.tenants);
+      setRows((await api.platformTenants(params.toString())).tenants);
       setError(null);
-    } catch (caught) {
-      setError(
-        caught instanceof Error ? caught.message : "Could not load clients.",
-      );
-    } finally {
-      setLoading(false);
+    } catch {
+      setError("Could not load organizations.");
     }
   }, [search]);
-
   useEffect(() => {
     const timer = setTimeout(() => {
       void load();
@@ -56,181 +46,180 @@ export default function PlatformHomePage() {
     return () => clearTimeout(timer);
   }, [load]);
 
-  async function submit(event: React.FormEvent) {
+  async function create(event: React.FormEvent) {
     event.preventDefault();
+    if (pending) return;
+    setPending(true);
     setFormError(null);
-    setSubmitting(true);
-    const key = crypto.randomUUID();
     try {
-      const result = await api.platformOnboard(
-        {
-          client_name: clientName.trim(),
-          admin_email: adminEmail.trim(),
-          bot_name: botName.trim() || null,
-        },
-        key,
-        files,
-      );
-      setInviteLink(result.result?.admin_invite?.link_path ?? null);
-      setRequestId(result.request_id);
+      const created = await api.platformCreateOrganization({
+        name: name.trim(),
+        plan_label: plan,
+      });
       await Promise.all([load(), refresh()]);
-    } catch (caught) {
+      router.push(`/platform/clients/${created.id}`);
+    } catch {
       setFormError(
-        caught instanceof Error ? caught.message : "Onboarding failed.",
+        "Could not create the organization. Check the name and plan, then try again.",
       );
     } finally {
-      setSubmitting(false);
+      setPending(false);
     }
   }
 
   return (
-    <main className="platform-clients">
-      <h1>Platform — clients</h1>
-      <p className="page-purpose">
-        Find client workspaces and onboard a new organization.
-      </p>
-      <p className="eyebrow" data-testid="platform-staff-badge">
-        Platform staff console
-      </p>
-      <p>
-        <a href="/platform/operations">
-          Operations, analytics, and audit review
-        </a>
-      </p>
-
+    <main className="platform-clients staff-page">
+      <PageHeader
+        title="Platform — Organizations"
+        eyebrow={
+          <span data-testid="platform-staff-badge">Platform staff console</span>
+        }
+        purpose="Find and manage organizations."
+        actions={
+          <LinkButton variant="primary" href="/platform/operations">
+            Operations, analytics, and audit review
+          </LinkButton>
+        }
+      />
       <form
-        aria-label="Client search"
+        aria-label="Organization search"
         data-testid="platform-search"
+        className="filter-bar"
         onSubmit={(event) => {
           event.preventDefault();
           setSearch({ q: query, status });
         }}
       >
-        <label>
-          Search
-          <input
-            data-testid="platform-query"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="name, slug…"
-          />
-        </label>
-        <label>
-          Status
-          <select
-            data-testid="platform-status"
-            value={status}
-            onChange={(event) => setStatus(event.target.value)}
-          >
-            <option value="">All</option>
-            <option value="active">active</option>
-            <option value="archived">archived</option>
-          </select>
-        </label>
-        <button type="submit">Search</button>
+        <Field label="Search">
+          {(control) => (
+            <input
+              {...control}
+              data-testid="platform-query"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="name, slug…"
+            />
+          )}
+        </Field>
+        <Field label="Status">
+          {(control) => (
+            <select
+              {...control}
+              data-testid="platform-status"
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+            >
+              <option value="">All</option>
+              <option value="active">active</option>
+              <option value="archived">archived</option>
+            </select>
+          )}
+        </Field>
+        <Button type="submit">Search</Button>
       </form>
-
       {error && <Notice message={error} tone="error" />}
-      <section aria-label="Clients" data-testid="platform-tenants">
-        {rows === null && loading ? (
-          <Loading label="Loading clients…" />
-        ) : (rows ?? []).length === 0 ? (
-          <p className="muted">No clients match.</p>
+      <section aria-label="Organizations" data-testid="platform-tenants">
+        {rows === null ? (
+          <Loading label="Loading organizations…" />
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Client</th>
-                <th>Plan</th>
-                <th>Status</th>
-                <th>Bots</th>
-                <th>Seats</th>
-                <th>Messages (this month)</th>
-                <th>Last activity</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(rows ?? []).map((row) => (
-                <tr key={row.id}>
-                  <td>
-                    <a
-                      href={`/platform/clients/${row.id}`}
-                      data-testid={`client-${row.slug}`}
-                    >
-                      {row.name}
-                    </a>
-                  </td>
-                  <td>{row.plan_label}</td>
-                  <td data-status={row.status}>{row.status}</td>
-                  <td>{row.bots}</td>
-                  <td>{row.seats}</td>
-                  <td>{row.messages_this_month}</td>
-                  <td>{row.last_activity ?? "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <DataTable
+            caption="Organization directory"
+            rows={rows}
+            rowKey={(row) => row.id}
+            empty={<p className="muted">No organizations match.</p>}
+            columns={[
+              {
+                key: "organization",
+                header: "Organization",
+                cell: (row) => (
+                  <a
+                    href={`/platform/clients/${row.id}`}
+                    data-testid={`client-${row.slug}`}
+                  >
+                    {row.name}
+                  </a>
+                ),
+              },
+              { key: "plan", header: "Plan", cell: (row) => row.plan_label },
+              {
+                key: "status",
+                header: "Status",
+                cell: (row) => (
+                  <StatusBadge value={row.status} data-status={row.status} />
+                ),
+              },
+              {
+                key: "bots",
+                header: "Bots",
+                className: "num",
+                cell: (row) => row.bots,
+              },
+              {
+                key: "seats",
+                header: "Seats",
+                className: "num",
+                cell: (row) => row.seats,
+              },
+              {
+                key: "messages",
+                header: "Messages (this month)",
+                className: "num",
+                cell: (row) => row.messages_this_month,
+              },
+              {
+                key: "activity",
+                header: "Last activity",
+                cell: (row) => row.last_activity ?? "—",
+              },
+            ]}
+          />
         )}
       </section>
-
-      <section aria-label="Onboard a new client" data-testid="onboarding-form">
-        <h2 id="onboard-client">Onboard a new client</h2>
-        <form onSubmit={(event) => void submit(event)}>
-          <label>
-            Client name
-            <input
-              data-testid="ob-client-name"
-              required
-              maxLength={200}
-              value={clientName}
-              onChange={(event) => setClientName(event.target.value)}
-            />
-          </label>
-          <label>
-            Admin email (one-time invite link, no email)
-            <input
-              data-testid="ob-admin-email"
-              type="email"
-              required
-              value={adminEmail}
-              onChange={(event) => setAdminEmail(event.target.value)}
-            />
-          </label>
-          <label>
-            Bot name
-            <input
-              data-testid="ob-bot-name"
-              required
-              maxLength={100}
-              value={botName}
-              onChange={(event) => setBotName(event.target.value)}
-            />
-          </label>
-          <label>
-            Website-to-knowledge skill output (optional files)
-            <input
-              data-testid="ob-files"
-              type="file"
-              multiple
-              accept=".md,.txt,.csv,.pdf,.docx"
-              onChange={(event) => setFiles(event.target.files)}
-            />
-          </label>
+      <section
+        aria-label="Create an organization"
+        data-testid="organization-form"
+        className="form-section"
+      >
+        <header>
+          <h2 id="create-organization">New organization</h2>
+          <p>Creates the organization and opens its detail page.</p>
+        </header>
+        <form onSubmit={(event) => void create(event)}>
+          <Field label="Organization name">
+            {(control) => (
+              <input
+                {...control}
+                data-testid="organization-name"
+                required
+                maxLength={200}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            )}
+          </Field>
+          <Field label="Plan">
+            {(control) => (
+              <select
+                {...control}
+                data-testid="organization-plan"
+                value={plan}
+                onChange={(e) => setPlan(e.target.value)}
+              >
+                {["free", "starter", "pro", "business"].map((value) => (
+                  <option key={value}>{value}</option>
+                ))}
+              </select>
+            )}
+          </Field>
           {formError && <Notice message={formError} tone="error" />}
-          <button type="submit" data-testid="ob-submit" disabled={submitting}>
-            {submitting ? "Provisioning…" : "Onboard client"}
-          </button>
+          <Button
+            type="submit"
+            data-testid="organization-submit"
+            disabled={pending}
+          >
+            {pending ? "Creating…" : "Create organization"}
+          </Button>
         </form>
-        {inviteLink && (
-          <div data-testid="ob-invite-link">
-            <p>
-              Admin one-time invite link (copy and send it yourself; shown
-              once):
-            </p>
-            <code>{inviteLink}</code>
-            {requestId && <p className="muted">Durable request: {requestId}</p>}
-          </div>
-        )}
       </section>
     </main>
   );

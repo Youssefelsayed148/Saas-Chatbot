@@ -46,6 +46,7 @@ def summary(
         WITH ev AS (
             SELECT kind, count(*) AS n FROM usage_events
             WHERE tenant_id = CAST(:t AS uuid) AND bot_id = CAST(:b AS uuid)
+              AND COALESCE(payload->>'source', '') <> 'playground'
               AND created_at >= :start AND created_at <= :end
             GROUP BY kind
         ),
@@ -186,6 +187,35 @@ def volume_per_day(
     ]
 
 
+_ARABIC_DIACRITICS = dict.fromkeys(
+    [*range(0x064B, 0x0653), 0x0670, 0x0640], None
+)  # harakat, dagger alef, tatweel
+_ARABIC_LETTERS = str.maketrans({"أ": "ا", "إ": "ا", "آ": "ا", "ٱ": "ا", "ى": "ي", "ة": "ه"})
+_TRAILING_PUNCTUATION = " \t\r\n?\u061f!\uff01\uff1f.\u3002,\u060c;\u061b:\u2026"
+GROUPING_FETCH_LIMIT = 5000
+
+
+def question_key(value: str) -> str:
+    """Grouping key only (never displayed): case, spacing, Arabic variants, trailing marks."""
+    folded = value.translate(_ARABIC_DIACRITICS).translate(_ARABIC_LETTERS).casefold()
+    return " ".join(folded.split()).rstrip(_TRAILING_PUNCTUATION)
+
+
+def _grouped(rows: list[tuple[str, int, datetime]]) -> list[dict[str, Any]]:
+    """Merge near-duplicates: summed count, newest original text, newest timestamp."""
+    groups: dict[str, dict[str, Any]] = {}
+    for question, asked, last in rows:
+        key = question_key(question) or question.strip()
+        group = groups.get(key)
+        if group is None:
+            groups[key] = {"question": question, "asked": asked, "last": last}
+            continue
+        group["asked"] += asked
+        if last > group["last"]:
+            group["question"], group["last"] = question, last
+    return list(groups.values())
+
+
 def top_questions(
     db: OrmSession,
     *,
@@ -198,7 +228,7 @@ def top_questions(
     rows = db.execute(
         text(
             """
-        SELECT left(m.text, 120) AS question, count(*) AS asked
+        SELECT left(m.text, 120) AS question, count(*) AS asked, max(m.created_at) AS last
         FROM messages m
         WHERE m.tenant_id = CAST(:t AS uuid) AND m.bot_id = CAST(:b AS uuid)
           AND m.sender_type = 'visitor'
@@ -207,12 +237,20 @@ def top_questions(
               SELECT id FROM conversations
               WHERE tenant_id = CAST(:t AS uuid) AND bot_id = CAST(:b AS uuid)
                 AND source <> 'playground')
-        GROUP BY 1 ORDER BY asked DESC, 1 LIMIT :limit
+        GROUP BY 1 ORDER BY asked DESC, 1 LIMIT :fetch
         """
         ),
-        {"t": str(tenant_id), "b": str(bot_id), "start": start, "end": end, "limit": limit},
+        {
+            "t": str(tenant_id),
+            "b": str(bot_id),
+            "start": start,
+            "end": end,
+            "fetch": GROUPING_FETCH_LIMIT,
+        },
     ).fetchall()
-    return [{"question": str(question), "asked": int(asked)} for question, asked in rows]
+    merged = _grouped([(str(question), int(asked), last) for question, asked, last in rows])
+    merged.sort(key=lambda item: (-item["asked"], item["question"]))
+    return [{"question": item["question"], "asked": item["asked"]} for item in merged[:limit]]
 
 
 def unanswered_questions(
@@ -243,14 +281,22 @@ def unanswered_questions(
           AND c.text IS NULL
           AND a.can_answer IS FALSE
           AND q.created_at >= :start AND q.created_at <= :end
-        GROUP BY 1 ORDER BY last DESC LIMIT :limit
+        GROUP BY 1 ORDER BY last DESC LIMIT :fetch
         """
         ),
-        {"t": str(tenant_id), "b": str(bot_id), "start": start, "end": end, "limit": limit},
+        {
+            "t": str(tenant_id),
+            "b": str(bot_id),
+            "start": start,
+            "end": end,
+            "fetch": GROUPING_FETCH_LIMIT,
+        },
     ).fetchall()
+    merged = _grouped([(str(question), int(asked), last) for question, asked, last in rows])
+    merged.sort(key=lambda item: item["last"], reverse=True)
     return [
-        {"question": str(question), "asked": int(asked), "last": last.isoformat()}
-        for question, asked, last in rows
+        {"question": item["question"], "asked": item["asked"], "last": item["last"].isoformat()}
+        for item in merged[:limit]
     ]
 
 

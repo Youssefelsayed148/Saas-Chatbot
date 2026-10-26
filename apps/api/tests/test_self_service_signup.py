@@ -139,6 +139,12 @@ def test_registration_when_signup_off_requires_valid_matching_active_invite(
 
     users = seeded_tenant(app, db, prefix="signup-invite")
     token, invitation = make_invitation(users, "invited@example.com", "admin")
+    # Preserve the legacy pre-S2 invitation registration contract. New invites
+    # require existing users; this fixture represents an outstanding old invite.
+    from sqlalchemy import delete
+
+    db.execute(delete(User).where(User.email == "invited@example.com"))
+    db.commit()
     app.dependency_overrides[get_settings] = lambda: build_test_settings(self_serve_signup=False)
     guest = TestClient(app)
     try:
@@ -183,3 +189,57 @@ def test_registration_when_signup_off_requires_valid_matching_active_invite(
     finally:
         guest.close()
         users.cleanup()
+
+
+def test_register_without_invite_token_is_invitation_required_when_signup_off(
+    app: Any, db: Any
+) -> None:
+    """S6 contract check: with self-service signup OFF, POST /auth/register
+    without a valid invite token returns 403 INVITATION_REQUIRED and creates
+    no account (the message must stay safe, with no internals)."""
+    from app.db.models import User
+
+    app.dependency_overrides[get_settings] = lambda: build_test_settings(self_serve_signup=False)
+    guest = TestClient(app)
+    try:
+        response = guest.post(
+            "/api/v1/auth/register",
+            json={"email": "ghost@example.com", "password": PASSWORD},
+        )
+        assert response.status_code == 403
+        assert response.json()["error"]["code"] == "INVITATION_REQUIRED"
+        assert db.execute(select(User)).scalars().all() == []
+    finally:
+        guest.close()
+
+
+def test_default_config_keeps_registration_closed(app: Any, db: Any, monkeypatch: Any) -> None:
+    """ADR-021 / ADR-022 default-config guard: with NO override of
+    ``self_serve_signup`` (the shipped default), registration is closed.
+
+    Unlike the tests above, the flag is not forced off by hand: the settings are
+    built from the real ``Settings`` defaults, ignoring any developer ``.env``
+    file and any ``SELF_SERVE_SIGNUP`` environment variable.
+    """
+    from app.core.config import Settings
+    from app.db.models import User
+
+    monkeypatch.delenv("SELF_SERVE_SIGNUP", raising=False)
+    default_settings = Settings(_env_file=None)  # type: ignore[call-arg]
+    assert default_settings.self_serve_signup is False
+
+    app.dependency_overrides[get_settings] = lambda: default_settings
+    guest = TestClient(app)
+    try:
+        config = guest.get("/api/v1/auth/config")
+        assert config.status_code == 200
+        assert config.json() == {"self_serve_signup": False}
+        response = guest.post(
+            "/api/v1/auth/register",
+            json={"email": "default-closed@example.com", "password": PASSWORD},
+        )
+        assert response.status_code == 403
+        assert response.json()["error"]["code"] == "INVITATION_REQUIRED"
+        assert db.execute(select(User)).scalars().all() == []
+    finally:
+        guest.close()

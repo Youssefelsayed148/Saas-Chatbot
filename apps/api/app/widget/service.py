@@ -20,12 +20,14 @@ from uuid import UUID, uuid4
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session as OrmSession
 
+from app.bots.schemas import HEX_RE, THEME_PRESET_IDS, THEME_SLOTS, normalize_hex
 from app.chat.conversations import (
     get_or_create_conversation_for_session,
     record_usage_event,
     visitor_chat_turn,
 )
 from app.chat.models import model_from_settings
+from app.chat.prompts import canned
 from app.core.config import Settings
 from app.core.errors import ApiError
 from app.core.ratelimit import rate_limit
@@ -39,6 +41,7 @@ from app.db.models import (
     UsageEvent,
     VisitorSession,
 )
+from app.quotas.rag import counts_toward_message_quota
 from app.quotas.service import lock_tenant, require_capacity
 
 RETIRED_WINDOW = 60  # fixed-window width used by the public counters (seconds)
@@ -109,20 +112,41 @@ def require_available(bot: Bot, *, session_scope: bool) -> None:
 # --- allowed domains (defence signal, NOT auth; docs/06) --------------------
 
 
-def _host_of(origin: str) -> str | None:
+def _host_of(value: str | None) -> str | None:
+    """The hostname behind a PAGE origin ("https://example.com:8443/page") or
+    behind a bare hostname ("example.com", "localhost" — what the loader's
+    location.hostname sends). Malformed or ambiguous input (colon in the
+    authority-less form) yields None so the check fails closed."""
+    candidate = (value or "").strip().lower()
+    if not candidate:
+        return None
     try:
-        parts = urlsplit(origin)
+        parts = urlsplit(candidate)
     except ValueError:
         return None
-    return (parts.hostname or "").lower() or None
+    if parts.netloc:
+        try:
+            # .hostname lowercases; it also parses the port and may raise on
+            # malformed input (e.g. "https://user:bad:port@example.com").
+            host = parts.hostname or ""
+        except ValueError:
+            return None
+    elif ":" in candidate or "//" in candidate:
+        # Authority-less but colon/colon-slashes ("example.com:8080",
+        # "example.com less://x"): ambiguous, never guess from these.
+        return None
+    else:
+        # Bare hostname, optionally with a path ("example.com/page").
+        host = parts.path.split("/", 1)[0]
+    return host or None
 
 
 def origin_allowed(bot: Bot, page_origin: str | None) -> bool:
     """Configured domains vs the PAGE origin the loader script sends (not the
     iframe origin). Empty/absent configuration keeps the check inactive; the
     session capability and rate limits still bound abuse (docs/09)."""
-    allowed = bot.config.get("allowed_domains") if isinstance(bot.config, dict) else None
-    if not isinstance(allowed, list) or not allowed:
+    allowed = _allowed_domain_list(bot)
+    if not allowed:
         return True
     origin = (page_origin or "").strip().lower()
     if not origin:
@@ -130,10 +154,64 @@ def origin_allowed(bot: Bot, page_origin: str | None) -> bool:
     host = _host_of(origin)
     if host is None:
         return False
-    return any(host == str(entry) or host.endswith("." + str(entry)) for entry in allowed)
+    return any(host == entry or host.endswith("." + entry) for entry in allowed)
+
+
+def _allowed_domain_list(bot: Bot) -> list[str]:
+    configured = bot.config.get("allowed_domains") if isinstance(bot.config, dict) else None
+    if not isinstance(configured, list):
+        return []
+    return [str(entry).strip().lower() for entry in configured if str(entry).strip()]
+
+
+def frame_ancestors(bot: Bot, environment: str) -> str:
+    """The Content-Security-Policy ``frame-ancestors`` value for the widget
+    frame page (#33): the browser-enforced half of domain enforcement. This
+    value is public by nature (any browser can read the frame's headers), so
+    it discloses no secret the session endpoint does not already expose.
+
+    Empty/absent configuration stays permissive (``http: https:``) so
+    unconfigured bots keep working; a non-empty list only allows the listed
+    hosts in both http(s) forms plus their subdomains (matching
+    ``origin_allowed``). ``localhost`` entries get the port wildcard outside
+    production, where development and test embeds live on arbitrary ports;
+    other hostnames use the CSP default-port rule.
+    """
+    allowed = _allowed_domain_list(bot)
+    if not allowed:
+        return "http: https:"
+    sources: list[str] = []
+    for domain in allowed:
+        schemes = ("http", "https")
+        for scheme in schemes:
+            if domain == "localhost" and environment != "production":
+                sources.append(f"{scheme}://localhost:*")
+            else:
+                sources.append(f"{scheme}://{domain}")
+        if domain != "localhost":
+            for scheme in schemes:
+                sources.append(f"{scheme}://*.{domain}")
+    return " ".join(sources)
 
 
 # --- widget config (safe fields only, docs/09) ------------------------------
+
+
+def _public_theme(config: dict[str, Any]) -> dict[str, str] | None:
+    """The validated theme slots (#14), or None when nothing is configured so
+    the default payload and the default look stay unchanged."""
+    raw = config.get("theme")
+    if not isinstance(raw, dict):
+        return None
+    theme: dict[str, str] = {}
+    preset = raw.get("preset")
+    if isinstance(preset, str) and preset in THEME_PRESET_IDS:
+        theme["preset"] = preset
+    for slot in THEME_SLOTS:
+        value = raw.get(slot)
+        if isinstance(value, str) and HEX_RE.fullmatch(value):
+            theme[slot] = normalize_hex(value)
+    return theme or None
 
 
 def widget_config(bot: Bot) -> dict[str, Any]:
@@ -148,13 +226,16 @@ def widget_config(bot: Bot) -> dict[str, Any]:
         config.get("default_language") if config.get("default_language") in ("en", "ar") else "en"
     )
     name = str(config.get("assistant_name") or bot.name)[:100]
-    return {
+    theme = _public_theme(config)
+    payload: dict[str, Any] = {
         "bot_name": name,
         "business_name": str(config.get("business_name") or "")[:100],
         "assistant_name": name,
+        # Empty greeting falls back to the hello_default canned text (#10):
+        # staff never have to fill the welcome message for a sane widget.
         "welcome_message": {
-            "en": str(welcome.get("en") or ""),
-            "ar": str(welcome.get("ar") or ""),
+            "en": str(welcome.get("en") or "") or canned("hello_default", "en"),
+            "ar": str(welcome.get("ar") or "") or canned("hello_default", "ar"),
         },
         "opening_questions": [str(question)[:120] for question in questions[:10]]
         if isinstance(questions, list)
@@ -167,6 +248,9 @@ def widget_config(bot: Bot) -> dict[str, Any]:
         "default_language": language,
         "dir": "rtl" if language == "ar" else "ltr",
     }
+    if theme is not None:
+        payload["theme"] = theme
+    return payload
 
 
 # --- visitor sessions --------------------------------------------------------
@@ -241,6 +325,7 @@ def check_daily_message_quota(db: OrmSession, bot: Bot, settings: Settings) -> N
                 UsageEvent.bot_id == bot.id,
                 UsageEvent.kind == "message",
                 UsageEvent.created_at >= start_of_day,
+                counts_toward_message_quota(),  # staff playground turns never use the cap
             )
         )
         .scalars()
@@ -280,11 +365,8 @@ def widget_message_turn(
     conversation = get_or_create_conversation_for_session(
         db, bot=bot, visitor_session=visitor_session
     )
+    # None (no model configured) is answered with the canned busy reply, not a 503.
     model = model_from_settings(settings, bot)
-    if model is None:
-        raise ApiError(
-            503, "MODEL_NOT_CONFIGURED", "The assistant is not configured for this deployment yet."
-        )
     return visitor_chat_turn(
         db,
         tenant_id=visitor_session.tenant_id,
@@ -335,6 +417,38 @@ def session_history(
     return list(
         db.execute(statement.order_by(Message.created_at.asc(), Message.id).limit(limit)).scalars()
     )
+
+
+def session_poll_hint(db: OrmSession, *, visitor_session: VisitorSession) -> str:
+    """``active`` while a reply can still arrive without the visitor acting (the
+    conversation waits for / is with a human, or a follow-up is scheduled), else
+    ``idle``. The widget polls only while this is ``active`` (H5)."""
+    from app.db.models import FollowUp
+
+    conversation = (
+        db.execute(
+            select(Conversation).where(
+                Conversation.tenant_id == visitor_session.tenant_id,
+                Conversation.session_id == visitor_session.id,
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if conversation is None:
+        return "idle"
+    if conversation.mode == "human" or conversation.status == "waiting_human":
+        return "active"
+    pending = db.scalar(
+        select(FollowUp.id)
+        .where(
+            FollowUp.tenant_id == visitor_session.tenant_id,
+            FollowUp.conversation_id == conversation.id,
+            FollowUp.status.in_(("scheduled", "ready")),
+        )
+        .limit(1)
+    )
+    return "active" if pending is not None else "idle"
 
 
 CONSENT_TEXT_VERSION = "widget-lead/v1 2026-10"

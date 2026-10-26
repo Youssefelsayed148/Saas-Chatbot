@@ -4,9 +4,21 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import * as api from "./api";
 import { roleSatisfies, useSession } from "./session";
+import { Icon } from "./icons";
+import { LinkButton } from "./ui";
 import { ThemeToggle } from "./theme";
 
-type Destination = { label: string; href: string; symbol: React.ReactNode };
+type Destination = {
+  label: string;
+  href: string;
+  symbol: React.ReactNode;
+  /** Extra paths that keep this item active (the Conversations module spans several routes). */
+  also?: (pathname: string) => boolean;
+  /** Paths owned by another item, so this one is not active there. */
+  except?: (pathname: string) => boolean;
+  /** Command-palette entry only: not shown in the sidebar. */
+  paletteOnly?: boolean;
+};
 export function AppShell({
   tenantId,
   platform = false,
@@ -38,83 +50,126 @@ export function AppShell({
     membership?.tenant_name;
   const role = tenantId ? roleIn(tenantId) : null;
   const base = `/app/${tenantId}`;
-  const [conversationBot, setConversationBot] = useState<{
-    tenant: string;
-    id: string | null;
-  } | null>(null);
-  useEffect(() => {
-    if (!tenantId || !me || platform || me.is_platform_staff) return;
-    let cancelled = false;
-    void api.listBots(tenantId, false).then(
-      (bots) => {
-        if (!cancelled)
-          setConversationBot({ tenant: tenantId, id: bots[0]?.id ?? null });
-      },
-      () => {
-        // The conversations landing page provides the retry/error state.
-        if (!cancelled) setConversationBot({ tenant: tenantId, id: null });
-      },
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [tenantId, me, platform]);
-  const conversationsHref =
-    conversationBot && conversationBot.tenant === tenantId && conversationBot.id
-      ? `${base}/bots/${conversationBot.id}/conversations`
-      : `${base}/conversations`;
+  // Inbox, History and the per-bot saved threads are one module.
+  const inConversations = (path: string) =>
+    path.startsWith(`${base}/inbox`) ||
+    path.startsWith(`${base}/conversations`) ||
+    /\/bots\/[^/]+\/conversations(\/|$)/.test(path);
   const links: Destination[] = platform
     ? [
-        { label: "Clients", href: "/platform", symbol: "◈" },
+        {
+          label: "Members",
+          href: "/platform/members",
+          symbol: <Icon name="member" />,
+        },
+        {
+          label: "Bots",
+          href: "/platform/bots",
+          symbol: <Icon name="sparkle" />,
+        },
+        {
+          label: "Organizations",
+          href: "/platform",
+          symbol: <Icon name="organization" />,
+        },
         {
           label: "Change requests",
           href: "/platform/change-requests",
-          symbol: <ChangeRequestIcon />,
+          symbol: <Icon name="change" />,
         },
-        { label: "Channels", href: "/platform/channels", symbol: "⇄" },
-        { label: "Operations", href: "/platform/operations", symbol: "▥" },
-        { label: "Client workspaces", href: "/app", symbol: "↗" },
+        {
+          label: "Operations",
+          href: "/platform/operations",
+          symbol: <Icon name="operations" />,
+        },
+        {
+          label: "Organization workspaces",
+          href: "/app",
+          symbol: <Icon name="external" />,
+        },
       ]
     : tenantId
       ? [
-          { label: "Overview", href: base, symbol: "◈" },
+          { label: "Overview", href: base, symbol: <Icon name="overview" /> },
           ...(me?.is_platform_staff
-            ? [{ label: "Bots", href: `${base}/bots`, symbol: "✧" }]
-            : [
+            ? [
                 {
-                  label: "Conversations",
-                  href: conversationsHref,
-                  symbol: "▤",
+                  label: "Bots",
+                  href: `${base}/bots`,
+                  symbol: <Icon name="sparkle" />,
+                  except: inConversations,
                 },
-              ]),
-          { label: "Inbox", href: `${base}/inbox`, symbol: "▤" },
-          { label: "Contacts", href: `${base}/contacts`, symbol: "◎" },
-          { label: "Insights", href: `${base}/analytics`, symbol: "▥" },
+              ]
+            : []),
+          {
+            label: "Conversations",
+            href: `${base}/inbox`,
+            symbol: <Icon name="conversations" />,
+            also: inConversations,
+          },
+          {
+            label: "Contacts",
+            href: `${base}/contacts`,
+            symbol: <Icon name="contacts" />,
+          },
+          {
+            label: "Insights",
+            href: `${base}/analytics`,
+            symbol: <Icon name="insights" />,
+          },
           ...(roleSatisfies(role, "admin")
             ? [
                 {
                   label: "Request a change",
                   href: `${base}/settings/requests`,
-                  symbol: <ChangeRequestIcon />,
+                  symbol: <Icon name="change" />,
                 },
                 {
                   label: "Team",
                   href: `${base}/settings/members`,
-                  symbol: "♧",
+                  symbol: <Icon name="team" />,
                 },
                 {
                   label: "Tenant data and audit",
                   href: `${base}/settings/data`,
-                  symbol: "▦",
+                  symbol: <Icon name="data" />,
                 },
               ]
             : []),
         ]
-      : [{ label: "Organizations", href: "/app", symbol: "↗" }];
+      : [
+          {
+            label: "Organizations",
+            href: "/app",
+            symbol: <Icon name="external" />,
+          },
+        ];
   const destinations = [
     ...links,
+    ...(!platform && tenantId
+      ? [
+          {
+            label: "Inbox",
+            href: `${base}/inbox`,
+            symbol: <Icon name="inbox" />,
+            paletteOnly: true,
+          },
+          {
+            label: "Conversation history",
+            href: `${base}/conversations`,
+            symbol: <Icon name="conversations" />,
+            paletteOnly: true,
+          },
+        ]
+      : []),
     ...(!platform && me?.is_platform_staff
-      ? [{ label: "Platform admin", href: "/platform", symbol: "↗" }]
+      ? [
+          {
+            label: "Platform admin",
+            href: "/platform",
+            symbol: <Icon name="external" />,
+          },
+        ]
       : []),
   ];
   const filtered = destinations.filter((link) =>
@@ -142,7 +197,10 @@ export function AppShell({
     await refresh();
     router.push("/login");
   }
-  function active(href: string) {
+  function active(link: Destination) {
+    const { href } = link;
+    if (link.except?.(pathname)) return false;
+    if (link.also?.(pathname)) return true;
     return (
       pathname === href ||
       (href !== base &&
@@ -155,7 +213,7 @@ export function AppShell({
     <>
       <Link className="brand" href={platform ? "/platform" : "/app"}>
         <span className="brand-mark" aria-hidden="true">
-          ✧
+          <Icon name="sparkle" size={20} />
         </span>
         <span>
           Website Chatbot
@@ -166,20 +224,22 @@ export function AppShell({
       <nav
         aria-label={platform ? "Platform navigation" : "Workspace navigation"}
       >
-        {destinations.map((link) => (
-          <Link
-            key={link.href}
-            href={link.href}
-            title={link.label}
-            aria-current={active(link.href) ? "page" : undefined}
-            onClick={() => drawer.current?.close()}
-          >
-            <span aria-hidden="true" className="nav-symbol">
-              {link.symbol}
-            </span>
-            <span>{link.label}</span>
-          </Link>
-        ))}
+        {destinations
+          .filter((link) => !link.paletteOnly)
+          .map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              title={link.label}
+              aria-current={active(link) ? "page" : undefined}
+              onClick={() => drawer.current?.close()}
+            >
+              <span aria-hidden="true" className="nav-symbol">
+                {link.symbol}
+              </span>
+              <span>{link.label}</span>
+            </Link>
+          ))}
       </nav>
       <div className="sidebar-bottom">
         <p className="muted">
@@ -207,7 +267,7 @@ export function AppShell({
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           onClick={() => setCollapsed(!collapsed)}
         >
-          {collapsed ? "»" : "«"}
+          <Icon name={collapsed ? "chevrons-right" : "chevrons-left"} />
         </button>
       </aside>
       <div className="workspace-body">
@@ -218,13 +278,17 @@ export function AppShell({
             aria-label="Open navigation"
             onClick={() => drawer.current?.showModal()}
           >
-            ☰
+            <Icon name="menu" />
           </button>
-          <span className="context-badge" data-testid="workspace-context">
+          <span
+            className={`context-badge ${platform ? "staff-badge" : ""}`}
+            data-testid="workspace-context"
+          >
+            {platform && <Icon name="shield" size={14} />}
             {platform
               ? "Platform admin"
               : tenantId
-                ? `Client workspace · ${organizationName ?? "Workspace"} · ${role ?? "Checking access"}`
+                ? `Organization workspace · ${organizationName ?? "Workspace"} · ${role ?? "Checking access"}`
                 : "Your organizations"}
           </span>
           <button
@@ -233,6 +297,7 @@ export function AppShell({
             onClick={openPalette}
             aria-label="Open command palette"
           >
+            <Icon name="search" className="search-icon" size={16} />
             Search pages <kbd>⌘ / Ctrl K</kbd>
           </button>
           {me && (
@@ -270,6 +335,9 @@ export function AppShell({
               {me.is_platform_staff && staffOrganizationsError && (
                 <span role="alert">{staffOrganizationsError}</span>
               )}
+              <LinkButton href="/account" variant="secondary" size="sm">
+                Account
+              </LinkButton>
               <button
                 className="quiet-button"
                 type="button"
@@ -296,7 +364,7 @@ export function AppShell({
               <>
                 <span aria-hidden="true">/</span>
                 <span>
-                  {links.find((link) => active(link.href))?.label ??
+                  {links.find((link) => active(link))?.label ??
                     (me?.is_platform_staff ? "Bot workspace" : "Conversations")}
                 </span>
               </>
@@ -387,7 +455,7 @@ export function AppShell({
                 onClick={() => palette.current?.close()}
               >
                 {link.symbol} {link.label}
-                <span aria-hidden="true">✧</span>
+                <Icon name="arrow-right" size={14} />
               </Link>
             </li>
           ))}
@@ -398,24 +466,5 @@ export function AppShell({
         </p>
       </dialog>
     </div>
-  );
-}
-
-function ChangeRequestIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9H13" />
-      <path d="m16 3 5 5m-9 4 1-4 6-6 3 3-6 6-4 1Z" />
-    </svg>
   );
 }

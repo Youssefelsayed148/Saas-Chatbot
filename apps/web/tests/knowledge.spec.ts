@@ -24,9 +24,7 @@ async function openKnowledgeAsOperator(
   });
   if (starter) await assignStarterPlan(page, tenantId, email);
   await page
-    .getByRole("row", { name: new RegExp(botName) })
-    .getByRole("link")
-    .first()
+    .getByRole("link", { name: new RegExp(`Open ${botName}`) })
     .click();
   await page.waitForURL(/\/settings$/);
   await page.getByRole("link", { name: "Knowledge" }).click();
@@ -146,6 +144,17 @@ test("viewer cannot access knowledge", async ({ browser }) => {
     ),
   );
   const viewerEmail = uniqueEmail("viewer");
+  // S2: invitations target existing users; create the viewer account first in
+  // an isolated context so the admin session (shared jar) is not replaced.
+  const regContext = await browser.newContext();
+  expect(
+    (
+      await regContext.request.post("/api/v1/auth/register", {
+        data: { email: viewerEmail, password: PASSWORD },
+      })
+    ).status(),
+  ).toBe(201);
+  await regContext.close();
   await admin.getByLabel("Email", { exact: true }).fill(viewerEmail);
   await admin.getByRole("combobox", { name: "Role" }).selectOption("viewer");
   await admin.getByRole("button", { name: "Create invite link" }).click();
@@ -155,10 +164,11 @@ test("viewer cannot access knowledge", async ({ browser }) => {
   const second = await browser.newContext();
   const viewer = await second.newPage();
   await viewer.goto(inviteCode);
-  await viewer.getByRole("link", { name: "Register" }).first().click();
+  // S2: the account exists, so the link flow is sign in, then accept.
+  await viewer.getByRole("link", { name: "Sign in" }).click();
   await viewer.getByLabel("Email").fill(viewerEmail);
   await viewer.getByLabel("Password", { exact: true }).fill(PASSWORD);
-  await viewer.getByRole("button", { name: "Create account" }).click();
+  await viewer.getByRole("button", { name: "Sign in", exact: true }).click();
   await viewer.getByRole("button", { name: "Accept invitation" }).click();
   await viewer.getByRole("link", { name: /Go to your dashboard/i }).click();
   await viewer.waitForURL("/app");
@@ -184,4 +194,49 @@ test("viewer cannot access knowledge", async ({ browser }) => {
 
   await first.close();
   await second.close();
+});
+
+test("duplicate upload is skipped; always-include, replace and remove work with confirmations", async ({
+  page,
+}) => {
+  test.setTimeout(150_000);
+  await openKnowledgeAsOperator(page);
+  const sources = page.locator("[data-testid='sources-list']");
+  const fixture = {
+    name: "sample-brochure.md",
+    mimeType: "text/markdown",
+    buffer: readFileSync(FIXTURE),
+  };
+
+  await page.locator("#knowledge-file-input").setInputFiles(fixture);
+  await page.getByRole("button", { name: "Upload", exact: true }).click();
+  await expect(sources.locator("li")).toHaveCount(1);
+
+  // The same bytes again: reported as skipped, no second row.
+  await page
+    .locator("#knowledge-file-input")
+    .setInputFiles({ ...fixture, name: "copy-of-brochure.md" });
+  await page.getByRole("button", { name: "Upload", exact: true }).click();
+  await expect(page.getByText(/already uploaded/)).toBeVisible();
+  await expect(sources.locator("li")).toHaveCount(1);
+
+  // Always include asks for confirmation.
+  page.once("dialog", (dialog) => void dialog.accept());
+  await page.getByTestId("source-always-include").check();
+  await expect(page.getByTestId("source-always-include")).toBeChecked();
+
+  // Replace with a changed version; the source row is kept.
+  page.once("dialog", (dialog) => void dialog.accept());
+  await page.getByTestId("source-replace-input").setInputFiles({
+    ...fixture,
+    buffer: Buffer.concat([fixture.buffer, Buffer.from("\n\nExtra line.\n")]),
+  });
+  await expect(page.getByText(/New version stored/)).toBeVisible();
+  await expect(sources.locator("li")).toHaveCount(1);
+
+  // Remove goes through a confirm dialog.
+  await page.getByTestId("source-delete").click();
+  await page.getByRole("button", { name: "Remove file" }).click();
+  await expect(page.getByText(/Removed .* from the draft/)).toBeVisible();
+  await expect(sources.locator("li")).toHaveCount(0);
 });

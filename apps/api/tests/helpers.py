@@ -21,7 +21,14 @@ def register(client: TestClient, email: str) -> dict[str, Any]:
 def logged_in(app: FastAPI, email: str) -> tuple[TestClient, dict[str, Any]]:
     """A fresh authenticated TestClient for one user (registers first)."""
     client = TestClient(app)
-    payload = register(client, email)
+    response = client.post("/api/v1/auth/register", json={"email": email, "password": PASSWORD})
+    if response.status_code == 409:
+        # Invitation fixtures now provision accounts before inviting them.
+        response = client.post("/api/v1/auth/login", json={"email": email, "password": PASSWORD})
+        assert response.status_code == 200, response.text
+    else:
+        assert response.status_code == 201, response.text
+    payload = response.json()
     return client, payload
 
 
@@ -157,6 +164,10 @@ def make_invitation(
     users: TenantUsers, email: str, role: str = "viewer"
 ) -> tuple[str, dict[str, Any]]:
     """Create an invitation as admin; return (token, invitation payload)."""
+    created = users.call(
+        "staff", "POST", "/api/v1/platform/users", json={"email": email, "password": PASSWORD}
+    )
+    assert created.status_code in (201, 409), created.text
     response = users.call(
         "admin",
         "POST",

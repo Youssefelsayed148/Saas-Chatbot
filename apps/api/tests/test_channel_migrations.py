@@ -1,4 +1,4 @@
-"""P6-01 migration 0017 reversible round-trip preserving website rows."""
+"""P6-01 migration 0023 reversible round-trip preserving website rows."""
 
 from uuid import uuid4
 
@@ -57,7 +57,7 @@ def test_channel_migration_up_down_up_preserves_website_rows(db: Session, engine
     database_url = engine.url.render_as_string(hide_password=False)
     db.close()
 
-    run_migrations(database_url, upgrade_to="", downgrade_to="0016_arabic_fts")
+    run_migrations(database_url, upgrade_to="", downgrade_to="0022_knowledge_hygiene")
     with engine.connect() as connection:
         version = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
         column_type = connection.execute(
@@ -81,15 +81,36 @@ def test_channel_migration_up_down_up_preserves_website_rows(db: Session, engine
             ),
             {"id": identity_id},
         ).one()
-    assert version == "0016_arabic_fts"
+    assert version == "0022_knowledge_hygiene"
     assert column_type == "text"
     assert tuple(website_row[:4]) == before[:4] and website_row.connection_id is None
     assert tuple(identity_row[:3]) == (identity_id, tenant_id, contact_id)
     assert identity_row.channel == "website"
     assert identity_row.external_id == f"visitor-{tenant_id.hex}"
-    print("migration 0017 downgrade: at 0016, connection_id is text, website rows preserved")
+    print("migration 0023 downgrade: at 0022, connection_id is text, website rows preserved")
+
+    # main keeps the per-user playground key in the old text connection_id.
+    playground_id = uuid4()
+    playground_key = f"playground:{uuid4()}"
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "INSERT INTO conversations (id, tenant_id, bot_id, channel, connection_id, "
+                "mode, status, source, created_at, updated_at) SELECT :pid, tenant_id, bot_id, "
+                "'website', :key, "
+                "'ai', 'open', 'playground', now(), now() FROM conversations WHERE id = :id"
+            ),
+            {"pid": playground_id, "key": playground_key, "id": conversation_id},
+        )
 
     run_migrations(database_url)
+    with engine.connect() as connection:
+        playground_row = connection.execute(
+            text("SELECT connection_id, external_conversation_id FROM conversations WHERE id=:id"),
+            {"id": playground_id},
+        ).one()
+    assert playground_row.connection_id is None
+    assert playground_row.external_conversation_id == playground_key
     with engine.connect() as connection:
         version = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
         column_type = connection.execute(
@@ -119,7 +140,7 @@ def test_channel_migration_up_down_up_preserves_website_rows(db: Session, engine
                 "AND table_name IN ('channel_connections', 'channel_events')"
             )
         ).scalar_one()
-    assert version == "0020_channel_health_poll"
+    assert version == "0026_channel_health_poll"
     assert column_type == "uuid"
     assert tuple(website_row[:4]) == before[:4]
     assert tuple(website_row[4:6]) == ("website", "website")
@@ -129,5 +150,5 @@ def test_channel_migration_up_down_up_preserves_website_rows(db: Session, engine
     assert identity_row.external_id == f"visitor-{tenant_id.hex}"
     assert identity_row.connection_id is None
     assert channel_tables == 2
-    print("migration 0017 upgrade: UUID schema and channel tables created; website rows unchanged")
-    print("migration 0017 upgrade again: completed at head with website rows unchanged")
+    print("migration 0023 upgrade: UUID schema and channel tables created; website rows unchanged")
+    print("migration 0023 upgrade again: completed at head with website rows unchanged")

@@ -123,8 +123,8 @@ async function fixture(page: Page, role: Role | "staff", hasBot = true) {
       });
     if (suffix === "/inbox" || suffix === `/bots/${botId}/conversations`)
       return respond({
-        conversations: [conversation],
-        total: 1,
+        conversations: hasBot ? [conversation] : [],
+        total: hasBot ? 1 : 0,
         limit: 50,
         offset: 0,
       });
@@ -170,11 +170,23 @@ async function fixture(page: Page, role: Role | "staff", hasBot = true) {
     if (suffix.endsWith("/documents")) return respond([]);
     if (suffix.endsWith("/rag"))
       return respond({
+        retrieval_mode: "hybrid",
         tier: "standard",
+        tier_targets: {
+          standard: { provider: "openrouter", model: "fixture:free" },
+          premium: { provider: "openai", model: null },
+        },
+        active_embedding_model: null,
+        embedding_ready: true,
+        backfill: null,
         limits: {},
         effective_limits: {},
         usage: {},
       });
+    if (suffix.endsWith("/readiness"))
+      return respond({ ready: true, items: [] });
+    if (suffix.endsWith("/tone-and-rules"))
+      return respond({ tone_and_rules: null });
     if (suffix.endsWith("/rag/costs")) return respond({ costs: [] });
     if (suffix === "/data/audit") return respond({ events: [] });
     if (suffix === "")
@@ -226,19 +238,19 @@ for (const role of ["admin", "editor", "viewer", "staff"] as const) {
     await expect(plan).toContainText("Maximum file size (MB)");
     await expect(plan.locator("input, select, button, a")).toHaveCount(0);
     await expect(
-      plan.getByRole("progressbar", {
+      plan.getByRole("meter", {
         name: "Messages this month",
         exact: true,
       }),
-    ).toHaveAttribute("value", "80");
+    ).toHaveAttribute("aria-valuenow", "80");
     await checkText();
     const nav = page
       .locator("aside")
       .getByRole("navigation", { name: "Workspace navigation" });
     const expected = [
       "Overview",
-      client ? "Conversations" : "Bots",
-      "Inbox",
+      ...(client ? [] : ["Bots"]),
+      "Conversations",
       "Contacts",
       "Insights",
       ...(admin ? ["Request a change", "Team", "Tenant data and audit"] : []),
@@ -247,13 +259,16 @@ for (const role of ["admin", "editor", "viewer", "staff"] as const) {
     await expect(nav.getByRole("link")).toHaveText(
       expected.map((label) => new RegExp(label)),
     );
+    await expect(
+      nav.getByRole("link", { name: "Conversations", exact: true }),
+    ).toHaveAttribute("href", `${base}/inbox`);
     if (client) {
-      await expect(
-        nav.getByRole("link", { name: "Conversations", exact: true }),
-      ).toHaveAttribute("href", `${botBase}/conversations`);
       await page.keyboard.press("Control+k");
       const palette = page.getByRole("dialog", { name: "Go to a page" });
-      await expect(palette.getByRole("option")).toHaveCount(expected.length);
+      // Sidebar items plus the palette-only "Inbox" and "Conversation history".
+      await expect(palette.getByRole("option")).toHaveCount(
+        expected.length + 2,
+      );
       await noOperatorText(page);
       await page.keyboard.press("Escape");
     }
@@ -261,6 +276,8 @@ for (const role of ["admin", "editor", "viewer", "staff"] as const) {
     await expect(page.getByTestId("conversations")).toContainText(
       "Visibility contact",
     );
+    // Retention content and the row delete stay in the DOM when their
+    // disclosure (panel / row menu) is closed, and are absent for non-admins.
     await expect(page.getByTestId("retention-save")).toHaveCount(admin ? 1 : 0);
     await expect(page.getByTestId(`delete-${conversationId}`)).toHaveCount(
       admin ? 1 : 0,
@@ -337,13 +354,20 @@ for (const role of ["admin", "editor", "viewer", "staff"] as const) {
         await expect(
           page.getByRole("heading", { name: "Overview", exact: true }),
         ).toBeVisible();
+        for (const id of [
+          "rag-tier-control",
+          "rag-operator-panel",
+          "rag-diagnostics",
+          "tone-and-rules-section",
+        ])
+          await expect(page.getByTestId(id)).toHaveCount(0);
         await checkText();
       }
       await page.goto(`${base}/bots`);
       await expect(page).toHaveURL(base);
       expect(
         requests.filter((path) =>
-          /\/(sources|jobs|documents|revisions|playground|rag)(\/|$)/.test(
+          /\/(sources|jobs|documents|revisions|playground|rag|readiness|tone-and-rules)(\/|$)/.test(
             path,
           ),
         ),
@@ -372,8 +396,9 @@ test("client with no current assistant has a Conversations empty state", async (
   await fixture(page, "viewer", false);
   await page.goto(`${base}/conversations`);
   await expect(
-    page.getByText("No conversations available yet.", { exact: true }),
+    page.getByRole("heading", { name: "Conversations", exact: true }),
   ).toBeVisible();
+  await expect(page.getByText(/No conversations/i).first()).toBeVisible();
   await noOperatorText(page);
 });
 

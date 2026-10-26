@@ -34,11 +34,25 @@ TENANT_ROUTE_ROLES: dict[tuple[str, str], str] = {
     ("GET", "/api/v1/tenants/{tenant_id}/bots"): "viewer",
     ("GET", "/api/v1/tenants/{tenant_id}/bots/{bot_id}"): "viewer",
     ("PATCH", "/api/v1/tenants/{tenant_id}/bots/{bot_id}"): "platform_staff_only",
+    ("GET", "/api/v1/tenants/{tenant_id}/bots/{bot_id}/tone-and-rules"): "platform_staff_only",
+    ("GET", "/api/v1/tenants/{tenant_id}/bots/{bot_id}/readiness"): "platform_staff_only",
     ("DELETE", "/api/v1/tenants/{tenant_id}/bots/{bot_id}"): "platform_staff_only",
     ("GET", "/api/v1/tenants/{tenant_id}/bots/{bot_id}/sources"): "platform_staff_only",
     ("GET", "/api/v1/tenants/{tenant_id}/bots/{bot_id}/sources/qa-template"): "platform_staff_only",
     ("POST", "/api/v1/tenants/{tenant_id}/bots/{bot_id}/sources/files"): "platform_staff_only",
     ("GET", "/api/v1/tenants/{tenant_id}/bots/{bot_id}/sources/{source_id}"): "platform_staff_only",
+    (
+        "DELETE",
+        "/api/v1/tenants/{tenant_id}/bots/{bot_id}/sources/{source_id}",
+    ): "platform_staff_only",
+    (
+        "POST",
+        "/api/v1/tenants/{tenant_id}/bots/{bot_id}/sources/{source_id}/replace",
+    ): "platform_staff_only",
+    (
+        "PUT",
+        "/api/v1/tenants/{tenant_id}/bots/{bot_id}/sources/{source_id}/always-include",
+    ): "platform_staff_only",
     ("POST", "/api/v1/tenants/{tenant_id}/bots/{bot_id}/ingestion"): "platform_staff_only",
     ("GET", "/api/v1/tenants/{tenant_id}/bots/{bot_id}/jobs"): "platform_staff_only",
     ("GET", "/api/v1/tenants/{tenant_id}/bots/{bot_id}/jobs/{job_id}"): "platform_staff_only",
@@ -65,8 +79,16 @@ TENANT_ROUTE_ROLES: dict[tuple[str, str], str] = {
         "/api/v1/tenants/{tenant_id}/bots/{bot_id}/playground/messages",
     ): "platform_staff_only",
     (
+        "POST",
+        "/api/v1/tenants/{tenant_id}/bots/{bot_id}/playground/messages/stream",
+    ): "platform_staff_only",
+    (
         "GET",
         "/api/v1/tenants/{tenant_id}/bots/{bot_id}/playground/conversation",
+    ): "platform_staff_only",
+    (
+        "POST",
+        "/api/v1/tenants/{tenant_id}/bots/{bot_id}/playground/conversation/new",
     ): "platform_staff_only",
     (
         "POST",
@@ -111,4 +133,5 @@ TENANT_ROUTE_ROLES: dict[tuple[str, str], str] = {
     ("GET", "/api/v1/tenants/{tenant_id}/bots/{bot_id}/analytics/conversations.csv"): "admin",
     ("GET", "/api/v1/tenants/{tenant_id}/bots/{bot_id}/analytics/leads.csv"): "admin",
     ("GET", "/api/v1/tenants/{tenant_id}/analytics"): "viewer",
+    ("GET", "/api/v1/tenants/{tenant_id}/analytics/timeseries"): "viewer",
 }

@@ -25,7 +25,8 @@ const confirmations = [
   {
     name: "conversation deletion",
     path: `${botBase}/conversations`,
-    trigger: "Delete",
+    trigger: "Delete conversation",
+    menu: `row-menu-${conversationId}`,
     title: "Delete conversation?",
     endpoint: `tenants/${tenant}/bots/${botId}/conversations/${conversationId}`,
     method: "DELETE",
@@ -76,31 +77,45 @@ for (const item of confirmations) {
   }) => {
     const state = await safetyFixture(page, item.platform);
     await page.goto(item.path);
-    if (item.platform)
-      await page
-        .getByLabel("Reason", { exact: true })
-        .fill("Owner requested pause");
+    if (item.platform) {
+      await page.getByRole("tab", { name: "Bots", exact: true }).click();
+    }
     const trigger = page.getByRole("button", {
       name: item.trigger,
       exact: true,
     });
+    // Row actions live in an overflow menu that must be open to reach them.
+    const openMenu = async () => {
+      if (item.menu && !(await trigger.isVisible()))
+        await page.getByTestId(item.menu).click();
+    };
+    await openMenu();
     await trigger.click();
     const dialog = page.getByRole("dialog", { name: item.title, exact: true });
     await expect(dialog).toBeVisible();
     await expect(dialog).toContainText(item.description);
+    // The platform pause dialog asks for its own reason, so focus starts there.
     await expect(
-      dialog.getByRole("button", { name: "Cancel", exact: true }),
+      item.platform
+        ? dialog.getByLabel("Reason", { exact: true })
+        : dialog.getByRole("button", { name: "Cancel", exact: true }),
     ).toBeFocused();
     expect(state.writes).toEqual([]);
     await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
     await expect(dialog).not.toBeVisible();
     await expect(trigger).toBeFocused();
     expect(state.writes).toEqual([]);
+    await openMenu();
     await trigger.click();
     await page.keyboard.press("Escape");
     await expect(dialog).not.toBeVisible();
     expect(state.writes).toEqual([]);
+    await openMenu();
     await trigger.click();
+    if (item.platform)
+      await dialog
+        .getByLabel("Reason", { exact: true })
+        .fill("Owner requested pause");
     await dialog.getByRole("button", { name: "Confirm", exact: true }).click();
     await expect.poll(() => state.writes.length).toBe(1);
     expect(state.writes[0]).toMatchObject({
@@ -163,7 +178,7 @@ test("titles update on navigation; change requests use an SVG; contact dropdown 
     [`${base}/settings/members`, "Team"],
     [`${botBase}/settings`, "Bot settings"],
     ["/platform/operations", "Platform operations"],
-    [`/platform/clients/${tenant}`, "Client details"],
+    [`/platform/clients/${tenant}`, "Organization details"],
   ]) {
     await page.goto(path);
     await expect(page).toHaveTitle(`${title} · Website Chatbot SaaS`);

@@ -25,10 +25,10 @@ resources or enable public crawling without explicit approval.
 
 ### Migrations to include in the release (alembic, in order)
 
-`0017_manyosiris_channels` (connections + events + conversation/identity
-changes) · `0018_channel_inbound` (job type constraint, channel contact shape)
-· `0019_channel_send` (outbound bookkeeping/unique keys) ·
-`0020_channel_health_poll` (extends `ck_jobs_type`, adds the partial unique
+`0023_manyosiris_channels` (connections + events + conversation/identity
+changes) · `0024_channel_inbound` (job type constraint, channel contact shape)
+· `0025_channel_send` (outbound bookkeeping/unique keys) ·
+`0026_channel_health_poll` (extends `ck_jobs_type`, adds the partial unique
 index `uq_channel_health_poll_connection` that caps poll concurrency). All four
 are reversible and were round-trip tested up and down on the disposable
 database.
@@ -38,7 +38,7 @@ database.
 1. Prereqs: staging deployed (ADR-007 hosting decision), the Many side in
    delegated mode for one WhatsApp number (MANY-AGENT-PROMPT.md), and the
    tenant limited to one bot and one connection.
-2. Apply migrations 0017–0020 before booting the API; the worker refuses to
+2. Apply migrations 0023–0026 before booting the API; the worker refuses to
    start against a non-migrated head implicitly (job type constraint).
 3. Create the connection as platform staff, copy the once-shown secret into
    the Many channel operator screen; many_base_url pins the staging peer.

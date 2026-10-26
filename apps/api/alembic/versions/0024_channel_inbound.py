@@ -2,8 +2,8 @@
 
 from alembic import op
 
-revision = "0018_channel_inbound"
-down_revision = "0017_manyosiris_channels"
+revision = "0024_channel_inbound"
+down_revision = "0023_manyosiris_channels"
 branch_labels = None
 depends_on = None
 

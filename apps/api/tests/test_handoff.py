@@ -332,3 +332,14 @@ def test_unanswered_threshold_and_provider_failure_rule(
         can_answer=False,
     )
     assert decision is not None and decision.reason == "provider_failure"
+    # An unusable model reply is not a provider failure: no handoff at all.
+    unusable = decide_handoff(
+        db,
+        bot=bot,
+        conversation=conversation,
+        question="please try again",
+        language="en",
+        reply_kind="invalid_output",
+        can_answer=False,
+    )
+    assert unusable is None

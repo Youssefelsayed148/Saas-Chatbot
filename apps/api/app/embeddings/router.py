@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 
 from app.auth import cookies
+from app.chat.models import tier_targets
 from app.core.audit import record_audit
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
@@ -46,7 +47,7 @@ def get_traces(bot_id: UUID, context: TenantContextDep) -> dict[str, object]:
         .where(
             UsageEvent.tenant_id == context.tenant_id,
             UsageEvent.bot_id == bot_id,
-            UsageEvent.kind == "message",
+            UsageEvent.kind.in_(("message", "unavailable")),
             UsageEvent.payload["rag_trace"].is_not(None),
         )
         .order_by(UsageEvent.created_at.desc(), UsageEvent.id.desc())
@@ -84,6 +85,8 @@ def get_rag(bot_id: UUID, context: TenantContextDep, settings: SettingsDep) -> d
         "tier": bot.tier,
         "generation_provider": bot.generation_provider,
         "generation_model": bot.generation_model,
+        # Provider/model each tier maps to (staff display; ADR-013).
+        "tier_targets": tier_targets(settings),
         "active_embedding_model": bot.active_embedding_model,
         "embedding_dim": 1024,
         "embedding_ready": bot.embedding_ready,

@@ -3,6 +3,7 @@ import "./globals.css";
 import PageTitle from "@/lib/page-title";
 import { ThemeProvider } from "@/lib/theme";
 import { SessionProvider } from "@/lib/session";
+import { dashboardFont } from "./fonts";
 
 export const metadata: Metadata = {
   description: "Standalone website chatbot application foundation",
@@ -13,7 +14,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body>
+      <body className={dashboardFont.variable}>
         <PageTitle />
         <SessionProvider>
           <ThemeProvider>{children}</ThemeProvider>

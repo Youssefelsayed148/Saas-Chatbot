@@ -19,8 +19,6 @@
   --warning: #f2ce8e;
   --warning-soft: #372e1d;
   --focus: #b9d0ff;
-  --staff: #d1b3ff;
-  --staff-soft: #302440;
   --overlay: #050912b8;
   --shadow: 0 18px 48px #00000030;
   --radius: 16px;
@@ -33,14 +31,41 @@
   --space-6: 2rem;
   --space-7: 3rem;
   --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --text-sm: 0.825rem;
-  --text-base: 0.925rem;
-  --text-lg: 1.2rem;
-  --heading: clamp(1.65rem, 3vw, 2.3rem);
+  /* Type scale (rem; 1rem = 16px). Base text is 16px. */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-md: 1.125rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --heading: clamp(1.6rem, 3vw, 2rem);
+  --leading-tight: 1.25;
+  --leading-body: 1.6;
+  /* Content width: readable line length and page container. */
+  --content-max: 80rem;
+  --measure: 65ch;
+  --form-max: 42rem;
+  --control-height: 2.75rem;
   --ease: 160ms ease;
   --widget-brand: #1f7a5c;
   --ink-light: #ffffff;
   --ink-dark: #000000;
+  /* Chart colours. Categorical: each >= 3:1 on --surface and --bg (WCAG 1.4.11),
+   * never the only carrier of meaning. Sequential: low to high; the two lightest
+   * (dark) / darkest-to-light steps are fills that need a border. */
+  --chart-1: #8aafff;
+  --chart-2: #5fd4b0;
+  --chart-3: #f2ce8e;
+  --chart-4: #f29bc0;
+  --chart-5: #b9a2ff;
+  --chart-6: #ffa877;
+  --chart-seq-1: #20324f;
+  --chart-seq-2: #2f4d80;
+  --chart-seq-3: #4a74c0;
+  --chart-seq-4: #6f97ee;
+  --chart-seq-5: #a9c4ff;
+  --chart-grid: #2b3a4e;
+  --chart-axis: #a3b2c6;
 }
 :root[data-theme="light"] {
   color-scheme: light;
@@ -62,10 +87,21 @@
   --warning: #745015;
   --warning-soft: #fff2d9;
   --focus: #2459b4;
-  --staff: #7040a2;
-  --staff-soft: #f0e8fa;
   --overlay: #17263a80;
   --shadow: 0 18px 48px #1d3c5912;
+  --chart-1: #2459b4;
+  --chart-2: #0f7a5c;
+  --chart-3: #935a00;
+  --chart-4: #b0306a;
+  --chart-5: #6a43c4;
+  --chart-6: #b4510f;
+  --chart-seq-1: #dbe6fb;
+  --chart-seq-2: #a9c2ee;
+  --chart-seq-3: #6f95d8;
+  --chart-seq-4: #3e6dbd;
+  --chart-seq-5: #234f9a;
+  --chart-grid: #cbd6e5;
+  --chart-axis: #52647c;
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) {
@@ -88,9 +124,20 @@
     --warning: #745015;
     --warning-soft: #fff2d9;
     --focus: #2459b4;
-    --staff: #7040a2;
-    --staff-soft: #f0e8fa;
     --overlay: #17263a80;
     --shadow: 0 18px 48px #1d3c5912;
+    --chart-1: #2459b4;
+    --chart-2: #0f7a5c;
+    --chart-3: #935a00;
+    --chart-4: #b0306a;
+    --chart-5: #6a43c4;
+    --chart-6: #b4510f;
+    --chart-seq-1: #dbe6fb;
+    --chart-seq-2: #a9c2ee;
+    --chart-seq-3: #6f95d8;
+    --chart-seq-4: #3e6dbd;
+    --chart-seq-5: #234f9a;
+    --chart-grid: #cbd6e5;
+    --chart-axis: #52647c;
   }
 }

@@ -1,12 +1,22 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import * as api from "@/lib/api";
 import { useSession } from "@/lib/session";
-import { Empty, Loading, Notice } from "@/lib/ui";
+import "@/app/bots-list.css";
+import {
+  Button,
+  DataTable,
+  Empty,
+  Field,
+  LinkButton,
+  Loading,
+  Notice,
+  PageHeader,
+  StatusBadge,
+} from "@/lib/ui";
 
 export default function OrgSelectorPage() {
   const {
@@ -68,17 +78,23 @@ export default function OrgSelectorPage() {
   if (!loading && !error && me?.is_platform_staff) {
     return (
       <main>
-        <h1>All organizations</h1>
-        <p className="page-purpose">
-          Open a client workspace or onboard a new organization.
-        </p>
-        <p>
-          <Link href="/platform#onboard-client">
-            Create / Onboard organization
-          </Link>
-          {" · "}
-          <Link href="/platform">Platform admin</Link>
-        </p>
+        <PageHeader
+          title="All organizations"
+          purpose="Open a client workspace or create an organization."
+          actions={
+            <>
+              <LinkButton
+                variant="primary"
+                href="/platform#create-organization"
+              >
+                Create organization
+              </LinkButton>
+              <LinkButton variant="secondary" href="/platform">
+                Platform admin
+              </LinkButton>
+            </>
+          }
+        />
         {staffOrganizationsError && (
           <Notice
             message={staffOrganizationsError}
@@ -91,49 +107,56 @@ export default function OrgSelectorPage() {
         )}
         {staffOrganizations?.length === 0 && (
           <Empty>
-            No organizations yet. Onboard your first client to get started.
+            No organizations yet. Create your first organization to get started.
           </Empty>
         )}
         {!!staffOrganizations?.length && (
-          <table aria-label="All organizations">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Plan</th>
-                <th>Status</th>
-                <th>Bots</th>
-                <th>Last activity</th>
-                <th>Workspace</th>
-              </tr>
-            </thead>
-            <tbody>
-              {staffOrganizations.map((org) => (
-                <tr key={org.id}>
-                  <td>{org.name}</td>
-                  <td>{org.plan_label}</td>
-                  <td>{org.status}</td>
-                  <td>{org.bots}</td>
-                  <td>
-                    {org.last_activity
-                      ? new Date(org.last_activity).toLocaleString()
-                      : "No activity yet"}
-                  </td>
-                  <td>
-                    <Link
-                      href={
-                        org.status === "archived"
-                          ? `/platform/clients/${org.id}`
-                          : `/app/${org.id}`
-                      }
-                      aria-label={`Open ${org.name}`}
-                    >
-                      Open
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <DataTable
+            caption="All organizations"
+            rows={staffOrganizations}
+            rowKey={(org) => org.id}
+            columns={[
+              { key: "name", header: "Name", cell: (org) => org.name },
+              { key: "plan", header: "Plan", cell: (org) => org.plan_label },
+              {
+                key: "status",
+                header: "Status",
+                cell: (org) => <StatusBadge value={org.status} />,
+              },
+              {
+                key: "bots",
+                header: "Bots",
+                className: "num",
+                cell: (org) => org.bots,
+              },
+              {
+                key: "activity",
+                header: "Last activity",
+                cell: (org) =>
+                  org.last_activity
+                    ? new Date(org.last_activity).toLocaleString()
+                    : "No activity yet",
+              },
+              {
+                key: "workspace",
+                header: "Workspace",
+                cell: (org) => (
+                  <LinkButton
+                    variant="secondary"
+                    size="sm"
+                    href={
+                      org.status === "archived"
+                        ? `/platform/clients/${org.id}`
+                        : `/app/${org.id}`
+                    }
+                    aria-label={`Open ${org.name}`}
+                  >
+                    Open
+                  </LinkButton>
+                ),
+              },
+            ]}
+          />
         )}
       </main>
     );
@@ -141,10 +164,10 @@ export default function OrgSelectorPage() {
 
   return (
     <main>
-      <h1>Your organizations</h1>
-      <p className="page-purpose">
-        Choose a workspace to manage its bots and conversations.
-      </p>
+      <PageHeader
+        title="Your organizations"
+        purpose="Choose a workspace to manage its bots and conversations."
+      />
       {loading && <Loading label="Loading organizations…" />}
       {!loading && error && <Notice message={error} tone="error" />}
       {!loading &&
@@ -158,13 +181,19 @@ export default function OrgSelectorPage() {
           </Empty>
         )}
       {!loading && !error && me && me.memberships.length > 0 && (
-        <ul className="org-list">
+        <ul className="bots-grid" aria-label="Your organizations">
           {me.memberships.map((membership) => (
-            <li key={membership.tenant_id}>
-              <Link href={`/app/${membership.tenant_id}`}>
-                {membership.tenant_name}
-              </Link>
-              <span className="muted"> — your role: {membership.role}</span>
+            <li key={membership.tenant_id} className="bot-card">
+              <h2 className="bot-card-name">{membership.tenant_name}</h2>
+              <span className="muted">Your role: {membership.role}</span>
+              <LinkButton
+                variant="primary"
+                size="sm"
+                href={`/app/${membership.tenant_id}`}
+                aria-label={`Open ${membership.tenant_name}`}
+              >
+                Open
+              </LinkButton>
             </li>
           ))}
         </ul>
@@ -173,22 +202,24 @@ export default function OrgSelectorPage() {
         <section aria-label="Create organization">
           <h2>Create organization</h2>
           <form onSubmit={onCreate}>
-            <label>
-              Name
-              <input
-                name="name"
-                required
-                maxLength={100}
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-              />
-            </label>
-            <button
+            <Field label="Name">
+              {(control) => (
+                <input
+                  {...control}
+                  name="name"
+                  required
+                  maxLength={100}
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                />
+              )}
+            </Field>
+            <Button
               type="submit"
               disabled={creating || name.trim().length === 0}
             >
               {creating ? "Creating…" : "Create"}
-            </button>
+            </Button>
           </form>
           {createError && <Notice message={createError} tone="error" />}
         </section>

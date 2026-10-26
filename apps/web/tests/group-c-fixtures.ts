@@ -116,8 +116,26 @@ export async function safetyFixture(page: Page, platform = false) {
           slug: "safety",
           status: "active",
           plan_label: "starter",
+          created_at: now,
         },
-        bots: [bot],
+        counts: { members: 0, bots: 1 },
+        quota: {
+          placeholder: true,
+          plan: "starter",
+          usage: { bots: 1 },
+          limits: { bots: 3 },
+        },
+        bots: [
+          {
+            ...bot,
+            published: false,
+            widget_state: "configured",
+            source_count: 0,
+            last_ingestion_job_status: null,
+            published_revision_id: null,
+            published_at: null,
+          },
+        ],
         members: [],
         pending_invitations: [],
         failed_jobs: [],
@@ -186,7 +204,14 @@ export async function safetyFixture(page: Page, platform = false) {
         usage: {},
         backfill: null,
         retrieval_mode: "keyword",
+        embedding_ready: false,
+        tier_targets: {
+          standard: { provider: "openrouter", model: null },
+          premium: { provider: "openai", model: "gpt-5.4-nano" },
+        },
       });
+    if (suffix === `/bots/${botId}/readiness`)
+      return reply({ ready: false, items: [] });
     if (suffix.endsWith("/rag/costs")) return reply({ costs: [] });
     if (suffix.endsWith("/rag/limits"))
       return reply({ limits: {}, effective_limits: {}, usage: {} });

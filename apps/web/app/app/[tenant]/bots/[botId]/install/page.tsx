@@ -13,8 +13,17 @@ import { useEffect, useState } from "react";
 
 import { LabelBadge } from "@/lib/labels";
 import * as api from "@/lib/api";
-import { Loading, Notice } from "@/lib/ui";
+import {
+  Button,
+  Card,
+  LinkButton,
+  Loading,
+  Notice,
+  PageHeader,
+} from "@/lib/ui";
 import BotWorkspaceNav from "@/lib/bot-workspace-nav";
+
+import "@/app/install-screen.css";
 
 function originOf(): string {
   // The snippet must point at whichever host serves the dashboard (so local
@@ -60,15 +69,21 @@ export default function InstallPage() {
 
   if (loadError) {
     return (
-      <main>
+      <main className="install-page">
         <Notice message={loadError} tone="error" />
-        <Link href={`/app/${tenantId}/bots`}>Back to bots</Link>
+        <LinkButton
+          variant="ghost"
+          className="install-back"
+          href={`/app/${tenantId}/bots`}
+        >
+          Back to bots
+        </LinkButton>
       </main>
     );
   }
   if (!bot) {
     return (
-      <main>
+      <main className="install-page">
         <Loading label="Loading bot…" />
       </main>
     );
@@ -79,13 +94,21 @@ export default function InstallPage() {
   const sampleUrl = `/widget/sample?locator=${encodeURIComponent(locator)}&site=custom`;
 
   return (
-    <main>
+    <main className="install-page">
       <BotWorkspaceNav tenantId={tenantId} botId={botId} />
-      <h1>{bot.name} — install</h1>
-      <p className="page-purpose">
-        Copy your widget snippet and verify it on the sample website.
-      </p>
-      <p data-status={bot.status} data-testid="install-status">
+      <PageHeader
+        title={
+          <>
+            <bdi dir="auto">{bot.name}</bdi> — install
+          </>
+        }
+        purpose="Copy your widget snippet and verify it on the sample website."
+      />
+      <p
+        data-status={bot.status}
+        data-testid="install-status"
+        className="install-status"
+      >
         Status: <LabelBadge value={bot.status} />
       </p>
       {bot.status !== "active" && (
@@ -99,48 +122,55 @@ export default function InstallPage() {
         />
       )}
 
-      <section aria-label="Embed snippet">
-        <h2>1. Paste this one script tag before &lt;/body&gt; of your site</h2>
-        <pre data-testid="install-snippet">{snippet}</pre>
-        <button
-          type="button"
-          disabled={!locator}
-          data-testid="copy-snippet"
-          onClick={() => {
-            void navigator.clipboard
-              .writeText(snippet)
-              .then(() => setCopied(true));
-          }}
+      <Card
+        title="1. Paste this one script tag before </body> of your site"
+        aria-label="Embed snippet"
+      >
+        <pre
+          data-testid="install-snippet"
+          dir="ltr"
+          className="install-snippet"
         >
-          {copied ? "Copied" : "Copy snippet"}
-        </button>
-        <p className="muted">
+          {snippet}
+        </pre>
+        <div className="install-actions">
+          <Button
+            disabled={!locator}
+            data-testid="copy-snippet"
+            onClick={() => {
+              void navigator.clipboard
+                .writeText(snippet)
+                .then(() => setCopied(true));
+            }}
+          >
+            {copied ? "Copied" : "Copy snippet"}
+          </Button>
+        </div>
+        <p className="install-note">
           The locator is public — it only names your bot. Only the domains you
           allow (Settings → allowed domains) may embed the assistant; visitor
           sessions are short-lived and rate-limited.
         </p>
-      </section>
+      </Card>
 
-      <section aria-label="Test on a sample page">
-        <h2>2. Test on a sample page</h2>
+      <Card title="2. Test on a sample page" aria-label="Test on a sample page">
         {bot.status === "active" && bot.widget_locator ? (
           <p>
             <Link href={sampleUrl}>
               Open a sample page with this bot embedded
             </Link>{" "}
-            (<code>/widget/sample?locator={locator}</code>) — chat there and
-            come back to conversations to see the thread.
+            (<code dir="ltr">/widget/sample?locator={locator}</code>) — chat
+            there and come back to conversations to see the thread.
           </p>
         ) : (
           <p className="muted">
             Activate the bot to use the sample-page helper.
           </p>
         )}
-      </section>
+      </Card>
 
-      <section aria-label="What visitors get">
-        <h2>3. What your visitors get</h2>
-        <ul>
+      <Card title="3. What your visitors get" aria-label="What visitors get">
+        <ul className="install-points">
           <li>
             Your assistant answers only from the published knowledge, in its
             language (EN/AR, RTL supported).
@@ -150,7 +180,7 @@ export default function InstallPage() {
             When it cannot answer, the reply points to your support contact.
           </li>
         </ul>
-      </section>
+      </Card>
       {role && (
         <p className="muted" aria-hidden="true">
           Role: {role}

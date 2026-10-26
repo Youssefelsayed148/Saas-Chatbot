@@ -1,13 +1,13 @@
 """Register the periodic channel health poll job (PLAN D10, docs/17 §5.2).
 
-Revision ID: 0020_channel_health_poll
-Revises: 0019_channel_send
+Revision ID: 0026_channel_health_poll
+Revises: 0025_channel_send
 """
 
 from alembic import op
 
-revision = "0020_channel_health_poll"
-down_revision = "0019_channel_send"
+revision = "0026_channel_health_poll"
+down_revision = "0025_channel_send"
 branch_labels = None
 depends_on = None
 

@@ -19,9 +19,7 @@ async function createOrgAndBot(
 ): Promise<{ tenantId: string; botId: string }> {
   const { tenantId, botName } = await registerOperator(page, "Chat", {});
   await page
-    .getByRole("row", { name: new RegExp(botName) })
-    .getByRole("link")
-    .first()
+    .getByRole("link", { name: new RegExp(`Open ${botName}`) })
     .click();
   await page.waitForURL(/\/settings$/);
   const botId = new URL(page.url()).pathname.split("/")[4];
@@ -135,6 +133,43 @@ test("playground chat: grounded answer, citation, thumbs, thread persists", asyn
   );
 });
 
+test("playground streams the turn, New session starts an empty thread", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  const { tenantId, botId } = await createOrgAndBot(page);
+  await page.goto(`/app/${tenantId}/bots/${botId}/playground`);
+  await expect(page.getByRole("heading", { name: "Playground" })).toBeVisible();
+  await expect(page.getByText("No messages yet")).toBeVisible();
+
+  // The Stop button only exists while a turn is in flight.
+  await expect(page.getByTestId("playground-stop")).toHaveCount(0);
+  await page
+    .getByTestId("playground-input")
+    .fill("What are your opening hours?");
+  const streamed = page.waitForResponse(
+    (response) =>
+      response.url().includes("/playground/messages/stream") &&
+      response.request().method() === "POST",
+  );
+  await page.getByTestId("playground-send").click();
+  expect((await streamed).status()).toBe(200);
+
+  // No knowledge is published: the canned refusal is the reply, with no sources.
+  await expect(page.locator("[data-role='ai']")).toHaveCount(1, {
+    timeout: 30_000,
+  });
+  await expect(page.locator("[data-role='visitor']")).toHaveCount(1);
+  await expect(page.getByTestId("citations")).toHaveCount(0);
+  await expect(page.getByTestId("playground-stop")).toHaveCount(0);
+
+  await page.getByTestId("playground-new-session").click();
+  await expect(page.getByText("No messages yet")).toBeVisible();
+  await expect(page.locator("[data-role='ai']")).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByText("No messages yet")).toBeVisible();
+});
+
 test("an expired session pushes the playground back to login", async ({
   page,
   context,
@@ -163,6 +198,17 @@ test("viewer is read-only in the playground", async ({ browser }) => {
     ),
   );
   const viewerEmail = uniqueEmail("pg-viewer");
+  // S2: invitations target existing users; create the viewer account first in
+  // an isolated context so the admin session (shared jar) is not replaced.
+  const regContext = await browser.newContext();
+  expect(
+    (
+      await regContext.request.post("/api/v1/auth/register", {
+        data: { email: viewerEmail, password: PASSWORD },
+      })
+    ).status(),
+  ).toBe(201);
+  await regContext.close();
   await admin.getByLabel("Email", { exact: true }).fill(viewerEmail);
   await admin.getByRole("combobox", { name: "Role" }).selectOption("viewer");
   await admin.getByRole("button", { name: "Create invite link" }).click();
@@ -172,10 +218,11 @@ test("viewer is read-only in the playground", async ({ browser }) => {
   const viewerContext = await browser.newContext();
   const viewer = await viewerContext.newPage();
   await viewer.goto(inviteCode);
-  await viewer.getByRole("link", { name: "Register" }).first().click();
+  // S2: the account exists, so the link flow is sign in, then accept.
+  await viewer.getByRole("link", { name: "Sign in" }).click();
   await viewer.getByLabel("Email").fill(viewerEmail);
   await viewer.getByLabel("Password", { exact: true }).fill(PASSWORD);
-  await viewer.getByRole("button", { name: "Create account" }).click();
+  await viewer.getByRole("button", { name: "Sign in", exact: true }).click();
   await viewer.getByRole("button", { name: "Accept invitation" }).click();
   await viewer.getByRole("link", { name: /Go to your dashboard/i }).click();
   await viewer.waitForURL("/app");

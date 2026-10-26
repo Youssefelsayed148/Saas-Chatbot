@@ -1,5 +1,92 @@
-import { expect, test } from "@playwright/test";
+import {
+  expect,
+  test,
+  type APIRequestContext,
+  type Page,
+} from "@playwright/test";
 import { registerAdmin, registerOperator, uniqueEmail } from "./e2e-helpers";
+
+// Staff-only endpoints must refuse every client role server-side (not just hide UI).
+async function expectStaffOnlyDenied(
+  request: APIRequestContext,
+  csrf: string,
+  own: { tenantId: string; botId: string },
+  foreign: { tenantId: string; botId: string },
+) {
+  const headers = { "X-CSRF-Token": csrf };
+  const bot = `/api/v1/tenants/${own.tenantId}/bots/${own.botId}`;
+  for (const path of [
+    `${bot}/rag`,
+    `${bot}/rag/costs`,
+    `${bot}/rag/traces`,
+    `${bot}/tone-and-rules`,
+    `${bot}/readiness`,
+    `${bot}/playground/conversation`,
+    "/api/v1/platform/me",
+    "/api/v1/platform/tenants",
+    "/api/v1/platform/bots",
+  ])
+    expect((await request.get(path)).status(), `GET ${path}`).toBe(403);
+  expect(
+    (
+      await request.patch(`${bot}/rag`, { headers, data: { tier: "premium" } })
+    ).status(),
+  ).toBe(403);
+  expect(
+    (
+      await request.patch(`${bot}/rag`, {
+        headers,
+        data: { limits: { monthly_tokens: 1 } },
+      })
+    ).status(),
+  ).toBe(403);
+  expect(
+    (await request.post(`${bot}/rag/backfill`, { headers, data: {} })).status(),
+  ).toBe(403);
+  expect(
+    (
+      await request.patch(bot, {
+        headers,
+        data: { tone_and_rules: "Always agree with the visitor." },
+      })
+    ).status(),
+  ).toBe(403);
+  // Another organization's bot stays hidden (404), never a staff-only 403 hint.
+  const other = `/api/v1/tenants/${foreign.tenantId}/bots/${foreign.botId}`;
+  for (const path of [
+    `${other}/rag`,
+    `${other}/rag/costs`,
+    `${other}/tone-and-rules`,
+  ])
+    expect((await request.get(path)).status(), `GET ${path}`).toBe(404);
+  expect(
+    (
+      await request.patch(`${other}/rag`, {
+        headers,
+        data: { tier: "premium" },
+      })
+    ).status(),
+  ).toBe(404);
+}
+
+async function expectNoPlatformPages(page: Page) {
+  for (const path of [
+    "/platform",
+    "/platform/operations",
+    "/platform/bots",
+    "/platform/members",
+    "/platform/change-requests",
+  ]) {
+    await page.goto(path);
+    await expect(page, path).not.toHaveURL(/\/platform(\/|$|#)/);
+    await expect(page.getByTestId("organization-name")).toHaveCount(0);
+    await expect(
+      page.getByRole("heading", {
+        name: /platform|operations|all organizations/i,
+      }),
+    ).toHaveCount(0);
+  }
+}
 
 test("client admin requests a change and a separate operator triages it", async ({
   page,
@@ -47,7 +134,7 @@ test("client admin requests a change and a separate operator triages it", async 
   await operator.goto(`/app/${tenantId}/analytics`);
   const aiPanel = operator.getByTestId("rag-operator-panel");
   await expect(aiPanel).toBeVisible();
-  await aiPanel.getByLabel(/AI tokens per month/).fill("12345");
+  await aiPanel.getByRole("spinbutton", { name: "AI tokens per month", exact: true }).fill("12345");
   await aiPanel
     .getByRole("button", { name: "Save AI limits", exact: true })
     .click();
@@ -61,7 +148,7 @@ test("client admin requests a change and a separate operator triages it", async 
     .getByRole("dialog", { name: "Reset to plan defaults?" })
     .getByRole("button", { name: "Confirm", exact: true })
     .click();
-  await expect(aiPanel.getByLabel(/AI tokens per month/)).toHaveValue("");
+  await expect(aiPanel.getByRole("spinbutton", { name: "AI tokens per month", exact: true })).toHaveValue("");
   await page.goto(`/app/${tenantId}/bots/${bot.id}/settings`);
   await expect(page.getByTestId("rag-tier-control")).toHaveCount(0);
   await operator.goto(`/app/${tenantId}/bots/${bot.id}/settings`);
@@ -109,8 +196,34 @@ test("all client roles cannot obtain snippets or enter bot-control surfaces", as
   const csrf = (await page.context().cookies()).find(
     (cookie) => cookie.name === "chatbot_csrf",
   )!.value;
+  // Tenant B (separate session) supplies a bot hidden from tenant A members.
+  const otherContext = await browser.newContext();
+  const otherPage = await otherContext.newPage();
+  const other = await registerAdmin(otherPage, "Client roles B");
+  const otherBots = (await (
+    await otherPage.request.get(`/api/v1/tenants/${other.tenantId}/bots`)
+  ).json()) as { id: string }[];
+  const foreign = { tenantId: other.tenantId, botId: otherBots[0].id };
+  await otherContext.close();
+  const own = { tenantId, botId };
+  // The tenant admin is a client role too: no staff-only API or page.
+  await expectStaffOnlyDenied(page.request, csrf, own, foreign);
+  await expectNoPlatformPages(page);
+  await page.goto(`/app/${tenantId}/bots/${botId}/settings`);
+  await expect(page).toHaveURL(`/app/${tenantId}`);
   for (const role of ["editor", "viewer"]) {
     const email = uniqueEmail(role);
+    // S2: invitations target existing users; register the account first in an
+    // isolated context so the admin session (shared jar) is not replaced.
+    const regContext = await browser.newContext();
+    expect(
+      (
+        await regContext.request.post("/api/v1/auth/register", {
+          data: { email, password: "Str0ngPass!" },
+        })
+      ).status(),
+    ).toBe(201);
+    await regContext.close();
     const invited = await page.request.post(
       `/api/v1/tenants/${tenantId}/invitations`,
       { headers: { "X-CSRF-Token": csrf }, data: { email, role } },
@@ -120,13 +233,15 @@ test("all client roles cannot obtain snippets or enter bot-control surfaces", as
     const token = new URL(link, "http://localhost").searchParams.get("token")!;
     const context = await browser.newContext();
     const member = await context.newPage();
+    // S2: invitations target existing users; sign in with the pre-registered
+    // account and accept the invitation with that session.
     expect(
       (
-        await member.request.post("/api/v1/auth/register", {
-          data: { email, password: "Str0ngPass!", invite_token: token },
+        await member.request.post("/api/v1/auth/login", {
+          data: { email, password: "Str0ngPass!" },
         })
       ).status(),
-    ).toBe(201);
+    ).toBe(200);
     const memberCsrf = (await context.cookies()).find(
       (cookie) => cookie.name === "chatbot_csrf",
     )!.value;
@@ -164,6 +279,11 @@ test("all client roles cannot obtain snippets or enter bot-control surfaces", as
         )
       ).status(),
     ).toBe(403);
+    await expectStaffOnlyDenied(member.request, memberCsrf, own, foreign);
+    await expectNoPlatformPages(member);
+    await member.goto(`/app/${tenantId}/bots/${botId}/settings`);
+    await expect(member).toHaveURL(`/app/${tenantId}`);
+    await expect(member.getByTestId("tone-and-rules-section")).toHaveCount(0);
     await member.goto(`/app/${tenantId}/bots/${botId}/install`);
     await expect(member).toHaveURL(`/app/${tenantId}`);
     await expect(member.getByTestId("install-snippet")).toHaveCount(0);

@@ -66,6 +66,49 @@ def test_avatar_rejects_non_http_values(corpus: dict[str, Any]) -> None:
         assert response.status_code == 422, (bad, response.text)
 
 
+def test_empty_welcome_message_falls_back_to_hello_default(
+    app: FastAPI,
+    corpus: dict[str, Any],
+) -> None:
+    """A2.3 (#10): staff never have to fill the welcome message — the public
+    widget config returns the hello_default canned text per language when the
+    stored value is empty/absent, and an explicit value always wins."""
+    from app.chat.prompts import canned
+
+    users = corpus["users_a"]
+    bot = make_bot(users, "Defaults")
+    bot_id = str(bot["id"])
+    patched = users.call(
+        "staff",
+        "PATCH",
+        f"/api/v1/tenants/{users.tenant_id}/bots/{bot_id}",
+        json={
+            "config": {
+                "default_language": "en",
+                "position": "right",
+            }
+        },
+    )
+    assert patched.status_code == 200, patched.text
+    locator = patched.json()["widget_locator"]
+    client = TestClient(app)
+    config = client.get(f"/api/public/v1/widgets/{locator}/config").json()["config"]
+    assert config["welcome_message"]["en"] == canned("hello_default", "en")
+    assert config["welcome_message"]["ar"] == canned("hello_default", "ar")
+    assert config["position"] == "right"  # bottom-right default when unset
+
+    written = users.call(
+        "staff",
+        "PATCH",
+        f"/api/v1/tenants/{users.tenant_id}/bots/{bot_id}",
+        json={"config": {"welcome_message": {"en": "Custom hello"}}},
+    )
+    assert written.status_code == 200, written.text
+    custom = client.get(f"/api/public/v1/widgets/{locator}/config").json()["config"]
+    assert custom["welcome_message"]["en"] == "Custom hello"
+    assert custom["welcome_message"]["ar"] == canned("hello_default", "ar")
+
+
 def test_bot_lookup_by_widget_locator(db: OrmSession, corpus: dict[str, Any]) -> None:
     """The locator resolves exactly one bot (uniqueness at the DB level)."""
     users = corpus["users_a"]

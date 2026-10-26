@@ -1,16 +1,14 @@
 """Platform admin console API (P4-06, docs/11, ADR-018).
 
 Guarded server-side by users.is_platform_staff (never a tenant role); no
-impersonation, actor attribution on every staff action. Client list and
-detail are read views; onboarding goes through the SHARED ProvisioningService
-with a REQUIRED Idempotency-Key and returns the admin one-time invite link
-(shown once). Non-staff calls reach 403 FORBIDDEN.
+impersonation, actor attribution on every staff action. Dedicated organization,
+user and bot endpoints replace batch staff onboarding. Historical provisioning
+status and CSV readers remain available. Non-staff calls reach 403 FORBIDDEN.
 """
 
 import csv
 import io
 import json
-import secrets
 from datetime import UTC, datetime
 from typing import Annotated, Any
 from uuid import UUID, uuid4
@@ -18,18 +16,15 @@ from uuid import UUID, uuid4
 from fastapi import (
     APIRouter,
     Depends,
-    File,
-    Form,
-    Header,
     Query,
     Response,
-    UploadFile,
 )
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session as OrmSession
 
 from app.auth import cookies
+from app.bots.factory import create_bot_record
 from app.bots.schemas import BotOut
 from app.core.audit import audit_action_matches, record_audit
 from app.core.config import Settings, get_settings
@@ -49,11 +44,13 @@ from app.db.models import (
 )
 from app.db.session import get_session
 from app.jobs.queue import request_cancel, requeue_for_retry
+from app.platform.bots import bot_summary
 from app.platform.staff import PlatformStaffDep
-from app.provisioning.service import ProvisioningPayload, ProvisioningService
+from app.quotas.rag import counts_toward_message_quota
 from app.quotas.service import PLACEHOLDER_PLAN_LIMITS, PLAN_LABELS
 
 router = APIRouter(prefix="/api/v1/platform")
+
 
 DbSession = Annotated[OrmSession, Depends(get_session)]
 CurrentSettings = Annotated[Settings, Depends(get_settings)]
@@ -62,6 +59,44 @@ CsrfOk = Annotated[None, Depends(cookies.require_csrf)]
 
 class PlatformBotCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
+
+
+class OrganizationCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    plan_label: str = "starter"
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def trimmed_name(cls, value: Any) -> Any:
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("plan_label")
+    @classmethod
+    def valid_plan(cls, value: str) -> str:
+        if value not in PLAN_LABELS:
+            raise ValueError("Unknown plan.")
+        return value
+
+
+class OrganizationUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    status: str | None = None
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def trimmed_optional_name(cls, value: Any) -> Any:
+        if value is None:
+            raise ValueError("Name cannot be null.")
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("status")
+    @classmethod
+    def valid_status(cls, value: str | None) -> str | None:
+        if value not in ("active", "archived"):
+            raise ValueError("Unknown status.")
+        return value
 
 
 class ReasonAction(BaseModel):
@@ -159,6 +194,7 @@ def platform_tenants(
                     UsageEvent.tenant_id == tenant.id,
                     UsageEvent.kind == "message",
                     UsageEvent.created_at >= month_start,
+                    counts_toward_message_quota(),
                 )
             ).scalar_one()
         )
@@ -176,6 +212,85 @@ def platform_tenants(
             }
         )
     return {"tenants": clients, "total": total}
+
+
+@router.post("/tenants", status_code=201)
+def platform_create_organization(
+    payload: OrganizationCreate,
+    staff: PlatformStaffDep,
+    db: DbSession,
+    _: CsrfOk,
+) -> dict[str, Any]:
+    from app.tenants.service import TenantService
+
+    tenant = Tenant(
+        id=uuid4(),
+        name=payload.name,
+        slug=TenantService(db)._unique_slug(payload.name),
+        plan_label=payload.plan_label,
+        status="active",
+        quota_overrides={},
+    )
+    db.add(tenant)
+    db.flush()
+    record_audit(
+        db,
+        action="platform.organization.created",
+        tenant_id=tenant.id,
+        actor_user_id=staff.id,
+        target_type="tenant",
+        target_id=str(tenant.id),
+        metadata={"name": tenant.name, "plan_label": tenant.plan_label},
+    )
+    db.commit()
+    return {
+        "id": str(tenant.id),
+        "name": tenant.name,
+        "slug": tenant.slug,
+        "plan_label": tenant.plan_label,
+        "status": tenant.status,
+        "created_at": tenant.created_at.isoformat(),
+    }
+
+
+@router.patch("/tenants/{tenant_id}")
+def platform_update_organization(
+    tenant_id: UUID,
+    payload: OrganizationUpdate,
+    staff: PlatformStaffDep,
+    db: DbSession,
+    _: CsrfOk,
+) -> dict[str, Any]:
+    tenant = db.get(Tenant, tenant_id)
+    if tenant is None:
+        raise ApiError(404, "NOT_FOUND", "Resource not found.")
+    changes = {
+        key: value
+        for key, value in payload.model_dump(exclude_unset=True).items()
+        if getattr(tenant, key) != value
+    }
+    if changes:
+        before = {key: getattr(tenant, key) for key in changes}
+        for key, value in changes.items():
+            setattr(tenant, key, value)
+        record_audit(
+            db,
+            action="platform.organization.updated",
+            tenant_id=tenant.id,
+            actor_user_id=staff.id,
+            target_type="tenant",
+            target_id=str(tenant.id),
+            metadata={"before": before, "after": changes, "fields": list(changes)},
+        )
+        db.commit()
+    return {
+        "id": str(tenant.id),
+        "name": tenant.name,
+        "slug": tenant.slug,
+        "plan_label": tenant.plan_label,
+        "status": tenant.status,
+        "created_at": tenant.created_at.isoformat(),
+    }
 
 
 @router.get("/operations/jobs")
@@ -307,20 +422,8 @@ def platform_create_bot(
     db: DbSession,
     _: CsrfOk,
 ) -> BotOut:
-    from app.quotas.service import lock_tenant, require_capacity
-
-    tenant = lock_tenant(db, tenant_id)
-    require_capacity(db, tenant, "bots")
-    bot = Bot(
-        id=uuid4(), tenant_id=tenant.id, name=payload.name.strip(), status="draft",
-        config={}, widget_locator="w" + secrets.token_hex(16),
-    )
-    db.add(bot)
-    db.flush()
-    record_audit(
-        db, action="platform.bot.created", tenant_id=tenant.id, actor_user_id=staff.id,
-        target_type="bot", target_id=str(bot.id),
-    )
+    bot = create_bot_record(db, tenant_id=tenant_id, name=payload.name, actor=staff,
+                            audit_action="platform.bot.created")
     db.commit()
     return BotOut.model_validate(bot)
 
@@ -397,6 +500,20 @@ def platform_analytics(staff: PlatformStaffDep, db: DbSession) -> dict[str, Any]
             .group_by(UsageEvent.kind)
         )
         events = {kind: int(count) for kind, count in event_rows}
+        # Source label: staff playground turns are listed apart from client traffic.
+        playground = int(
+            db.execute(
+                select(func.count())
+                .select_from(UsageEvent)
+                .where(
+                    UsageEvent.tenant_id == tenant_id,
+                    UsageEvent.kind == "message",
+                    ~counts_toward_message_quota(),
+                )
+            ).scalar_one()
+        )
+        events["message"] = max(0, events.get("message", 0) - playground)
+        events["playground_message"] = playground
         per_client.append(
             {
                 "tenant_id": str(tenant_id),
@@ -455,17 +572,8 @@ def platform_tenant_detail(
     tenant = db.get(Tenant, tenant_id)
     if tenant is None:
         raise ApiError(404, "NOT_FOUND", "Resource not found.")
-    bots = [
-        {
-            "id": str(bot.id),
-            "name": bot.name,
-            "status": bot.status,
-            "published": bot.published_revision_id is not None,
-        }
-        for bot in db.execute(
-            select(Bot).where(Bot.tenant_id == tenant.id).order_by(Bot.created_at.desc())
-        ).scalars()
-    ]
+    bots = [bot_summary(db, bot) for bot in db.scalars(
+        select(Bot).where(Bot.tenant_id == tenant.id).order_by(Bot.created_at.desc()))]
     failed_jobs = [
         {"id": str(job.id), "type": job.type, "error": job.error}
         for job in db.execute(
@@ -480,6 +588,7 @@ def platform_tenant_detail(
             "user_id": str(member.id),
             "email": str(member.email),
             "role": membership.role,
+            "status": membership.status,
         }
         for membership, member in db.execute(
             select(Membership, User)
@@ -501,6 +610,8 @@ def platform_tenant_detail(
             select(func.count()).select_from(UsageEvent).where(UsageEvent.tenant_id == tenant.id)
         ).scalar_one()
     )
+    from app.quotas.service import usage_snapshot
+
     return {
         "tenant": {
             "id": str(tenant.id),
@@ -508,8 +619,10 @@ def platform_tenant_detail(
             "slug": tenant.slug,
             "status": tenant.status,
             "plan_label": tenant.plan_label,
+            "created_at": tenant.created_at.isoformat(),
         },
         "bots": bots,
+        "counts": {"members": len(members), "bots": len(bots)},
         "failed_jobs": failed_jobs,
         "members": members,
         "pending_invitations": [
@@ -535,6 +648,7 @@ def platform_tenant_detail(
             for row in audit_rows
         ],
         "usage_events": usage,
+        "quota": usage_snapshot(db, tenant),
     }
 
 
@@ -598,38 +712,3 @@ def platform_provisioning_csv(
         ["request_id", "mode", "status", "tenant_id", "actor", "payload", "error", "created_at"],
         rows,
     )
-
-
-@router.post("/onboarding", status_code=201)
-async def platform_onboarding(
-    staff: PlatformStaffDep,
-    db: DbSession,
-    settings: CurrentSettings,
-    client_name: Annotated[str, Form(min_length=1, max_length=200)],
-    admin_email: Annotated[str, Form()],
-    bot_name: Annotated[str, Form(min_length=1, max_length=100)] = "Website assistant",
-    plan_label: Annotated[str, Form(max_length=40)] = "starter",
-    notes: Annotated[str | None, Form(max_length=500)] = None,
-    files: Annotated[list[UploadFile], File()] | None = None,
-    idempotency_key: Annotated[str | None, Header()] = None,
-) -> dict[str, Any]:
-    """Staff onboarding through the SHARED ProvisioningService. Idempotency-Key
-    REQUIRED (a replay re-reads the durable row and returns it). The actor is
-    the staff user; the admin one-time invite link is returned once."""
-    if not idempotency_key or not idempotency_key.strip():
-        raise ApiError(400, "VALIDATION_ERROR", "Idempotency-Key header is required.")
-    payload = ProvisioningPayload(
-        client_name=client_name,
-        admin_email=admin_email,
-        bot_name=bot_name,
-        plan_label=plan_label or "starter",
-        notes=notes,
-    )
-    uploads: list[tuple[str, Any]] = [
-        (file.filename or f"upload-{index}", file.file) for index, file in enumerate(files or [])
-    ]
-    service = ProvisioningService(db, settings)
-    result = service.onboard_platform_client(
-        actor=staff, payload=payload, idempotency_key=idempotency_key.strip(), files=uploads
-    )
-    return dict(result)

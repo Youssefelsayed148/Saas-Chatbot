@@ -11,28 +11,37 @@ export function uniqueEmail(prefix: string): string {
   return `${local}.${Date.now()}.${Math.floor(Math.random() * 10_000)}@example.com`;
 }
 
+async function csrfCookie(page: Page): Promise<string> {
+  const cookies = await page.context().cookies();
+  return cookies.find((c) => c.name === "chatbot_csrf")?.value ?? "";
+}
+
 export async function registerAdmin(
   page: Page,
   prefix: string,
   opts: { email?: string; organizationName?: string; botName?: string } = {},
 ): Promise<{ tenantId: string; botName: string }> {
   const botName = opts.botName ?? `${prefix} Bot ${Date.now()}`;
-  await page.goto("/register");
-  await page
-    .getByLabel("Organization name")
-    .fill(opts.organizationName ?? `${prefix} Org ${Date.now()}`);
-  await page.getByLabel("First bot name").fill(botName);
-  await page.getByLabel("Email").fill(opts.email ?? uniqueEmail(prefix));
-  await page.getByLabel("Password", { exact: true }).fill(PASSWORD);
-  const registration = page.waitForResponse(
-    (response) =>
-      response.url().endsWith("/api/v1/auth/register") &&
-      response.request().method() === "POST",
-  );
-  await page.getByRole("button", { name: "Create account" }).click();
-  expect((await registration).status()).toBe(201);
+  // /register now redirects to /login (ADR-022): the e2e API runs with
+  // SELF_SERVE_SIGNUP=true, so accounts are created over the API.
+  await page.goto("/login");
+  const registration = await page.request.post("/api/v1/auth/register", {
+    data: { email: opts.email ?? uniqueEmail(prefix), password: PASSWORD },
+  });
+  expect(registration.status()).toBe(201);
+  const signup = await page.request.post("/api/v1/provisioning/self-service", {
+    headers: { "X-CSRF-Token": await csrfCookie(page) },
+    data: {
+      client_name: opts.organizationName ?? `${prefix} Org ${Date.now()}`,
+      bot_name: botName,
+    },
+  });
+  expect(signup.status()).toBe(201);
+  const tenantId = ((await signup.json()) as { result: { tenant_id: string } })
+    .result.tenant_id;
+  await page.goto(`/app/${tenantId}`);
   await page.waitForURL(/\/app\/[0-9a-f-]{36}$/);
-  return { tenantId: new URL(page.url()).pathname.split("/")[2], botName };
+  return { tenantId, botName };
 }
 
 export async function registerOperator(
@@ -69,9 +78,7 @@ export async function registerAndPrepareBot(
   promoteToStaff(operatorEmail);
   await page.goto(`/app/${tenantId}/bots`);
   await page
-    .getByRole("row", { name: new RegExp(botName) })
-    .getByRole("link")
-    .first()
+    .getByRole("link", { name: new RegExp(`Open ${botName}`) })
     .click();
   await page.waitForURL(/\/settings$/);
   const botId = new URL(page.url()).pathname.split("/")[4];

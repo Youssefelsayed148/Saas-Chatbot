@@ -1,17 +1,19 @@
 """Tenant-level measured handoff, response, and workload analytics."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Annotated, Any
+from uuid import UUID
 
 from fastapi import APIRouter, Query
 from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from app.analytics.service import _range_window
 from app.core.errors import ApiError
 from app.core.tenancy import TenantContextDep
 
 router = APIRouter(prefix="/api/v1/tenants/{tenant_id}/analytics", tags=["analytics"])
-
+MAX_TIMESERIES_DAYS = 366
 CHANNELS = ("website", "whatsapp", "messenger", "instagram")
 
 
@@ -76,13 +78,18 @@ _CHANNEL_BREAKDOWN_SQL = text(
     """
 )
 
+
 def _channel_breakdown(
     context: TenantContextDep, start: datetime, end: datetime
 ) -> list[dict[str, Any]]:
-    rows = context.db.execute(
-        _CHANNEL_BREAKDOWN_SQL,
-        {"tenant_id": context.tenant_id, "start": start, "end": end},
-    ).mappings().all()
+    rows = (
+        context.db.execute(
+            _CHANNEL_BREAKDOWN_SQL,
+            {"tenant_id": context.tenant_id, "start": start, "end": end},
+        )
+        .mappings()
+        .all()
+    )
     breakdown: list[dict[str, Any]] = []
     for row in rows:
         conversations = int(row["conversations"] or 0)
@@ -131,25 +138,22 @@ def _conversations_by_campaign(
     return {str(campaign): int(conversations) for campaign, conversations in rows}
 
 
-@router.get("")
-def handoff_analytics(
-    context: TenantContextDep,
-    from_iso: Annotated[str | None, Query(alias="from")] = None,
-    to_iso: Annotated[str | None, Query(alias="to")] = None,
-    channel: Annotated[str | None, Query(max_length=32)] = None,
+def _totals(
+    db: Session,
+    tenant_id: UUID,
+    start: datetime,
+    end: datetime,
+    channel: str | None = None,
 ) -> dict[str, Any]:
-    context.require_role("viewer")
-    start, end = _window(from_iso, to_iso)
+    """Conversation totals and mean first human reply for one window.
+
+    Default (no channel) is website-only; a channel widens to delegated channels.
+    """
     channel_filter, channel_params = _channel_filter(channel)
-    alias_filter, alias_params = _channel_filter_aliased("c.", channel)
-    base_params: dict[str, Any] = {
-        "tenant_id": context.tenant_id,
-        "start": start,
-        "end": end,
-        **channel_params,
-    }
-    totals = (
-        context.db.execute(
+    alias_filter, _ = _channel_filter_aliased("c.", channel)
+    params: dict[str, Any] = {"tenant_id": tenant_id, "start": start, "end": end, **channel_params}
+    counts = (
+        db.execute(
             text(
                 f"""SELECT count(*) AS total,
                 count(*) FILTER (WHERE handoff_reason IS NOT NULL) AS handoffs,
@@ -159,14 +163,12 @@ def handoff_analytics(
             WHERE tenant_id = :tenant_id AND {channel_filter}
               AND created_at >= :start AND created_at <= :end"""
             ),
-            base_params,
+            params,
         )
         .mappings()
         .one()
     )
-    total = int(totals["total"] or 0)
-    handoffs = int(totals["handoffs"] or 0)
-    response_time = context.db.execute(
+    seconds = db.execute(
         text(
             f"""WITH first_replies AS (
                 SELECT c.id, min(m.created_at) AS first_reply_at, c.created_at
@@ -180,8 +182,42 @@ def handoff_analytics(
             SELECT avg(extract(epoch FROM (first_reply_at - created_at))) AS seconds
             FROM first_replies"""
         ),
-        base_params,
+        params,
     ).scalar_one()
+    return {
+        "total": int(counts["total"] or 0),
+        "handoffs": int(counts["handoffs"] or 0),
+        "resolved": int(counts["resolved"] or 0),
+        "open": int(counts["open"] or 0),
+        "response_seconds": float(seconds) if seconds is not None else None,
+    }
+
+
+@router.get("")
+def handoff_analytics(
+    context: TenantContextDep,
+    from_iso: Annotated[str | None, Query(alias="from")] = None,
+    to_iso: Annotated[str | None, Query(alias="to")] = None,
+    channel: Annotated[str | None, Query(max_length=32)] = None,
+) -> dict[str, Any]:
+    context.require_role("viewer")
+    start, end = _window(from_iso, to_iso)
+    channel_filter, channel_params = _channel_filter(channel)
+    alias_filter, _ = _channel_filter_aliased("c.", channel)
+    base_params: dict[str, Any] = {
+        "tenant_id": context.tenant_id,
+        "start": start,
+        "end": end,
+        **channel_params,
+    }
+    totals = _totals(context.db, context.tenant_id, start, end, channel)
+    total = totals["total"]
+    handoffs = totals["handoffs"]
+    response_time = totals["response_seconds"]
+    span = end - start
+    previous_end = start - timedelta(seconds=1)
+    previous_start = previous_end - span
+    previous = _totals(context.db, context.tenant_id, previous_start, previous_end, channel)
     channels = (
         context.db.execute(
             text(
@@ -230,18 +266,77 @@ def handoff_analytics(
         "total_conversations": total,
         "handoff_count": handoffs,
         "handoff_rate": handoffs / total if total else None,
-        "average_first_human_reply_seconds": float(response_time)
-        if response_time is not None
-        else None,
+        "average_first_human_reply_seconds": response_time,
         "conversations_by_channel": {str(row["channel"]): int(row["count"]) for row in channels},
         "channel_breakdown": _channel_breakdown(context, start, end),
-        "conversations_by_campaign": _conversations_by_campaign(
-            context, start, end, channel
-        ),
+        "conversations_by_campaign": _conversations_by_campaign(context, start, end, channel),
         "resolved_vs_open": {
-            "resolved": int(totals["resolved"] or 0),
-            "open": int(totals["open"] or 0),
+            "resolved": totals["resolved"],
+            "open": totals["open"],
         },
         "sentiment_distribution": {str(row["sentiment"]): int(row["count"]) for row in sentiment},
         "agent_workload": {str(row["member_name"]): int(row["count"]) for row in workload},
+        "previous": {
+            "from": previous_start.date().isoformat(),
+            "to": previous_end.date().isoformat(),
+            "total_conversations": previous["total"],
+            "handoff_count": previous["handoffs"],
+            "handoff_rate": previous["handoffs"] / previous["total"] if previous["total"] else None,
+            "average_first_human_reply_seconds": previous["response_seconds"],
+        },
+    }
+
+
+@router.get("/timeseries")
+def conversation_timeseries(
+    context: TenantContextDep,
+    from_iso: Annotated[str | None, Query(alias="from")] = None,
+    to_iso: Annotated[str | None, Query(alias="to")] = None,
+) -> dict[str, Any]:
+    """Per-day website conversations, handoffs and resolved, zero-filled over the window."""
+    context.require_role("viewer")
+    start, end = _window(from_iso, to_iso)
+    if (end.date() - start.date()).days >= MAX_TIMESERIES_DAYS:
+        raise ApiError(
+            422, "VALIDATION_ERROR", f"The window must not exceed {MAX_TIMESERIES_DAYS} days."
+        )
+    rows = (
+        context.db.execute(
+            text(
+                """SELECT d.day::date AS day,
+                count(c.id) AS conversations,
+                count(c.id) FILTER (WHERE c.handoff_reason IS NOT NULL) AS handoffs,
+                count(c.id) FILTER (WHERE c.status = 'resolved') AS resolved
+            FROM generate_series(
+                CAST(:start_day AS date), CAST(:end_day AS date), INTERVAL '1 day'
+            ) AS d(day)
+            LEFT JOIN conversations c
+              ON c.tenant_id = :tenant_id AND c.source = 'website'
+             AND c.created_at >= :start AND c.created_at <= :end
+             AND (c.created_at AT TIME ZONE 'UTC')::date = d.day::date
+            GROUP BY d.day ORDER BY d.day"""
+            ),
+            {
+                "tenant_id": context.tenant_id,
+                "start": start,
+                "end": end,
+                "start_day": start.date(),
+                "end_day": end.date(),
+            },
+        )
+        .mappings()
+        .all()
+    )
+    return {
+        "from": start.date().isoformat(),
+        "to": end.date().isoformat(),
+        "days": [
+            {
+                "day": row["day"].isoformat(),
+                "conversations": int(row["conversations"]),
+                "handoffs": int(row["handoffs"]),
+                "resolved": int(row["resolved"]),
+            }
+            for row in rows
+        ],
     }

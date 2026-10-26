@@ -6,9 +6,23 @@ import { useCallback, useEffect, useState } from "react";
 import * as api from "@/lib/api";
 import type { Invitation, Member, Role } from "@/lib/api";
 import { roleSatisfies, useSession } from "@/lib/session";
-import { ConfirmAction, Empty, Loading, Notice } from "@/lib/ui";
+import {
+  Button,
+  ConfirmAction,
+  DataTable,
+  Empty,
+  Field,
+  FormSection,
+  Loading,
+  Notice,
+  PageHeader,
+  StatusBadge,
+} from "@/lib/ui";
+
+import "@/app/team-screen.css";
 
 const CHANGEABLE_ROLES: Role[] = ["viewer", "editor", "admin"];
+const PURPOSE = "Invite teammates and manage their access to this workspace.";
 
 export default function MembersPage() {
   const params = useParams<{ tenant: string }>();
@@ -117,10 +131,7 @@ export default function MembersPage() {
   if (me && !isAdmin) {
     return (
       <main className="team-page">
-        <h1>Team</h1>
-        <p className="page-purpose">
-          Invite teammates and manage their access to this workspace.
-        </p>
+        <PageHeader title="Team" purpose={PURPOSE} />
         <Notice
           message={
             role
@@ -134,160 +145,205 @@ export default function MembersPage() {
 
   return (
     <main className="team-page">
-      <h1>Team</h1>
-      <p className="page-purpose">
-        Invite teammates and manage their access to this workspace.
-      </p>
+      <PageHeader title="Team" purpose={PURPOSE} />
       {loadError && <Notice message={loadError} tone="error" />}
-      {actionError && <Notice message={actionError} tone="error" />}
+      {actionError && (
+        <Notice message={actionError} tone="error" scope="item" />
+      )}
 
-      <section aria-label="Invite teammate">
-        <h2>Invite a teammate</h2>
-        <form onSubmit={onInvite}>
-          <label>
-            Email
-            <input
-              name="email"
-              type="email"
-              required
-              value={inviteEmail}
-              onChange={(event) => setInviteEmail(event.target.value)}
-            />
-          </label>
-          <label>
-            Role
-            <select
-              name="role"
-              value={inviteRole}
-              onChange={(event) => setInviteRole(event.target.value as Role)}
-            >
-              <option value="admin">Admin</option>
-              <option value="editor">Editor</option>
-              <option value="viewer">Viewer</option>
-            </select>
-          </label>
-          <button type="submit" disabled={busy === "invite"}>
+      <FormSection
+        title="Invite a teammate"
+        description="They receive a one-time link. Pick the access level they should have."
+      >
+        <form className="team-invite" onSubmit={onInvite}>
+          <Field label="Email">
+            {(control) => (
+              <input
+                {...control}
+                name="email"
+                type="email"
+                dir="ltr"
+                required
+                value={inviteEmail}
+                onChange={(event) => setInviteEmail(event.target.value)}
+              />
+            )}
+          </Field>
+          <Field label="Role">
+            {(control) => (
+              <select
+                {...control}
+                name="role"
+                value={inviteRole}
+                onChange={(event) => setInviteRole(event.target.value as Role)}
+              >
+                <option value="admin">Admin</option>
+                <option value="editor">Editor</option>
+                <option value="viewer">Viewer</option>
+              </select>
+            )}
+          </Field>
+          <Button type="submit" disabled={busy === "invite"}>
             {busy === "invite" ? "Creating link…" : "Create invite link"}
-          </button>
+          </Button>
         </form>
         {newLink && (
-          <p role="status">
-            One-time invite link (works once, expires in 7 days):{" "}
-            <code>{absoluteLink(newLink)}</code>{" "}
-            <button
-              type="button"
+          <p role="status" className="team-link">
+            <span>One-time invite link (works once, expires in 7 days):</span>
+            <code dir="ltr">{absoluteLink(newLink)}</code>
+            <Button
+              variant="quiet"
               onClick={async () => {
                 await navigator.clipboard.writeText(absoluteLink(newLink));
                 setCopied(true);
               }}
             >
               {copied ? "Copied!" : "Copy"}
-            </button>
+            </Button>
           </p>
         )}
-      </section>
+      </FormSection>
 
-      <section aria-label="Pending invitations">
-        <h2>Pending invitations</h2>
+      <FormSection title="Pending invitations">
         {invitations === null && <Loading label="Loading invitations…" />}
-        {invitations && invitations.length === 0 && (
-          <Empty>No pending invitations.</Empty>
+        {invitations && (
+          <DataTable
+            caption="Invitation list"
+            rows={invitations}
+            rowKey={(invitation) => invitation.id}
+            empty={<Empty>No pending invitations.</Empty>}
+            columns={[
+              {
+                key: "email",
+                header: "Email",
+                cell: (invitation) => <bdi dir="ltr">{invitation.email}</bdi>,
+              },
+              {
+                key: "role",
+                header: "Role",
+                cell: (invitation) => invitation.role,
+              },
+              {
+                key: "status",
+                header: "Status",
+                cell: (invitation) =>
+                  invitation.expired ? (
+                    <StatusBadge value="expired" tone="warning" />
+                  ) : (
+                    <StatusBadge value="pending" />
+                  ),
+              },
+              {
+                key: "actions",
+                header: "Actions",
+                cell: (invitation) => (
+                  <div className="row-actions">
+                    <Button
+                      variant="quiet"
+                      disabled={busy === `resend-${invitation.id}`}
+                      onClick={() => onResend(invitation)}
+                    >
+                      {busy === `resend-${invitation.id}`
+                        ? "Resending…"
+                        : "Resend link"}
+                    </Button>
+                    <Button
+                      variant="quiet"
+                      disabled={busy === `revoke-${invitation.id}`}
+                      onClick={() => onRevoke(invitation)}
+                    >
+                      {busy === `revoke-${invitation.id}`
+                        ? "Revoking…"
+                        : "Revoke"}
+                    </Button>
+                  </div>
+                ),
+              },
+            ]}
+          />
         )}
-        {invitations && invitations.length > 0 && (
-          <ul>
-            {invitations.map((invitation) => (
-              <li key={invitation.id}>
-                {invitation.email} — {invitation.role}
-                {invitation.expired ? " (expired)" : ""}
-                <button
-                  type="button"
-                  disabled={busy === `resend-${invitation.id}`}
-                  onClick={() => onResend(invitation)}
-                >
-                  {busy === `resend-${invitation.id}`
-                    ? "Resending…"
-                    : "Resend link"}
-                </button>
-                <button
-                  type="button"
-                  disabled={busy === `revoke-${invitation.id}`}
-                  onClick={() => onRevoke(invitation)}
-                >
-                  {busy === `revoke-${invitation.id}` ? "Revoking…" : "Revoke"}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      </FormSection>
 
-      <section aria-label="Members">
-        <h2>Members</h2>
+      <FormSection
+        title="Members"
+        description="The last admin cannot be demoted or removed."
+      >
         {members === null && <Loading label="Loading members…" />}
-        {members && members.length === 0 && <Empty>No members found.</Empty>}
-        {members && members.length > 0 && (
-          <table>
-            <thead>
-              <tr>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {members.map((member) => {
-                const isSelf = me?.id === member.user_id;
-                const isLastAdmin =
-                  member.role === "admin" &&
-                  members.filter((row) => row.role === "admin").length === 1;
-                return (
-                  <tr key={member.user_id}>
-                    <td>{member.email}</td>
-                    <td>
-                      {isLastAdmin ? (
-                        <span title="The last admin is protected">
-                          {member.role}
-                        </span>
-                      ) : (
-                        <select
-                          aria-label={`Role for ${member.email}`}
-                          value={member.role}
-                          disabled={busy === `role-${member.user_id}`}
-                          onChange={async (event) => {
-                            const newRole = event.target.value as Role;
-                            setBusy(`role-${member.user_id}`);
-                            setActionError(null);
-                            try {
-                              await api.updateMemberRole(
-                                tenantId,
-                                member.user_id,
-                                newRole,
-                              );
-                              if (isSelf && newRole !== "admin") {
-                                await refresh();
-                                router.replace(`/app/${tenantId}`);
-                              } else await load();
-                            } catch (caught) {
-                              setActionError(
-                                caught instanceof Error
-                                  ? caught.message
-                                  : "Could not change role.",
-                              );
-                              await load();
-                            } finally {
-                              setBusy(null);
-                            }
-                          }}
-                        >
-                          {CHANGEABLE_ROLES.map((option) => (
-                            <option key={option} value={option}>
-                              {option}
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                    </td>
-                    <td>
+        {members && (
+          <DataTable
+            caption="Member list"
+            rows={members}
+            rowKey={(member) => member.user_id}
+            empty={<Empty>No members found.</Empty>}
+            columns={[
+              {
+                key: "email",
+                header: "Email",
+                cell: (member) => <bdi dir="ltr">{member.email}</bdi>,
+              },
+              {
+                key: "role",
+                header: "Role",
+                cell: (member) => {
+                  const isSelf = me?.id === member.user_id;
+                  const isLastAdmin =
+                    member.role === "admin" &&
+                    members.filter((row) => row.role === "admin").length === 1;
+                  return isLastAdmin ? (
+                    <span title="The last admin is protected">
+                      {member.role}
+                    </span>
+                  ) : (
+                    <select
+                      aria-label={`Role for ${member.email}`}
+                      className="team-role-select"
+                      value={member.role}
+                      disabled={busy === `role-${member.user_id}`}
+                      onChange={async (event) => {
+                        const newRole = event.target.value as Role;
+                        setBusy(`role-${member.user_id}`);
+                        setActionError(null);
+                        try {
+                          await api.updateMemberRole(
+                            tenantId,
+                            member.user_id,
+                            newRole,
+                          );
+                          if (isSelf && newRole !== "admin") {
+                            await refresh();
+                            router.replace(`/app/${tenantId}`);
+                          } else await load();
+                        } catch (caught) {
+                          setActionError(
+                            caught instanceof Error
+                              ? caught.message
+                              : "Could not change role.",
+                          );
+                          await load();
+                        } finally {
+                          setBusy(null);
+                        }
+                      }}
+                    >
+                      {CHANGEABLE_ROLES.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  );
+                },
+              },
+              {
+                key: "actions",
+                header: "Actions",
+                cell: (member) => {
+                  const isSelf = me?.id === member.user_id;
+                  const isLastAdmin =
+                    member.role === "admin" &&
+                    members.filter((row) => row.role === "admin").length === 1;
+                  return (
+                    <div className="row-actions">
                       {isLastAdmin ? (
                         <span
                           className="muted"
@@ -328,16 +384,15 @@ export default function MembersPage() {
                             : "Remove"}
                         </ConfirmAction>
                       )}
-                      {isSelf && <span className="muted"> (you)</span>}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      {isSelf && <span className="muted">(you)</span>}
+                    </div>
+                  );
+                },
+              },
+            ]}
+          />
         )}
-        <p className="muted">The last admin cannot be demoted or removed.</p>
-      </section>
+      </FormSection>
     </main>
   );
 }

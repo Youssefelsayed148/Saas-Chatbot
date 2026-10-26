@@ -4,6 +4,20 @@ import { mkdirSync } from "node:fs";
 import { registerAndPrepareBot } from "../tests/e2e-helpers";
 import { promoteToStaff } from "../tests/staff-helpers";
 
+// Default: desktop 1440 and mobile 360 (unchanged). For the design-system
+// baseline set SCREENSHOT_VIEWPORTS=375,768,1280 (widths; height 900) and
+// SCREENSHOT_DIR to an untracked folder.
+const VIEWPORTS: [string, { width: number; height: number }][] = process.env
+  .SCREENSHOT_VIEWPORTS
+  ? process.env.SCREENSHOT_VIEWPORTS.split(",").map((w) => [
+      `w${w.trim()}`,
+      { width: Number(w), height: 900 },
+    ])
+  : [
+      ["desktop", { width: 1440, height: 900 }],
+      ["mobile", { width: 360, height: 800 }],
+    ];
+
 test("capture all redesigned pages in both themes and viewports", async ({
   page,
   browser,
@@ -71,13 +85,12 @@ test("capture all redesigned pages in both themes and viewports", async ({
     ["widget-sample", `/widget/sample?locator=${locator}`],
     ["widget-frame", `/widget/frame?locator=${locator}`],
   ];
-  const output = path.resolve(process.cwd(), "../../implementation/ui-screens");
+  const output = process.env.SCREENSHOT_DIR
+    ? path.resolve(process.env.SCREENSHOT_DIR)
+    : path.resolve(process.cwd(), "../../implementation/ui-screens");
   mkdirSync(output, { recursive: true });
   for (const [name, url] of routes) {
-    for (const [viewport, size] of [
-      ["desktop", { width: 1440, height: 900 }],
-      ["mobile", { width: 360, height: 800 }],
-    ] as const) {
+    for (const [viewport, size] of VIEWPORTS) {
       await page.setViewportSize(size);
       await page.goto(url);
       if (name === "widget-frame")
@@ -144,10 +157,7 @@ test("capture all redesigned pages in both themes and viewports", async ({
     ["register", "/register"],
     ["accept-invite", "/accept-invite?token=preview"],
   ]) {
-    for (const [viewport, size] of [
-      ["desktop", { width: 1440, height: 900 }],
-      ["mobile", { width: 360, height: 800 }],
-    ] as const) {
+    for (const [viewport, size] of VIEWPORTS) {
       await auth.setViewportSize(size);
       await auth.goto(url);
       await expect(auth.locator("main").first()).toBeVisible();

@@ -41,13 +41,13 @@ export async function startServer(): Promise<ServerHandle> {
     console.log(
       `[e2e] Reusing an already-running API at ${HEALTH_URL} (forced).`,
     );
-    const base = process.env.DATABASE_URL;
+    const base = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL;
     if (!base)
       throw new Error("Set DATABASE_URL to a disposable PostgreSQL base URL.");
     return { server: null, databaseUrl: disposableUrl(base), channelKey: key };
   }
 
-  const base = process.env.DATABASE_URL;
+  const base = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL;
   if (!base) {
     throw new Error("Set DATABASE_URL to a disposable PostgreSQL base URL.");
   }
@@ -113,6 +113,11 @@ export async function startServer(): Promise<ServerHandle> {
         // (dev-only; production never sets this).
         CHAT_STUB_MODEL: "1",
         EMBEDDING_TEST_STUB: "1",
+        // Every Playwright request shares one client IP, so the per-IP login
+        // limiter's 10/300s window counts the WHOLE suite's logins together.
+        // The product default (10/300s) and its unit tests are untouched; the
+        // limiter code path is still exercised by pytest with its own settings.
+        LOGIN_RATE_LIMIT_ATTEMPTS: "1000",
         // Test-only channel encryption key (P6); a real one is owner-managed.
         CHANNEL_SECRET_ENCRYPTION_KEYS: key,
       },

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
@@ -8,6 +7,9 @@ import { PasswordField } from "@/lib/password-field";
 import { ThemeToggle } from "@/lib/theme";
 import * as api from "@/lib/api";
 import { useSession } from "@/lib/session";
+import { Icon } from "@/lib/icons";
+import { Button, Field, Notice } from "@/lib/ui";
+import "@/app/auth-screen.css";
 
 function LoginForm() {
   const router = useRouter();
@@ -16,6 +18,8 @@ function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const next = searchParams.get("next") ?? "";
 
@@ -32,6 +36,11 @@ function LoginForm() {
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
+    const missingEmail = email.trim() ? null : "Enter your email address.";
+    const missingPassword = password ? null : "Enter your password.";
+    setEmailError(missingEmail);
+    setPasswordError(missingPassword);
+    if (missingEmail || missingPassword) return;
     setSubmitting(true);
     try {
       await api.login(email, password);
@@ -45,51 +54,60 @@ function LoginForm() {
   }
 
   return (
-    <main className="auth-page">
-      <div className="auth-brand">
+    <main className="auth-split">
+      <aside className="auth-panel">
         <span className="brand-mark" aria-hidden="true">
-          ✧
+          <Icon name="sparkle" size={22} />
         </span>
-        <span>Website Chatbot SaaS</span>
-        <ThemeToggle />
-      </div>
-      <p className="eyebrow">YOUR AI WORKSPACE</p>
-      <h1>Sign in</h1>
-      <p className="page-purpose">
-        Welcome back. Continue helping your visitors.
-      </p>
-      <form onSubmit={onSubmit}>
-        <label>
-          Email
-          <input
-            type="email"
-            name="email"
-            autoComplete="email"
-            required
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-          />
-        </label>
-        <div className="password-control">
-          <label htmlFor="auth-password">Password</label>
-          <PasswordField
-            id="auth-password"
-            type="password"
-            name="password"
-            autoComplete="current-password"
-            required
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
+        <p className="auth-panel-name">Website Chatbot</p>
+        <p className="auth-panel-copy">
+          Answer visitors instantly, hand off to your team when it matters.
+        </p>
+      </aside>
+      <div className="auth-page">
+        <div className="auth-brand">
+          <ThemeToggle />
         </div>
-        {error && <p role="alert">{error}</p>}
-        <button type="submit" disabled={submitting}>
-          {submitting ? "Signing in…" : "Sign in"}
-        </button>
-      </form>
-      <p>
-        No account yet? <Link href="/register">Register</Link>
-      </p>
+        <h1>Sign in</h1>
+        <p className="page-purpose">
+          Welcome back. Continue helping your visitors.
+        </p>
+        <form onSubmit={onSubmit} noValidate>
+          <Field label="Email" error={emailError}>
+            {(control) => (
+              <input
+                {...control}
+                type="email"
+                name="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+              />
+            )}
+          </Field>
+          <Field label="Password" error={passwordError}>
+            {(control) => (
+              <PasswordField
+                {...control}
+                type="password"
+                name="password"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+              />
+            )}
+          </Field>
+          {error && <Notice message={error} tone="error" scope="item" />}
+          <Button type="submit" disabled={submitting}>
+            {submitting ? "Signing in…" : "Sign in"}
+          </Button>
+        </form>
+        <p className="auth-footer">
+          Forgot your password? Contact your administrator.
+        </p>
+      </div>
     </main>
   );
 }

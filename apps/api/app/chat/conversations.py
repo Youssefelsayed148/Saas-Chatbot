@@ -10,6 +10,7 @@ Usage events are idempotent per (tenant, bot, external_key) — turning the
 same event twice cannot double-count (docs/14 §7).
 """
 
+import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID, uuid4
@@ -17,10 +18,12 @@ from uuid import UUID, uuid4
 from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
+from app.chat import prompts
+from app.chat.history import history_for_turn
 from app.chat.models import default_model
 from app.chat.prompts import canned
 from app.chat.providers import ChatModel, ProviderError
-from app.chat.service import ChatReply, chat_answer
+from app.chat.service import ChatReply, _support_contact, chat_answer
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
 from app.core.ratelimit import purge_expired_windows
@@ -36,11 +39,22 @@ from app.knowledge.language import detect_language
 from app.quotas.ai import MeteredChatModel
 from app.quotas.rag import release, reserve, settle
 
+logger = logging.getLogger(__name__)
+
+
+def playground_key(user_id: UUID) -> str:
+    """Playground threads are scoped to the staff user that started them.
+
+    Stored in ``external_conversation_id`` (``connection_id`` is a UUID foreign key
+    to channel connections since migration 0023): ``assigned_user_id`` cannot hold it because that FK needs a tenant membership
+    and platform staff running the playground may not have one."""
+    return f"playground:{user_id}"
+
 
 def get_or_create_playground_conversation(
     db: OrmSession, *, tenant_id: UUID, bot_id: UUID, user_id: UUID
 ) -> Conversation:
-    """The dashboard playground keeps ONE run per user per bot (mode=ai)."""
+    """The dashboard playground keeps ONE open run per (bot, user) (mode=ai)."""
     conversation = (
         db.execute(
             select(Conversation)
@@ -48,6 +62,7 @@ def get_or_create_playground_conversation(
                 Conversation.tenant_id == tenant_id,
                 Conversation.bot_id == bot_id,
                 Conversation.source == "playground",
+                Conversation.external_conversation_id == playground_key(user_id),
                 Conversation.status == "open",
             )
             .order_by(Conversation.updated_at.desc())
@@ -64,13 +79,60 @@ def get_or_create_playground_conversation(
         bot_id=bot_id,
         contact_id=None,  # anonymous playground: no CRM contact
         channel="website",
+        external_conversation_id=playground_key(user_id),
         mode="ai",
         status="open",
         source="playground",
     )
-    db.add(conversation)  # created_by is carried through the turn call
-    del user_id
+    db.add(conversation)
     db.flush()
+    return conversation
+
+
+def resolve_preview_revision(
+    db: OrmSession, *, tenant_id: UUID, bot_id: UUID, knowledge: str
+) -> UUID | None:
+    """The revision the playground should answer from. "published" -> None (the
+    normal pointer); "draft" -> this bot's draft revision id, or 409 when the bot
+    has no draft. Scoped by tenant + bot like every knowledge query."""
+    if knowledge == "published":
+        return None
+    from app.db.models import KnowledgeRevision
+
+    draft_id = db.scalar(
+        select(KnowledgeRevision.id).where(
+            KnowledgeRevision.tenant_id == tenant_id,
+            KnowledgeRevision.bot_id == bot_id,
+            KnowledgeRevision.status == "draft",
+        )
+    )
+    if draft_id is None:
+        raise ApiError(409, "NO_DRAFT_REVISION", "This bot has no draft knowledge to preview.")
+    return draft_id
+
+
+def reset_playground_conversation(
+    db: OrmSession, *, tenant_id: UUID, bot_id: UUID, user_id: UUID
+) -> Conversation:
+    """ "New session": close this user's open playground thread(s) and start empty."""
+    now = datetime.now(UTC)
+    for open_one in db.execute(
+        select(Conversation).where(
+            Conversation.tenant_id == tenant_id,
+            Conversation.bot_id == bot_id,
+            Conversation.source == "playground",
+            Conversation.external_conversation_id == playground_key(user_id),
+            Conversation.status == "open",
+        )
+    ).scalars():
+        open_one.status = "resolved"
+        open_one.updated_at = now
+        db.add(open_one)
+    db.flush()
+    conversation = get_or_create_playground_conversation(
+        db, tenant_id=tenant_id, bot_id=bot_id, user_id=user_id
+    )
+    db.commit()
     return conversation
 
 
@@ -177,35 +239,6 @@ def append_message(
     return message
 
 
-def history_messages(
-    db: OrmSession,
-    conversation: Conversation,
-    *,
-    settings: Settings,
-    exclude_message_id: UUID | None = None,
-) -> list[str]:
-    """Visitor texts within the retention window, oldest first (§7)."""
-    since = datetime.now(UTC) - timedelta(seconds=settings.retention_days * 86400)
-    rows = (
-        db.execute(
-            select(Message.text)
-            .where(
-                Message.conversation_id == conversation.id,
-                Message.tenant_id == conversation.tenant_id,
-                Message.bot_id == conversation.bot_id,
-                Message.id != exclude_message_id,
-                Message.sender_type == "visitor",
-                Message.created_at > since,
-            )
-            .order_by(Message.created_at.desc(), Message.id.desc())
-            .limit(settings.chat_num_history_messages)
-        )
-        .scalars()
-        .all()
-    )
-    return list(reversed(rows))
-
-
 def record_usage_event(
     db: OrmSession,
     *,
@@ -243,6 +276,72 @@ def record_usage_event(
     return event
 
 
+def _unavailable_turn(
+    db: OrmSession,
+    *,
+    bot: Bot,
+    conversation: Conversation,
+    visitor_message: Message,
+    language: str,
+) -> dict[str, Any]:
+    """No model is configured: the visitor gets the canned busy reply (never a 503).
+
+    Not a billable message (no ``message`` usage event, no reservation), no
+    handoff; staff see the cause in the trace (provider_error.status
+    ``not_configured``)."""
+    ai_message = append_message(
+        db,
+        conversation,
+        sender_type="ai",
+        text=prompts.canned("busy", language, support_contact=_support_contact(bot)),
+        can_answer=False,
+        needs_human=True,
+    )
+    record_usage_event(
+        db,
+        tenant_id=bot.tenant_id,
+        bot_id=bot.id,
+        kind="unavailable",
+        external_key=f"unavailable:{ai_message.id}",
+        message_id=ai_message.id,
+        conversation_id=conversation.id,
+        payload={
+            "rag_trace": {
+                "retrieval_mode": "not_run",
+                "gate": "not_run",
+                "rewrite_used": False,
+                "model": None,
+                "tokens": None,
+                "cost_usd": None,
+                "chunks": [],
+                "channel": conversation.channel,
+                "provider_error": {"status": "not_configured", "http_status": None, "model": None},
+            }
+        },
+    )
+    logger.warning("chat.model_not_configured tenant=%s bot=%s", bot.tenant_id, bot.id)
+    db.commit()
+    return {
+        "conversation_id": str(conversation.id),
+        "visitor_message": {
+            "id": str(visitor_message.id),
+            "text": visitor_message.text,
+            "created_at": visitor_message.created_at.isoformat(),
+        },
+        "ai_message": {
+            "id": str(ai_message.id),
+            "text": ai_message.text,
+            "citations": [],
+            "can_answer": False,
+            "needs_human": True,
+            "response_ms": None,
+            "created_at": ai_message.created_at.isoformat(),
+        },
+        "kind": "busy",
+        "language": language,
+    }
+
+
 def visitor_chat_turn(
     db: OrmSession,
     *,
@@ -253,9 +352,17 @@ def visitor_chat_turn(
     language_hint: str | None = None,
     model: ChatModel | None = None,
     settings: Settings | None = None,
+    preview_revision_id: UUID | None = None,
 ) -> dict[str, Any]:
-    """Persist a visitor turn and run the pipeline only in AI mode."""
+    """Persist a visitor turn and run the pipeline only in AI mode.
+
+    ``preview_revision_id`` (staff playground only) answers from that DRAFT
+    revision instead of the published one; any other conversation source is
+    refused here, so the public widget can never reach unpublished knowledge."""
     settings = settings or get_settings()
+    if preview_revision_id is not None and conversation.source != "playground":
+        raise ApiError(403, "FORBIDDEN", "Draft knowledge is only available in the playground.")
+    event_source = "playground" if conversation.source == "playground" else None
     if not question.strip():
         raise ApiError(422, "VALIDATION_ERROR", "The message is empty.")
     if len(question) > 1000:
@@ -301,14 +408,22 @@ def visitor_chat_turn(
 
     model = model or default_model(bot)
     if model is None:
-        db.commit()
-        raise ApiError(
-            503,
-            "MODEL_NOT_CONFIGURED",
-            "No chat model is configured. Add the provider key for this deployment.",
+        if conversation.source != "website":
+            db.commit()
+            raise ApiError(
+                503,
+                "MODEL_NOT_CONFIGURED",
+                "No chat model is configured. Add the provider key for this deployment.",
+            )
+        return _unavailable_turn(
+            db,
+            bot=bot,
+            conversation=conversation,
+            visitor_message=visitor_message,
+            language=language,
         )
 
-    history = history_messages(
+    history = history_for_turn(
         db, conversation, settings=settings, exclude_message_id=visitor_message.id
     )
     message_reservation = reserve(
@@ -319,6 +434,7 @@ def visitor_chat_turn(
         event_type="message",
         model=None,
         channel=conversation.channel,
+        source=event_source,
     )
     model = MeteredChatModel(model, db, tenant_id, bot.id, settings, conversation.channel)
     started = datetime.now(UTC)
@@ -328,10 +444,12 @@ def visitor_chat_turn(
             tenant_id=tenant_id,
             bot=bot,
             question=question,
-            history=history,
+            history=history.messages,
+            history_skipped=history.skipped,
             language_hint=language_hint,
             model=model,
             settings=settings,
+            preview_revision_id=preview_revision_id,
         )
     except BaseException:
         # Aborted turn: no answer was stored, so the message must not count.
@@ -350,6 +468,16 @@ def visitor_chat_turn(
         needs_human=reply.needs_human,
         response_ms=response_ms,
     )
+    decision = decide_handoff(
+        db,
+        bot=bot,
+        conversation=conversation,
+        question=question,
+        language=reply.language,
+        reply_kind=reply.kind,
+        can_answer=reply.can_answer,
+    )
+    reply.trace["handoff_reason"] = decision.reason if decision is not None else None
     record_usage_event(
         db,
         tenant_id=tenant_id,
@@ -362,19 +490,11 @@ def visitor_chat_turn(
             "provider_usage": model.usage_totals,
             "rag_trace": reply.trace,
             "ai_metered": True,
+            **({"source": event_source} if event_source else {}),
         },
     )
     settle(
         db, tenant_id, bot.id, message_reservation, settings, tokens=0, cost_usd=None, commit=False
-    )
-    decision = decide_handoff(
-        db,
-        bot=bot,
-        conversation=conversation,
-        question=question,
-        language=reply.language,
-        reply_kind=reply.kind,
-        can_answer=reply.can_answer,
     )
     if decision is not None:
         start_handoff(db, bot=bot, conversation=conversation, decision=decision)
@@ -472,7 +592,7 @@ def channel_chat_turn(
         return notice
 
     pipeline_question = question[:1000]
-    history = history_messages(
+    history = history_for_turn(
         db, conversation, settings=settings, exclude_message_id=visitor_message.id
     )
     configured_model = model or default_model(bot)
@@ -507,7 +627,8 @@ def channel_chat_turn(
                     tenant_id=tenant_id,
                     bot=bot,
                     question=pipeline_question,
-                    history=history,
+                    history=history.messages,
+                    history_skipped=history.skipped,
                     language_hint=language,
                     model=metered_model,
                     settings=settings,
@@ -585,11 +706,14 @@ def channel_chat_turn(
 
 def _channel_busy_reply(bot: Bot, language: str) -> ChatReply:
     config = bot.config if isinstance(bot.config, dict) else {}
-    contact = " / ".join(
-        str(value).strip()
-        for value in (config.get("support_email"), config.get("support_phone"))
-        if isinstance(value, str) and value.strip()
-    ) or "our support team"
+    contact = (
+        " / ".join(
+            str(value).strip()
+            for value in (config.get("support_email"), config.get("support_phone"))
+            if isinstance(value, str) and value.strip()
+        )
+        or "our support team"
+    )
     return ChatReply(
         answer=canned("busy", language, support_contact=contact),
         can_answer=False,
@@ -606,21 +730,22 @@ def messages_of(
     settings: Settings,
     limit: int = 100,
 ) -> list[Message]:
-    """Visible thread within the retention window, oldest first (§7)."""
+    """The newest ``limit`` messages within the retention window, oldest first (§7)."""
     since = datetime.now(UTC) - timedelta(seconds=settings.retention_days * 86400)
-    return list(
+    newest = (
         db.execute(
             select(Message)
             .where(
                 Message.conversation_id == conversation.id,
                 Message.created_at > since,
             )
-            .order_by(Message.created_at.asc(), Message.id)
+            .order_by(Message.created_at.desc(), Message.id.desc())
             .limit(limit)
         )
         .scalars()
         .all()
     )
+    return list(reversed(newest))
 
 
 def record_feedback(

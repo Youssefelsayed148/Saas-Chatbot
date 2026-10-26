@@ -3,16 +3,18 @@
 import { usePathname } from "next/navigation";
 
 const ROUTES: [RegExp, string][] = [
+  [/^\/platform\/members\/[^/]+$/, "Member details"],
+  [/^\/platform\/members$/, "Members"],
   [/^\/$/, "Welcome"],
   [/^\/login$/, "Sign in"],
   [/^\/register$/, "Create account"],
   [/^\/accept-invite$/, "Accept invitation"],
   [/^\/widget\/sample$/, "Widget sample"],
   [/^\/widget\/frame$/, "Chat"],
-  [/^\/platform\/clients\/[^/]+$/, "Client details"],
+  [/^\/platform\/clients\/[^/]+$/, "Organization details"],
   [/^\/platform\/operations$/, "Platform operations"],
   [/^\/platform\/change-requests$/, "Change requests"],
-  [/^\/platform$/, "Clients"],
+  [/^\/platform$/, "Organizations"],
   [/^\/app$/, "Workspaces"],
   [/^\/app\/[^/]+$/, "Overview"],
   [/\/settings\/members$/, "Team"],

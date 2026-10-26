@@ -100,6 +100,6 @@ def get_current_user(
     if row is None:
         raise ApiError(401, "SESSION_INVALID", "Session is invalid, expired or revoked.")
     user = db.get(User, row.user_id)
-    if user is None:
+    if user is None or not user.is_active:
         raise ApiError(401, "SESSION_INVALID", "Session user no longer exists.")
     return user

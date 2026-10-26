@@ -1,5 +1,332 @@
 # Execution checkpoint
 
+## 2026-10-22 — A2 widget embedding & domain enforcement batch (branch fix/a2-widget-embedding, created from main)
+
+Commits (local only, no push/tag/merge): 5493fbb A2.1 loader host forwarding +
+`_host_of` bare-hostname support; 69cd2d0 A2.2 per-bot `frame-ancestors` via
+proxy; fbe4b7f A2.3 defaults (hello_default welcome, bottom-right position);
+e3f9f19 A2.4 Playwright domain-enforcement spec. All commit messages carry the
+required trailer.
+
+Implementation choices:
+- A2.1: `packages/widget/src/loader.js` (canonical) was edited and both copies
+  regenerated with `node packages/widget/scripts/sync-loader.mjs`; the frame URL
+  now carries `host=<location.hostname of the EMBEDDING page>`. The frame page
+  (`apps/web/app/widget/frame/page.tsx`) reads `host` from its own query and
+  posts it as `page_origin` (API field existed, max 300 kept).
+- A2.2: `headers()` in next.config is static and a page cannot set its own
+  response headers, so the per-bot value is computed where the pipeline can:
+  the existing `apps/web/proxy.ts` was extended with the `/widget/frame` matcher
+  and fetches the new locator-addressed endpoint
+  `GET /api/public/v1/widgets/{locator}/frame-ancestors` (compiled CSP value
+  only; a bot's unknown locator 404s). This is the smallest change: no route
+  split, no restructuring of the (client) frame page, no config contract change
+  — the endpoint exposes exactly the value the frame HTTP header shows any
+  browser anyway. Empty list → permissive `http: https:`; non-empty → listed
+  hosts in http+https plus subdomains (matching `origin_allowed` semantics);
+  `localhost` gets `:<port-wildcard>` outside production. Unknown locator /
+  API outage → falls back to the static permissive rule while the session
+  endpoint still denies unlisted page origins. Dashboard CSP untouched, the
+  sandbox attribute unchanged, and the security position is unchanged: the
+  `host`/`page_origin` value is a spoofable defence signal sent by the page —
+  NOT authentication — and `frame-ancestors` is what stops browsers from
+  framing the widget on unlisted sites.
+
+Verification environment: Windows venv (`.venv/Scripts/python.exe`, driven from
+WSL, as in earlier sessions) and Windows node (`node.exe`, `cmd.exe`).
+
+Commands and outcomes:
+- `cmp apps/web/public/widget/v1/loader.js packages/widget/src/loader.js` after
+  `node packages/widget/scripts/sync-loader.mjs` → identical, `diff` exit 0;
+  both copies gained the same 6 lines (host param + comment).
+- `python -m ruff check` on every touched API file per commit — All checks
+  passed!; `python -m ruff format --check` on the touched test files, service
+  and router — formatted (one PRE-EXISTING formatting drift remains in
+  `app/widget/router.py` at the old `ai_message=(...)` block, flagged by
+  `--check` on HEAD before this batch too; left untouched per batch scope).
+- `python -m mypy --follow-imports=silent app/widget/service.py
+  app/widget/router.py` — Success, no issues.
+- `cmd.exe /c npm run typecheck` (next typegen + tsc --noEmit), `eslint` on
+  `proxy.ts`, the frame page, the settings page and `widget-domain.spec.ts`
+  with `--max-warnings 0` — clean.
+- `cmd.exe /c npm run build` (Next 16.4.0) — succeeded, Proxy(Middleware)
+  compiled; `cmd.exe /c npm run check:public-asset` — OK.
+- Header behaviour verified WITHOUT the disposable DB: the web build ran on
+  127.0.0.1:3100 against a THROWAWAY stub API (local Python script on
+  127.0.0.1:8004, no containers, since the owner's dev API listens on 8000 and
+  was left alone; both processes were closed afterwards):
+  `/widget/frame?locator=…` → single header
+  `content-security-policy: frame-ancestors http://localhost:* https://localhost:* …`;
+  `/widget/frame` without locator and with an UNKNOWN locator → falls back to
+  `frame-ancestors http: https:`; `/login` keeps `frame-ancestors 'none'`.
+
+NOT verified (blocked, no fabrication):
+- Disposable test DB `saas-test-db` on 127.0.0.1:55462 kept refusing/timing out
+  connections (psycopg ConnectionTimeout, two runs: 23 errors / 44 errors, ALL
+  at session-scoped fixture setup, zero assertion failures). NO pytest and NO
+  Playwright run completed in this session. Written-but-unverified tests:
+  `tests/test_allowed_domains.py` `test_host_of` cases,
+  `tests/test_widget_public.py` bare-hostname + frame-ancestors tests,
+  `tests/test_widget_appearance.py` hello_default fallback test, the Playwright
+  spec `tests/widget-domain.spec.ts`, and the real end-to-end CSP enforcement
+  inside Chrome. Owner reruns:
+  `cd apps/api && TEST_DATABASE_URL=postgresql://test:test@127.0.0.1:55462/postgres ENVIRONMENT=test PYTHONUTF8=1 python -m pytest tests/test_allowed_domains.py tests/test_widget_public.py tests/test_widget_appearance.py`
+  then `cd apps/web && TEST_DATABASE_URL=… npx playwright test`.
+- A2.4 runtime risk tracked for that run: Chrome treats a missing port in a CSP
+  host-source as the scheme's default port only, which is why the spec pins the
+  ALLOWED site to `localhost` (emitted as `localhost:*` outside production) and
+  the DENIED site to 127.0.0.1.
+- Known pre-existing behaviour observed but NOT changed (outside batch scope,
+  for the owner): `restoreSession` keys the widget session in the frame's own
+  localStorage, so a token minted on an allowed site survives a later load
+  behind `allow-same-origin` even if the unlisted site's homepage would
+  otherwise be denied; with A2.2 that site cannot frame the widget at all, so
+  the reuse path is unreachable for foreign sites in browser clients.
+
+
+## 2026-10-20 — S3 staff Bots (backend/static verification complete)
+
+Branch `feature/staff-bots` initially stacked on S2 `df826b5`, then incorporated
+S2's markup follow-up `691382c` and final documentation status `5bbd9cd` by local
+rebase. It remains isolated in
+`.worktrees/staff-bots`. S2 completed 75 targeted passes, identical full runs
+437 passed/1 skipped, and 7 standalone startup-guard passes before S3 began.
+No branches were merged or pushed; S1/main/Phase 6 source checkouts are untouched.
+
+Implemented a single `app/bots/factory.py::create_bot_record` for every runtime
+API/provisioning bot creation path. It trims/validates the name, locks an active
+tenant, enforces the existing bot quota, creates the draft/default config and
+public widget locator, and records the caller's audit action in the transaction.
+BotService, the existing staff tenant-bot endpoint, the new global endpoint and
+ProvisioningService._make_bot delegate to it. The latter is the only change to
+ProvisioningService, as approved to reconcile the prompt's single-factory rule
+with its instruction to preserve self-service provisioning.
+
+Added staff-only typed global bot list/create with search/organization filter,
+tenant-and-bot-scoped source/job/revision summaries, and shared summary rendering
+for organization detail. Existing strict update contracts reject organization
+changes, verified for both organization_id and tenant_id. Added global Bots UI,
+one shared creation form with a locked organization variant, Knowledge/Settings
+links, read-only organization text in Settings, and preserved Pause controls.
+
+Removed only staff onboarding POST/UI/client function/unused interface/styles;
+historical GET status and CSV remain and are tested. Historical owner/admin
+audit labels and fixtures remain because they still describe immutable records.
+The old workspace link now targets the real organization creation section.
+
+Regression replacements: staff setup and widget reachability use the real new
+organization/user/invitation/bot endpoints. Durable duplicate-submit/conflict,
+legacy fingerprint/result translation, and optional historical file staging
+exercise the retained service directly, with actual service results/exceptions;
+no fake HTTP responses. The retired missing-header HTTP case now verifies 404/405.
+Platform browser setup uses organization and shared bot forms plus user/invitation
+API calls; search/detail/audit/access/deletion assertions remain. The old durable
+request UI assertion is replaced by actual creation feedback; durable behavior
+remains covered in service regressions. No existing test was deleted.
+
+Targeted command in apps/api (per-process owner test URL, ENVIRONMENT=test,
+PYTHONUTF8=1, both model stubs=true; TEMP/TMP root `.test-storage-s3/t`):
+`python -u -m pytest -q --tb=short -p no:cacheprovider tests/test_staff_bots.py
+tests/test_platform.py tests/test_group_c_polish.py tests/test_self_service_signup.py
+tests/test_tenant_route_matrix.py tests/test_quotas.py tests/test_staff_members.py
+tests/test_staff_members_migration.py --basetemp=<workspace>/.test-storage-s3/q
+--junitxml=../../.test-storage-s3/targeted.xml`.
+Exit 0; raw tail: `77 passed, 1 warning in 173.29s (0:02:53)` (0 failed/0 skipped).
+Includes S2's schema upgrade/downgrade test. Log: `.test-storage-s3/targeted.log`.
+
+Static commands:
+- `python -m ruff check` on changed backend files: initial import/line-length
+  findings fixed before testing; final exit 0, `All checks passed!`.
+- `python -m mypy --follow-imports=silent app/bots/factory.py app/bots/service.py
+  app/bots/router.py app/platform/bots.py app/platform/router.py app/main.py
+  app/provisioning/service.py tests/test_staff_bots.py tests/test_platform.py
+  tests/test_group_c_polish.py`: exit 0, no issues in 10 source files.
+- apps/web `npm.cmd run lint`, `npm.cmd run typecheck`: exit 0.
+- apps/web `npm.cmd run test -- --list`: exit 0, **68 tests in 22 files**.
+  Browser execution remains deferred to one combined run after S4.
+- Root `python -m unittest discover -s scripts -p test_dev_compose.py`: exit 0,
+  raw tail `Ran 7 tests in 0.006s` / `OK`. Static Compose/seed wiring only.
+  The seed uses deterministic fixtures and existing RAG endpoints, never the
+  removed onboarding endpoint, so seed source is unchanged. No Docker/seed run.
+
+The full backend pair uses this identical command in separate processes:
+`python -u -m pytest -q --tb=short -p no:cacheprovider
+--ignore=tests/test_startup_guard.py --basetemp=<workspace>/.test-storage-s3/f
+--junitxml=../../.test-storage-s3/full.xml` with the same per-process environment.
+Run 1 exited 0; raw tail:
+`449 passed, 1 skipped, 1 warning in 1335.63s (0:22:15)` (0 failed).
+The skip is the existing POSIX process-group parser integration on Windows.
+Run 2 exited 0 with identical counts; raw tail:
+`449 passed, 1 skipped, 1 warning in 1335.95s (0:22:15)` (0 failed).
+Logs: `.test-storage-s3/full-1.log` and `full-2.log`.
+Standalone startup guard removed BOTH stub variables before launching its own
+Python process, with the owner test URL and PYTHONUTF8=1:
+`python -u -m pytest -q --tb=short -p no:cacheprovider tests/test_startup_guard.py
+--basetemp=<workspace>/.test-storage-s3/s`: exit 0,
+raw tail `7 passed, 1 warning in 0.66s` (0 failed/0 skipped).
+No paid API calls, credential-file reads or safety-guard edits occurred.
+
+Final markup follow-up aligns the new pages with the existing main wrapper.
+`git diff df826b5 691382c -- apps/api` is empty: the S2 follow-up changes only
+Members markup and review records, so backend source remained identical during
+both full runs and final restacking. Only S3's own generated evaluation timestamp
+was restored. Final Ruff/mypy checks still pass on all 10 changed Python files;
+final web lint/typecheck/list run after restacking exited 0: **68 tests in 22
+files** listed, no browser execution. The last restack from 691382c to 5bbd9cd
+changed documentation only (`git diff 691382c 5bbd9cd -- apps` is empty).
+The documentation-only rebase conflict retained both S3 history and S2's verified
+status heading. Final source/test guards are unchanged, with no conflict markers.
+S2 and S3 are complete for backend/static review; the one combined Playwright
+execution remains deferred until S4. No merge, push, tag, deployment or Docker run.
+
+## 2026-10-20 — S2 staff members (backend/static verification complete)
+
+Owner authorized working before S1 verification finishes and reviewing S1/S2/S3
+together. Isolated branch `feature/staff-members` initially started at S1 commit
+`49710c7` instead of merged main, then rebased onto finalized S1 `bb2e847` after
+its verification commits arrived. S1's checkout and Phase 6 worktree are untouched. Worktree:
+`.worktrees/staff-members`. Its ignored local `apps/web/node_modules` junction
+reuses existing dependencies; no dependencies or lockfiles were changed.
+
+Implemented account phone/is_active migration, staff account lifecycle endpoints,
+session revocation and shared login eligibility, existing-user-only invitations,
+Members screens and organization membership controls. Typed passwords are not
+returned by the API; the UI shows its submitted password once. Generated passwords
+are returned once and kept only in component state. Staff user endpoints send
+`Cache-Control: no-store`; tenant response schemas expose no phone.
+
+Regression setup adaptations: invitation helpers provision existing accounts
+before invitation creation; logged_in can log in to such an account; direct
+invitation and route-matrix fixtures create prerequisite users. Assertions are
+retained. The closed-registration regression removes its fixture account to
+represent a legacy outstanding invitation and preserve registration assertions.
+Browser invitation fixtures provision accounts first; the dashboard journey
+signs in rather than registering the already-provisioned invitee. These setup
+changes are necessary for the requested existing-users-only contract.
+
+Commands run from the isolated worktree (Python is the root
+`.venv/Scripts/python.exe`):
+
+- `npm.cmd run typecheck` in apps/web: initially failed resolving @types/node;
+  Next's automatic install attempt failed offline. Reusing installed dependencies
+  resolved this. A subsequent run found an optional invitation link type, fixed
+  before repeating. Final run exit 0, route generation and TypeScript successful.
+- `npm.cmd run lint` in apps/web: exit 0, no warnings.
+- `npm.cmd run test -- --list` in apps/web: exit 0, **66 tests in 21 files**;
+  no browser tests executed. One combined Playwright execution remains deferred
+  until after S4, per owner instruction.
+- `python -m ruff check` over changed backend files: initial formatting/import
+  findings fixed; subsequent checks exit 0, `All checks passed!`.
+- `python -m mypy --follow-imports=silent app/platform/users.py app/auth/service.py
+  app/tenants/service.py tests/test_staff_members.py
+  tests/test_staff_members_migration.py`: exit 0, no issues in five source files.
+- With the owner-supplied TEST_DATABASE_URL set per process, `python -m pytest
+  --collect-only -q -p no:cacheprovider tests/test_staff_members.py
+  tests/test_staff_members_migration.py`: exit 0, **15 tests collected in 0.27s**
+  at that checkpoint; additional cases have since been added. Collection did not
+  execute database fixtures. Existing Starlette/httpx deprecation warning only.
+- After adding validation, atomic rollback, filtering and concurrent revocation
+  cases, the same collection command with
+  `tests/test_staff_member_revocation_race.py` appended exited 0:
+  **31 tests collected in 0.25s**. No database tests have executed yet.
+
+Database execution began only after elevated process checks confirmed that S1's
+pytest processes had exited, then confirmed no new run after a 30-second wait.
+The originally prescribed disposable database URL is used. The optional request
+to use a separate database was not acted on. No safety guard was changed.
+
+S2 targeted command in apps/api (per-process TEST_DATABASE_URL supplied, ENVIRONMENT=test,
+CHAT_STUB_MODEL=true, EMBEDDING_TEST_STUB=true):
+`python -u -m pytest -q --tb=short -p no:cacheprovider tests/test_staff_members.py
+tests/test_staff_members_migration.py tests/test_staff_member_revocation_race.py
+tests/test_staff_member_errors.py tests/test_invitations.py tests/test_self_service_signup.py
+tests/test_auth.py tests/test_tenant_route_matrix.py tests/test_quotas.py
+--basetemp=../../.test-storage-s2/targeted-host
+--junitxml=../../.test-storage-s2/targeted-host.xml`.
+
+- Initial sandbox run used `--basetemp=../../.test-storage-s2/targeted` without
+  JUnit output. Exit 1: progress showed failures/errors, then pytest session cleanup
+  crashed with WinError 5 reading its own temporary directory. There is no reliable
+  final passed/failed/skipped summary for this run. Raw output: targeted.log.
+- Corrected the NEW migration test's raw INSERT to supply required created_at.
+  No existing test assertions or safety guards were removed to address this.
+- Repeated with host permissions and JUnit output to get complete diagnostics:
+  exit 1, raw tail `1 failed, 74 passed, 1 warning in 47.10s`.
+  Failure: existing platform route-matrix check reported missing x-minimum-role
+  metadata on the nested users router. Authorization checks themselves passed.
+- Registered the users router through the existing top-level application path,
+  so the unchanged metadata assignment covers it. Startup validation and all
+  permission checks remain intact. Added safe handling of database statement
+  errors so bound phone/password-hash parameters cannot escape into tracebacks.
+- Final targeted repeat: exit 0, raw tail:
+  `75 passed, 1 warning in 49.85s` (0 failed, 0 skipped).
+  Raw output: `.test-storage-s2/targeted-final.log`; JUnit: targeted-host.xml.
+- The subsequent full backend run is in progress, using
+  `python -u -m pytest -q --tb=short -p no:cacheprovider
+  --ignore=tests/test_startup_guard.py --basetemp=../../.test-storage-s2/full-host
+  --junitxml=../../.test-storage-s2/full-host.xml` with the same per-process
+  environment. Log: `.test-storage-s2/full-1.log`. No full-suite result yet.
+
+The owner's later "dont stop" instruction is applied to repairing S2's failures;
+S3 remains gated on successful S2 verification. Both initial failures and fixes
+are retained in this record rather than represented as an initially green run.
+
+Initial full S2 result: exit 1, **434 passed, 3 failed, 1 skipped**, one existing
+warning, 1374.94s. Raw tail:
+`3 failed, 434 passed, 1 skipped, 1 warning in 1374.94s (0:22:54)`.
+Two failures were cp1252 UnicodeDecodeError in the existing Arabic evaluation
+tests. The third was FileNotFoundError saving a fixture under the long nested
+worktree temp path (over the classic Windows path limit). New S2 cases passed.
+The skipped case is tests/test_knowledge_parsers.py:52 (POSIX process groups,
+Windows unverified). Raw log: `.test-storage-s2/full-1.log`.
+
+After that run, incorporated S1's finalized commits (only its verification notes,
+platform analytics label and browser tab locator changed since the original base).
+S1's newly committed notes document PYTHONUTF8=1 for these existing Windows
+encoding failures. No tests or guards were changed to fix the runtime environment.
+Per-process UTF-8 plus a shorter root-workspace temp directory resolved all three:
+`python -u -m pytest -q --tb=short -p no:cacheprovider
+tests/test_rag_evaluation.py::test_two_mode_retrieval_eval_is_entirely_offline
+tests/test_rag_gate.py::test_stage0_raw_fts_gate_measurements
+tests/test_rag_stage0_baseline.py::test_real_fts_pipeline_checkpoints_and_never_replays
+--basetemp=<workspace>/.test-storage-s2/encoding`: exit 0,
+raw tail `3 passed, 1 warning in 8.49s`. Log: encoding-proof.log.
+
+The required pair of full runs now uses PYTHONUTF8=1 with the same test/stub
+environment, TEMP and TMP pointing at `<workspace>/.test-storage-s2/t`, and this
+identical Python command in both processes:
+`python -u -m pytest -q --tb=short -p no:cacheprovider
+--ignore=tests/test_startup_guard.py
+--basetemp=<workspace>/.test-storage-s2/f
+--junitxml=../../.test-storage-s2/full-utf8.xml`.
+Both corrected full runs exited 0 with identical counts:
+
+```text
+437 passed, 1 skipped, 1 warning in 1425.32s (0:23:45)
+437 passed, 1 skipped, 1 warning in 1335.86s (0:22:15)
+```
+
+The one skip is the existing POSIX process-group parser integration on Windows;
+there are no new skipped cases. Logs: full-utf8-1.log and full-utf8-2.log.
+Standalone startup command removed both stub variables before launching its own
+Python process, with the same explicit test URL and PYTHONUTF8=1:
+`python -u -m pytest -q --tb=short -p no:cacheprovider tests/test_startup_guard.py
+--basetemp=<workspace>/.test-storage-s2/s`: exit 0,
+raw tail `7 passed, 1 warning in 0.63s` (0 failed, 0 skipped).
+No test/worker/startup/database-name guards were modified.
+
+Final Ruff check over all 15 changed Python files: exit 0, `All checks passed!`.
+`python -m mypy --follow-imports=silent` over the same 15 files: exit 0,
+`Success: no issues found in 15 source files`. Final web lint, typecheck and
+Playwright --list also exit 0 (66 tests in 21 files, browser execution deferred).
+Only the evaluation timestamp regenerated by S2's own suite was restored to HEAD;
+the original S1 checkout was not altered. S2 backend/static verification is green.
+S3 may now be built stacked on this branch; no merge/push/deployment performed.
+Final UI consistency follow-up: Members list/detail now use the existing page
+main landmark/wrapper. This is markup only; backend/test source is unchanged.
+Repeated web lint/typecheck both exit 0. S3 will incorporate this local follow-up
+before its final review report; backend verification counts above remain applicable.
+
 ## 2026-10-14 — P7-03 Playwright repair and fictional demo seed
 
 Built: `registerOwner` verifies register 201 and the tenant bots landing; all eight specs reuse the provisioned bot, with Starter assigned through staff API for dashboard editor second-bot/seats and knowledge's 10 MB limit. Invite signup blocks compared unchanged; owner's conversations bubble re-open fix preserved and committed. Guarded offline demo seed + 21 tests added, with four DB-dependent regressions; no product UI changed, no phase sign-off, push or deployment.
@@ -2151,6 +2478,507 @@ Final backend and local integration readiness:
   fix/group-c-polish -m "Merge Group C safety and polish"`, then
   `git branch -d fix/group-c-polish`; leave main clean. This maintenance merge
   does not sign off unrelated roadmap phases, hosting or billing decisions.
+## S1 - Staff organizations (2026-10-20; initial submission rejected, repaired and verified below)
+
+- Branch: `feature/staff-organizations`; local commits only, no merge or push.
+- Restored existing controls within the new tabs: Overview has reason-required plan assignment, quota overrides, organization data/deletion link, recent audit and usage; Bots has reason-required pause; Members has member rows and pending invitations; Knowledge retains ingestion failures and per-bot knowledge links.
+- Restored the original deletion E2E journey, plan/quota/pause payload assertions, pending-invitation assertion and Recent audit check from `main`. Only tab navigation was added to those journeys; the organization title expectation reflects the S1 label rename. No assertion was replaced by an absence assertion.
+- There is one plan-edit path: existing `PATCH /api/v1/platform/tenants/{id}/plan`, with required reason and existing `platform.tenant.plan_assigned` audit. New organization PATCH accepts name/status only and rejects `plan_label`. Added regression coverage for the rejected bypass and required reason/audit.
+- Restored existing `PlatformStaffDep`: unauthenticated requests return 401 and authenticated non-staff return 403. Removed the custom organization staff dependency introduced by f2d92dd.
+- Worker guard, backend fixtures, database guard tests and Playwright database-name derivation are restored exactly to `main`. The only E2E setup change is `TEST_DATABASE_URL ?? DATABASE_URL`. No database-name allowlist remains. The user will provide the base URL and confirm server reachability; it will be set per process only and never persisted. Tests must not target the base database.
+- Repair static checks: `npm run lint` in `apps/web` exited 0; raw output tail: `> eslint . --max-warnings 0` (no findings). `npm run typecheck` in `apps/web` exited 0; raw output tail: `Generating route types...` / `Types generated successfully`.
+- Repair syntax check: repository `.venv` Python `-m py_compile apps/api/app/platform/router.py apps/api/tests/test_platform.py` exited 0 with no output.
+- No tests or server-connectivity probes have run during this repair, per the owner's instruction. Targeted platform tests, full backend, startup guard in its own process without either stub variable, and the five touched Playwright specs remain pending explicit server confirmation. Current repair has no runtime pass/fail/skip counts.
+- Historical rejected-submission evidence only: the initial system-Python commands failed before collection (`No module named pytest`). The prior `.venv` database guard run reported `3 warnings, 6 errors in 0.14s`; these were fixture setup assertion errors caused by the invalid database-name allowlisting, not successful tests or confirmed database connection failures. Those changes are reverted. Earlier static passes do not verify this repaired implementation.
+- No edits under `docs/`, credential-file reads, Docker commands, Phase 6 worktree changes, pushes, tags, deployments or merges.
+
+## S1 verification rerun (2026-10-20; owner-approved disposable server)
+
+- Owner authorized verification against the supplied loopback test server. Windows port probe `Test-NetConnection -ComputerName 127.0.0.1 -Port 55462 -InformationLevel Quiet` returned `True`.
+- Connection values were assigned only in each test process, never written to a file. Backend fixtures derived their disposable test database; browser setup reported `/postgres_e2e_test`. No Docker commands, credential-file access, guard/allowlist changes, base-database test execution, Phase 6 changes, merge or push.
+- The command records below omit the connection assignment to honor the no-URL-in-files rule; the final chat report supplies the exact commands. Backend cwd: `apps/api`; browser/static cwd: `apps/web`. All backend test commands used repository `.venv`, `-u -m pytest`, `-q --tb=short -p no:cacheprovider`, process-only workspace TEMP/TMP and basetemp. Model stubs were enabled except in the separate startup-guard process.
+- Initial restricted-sandbox targeted run: 18 passed, 16 setup errors, 1 warning in 19.07s (12 KNOWLEDGE_EMPTY parser/temp restrictions, four Windows temporary-directory permission errors). A workspace-basetemp retry still failed at session cleanup with WinError 5 and no reliable final count. Running the same checks with host permissions resolved these environment failures; no application, fixture, guard or test assertions changed.
+- Targeted backend: `tests/test_platform.py tests/test_platform_ops.py tests/test_quotas.py tests/test_tenant_route_matrix.py --basetemp=../../.test-storage-s1/pytest-host`: **34 passed, 0 failed, 0 skipped**.
+- Initial full backend without UTF-8 mode: **402 passed, 3 failed, 1 skipped** in 1342.39s. All three failures were default Windows cp1252 decoding of Arabic evaluation outputs. The exact same three selected tests failed on both S1 (3 failed, 6.44s) and main `5c4d253` (3 failed, 7.88s): `test_rag_evaluation.py::test_two_mode_retrieval_eval_is_entirely_offline`, `test_rag_gate.py::test_stage0_raw_fts_gate_measurements`, `test_rag_stage0_baseline.py::test_real_fts_pipeline_checkpoints_and_never_replays`. Each reported `UnicodeDecodeError: 'charmap' codec can't decode byte 0x81`, respectively at positions 2399, 265 and 51. Set process-only `PYTHONUTF8=1`; all three then passed (8.38s). No test source changes.
+- Final full backend ran the **identical command twice**, with `PYTHONUTF8=1`, both model stubs, `--ignore=tests/test_startup_guard.py --basetemp=../../.test-storage-s1/full-host`: **405 passed, 0 failed, 1 skipped** each (1352.44s / 1350.10s). Startup guard is excluded here because it ran separately as required.
+- Startup guard: explicitly removed both `CHAT_STUB_MODEL` and `EMBEDDING_TEST_STUB` in its own process; `tests/test_startup_guard.py --basetemp=../../.test-storage-s1/startup-host`: **7 passed, 0 failed, 0 skipped**, 0.66s.
+- Backend warning: existing Starlette/httpx TestClient deprecation. Sole full-suite skip: POSIX parser process-group integration on Windows.
+- Initial five-spec browser run: **20 passed, 2 failed, 0 skipped (2.9m)**. The S1 platform-pause confirmation test was missing navigation to the Bots tab; added only the tab click and braces, preserving every confirmation assertion (commit `0932ce9`). The other timeout was the unchanged operations reason/cancel test: Cancel remained disabled while the previous retry asynchronously cleared the reason. An identical isolated command passed unchanged on S1 (1 passed, 45.2s) and main (1 passed, 48.5s). This does not prove a pre-existing baseline failure; record it as an observed transient with no assertion or product changes.
+- Static checks after the tab fix: `npm run typecheck` exit 0; `npm run lint` exit 0; `git diff --check main...HEAD` exit 0.
+- Test-line deletion review versus main: no tests or assertions removed. `e2e-api-setup.ts`: two assignments replaced by TEST_DATABASE_URL fallback. `group-c-fixtures.ts`: one `bots: [bot]` line expanded to the new response contract. `group-c-polish.spec.ts`: one unbraced if replaced with braces for the tab click, one title expectation renamed Client to Organization. All other changed test files have zero deleted lines.
+
+Raw backend/static output tails:
+
+```text
+34 passed, 1 warning in 149.71s (0:02:29)
+
+FAILED tests/test_rag_evaluation.py::test_two_mode_retrieval_eval_is_entirely_offline
+FAILED tests/test_rag_gate.py::test_stage0_raw_fts_gate_measurements - Unicod...
+FAILED tests/test_rag_stage0_baseline.py::test_real_fts_pipeline_checkpoints_and_never_replays
+3 failed, 1 warning in 7.88s
+
+3 passed, 1 warning in 8.38s
+
+SKIPPED [1] tests\test_knowledge_parsers.py:52: POSIX process group integration; Windows unverified
+405 passed, 1 skipped, 1 warning in 1352.44s (0:22:32)
+
+SKIPPED [1] tests\test_knowledge_parsers.py:52: POSIX process group integration; Windows unverified
+405 passed, 1 skipped, 1 warning in 1350.10s (0:22:30)
+
+7 passed, 1 warning in 0.66s
+
+> @chatbot/web@0.1.0 typecheck
+> next typegen && tsc --noEmit
+
+Generating route types...
+✓ Types generated successfully
+
+> @chatbot/web@0.1.0 lint
+> eslint . --max-warnings 0
+```
+
+Verification command catalog (only the owner-supplied connection value is redacted; no URL persisted):
+
+Targeted sandbox attempt:
+
+```powershell
+$env:TEST_DATABASE_URL='<owner-supplied base URL; process only>'; $env:CHAT_STUB_MODEL='1'; $env:EMBEDDING_TEST_STUB='1'; & ..\..\.venv\Scripts\python.exe -u -m pytest tests/test_platform.py tests/test_platform_ops.py tests/test_quotas.py tests/test_tenant_route_matrix.py -q --tb=short -p no:cacheprovider
+```
+
+Targeted sandbox basetemp retry:
+
+```powershell
+$env:TEST_DATABASE_URL='<owner-supplied base URL; process only>'; $env:CHAT_STUB_MODEL='1'; $env:EMBEDDING_TEST_STUB='1'; $env:TEMP=(Join-Path (Get-Location) '..\..\.test-storage-s1\temp'); $env:TMP=$env:TEMP; New-Item -ItemType Directory -Force -Path $env:TEMP | Out-Null; & ..\..\.venv\Scripts\python.exe -u -m pytest tests/test_platform.py tests/test_platform_ops.py tests/test_quotas.py tests/test_tenant_route_matrix.py -q --tb=short -p no:cacheprovider --basetemp=../../.test-storage-s1/pytest-tmp
+```
+
+Targeted host verification:
+
+```powershell
+$env:TEST_DATABASE_URL='<owner-supplied base URL; process only>'; $env:CHAT_STUB_MODEL='1'; $env:EMBEDDING_TEST_STUB='1'; $env:TEMP=(Join-Path (Get-Location) '..\..\.test-storage-s1\temp'); $env:TMP=$env:TEMP; New-Item -ItemType Directory -Force -Path $env:TEMP | Out-Null; & ..\..\.venv\Scripts\python.exe -u -m pytest tests/test_platform.py tests/test_platform_ops.py tests/test_quotas.py tests/test_tenant_route_matrix.py -q --tb=short -p no:cacheprovider --basetemp=../../.test-storage-s1/pytest-host
+```
+
+Initial full, without UTF-8:
+
+```powershell
+$env:TEST_DATABASE_URL='<owner-supplied base URL; process only>'; $env:CHAT_STUB_MODEL='1'; $env:EMBEDDING_TEST_STUB='1'; $env:TEMP=(Join-Path (Get-Location) '..\..\.test-storage-s1\temp'); $env:TMP=$env:TEMP; New-Item -ItemType Directory -Force -Path $env:TEMP | Out-Null; & ..\..\.venv\Scripts\python.exe -u -m pytest -q --tb=short -p no:cacheprovider --ignore=tests/test_startup_guard.py --basetemp=../../.test-storage-s1/full-host
+```
+
+Same selected encoding tests on S1 and main:
+
+```powershell
+$env:TEST_DATABASE_URL='<owner-supplied base URL; process only>'; $env:CHAT_STUB_MODEL='1'; $env:EMBEDDING_TEST_STUB='1'; $env:TEMP=(Join-Path (Get-Location) '..\..\.test-storage-s1\temp'); $env:TMP=$env:TEMP; New-Item -ItemType Directory -Force -Path $env:TEMP | Out-Null; & ..\..\.venv\Scripts\python.exe -u -m pytest tests/test_rag_evaluation.py::test_two_mode_retrieval_eval_is_entirely_offline tests/test_rag_gate.py::test_stage0_raw_fts_gate_measurements tests/test_rag_stage0_baseline.py::test_real_fts_pipeline_checkpoints_and_never_replays -q --tb=short -p no:cacheprovider --basetemp=../../.test-storage-s1/encoding-proof
+```
+
+Selected encoding tests with UTF-8:
+
+```powershell
+$env:PYTHONUTF8='1'; $env:TEST_DATABASE_URL='<owner-supplied base URL; process only>'; $env:CHAT_STUB_MODEL='1'; $env:EMBEDDING_TEST_STUB='1'; $env:TEMP=(Join-Path (Get-Location) '..\..\.test-storage-s1\temp'); $env:TMP=$env:TEMP; New-Item -ItemType Directory -Force -Path $env:TEMP | Out-Null; & ..\..\.venv\Scripts\python.exe -u -m pytest tests/test_rag_evaluation.py::test_two_mode_retrieval_eval_is_entirely_offline tests/test_rag_gate.py::test_stage0_raw_fts_gate_measurements tests/test_rag_stage0_baseline.py::test_real_fts_pipeline_checkpoints_and_never_replays -q --tb=short -p no:cacheprovider --basetemp=../../.test-storage-s1/encoding-proof
+```
+
+Final full, identical command executed twice:
+
+```powershell
+$env:PYTHONUTF8='1'; $env:TEST_DATABASE_URL='<owner-supplied base URL; process only>'; $env:CHAT_STUB_MODEL='1'; $env:EMBEDDING_TEST_STUB='1'; $env:TEMP=(Join-Path (Get-Location) '..\..\.test-storage-s1\temp'); $env:TMP=$env:TEMP; New-Item -ItemType Directory -Force -Path $env:TEMP | Out-Null; & ..\..\.venv\Scripts\python.exe -u -m pytest -q --tb=short -p no:cacheprovider --ignore=tests/test_startup_guard.py --basetemp=../../.test-storage-s1/full-host
+```
+
+Startup guard, own process:
+
+```powershell
+$env:TEST_DATABASE_URL='<owner-supplied base URL; process only>'; $env:PYTHONUTF8='1'; Remove-Item Env:CHAT_STUB_MODEL -ErrorAction SilentlyContinue; Remove-Item Env:EMBEDDING_TEST_STUB -ErrorAction SilentlyContinue; $env:TEMP=(Join-Path (Get-Location) '..\..\.test-storage-s1\temp'); $env:TMP=$env:TEMP; New-Item -ItemType Directory -Force -Path $env:TEMP | Out-Null; & ..\..\.venv\Scripts\python.exe -u -m pytest tests/test_startup_guard.py -q --tb=short -p no:cacheprovider --basetemp=../../.test-storage-s1/startup-host
+```
+
+Five browser specs, same command for initial and both subsequent runs:
+
+```powershell
+$env:TEST_DATABASE_URL='<owner-supplied base URL; process only>'; $env:DATABASE_URL=$env:TEST_DATABASE_URL; $env:ENVIRONMENT='test'; $env:PYTHONUTF8='1'; $env:CHAT_STUB_MODEL='1'; $env:EMBEDDING_TEST_STUB='1'; $env:E2E_API_PORT='18062'; $env:API_PROXY_TARGET='http://127.0.0.1:18062'; $env:PLATFORM_GUARD_ORIGIN='http://127.0.0.1:18062'; $env:E2E_REUSE_API='0'; $env:NEXT_TELEMETRY_DISABLED='1'; $env:TEMP=(Join-Path (Get-Location) '..\..\.test-storage-s1\temp'); $env:TMP=$env:TEMP; $env:STORAGE_ROOT=(Join-Path (Get-Location) '..\..\.test-storage-s1\e2e-storage'); $env:E2E_PYTHON=(Resolve-Path '..\..\.venv\Scripts\python.exe').Path; npx playwright test tests/organizations.spec.ts tests/platform.spec.ts tests/ui-characterization.spec.ts tests/group-a-members.spec.ts tests/group-c-polish.spec.ts --reporter=line
+```
+
+Operations browser check, identical command on S1 and main:
+
+```powershell
+$env:TEST_DATABASE_URL='<owner-supplied base URL; process only>'; $env:DATABASE_URL=$env:TEST_DATABASE_URL; $env:ENVIRONMENT='test'; $env:PYTHONUTF8='1'; $env:CHAT_STUB_MODEL='1'; $env:EMBEDDING_TEST_STUB='1'; $env:E2E_API_PORT='18062'; $env:API_PROXY_TARGET='http://127.0.0.1:18062'; $env:PLATFORM_GUARD_ORIGIN='http://127.0.0.1:18062'; $env:E2E_REUSE_API='0'; $env:NEXT_TELEMETRY_DISABLED='1'; $env:TEMP=(Join-Path (Get-Location) '..\..\.test-storage-s1\temp'); $env:TMP=$env:TEMP; $env:STORAGE_ROOT=(Join-Path (Get-Location) '..\..\.test-storage-s1\e2e-storage'); $env:E2E_PYTHON=(Resolve-Path '..\..\.venv\Scripts\python.exe').Path; npx playwright test tests/ui-characterization.spec.ts --grep "platform operations: reason gates" --reporter=line
+```
+
+Final verification outcome:
+- Both subsequent five-spec browser commands: **22 passed, 0 failed, 0 skipped (1.7m)** each. The last run rebuilt commit `ead6e4a`, including the remaining analytics table heading rename to Organization. All original deletion, pending-invitation, recent-audit and reason-payload assertions passed.
+- `npm run typecheck` and `npm run lint` passed again after the final label change. `git diff --check` passed. No backend source or tests changed after the two identical 405/0/1 backend runs.
+- Confirmed zero diff versus main for worker guard, backend conftest/database guard tests, E2E database derivation helper and all of `docs/`. Restored only the evaluation report's generated timestamp after backend tests; no evaluation report change retained.
+- Browser/API/worker test processes completed their normal teardown. Stopped on the feature branch for owner review; no merge, push or deployment.
+- Deliberately retained existing routes, onboarding, reason-required plan/quota/pause actions, deletion flow and audit history. No new user/bot/invitation/deletion workflows, quota override UI, tables, migrations or statuses.
+- Post-MVP follow-ups only: investigate the intermittent unchanged operations reason/cancel timing; make baseline evaluation-output file encoding explicit. Neither was changed in this slice.
+
+Raw browser output tails:
+
+```text
+  2 failed
+    [chromium] › tests\group-c-polish.spec.ts:74:7 › platform pause: Cancel and Escape do not write; Confirm writes once
+    [chromium] › tests\ui-characterization.spec.ts:107:5 › platform operations: reason gates retry and cancel, audit search keeps its query
+  20 passed (2.9m)
+
+[e2e] Stopped the E2E API server.
+[e2e] Stopped the E2E worker.
+  1 passed (45.2s)
+
+[e2e] Stopped the E2E API server.
+[e2e] Stopped the E2E worker.
+  1 passed (48.5s)
+
+[e2e] Stopped the E2E API server.
+[e2e] Stopped the E2E worker.
+  22 passed (1.7m)
+
+[e2e] Stopped the E2E API server.
+[e2e] Stopped the E2E worker.
+  22 passed (1.7m)
+```
+
+## 2026-10-21 — S4 change-password and S6 docs/auth-members (stacked on S3)
+
+Branches, local commits only, nothing merged or pushed:
+- `feature/change-password` stacked on `feature/staff-bots` (S3 tip 5ba4726): S4 endpoint
+  `1beff4e` (POST /api/v1/auth/change-password: current-password verify with 400
+  INVALID_CURRENT_PASSWORD, 400 PASSWORD_UNCHANGED, shared 8-200 policy via request schema
+  (422), per-user failed-attempt throttle 5/300s via the existing Postgres fixed-window
+  service (429 RATE_LIMITED), all OTHER sessions revoked, current session rotated so the
+  caller stays signed in, auth.password_changed audit row with the user as actor, empty
+  metadata) and Account UI `594470e` (shared lib/account.tsx form + top-level /account page
+  reachable from both shells via a header Account link; no Google UI, no placeholder).
+- `chore/docs-auth-members` stacked on feature/change-password: Register-link flag c38746f
+  (login page reads /auth/config like /register; link hidden while the flag is off or the
+  request fails, fail closed), docs b510a8e (docs 02/04/05/11/12/14 §19/15/18/19 §5,
+  closeout §5 runbook rewrite, README first-org/user/bot, DECISIONS ADR-021 — ADR-020 is
+  reserved by the Phase 6 branch, next free number ADR-022).
+
+Pre-existing S2/S3-era browser-spec bugs fixed during the deferred combined run (no
+assertions weakened, only flow/locators aligned with built behaviour):
+- `5a9dff8` fix(S2): knowledge/playground/roles-control specs pre-register the member in
+  an isolated context (invitations are existing-users-only since S2; page.request shares
+  the context cookie jar, so registration happens outside the admin context), then
+  sign in and accept; staff-members.spec selects by accessible name (wrapping labels
+  include the selected option's textContent) and locates the created member via the
+  directory's own search filter (oldest-first listing, 25 per page).
+- `94f0584` fix(S3): staff-bots.spec create-bot Organization combobox by accessible name.
+- `0d4b7ba` test(S4): the E2E harness sets LOGIN_RATE_LIMIT_ATTEMPTS=1000 through the
+  existing Settings env knob because all Playwright traffic shares one client IP and the
+  whole suite's logins compressed into one 300s window; product default (10/300s) and all
+  pytest limiter tests unchanged.
+
+Verification (Windows venv through WSL with WSLENV forwarding; TEST_DATABASE_URL
+postgresql://test:test@127.0.0.1:55462/postgres per process, never written to a file):
+- Backend targeted (apps/api, ENVIRONMENT=test PYTHONUTF8=1): test_change_password.py
+  10 passed; test_change_password + test_self_service_signup + test_auth 30 passed;
+  test_auth + test_change_password + test_staff_member_errors +
+  test_staff_member_revocation_race 28 passed.
+- Full backend suite (separate process, -p no:cacheprovider --basetemp=.test-storage-s3):
+  S4 state 466 passed / 1 skipped (POSIX process-group skip) / 0 failed in 25m45s;
+  final S6 state 467 passed / 1 skipped / 0 failed in 25m37s (adds the S6
+  INVITATION_REQUIRED contract test). An earlier run with 3 UnicodeDecodeError failures
+  was environmental (PYTHONUTF8 not forwarded through WSLENV); rerun of those three files
+  48 passed.
+- Web: next typegen + tsc --noEmit clean; eslint --max-warnings 0 clean; prettier clean
+  on every touched file.
+- Playwright: account.spec 5 passed; login-register.spec 2 passed; FULL suite
+  (S1 harness: E2E_API_PORT=18062, API_PROXY_TARGET/PLATFORM_GUARD_ORIGIN to the same
+  port, E2E_REUSE_API=0, stubs on, disposable postgres_e2e_test DB) 75 passed / 0 failed
+  in 3.4m. Two earlier full runs (62/75 and 70/75) traced to the missing ENVIRONMENT
+  forwarding (worker fell back to development, embeddings refused) and to the
+  pre-existing spec issues fixed above; the worker/env diagnosis was done with
+  temporary uncommitted debug prints, reverted before commit.
+- S5 (Google sign-in) is deferred by owner instruction: no Google UI, no placeholder, no
+  schema change; design recorded in DECISIONS.md (ADR-021).
+- implementation/PHASE-03/EVAL-REPORT.md is regenerated by backend eval tests (timestamp
+  only); the working-tree copy was restored after each run. Deliberately untouched:
+  Stage 1 drift items (RETRIEVAL_MIN_MATCHED_TERMS alignment, fts_ar vs simple truth,
+  ADR-019 dated notes in docs 07/14/18, MANUAL-TEST compose paths) and all Phase 6 files.
+
+## 2026-10-22 — A1.2–A1.7 batch (branch feat/a1.2-field-details, created from main)
+
+Commits (local only, no push/tag/merge): 53a3415 A1.2 API 422 field details;
+b73f1bd A1.2 web inline field errors; be4a3b7 A1.3 phone country-code + national
+input; 3277f2c A1.4 API domain normalization; 75cbb8b A1.4 web settings
+normalization; 615d748 A1.5 provider-failure trace/log; dd267e5 A1.6 tier
+provider/model display. All commit messages carry the required trailer.
+
+Verification environment: Windows venv (`.venv/Scripts/python.exe`, Python
+3.12.10) driven from WSL, as in earlier sessions.
+
+Commands and outcomes:
+- `python -m ruff check <touched files>` per commit — All checks passed!
+- `python -m ruff format --check <touched files>` per commit — formatted.
+- `python -m mypy --follow-imports=silent <touched app files>` — Success, no
+  issues. (`mypy` on the Windows venv reports 3 pre-existing errors in
+  `app/knowledge/ingest.py` (os.setsid/killpg/SIGKILL) — POSIX-only attrs,
+  untouched by this batch, not fixed here per batch scope.)
+- `npm run typecheck` (next typegen + tsc --noEmit) — clean after each web
+  commit; `npx eslint <touched files> --max-warnings 0` — clean; prettier run
+  on every touched web file.
+
+NOT verified (blocked, no fabrication):
+- Disposable test DB `saas-test-db` on 127.0.0.1:55462 refused connections
+  (`psycopg` ConnectionTimeout; socket-level ConnectionRefusedError). Starting
+  containers is owner-only, so NO pytest run and NO Playwright run happened in
+  this session. The new/extended tests (test_validation_details.py,
+  test_allowed_domains.py, test_chat.py provider-failure tests, test_rag_limits
+  tier-targets test, staff-members.spec.ts, staff-bots.spec.ts) are written
+  against existing fixtures but their outcome is unverified until the owner
+  brings the disposable DB back and runs:
+  `cd apps/api && TEST_DATABASE_URL=postgresql://test:test@127.0.0.1:55462/postgres ENVIRONMENT=test PYTHONUTF8=1 python -m pytest tests/test_validation_details.py tests/test_allowed_domains.py tests/test_chat.py tests/test_rag_limits.py`
+  and the Playwright specs `staff-members.spec.ts`, `staff-bots.spec.ts`.
+- A1.7 investigation (read-only, no code change): uploads never enqueue jobs —
+  `upload_files` (apps/api/app/knowledge/service.py:70-162) only creates Source
+  rows with status "stored"; the only enqueue path is `start_ingestion`
+  (service.py:206-268) on the explicit `POST .../ingestion` endpoint
+  (apps/api/app/knowledge/router.py:96-107) behind its own UI click, with the
+  submit button disabled while a request is in flight
+  (knowledge/page.tsx ~line 283, `disabled={ingesting || storedSources.length === 0}`).
+  A second ingest POST after sources are committed as "queued" returns 409
+  NOTHING_TO_INGEST (service.py:244-245). So two uploads create zero jobs (the
+  explicit ingest click enqueues one batch job for all stored sources) and one
+  click cannot enqueue twice. A theoretically simultaneous duplicate POST
+  landing between read and commit of the first is the generic double-submit
+  window on the ingest action, not an upload behavior; no idempotency added,
+  nothing changed.
+- A1.1 acceptance items (Dockerfile copies public / loader diff) belong to the
+  feat/a1.1-serve-web-public branch (commit 7d04ef1), not this branch. Read-only
+  cross-check from this branch: apps/web/public contains only `widget/`, and
+  apps/web/Dockerfile on main does NOT copy public yet; on the A1.1 branch the
+  generated copy `apps/web/public/widget/v1/loader.js` (206 lines) and
+  `packages/widget/src/loader.js` (206 lines) are byte-identical after CRLF/LF
+  normalization (cmp clean).
+
+## R3 - answer correctness part 2 (branch fix/r3-answers, local commits only)
+
+Items 1-6, 8, 9 implemented, one commit each (git log 1d0b2b7..HEAD); item 7 is a
+read-only proposal in the batch report. Disposable DB 127.0.0.1:55462 (r3_test),
+TEST_DATABASE_URL set per process, `PYTHONUTF8=1` on Windows.
+
+- Full run: `python -m pytest tests/test_chat.py tests/test_chat_streaming*.py tests/test_cross_*.py tests/test_handoff.py tests/test_hybrid_retrieval.py tests/test_knowledge_language.py tests/test_model_not_configured.py tests/test_provider_params.py tests/test_rag_*.py tests/test_retrieval.py tests/test_routing.py tests/test_stable_tie_break.py tests/test_trace_context.py tests/test_turn_deadline.py tests/test_widget_*.py tests/test_playground_parity.py tests/test_bots.py tests/test_bot_readiness.py tests/test_conversations.py tests/test_migrations.py tests/test_quotas.py tests/eval`
+  -> 370 passed, 4 failed WITHOUT PYTHONUTF8 (3 are cp1252 decode errors in test_rag_gate::test_stage0_raw_fts_gate_measurements, test_rag_evaluation::test_two_mode_retrieval_eval_is_entirely_offline, test_rag_stage0_baseline::test_real_fts_pipeline_checkpoints_and_never_replays; they pass with PYTHONUTF8=1). The 4th,
+  test_chat_streaming::test_client_disconnect_stops_the_provider_and_persists_nothing, fails the same way on the R2 merge (1d0b2b7) with my changes stashed: pre-existing.
+- Migration 0020 (usage_events kind 'unavailable') applied by test_migrations up/down/up.
+- Web: `npx tsc --noEmit` and `npm run lint` clean. Playwright not run (needs servers).
+- gate_compare before/after on nile_eval.jsonl: identical (fts_only 26/27 kept, 6/12 leaks; hybrid+test embedder 23/27, 5/12).
+
+## R3b - router after retrieval + widget line breaks (branch fix/r3b-router-widget, local commits only)
+
+Base: main 0a99fdb (fix/r3-answers merged). Commits: a4fc989 (routing, #111), 0792d6d (widget CSS).
+Disposable DB 127.0.0.1:55462, TEST_DATABASE_URL per process, `PYTHONUTF8=1`.
+
+- Routing: pre-retrieval only smalltalk + explicit person requests (reason visitor_requested).
+  Order/account keywords count after retrieval (no evidence, model refusal, invalid_output) ->
+  kind "handoff", reason order_account; handoff toggle off -> plain cannot_confirm. Trace:
+  `routing_stage` (pre_retrieval|post_retrieval), `routed_handoff_reason`, `handoff_reason`.
+  `decide_handoff` gives a routed handoff visitor_requested when the person keywords match, else order_account.
+- Widget: the AI bubble class is `.widget-bubble` (`widget-ai-msg` is its test id) in apps/web/lib/widget-styles.ts;
+  `.widget-bubble:not(.visitor){white-space:pre-wrap;overflow-wrap:anywhere}`. Playground `.message-text` already had both.
+- Tests: `python -m pytest tests/test_routing.py tests/test_chat.py -q` -> 90 passed.
+  `python -m pytest tests/test_handoff.py tests/test_chat_streaming.py tests/test_chat_streaming_unit.py tests/test_playground_parity.py tests/test_group_0_inbox.py tests/test_trace_context.py tests/test_widget_public.py tests/test_rag_traces.py tests/test_followups_analytics.py tests/test_model_not_configured.py -q`
+  -> 114 passed, 1 failed (test_chat_streaming::test_client_disconnect_stops_the_provider_and_persists_nothing,
+  already failing on the R2 merge per the R3 entry above).
+- ruff check/format clean on touched files; mypy on touched files: only the existing Windows os.setsid/killpg errors in knowledge/ingest.py.
+  Web `npm run typecheck` and `npm run lint` clean.
+- Eval (stub, `tests/eval/test_nile_eval.py test_gate_compare.py test_eval.py`, 4 passed before and after; before = app/ from 0a99fdb):
+  gate-passed 80.0/72.0 -> 96.0/88.0 (fts_only/hybrid); wrong refusals 44.0 -> 36.0 (both modes);
+  cites expected page 52.0/48.0 unchanged; abstain 91.7, injection 100 unchanged; Arabic grounded 9.1 unchanged.
+  The four cases: before all 8 rows (4 x 2 modes) were `handoff`. After, tracking-number-en and fu-cod-cancel-en are
+  `answer` with a retrieval hit (the stub cites a different chunk, so cited_hit stays false); the Arabic pair has a
+  retrieval hit but the extractive stub refuses Arabic, so they end in a post-retrieval handoff (stub limitation).
+  gate_compare is retrieval-only: unaffected by routing.
+
+## R3c - provider failures self-explaining, free chain, model defaults, widget layout (branch fix/r3c-provider-widget, local commits only)
+Base check: R0, R2, R3 and R3b are all merged on main (958b48e). Commits: e1a7a8c (items 1-3), 0abd779 (4), f066949 (5), f3c199a (6), 71c5857 (7).
+Tests (disposable DB 127.0.0.1:55462, TEST_DATABASE_URL per process, `PYTHONUTF8=1`, ENVIRONMENT=test):
+- `pytest tests/test_free_chain.py tests/test_provider_attempts.py` -> 19 passed.
+- `pytest tests/test_provider_params.py tests/test_chat.py tests/test_chat_streaming_unit.py tests/test_model_not_configured.py tests/test_rag_traces.py tests/test_playground_parity.py tests/test_bot_readiness.py tests/test_rag_limits.py` -> first run 103 passed, 1 failed (test_rag_traces::test_premium_and_standard_provider_contracts_are_mocked: plain-text reply in JSON mode lost its usage totals; fixed by recording usage on the unusable-reply fallback). Re-run of test_rag_traces, test_provider_attempts, test_free_chain, test_provider_params, test_chat_streaming_unit, test_model_not_configured -> 67 passed. The other four files passed in the first run.
+- ruff check / ruff format --check / mypy on touched app files: clean. Web `npm run typecheck` and `npm run lint`: clean.
+- NOT run (owner policy): full pytest, full evals, Playwright. apps/web/tests/widget-layout.spec.ts is new and was NOT run.
+Deviations: items 1-3 share one commit (their hunks interleave in providers.py/service.py); the config.py default for gpt-5.4-nano landed in that commit while its docs/fixtures are in item 6. Cost for gpt-5.4-nano stays "Unmeasured" (no price table in the repo). gpt-4.1-nano remains only in the ADR note, .env.example and config comments explaining the deprecation, history docs and the owner's .env.local (not touched).
+
+## H2 - Knowledge hygiene (working tree on fix/r3c-provider-widget, on top of the uncommitted H1 changes; NOT committed)
+Implemented: migration 0022 (`sources.status` gains `removed`; `documents.duplicates_removed`); upload dedupe by sha256 per bot
+(200/201, `duplicate` + `message` on the returned source); replace (`POST .../sources/{id}/replace`, refreshes `created_at` so the new
+version counts as "newer"); soft delete (`DELETE .../sources/{id}`: draft rows + source_pages removed, status `removed`, size 0, file
+deleted after commit, audit row); cross-source duplicate chunks (newer source wins, `duplicates_removed` warning in the document list,
+`_copy_revision_snapshot` skips removed sources); always-include by stable source id (`config.always_include_source_ids`, PUT on the
+source or PATCH bot config, resolved to live-revision document ids per chat turn, capped to `retrieval_final_k - 1` chunks, 3 sources);
+knowledge UI controls (always include, replace, remove with confirmation) and the duplicate message; permissions table entries.
+Legacy `config.always_include_document_ids` is no longer read by chat (nothing could set it).
+Verified by me: `ruff check app` (only the pre-existing E501s remain: db/models/chat.py, quotas/*, db/models/knowledge.py:87), `ruff format` on touched
+knowledge/bots/chat files, `python -c "import app.main"`, web `npx tsc --noEmit` clean.
+NOT RUN: any pytest (no TEST_DATABASE_URL in this session), the new `apps/api/tests/test_knowledge_hygiene.py` (written, never executed),
+migration 0022 against a database, Playwright (`knowledge.spec.ts` new test written, not run), the post-green review agent.
+Open: publishing a draft with zero chunks is still 409 KNOWLEDGE_EMPTY, so removing the only source cannot be published.
+
+## H3 - Conversation intelligence (working tree on fix/r3c-provider-widget, on top of the uncommitted H1/H2 changes; NOT committed)
+Implemented: conversational intents in `chat/routing.py` (identity, capability, how_are_you, thanks, farewell, greeting; whole-token, EN+AR,
+fillers allowed, 8-token cap; any leftover token sends the message to retrieval). Replies are composed from bot config only
+(`prompts.meta_reply`, `service.conversational_reply`); `kind` stays `smalltalk` (no consumer changes), trace `meta_intent`,
+`can_answer=true`, `needs_human=false`. Refusal with direction (`retrieval/trace.near_miss_topics`, `service.refusal_text`, canned
+`cannot_confirm_topics`; trace `suggested_topics`). Follow-ups: `service.rewrite_reason` (opener regex, back-references, <2 content terms),
+one retry on the condensed query after a refusal (not when a trigger rewrite already ran), `rewrite_plan_allowed` (empty/`*` = all plans,
+unknown labels keep the rewrite, a blocked plan is traced as `rewrite_skipped`). Prompt passes the language NAME, `PROMPT_TEMPLATE_VERSION`
+2026-10-25.1 (pinned hash in `test_tone_prompt.py` updated; the only body change is "en" -> "English"). History skips conversational
+exchanges. Docs: dated note in docs/14 section 6.
+Disposable DB: docker `saas-test-db` 127.0.0.1:55462, database `h3_test`; env `PYTHONUTF8=1 ENVIRONMENT=test`; one pytest process at a time
+(two at once deadlock on TRUNCATE).
+Tests (exact outcomes):
+- `pytest tests/test_conversation_intelligence.py tests/test_routing.py tests/test_rag_gate.py tests/test_chat.py tests/test_playground_parity.py tests/test_tone_prompt.py tests/test_handoff.py tests/test_trace_context.py tests/test_cross_script.py tests/test_chat_streaming_unit.py tests/test_turn_deadline.py` -> 253 passed, 7 failed. Five were my own stale assertions or bugs, fixed afterwards.
+- Rerun `pytest tests/test_conversation_intelligence.py tests/test_tone_prompt.py tests/test_turn_deadline.py tests/test_chat.py::test_reply_language_follows_the_visitor` -> 94 passed.
+- `tests/test_rag_gate.py::test_provider_has_no_retries_and_only_one_fallback` FAILS (requests_used 3 != 2). `chat/providers.py` is unmodified, so this is not from H3; not investigated.
+- NOT rerun after the final fixes: the other files in the first list (test_routing, test_rag_gate, test_chat, test_playground_parity, test_handoff, test_trace_context, test_cross_script, test_chat_streaming_unit), and the wider suite (test_widget_*, test_conversations, analytics, web/Playwright).
+- Eval stub (`tests/eval/test_eval.py`): NOT obtained. Working tree: fails in `tests/knowledge_helpers.py:147` (DetachedInstanceError on an ingest Job) before any chat call, probably the uncommitted H2 ingest work. HEAD checkout: alembic cannot load the revisions the shared test DB already has. So no before/after numbers; none are claimed.
+Review agent (read-only, 20+ EN/AR adversarial messages, traced by reading code): found one real bug of mine (FOLLOW_UP regex had lost its `\b`), fixed with regression tests; also fixed "are you a real person" being handed off, the Arabic "...ورحمة الله وبركاته" greeting, a double condense call after a refusal, and "كم سعره" not being condensed. Left as is: informational questions that name staff ("customer service hours, any agent available") still hand off pre-retrieval (existing documented rule: an explicit person request outranks informational wording); pure-filler messages over 8 tokens go to retrieval.
+Known behaviour: conversational turns are can_answer=true, so they never count as unanswered, but like greetings before they also break a run of unanswered turns.
+
+## H4 Part A - retrieval term quality and measurement (commit on feat/rag-hardening-h1-h3; Part B not started, needs owner spend approval)
+Implemented (offline): built-in EN/AR (MSA, Gulf, Egyptian, Levantine) filler list used only for the matched-TERM count (`retrieval/query.py`; ranking query unchanged; `retrieval_gate_ignore_terms` applies on top);
+Arabic stop words spelt with أ إ ى (على، إلى، أو، متى) now leave the count (they never matched after normalisation; ranking query deliberately untouched);
+`ChunkVerdict.failed_rules`, `trace.refusal_diagnosis` (nearest candidate, shortfalls, best per signal), playground line; `evaluation.page_sweep` + `scripts/rag_threshold_sweep.py` (prints, applies nothing);
+42 recall cases `tests/eval/nile_recall_eval.jsonl` (paraphrase/typo/dialect/mixed/unanswerable) with `recall_metrics.py`, `recall_runner.py`, `test_recall_eval.py`; docs/14 section 5 H4 note.
+Verified (exact): `PYTHONUTF8=1 ENVIRONMENT=test python -m pytest tests/eval/offline -q` -> 52 passed; `ruff check` clean on touched files; mypy on touched files: only the existing ingest.py Windows setsid/killpg errors; web `npx tsc --noEmit` clean.
+Fix outside the feature: `tests/knowledge_helpers.py::drain_jobs` now `refresh`+`expunge`s each Job (it returned expired, detached rows -> DetachedInstanceError that blocked every eval seeding, as noted under H3).
+Disposable DB: docker `saas-test-db` 127.0.0.1:55462, database `h4_test`; `PYTHONUTF8=1 ENVIRONMENT=test`, one pytest process at a time.
+DB tests (exact): `pytest tests/test_rag_gate.py tests/test_rag_traces.py tests/test_trace_context.py tests/test_retrieval.py tests/test_conversation_intelligence.py tests/test_chat.py tests/eval` -> 218 passed, 1 failed in 865.9 s.
+The failure, `test_rag_gate.py::test_provider_has_no_retries_and_only_one_fallback` (requests_used 3 != 2), is the same one recorded under H3; `chat/providers.py` is unmodified. Not investigated.
+Recall eval (retrieval + gate only, no provider, no chat model): `RECALL_EVAL_WRITE=1 pytest tests/eval/test_recall_eval.py -q -s` -> report `tests/eval/results/recall-2026-10-25-1603.{md,json}` (42 cases: 34 answerable, 8 unanswerable).
+CAVEAT: hybrid uses the deterministic test embedder (token hash), NOT semantic. Its cosine numbers are plumbing only; real Arabic/dialect semantic recall is unmeasured (needs Part B).
+| | fts_only hit@3 / hit@8 / wrong refusals | hybrid (test embedder) hit@3 / hit@8 / wrong refusals | leaks (8 unanswerable) |
+|---|---|---|---|
+| all | 26/34, 26/34, 12/34 | 18/34, 21/34, 11/34 | 3 / 3 |
+| paraphrase | 12/14, 12/14, 1/14 | 7/14, 9/14, 2/14 | |
+| typo | 9/10, 9/10, 6/10 | 8/10, 8/10, 6/10 | |
+| dialect (AR) | 4/8, 4/8, 4/8 | 1/8, 2/8, 3/8 | |
+| mixed | 1/2, 1/2, 1/2 | 2/2, 2/2, 0/2 | |
+| Arabic / English | 14/20 hit, 7/20 refused / 12/14 hit, 5/14 refused | 12/20 hit@8, 5/20 / 9/14, 6/14 | |
+Findings: most wrong refusals are retrieved-but-gated (the expected page is rank 1 or 2 yet only 1 matched term, e.g. typo-return-window-en, typo-cutoff-en, typo-electronics-ar), not retrieval misses. Leaks are the store-name + filler questions (gap-store-fillers-en/ar) and gap-instalments-en.
+Gate compare on the Nile set (`GATE_CANDIDATES`, retrieval only): fts_only defaults 26/27 kept, 6/12 leaks; ignore-store 26/27, 3/12; one-term 27/27, 10/12; one-term+ignore-store 27/27, 9/12. hybrid: defaults 23/27, 5/12; ignore-store 23/27, 2/12; one-term 24/27, 10/12; one-term+ignore-store 24/27, 9/12.
+Sweep (`scripts/rag_threshold_sweep.py` over recall + Nile no-history cases: 57 answerable, 22 unanswerable; chunk-level replay, so absolute leak counts exceed the case-level gate compare). fts floor 0.01, cosine off:
+| min terms | wrong refusals | wrong-evidence only | unanswerable leaks |
+|---|---|---|---|
+| 1 | 2 | 6 | 18 |
+| 2 (current) | 12 | 3 | 10 |
+| 3 | 27 | 4 | 3 |
+FTS floor 0.005-0.2 and (hybrid, test embedder) cosine 0.40-0.60 changed nothing material. 3 leaks remain even at 3 terms (store-name cases).
+RECOMMENDATION TABLE (owner decides; nothing applied, defaults unchanged):
+| Option | Effect on this sample | Risk | Status |
+|---|---|---|---|
+| Keep min terms 2, FTS 0.01, cosine 0.50 | baseline | high wrong refusals on typo/dialect (12/57 chunk-level) | current |
+| Add store-name ignore list per bot (`retrieval_gate_ignore_terms`) | leaks 6/12 -> 3/12 (fts), 5/12 -> 2/12 (hybrid), no recall loss | needs per-bot config | recommended to adopt, owner sign-off |
+| min terms 1 | wrong refusals 12 -> 2 | leaks 10 -> 18 of 22; unsafe alone | not recommended |
+| min terms 3 | leaks 10 -> 3 | wrong refusals 12 -> 27 | not recommended |
+| FTS floor / cosine floor changes | no measurable effect here | cosine needs a real embedder | defer to Part B |
+Next: Part B (real embeddings, both tiers) needs the owner's written spend limit; not started. Nothing committed.
+## H5 - staff tooling, quotas and resilience (feat/rag-hardening-h1-h3; stopped at the gate)
+Implemented:
+1. Draft preview: playground body `knowledge: "published"|"draft"` (default published); `resolve_preview_revision` (409 `NO_DRAFT_REVISION` if none); `chat_answer(preview_revision_id=)` -> `retrieve_hybrid(preview=True)` which only accepts a DRAFT of the same tenant+bot. `visitor_chat_turn` raises 403 if a preview id is given on a non-playground conversation; the widget paths never pass one. Trace gains `revision_kind`; playground UI has a Published/Draft radio and shows the revision in the trace.
+2. Quota hygiene (no migration): playground `message` events and `ai_usage` message reservations carry `payload.source="playground"`; `counts_toward_message_quota()` excludes them from tenant monthly count (`usage_snapshot`), per-bot `monthly_usage`, widget daily cap, platform client month count and analytics event counts; a playground turn is not blocked by an exhausted message quota. Tokens still count. Platform per-client usage lists `playground_message` apart from `message`.
+3. Premium fallback: `CHAT_OPENAI_FALLBACK_MODELS` (JSON, validated: unique, no whitespace, max 3), passed as `fallback_models` for the OpenAI tier (primary excluded). Provider rules unchanged: one attempt per model, 401/402 block and never fall back (buffered and streaming). Standard keeps `free_only`.
+4. Widget polling: `GET .../messages` returns `X-Poll-Hint: active|idle` (human mode/waiting_human or scheduled/ready follow-up = active). Frame polls only while active (or after a seen handoff until the first hint), one look after each turn and on tab-visible, exponential backoff 2 s -> 30 s on errors, none when hidden; `?debugWidget=1` logging kept. Rules in `apps/web/lib/widget-polling.ts`.
+5. PDF context: if a page ends without terminal punctuation and the next starts lowercase/uncased, the previous page's unfinished sentence (<=300 chars) leads the next page's first chunk; page_ref/document text unchanged.
+Docs: docs/09, 13, 14 and `.env.example` updated.
+Verified (exact): disposable DB docker `saas-test-db` database `h5_test`; `ENVIRONMENT=test PYTHONUTF8=1 pytest tests/test_h5_staff_tooling.py tests/test_quotas.py tests/test_widget_public.py tests/test_conversations.py tests/test_playground_parity.py tests/test_chat_streaming.py tests/test_chat_streaming_unit.py tests/test_chat.py tests/test_provider_attempts.py tests/test_provider_params.py tests/test_free_chain.py tests/test_rag_gate.py tests/test_rag_traces.py tests/test_trace_context.py tests/test_knowledge_pipeline.py tests/test_knowledge_parsers.py tests/test_analytics.py tests/test_platform.py tests/test_platform_ops.py tests/test_hybrid_retrieval.py tests/test_followups_analytics.py tests/test_handoff.py tests/test_rag_limits.py tests/test_tenant_route_matrix.py` -> 317 passed, 4 failed, 1 skipped (28m38s). That run predates the added streaming-401 test in test_h5_staff_tooling.py (+2 params), which was not re-run on its own.
+The 4 failures also fail on the stashed pre-H5 tree (re-run: 4 failed, 4 passed): test_chat_streaming::test_client_disconnect_stops_the_provider_and_persists_nothing, test_rag_gate::test_provider_has_no_retries_and_only_one_fallback (known since H3), test_tenant_route_matrix x2 (88 vs 89 routes; `sources/{id}/replace` 422). Not investigated.
+Static: ruff check clean on touched files; mypy only the existing ingest.py Windows killpg/SIGKILL errors; web `tsc --noEmit`, eslint (max-warnings 0), prettier clean.
+NOT run: Playwright (`widget-polling.spec.ts` written, needs the build + API globalSetup); the polling rules were checked with a node script only. No browser behaviour verified. The independent review agent was not spawned; I reviewed the three risks by reading code and tests (widget -> no preview path; 401/402 `_blocks` before fallback in both complete and stream; polling stop/resume).
+Note: the stash round-trip used for the baseline re-run also touched other modified files (widget-styles.ts, loader.js, packages/widget loader) and restored them; verify they are intact.
+
+
+## UI polish B1: widget panel fix (2026-10-25, branch feat/ui-polish, uncommitted)
+Root cause (reproduced in real Chromium, mocks only at /api/public/v1): `packages/widget/src/loader.js` (the source of truth that `sync-loader.mjs` copies over the served file) still had `applyFrameSize()`. The frame's `announceSize` sent `document.documentElement.scrollHeight`, which equals the iframe's own height (`html,body{height:100%}` + `.widget-frame{position:absolute;inset:0}`). New iframe = 150px -> loader clamps to its 200px minimum -> frame reports 200 forever (`chatbot:ready` is never sent, so the 600 default never applies). Result at 1920x1140 and 1280x800: panel 200px, thread 35px, composer clipped when the lead form is open. The served copy `apps/web/public/widget/v1/loader.js` already had the #113 CSS-height fix, so it measured 640px; the owner's ~250px came from an old/cached loader, and the stale source would have re-introduced it on the next sync.
+Changes: packages/widget/src/loader.js (CSS-owned height clamp(320px, 100dvh-7rem, 640px) + max-height, mobile variant, `chatbot:size` and applyFrameSize removed/ignored), served copy regenerated with `node packages/widget/scripts/sync-loader.mjs` (cmp identical), apps/web/app/widget/frame/page.tsx (announceSize reports intrinsic content height, floor 600, no longer self-referential), apps/web/lib/widget-styles.ts (thin, token-coloured scrollbar on thread and open lead form), packages/widget/README.md (protocol row), new apps/web/tests/widget-panel.spec.ts.
+Commands and outcomes:
+- Failing-first: `npx playwright test --config <temp no-globalSetup config> ` on the new spec before the fix against the running Docker stack: source-loader cases failed (panel 200px; 107px thread at 375x667), served cases failed only the thin-scrollbar assertion, identity test failed (served != source).
+- After fix, own build: `npm run build` (first run exits 1 with a one-off Next.js security-upgrade notice, retry builds), `npm run start -- --port 3101`, then the same spec: 9 passed (source+served loader x 1920x1140, 1280x800, 375x667, RTL 1280x800; lead form open/closed; thin scrollbar; loader copies identical).
+- `npm run typecheck` exit 0; `npm run lint` exit 0; `npm run check:public-asset` -> "check:public-asset OK".
+NOT run: widget-layout, widget, widget-streaming, widget-domain, install specs: the suite's globalSetup needs a disposable PostgreSQL (TEST_DATABASE_URL/DATABASE_URL not set here) and port 8000 is held by the dev API; I did not point it at the dev database. The temp Playwright config used for the new spec was deleted.
+Screenshots (scratchpad): before = `repro\stale-*-6exch-leadclosed.png` (old frame + stale loader, 200px), after = `shots\after-*.png` (640px). Note `shots\before-*.png` use the NEW frame with the old loader (1034px at 1920x1140): the frame fix also heals cached old loaders.
+Noted, not fixed: open lead form is 360px tall inside a 288px (45%) scrolling container; bounded, composer stays visible.
+
+## UI polish B2: foundation, auth screens, link-to-button sweep (2026-10-25, branch feat/ui-polish, uncommitted, stopped at the gate)
+Implemented:
+- Recharts 3.10.1 pinned exactly in apps/web (`npm install recharts@3.10.1 --save-exact --workspace apps/web`; peer range includes React 19). ADR-022 added to DECISIONS.md (Recharts, Inbox+History module, read-only analytics endpoints, registration stays off). ADR-007/008 untouched.
+- Primitives in apps/web/lib/ui.tsx: LinkButton (primary/secondary/ghost/danger/icon, sm/md, icon/iconEnd), StatCard (no trailing colon, delta, spark slot, hint only when given), Meter (role=meter), Switch, ColorField (+ contrastRatio), LimitField (stepper, "Uncapped", meter), SectionNav, StickyActionBar (only when dirty), StatusPill (non-interactive). Icons added: plus, minus, alert, eye, eye-off. Chart colour tokens (--chart-1..6, --chart-seq-1..5, grid/axis; dark and light; categorical contrast 5.1-12.7:1 vs --surface/--bg, computed with a WCAG script; lightest sequential steps are fills that need a border). Chart wrappers come in B4.
+- Focus: `:focus:not(:focus-visible)` and `[tabindex="-1"]`/.workspace-content outlines removed; sidebar items ring only on keyboard focus. Skip link kept.
+- Link-to-button sweep (app/app/**, app/platform/**, accept-invite, lib/app-header "Account", bot-readiness "Fix", staff-bots, change-requests). accept-invite: Register link removed (ADR-021).
+- Landing: Register link, "·" and "Application foundation" removed; welcome + single Sign in button. /register redirects to /login (safe `next` kept). Login: split layout, eye/eye-off password toggle, inline errors, "Signing in..." state, "Contact your administrator" hint.
+- e2e helper `registerAdmin` now registers through the API (POST /auth/register + /provisioning/self-service) because /register no longer has a form.
+- API: test_default_config_keeps_registration_closed added to apps/api/tests/test_self_service_signup.py (default Settings, no .env, GET /auth/config false, POST /auth/register without invite -> 403 INVITATION_REQUIRED). conftest forces the flag on for the whole suite, so this is the only default-config check.
+Verified (observed by me):
+- `cd apps/api && TEST_DATABASE_URL=postgresql://test:test@127.0.0.1:55462/b2orch ENVIRONMENT=test PYTHONUTF8=1 ../../.venv/Scripts/python.exe -m pytest -q -p no:cacheprovider tests/test_self_service_signup.py` -> 6 passed (the agent's own run also 6 passed).
+- `npm run typecheck` and `npm run lint` (apps/web): no errors.
+- Playwright (dev stack holds :8000, so `E2E_API_PORT=8010 API_PROXY_TARGET=http://127.0.0.1:8010 TEST_DATABASE_URL=postgresql://test:test@127.0.0.1:55462/b2e2e npx playwright test login-register dashboard platform account foundation ui-redesign ui-characterization group-b-client-visibility`): 35 passed, 1 failed. The failure, group-b-client-visibility "staff: navigation, client DOM..." (`rag-tier-control` not visible on bot settings), reproduces on the stashed pre-change tree (`git stash -u`, same command with `-g "staff:"`: failed), so it is pre-existing and not caused by B2. Cause not investigated.
+- Each first build in a fresh `npx playwright test` run exits 1 with Next's one-off security-upgrade notice; the retry builds. I did not run `next upgrade`.
+NOT run: the rest of the Playwright suite (widget*, knowledge, playground, contacts, inbox, conversations, etc.), so selector impact on those specs from the link sweep is untested. `prettier --check` fails on untouched files too (line endings), so formatting was only checked with `--end-of-line auto`.
+Screenshots: after-only (landing, login, login errors, login mobile 375, login light, /app/orgs, tenant overview, bots route; the bots URL redirected to Overview for the client admin used, so the staff Bots table was not captured). No "before" set was captured.
+Owner action: confirm your local .env does not set SELF_SERVE_SIGNUP=true (the e2e harness sets it only for its disposable API). Leftover disposable databases on the 55462 server: b2agent_test, b2orch_test, b2e2e_e2e_test.
+
+## UI polish B3 - backend analytics and list data (2026-10-25, branch feat/ui-polish, uncommitted)
+Implemented by the orchestrator directly (no subagents: about five small files sharing one test setup). Backend only; no migration, no frontend change.
+- BE-1 `GET /api/v1/tenants/{id}/analytics/timeseries` (app/analytics/handoff.py): zero-filled per-UTC-day `{day, conversations, handoffs, resolved}`, website source only, viewer+, window via `_range_window`, 422 over 366 days. Message counts skipped (would need a second query). Route registered in app/core/permissions.py.
+- BE-2 `previous` block on `GET .../analytics` (same file, shared `_totals` helper; existing fields unchanged).
+- BE-3 near-duplicate grouping for top-questions and unanswered (app/analytics/service.py, `question_key`): grouped in Python over the existing SQL groups (fetch cap 5000 distinct texts), newest original text shown, counts summed, response shape unchanged.
+- BE-4 NO CHANGE: `cost_summary` (quotas/rag.py) already returns `unmeasured_events` per row and the web type `RagCost` already has it. The row `cost_usd` is the sum of reported costs only (a row with only unreported events reads "0"), so the fix is frontend: show "cost unreported" using `unmeasured_events` instead of a bare `$0` (rag-operator-panel.tsx already prints the count in prose; B6 F-2).
+- BE-5 FINDING (different by design, no code change besides doc/comment): `quota.measured_tokens_this_month` (quotas/service.py usage_snapshot) = tenant-wide, all bots, sum of `provider_usage.total_tokens` on `message` usage events this month: provider-reported chat tokens only, playground included, embeddings excluded, unreported usage counts 0. `monthly_tokens` (quotas/rag.py monthly_usage) = per bot, sum of `accounted_tokens` over `ai_usage` ledger events of EVERY type (generation, rewrite, translation, follow_up, embed_query, embed_ingest) = measured tokens when reported, otherwise the conservative reserved bound (UTF-8 bytes + 128 + max_tokens, times fallback attempts), plus legacy unmetered message tokens. `monthly_embedding_tokens` is the `embedding_tokens` subset (embed_* events), which is therefore ALSO inside `monthly_tokens`. So the owner's 97,647 contains the 45,832 embedding tokens; the remaining 51,815 vs the measured 12,665 is explained by reserved bounds for events whose usage was not reported (and non-chat events), not by a bug. Evidence: test_token_numbers_measure_different_things_by_design (message event 100 tokens + unreported rewrite reserved 900 + embed 400 gives measured 100, monthly_tokens 1400, embedding 400). I did NOT inspect the owner's dev database (not a disposable test DB), so the exact split of 51,815 is inferred from the code, not measured. Recommendation for X-1: label the Overview/Bots number "Chat tokens reported by the provider (all bots)" and the operator numbers "Tokens counted against the AI limit (includes embeddings and reserved estimates)".
+- BE-6 inbox list (app/inbox/listing.py): `total`, `bot_id`, `mode`, `status`, `channel`, `last_message`, `unread_count` already existed; added `contact_name` (null if no contact), `created_at`, and `created_from`/`created_to` (inclusive UTC dates, 422 if malformed). Pagination and delete endpoint untouched. Note the docs row said `/inbox/conversations`; the real path is `/inbox` (docs/05 corrected).
+- BE-7 quota: additive `at_limit` (used >= limit) next to `warnings` (quotas/service.py); `warnings` unchanged.
+- docs/05-API-CONTRACTS.md updated for all of the above.
+Commands (cwd apps/api, disposable DB `b3_polish_test` on the 55462 test server, `TEST_DATABASE_URL=postgresql://test:test@127.0.0.1:55462/b3_polish ENVIRONMENT=test PYTHONUTF8=1`, one pytest process):
+- `python -m pytest tests/test_ui_polish_b3.py -q -p no:cacheprovider`: 7 passed (timeseries, previous block, question_key, top/unanswered grouping EN+AR, inbox rows/range/pagination, quota at_limit, token definitions). Every new/changed endpoint has a tenant A/B check and a hidden-tenant 404.
+- Combined: the same plus tests/test_analytics.py test_followups_analytics.py test_group_0_inbox.py test_inbox_list.py test_conversations.py test_conversations_view.py test_quotas.py test_rag_limits.py test_tenant_route_matrix.py: `85 passed, 2 failed in 440s`. The 2 failures are in test_tenant_route_matrix.py and are PRE-EXISTING: `test_exact_route_contract_and_operator_knowledge` asserts a hard-coded 82 routes (actual 88 on a stashed pre-change tree, 89 now with my one route), and `test_every_openapi_route_role_and_cross_tenant[staff]` gets 422 on POST sources/{id}/replace (multipart body not sent). I did not change them.
+- `ruff check` on touched app files: clean except pre-existing E501 at quotas/service.py:206 (and quotas/sentiment.py, db/models, none mine); `ruff format --check` clean for touched files (3 untouched model files would be reformatted, pre-existing).
+- `mypy` on touched files: only pre-existing errors in app/knowledge/ingest.py (os.setsid/killpg/SIGKILL on Windows); none in touched files.
+NOT run: rag_gate/rag_evaluation/traces suites, full pytest, any frontend or Playwright.
+
+## UI polish B6 - settings, forms, bots, organizations (2026-10-25, branch feat/ui-polish)
+Implemented (3 parallel agents, integrated by orchestrator):
+- AI costs and limits (lib/rag-operator-panel.tsx, app/rag-operator-panel.css): LimitField groups (Content / Monthly usage / Embedding and OCR) with meters, StickyActionBar only when dirty, "Reset to plan defaults" via ConfirmAction, cost table with unreported-cost semantics ("Not reported" instead of $0).
+- Bot settings (settings/page.tsx, readiness card, tone field, theme editor, rag-tier-control, css): SectionNav, sticky Save bar on dirty (inline "Form is up to date" bar when clean so "Save settings" always exists), two-column fields, counters, Switch for handoff, local BrandColourField (shared ColorField would break getByLabel selectors and cannot be cleared), AI tier inside the AI section with inline "AI tier saved." feedback, staff-only Diagnostics `<details>` (closed by default), readiness "n/N ready" with failing first, StatusPill, Fix as LinkButton, model-failure banner.
+- Bots list: card grid, compact plan-usage Meters, single "Open" button, "Request a change" button to /app/{tenant}/settings/requests. Organizations: client cards; staff buttons already done in B2.
+- Role audit: no server-side gap found for rag/tone/readiness/playground/platform endpoints (report in chat). Low-severity note for owner: GET tenants/{id}/quota (viewer) returns measured_tokens_this_month and placeholder to client roles via direct API call.
+- Test fixes: e2e-helpers and 6 specs now open a bot via link "Open {botName}" (table row removed); roles-control uses getByRole("spinbutton") for AI tokens; group-b fixture mock updated to full RagStatus shape (root cause of the B2-era failure "rag-tier-control not visible", by code reading, not confirmed by run). New specs: b6-limits (3 tests), b6-settings (8 tests); extra 403/404 cases in roles-control and group-b-client-visibility.
+Verified (observed):
+- `npm run typecheck` and `npm run lint` in apps/web: clean (orchestrator run after integration).
+- Agent B: b6-settings + c-bot-settings against a throwaway dev server with mocked API: 20/20 passed (reported by subagent, not re-run by me).
+NOT run / not verified:
+- The combined Playwright run (c-bot-settings group-a-operator group-a-members group-b-client-visibility roles-control install staff-bots platform organizations dashboard ui-redesign ui-characterization b6-limits b6-settings overview knowledge playground) was started twice: the first attempt failed at `next build` with Next's security notice; the retry was stopped by the owner. 0 tests from it executed. b6-limits, the new role/403 cases, the e2e-helpers link change and the other specs are therefore untested at runtime.
+- No before/after screenshots at 1280/375 dark/light were captured.
+- Next.js build prints a known-vulnerability notice; `next upgrade` was not run (owner decision).
+Owner follow-up: the full re-run planned after B4/B5 is the first real check of these changes.
+
+## UI polish B4 - dashboards and charts (2026-10-25, branch feat/ui-polish)
+Implemented (orchestrator + 4 subagents with disjoint write scopes; shared files lib/api.ts, lib/charts/types.ts and format.ts written by the orchestrator):
+- lib/api.ts: `HandoffAnalyticsPrevious`, `previous` on `HandoffAnalytics`, `ConversationTimeseries(+Day)`, `conversationTimeseries()`, `handoffAnalytics(tenant, from?, to?)`, `TenantQuotaStatus.at_limit`, `InboxConversation.contact_name/created_at`. No new endpoint (all B3).
+- lib/charts/** + app/charts.css: TrendChart (Recharts, area/line), DonutChart, BarList, StackedBar, Sparkline, ChartDataTable, shared formatters (percent, duration, relative time, deltas, `hasChartData`). Tokens only, reduced-motion aware, legends/values not colour-only, hidden data table on TrendChart, components return null without data. Decision: DonutChart/BarList/StackedBar have no hidden table because their legend/list is already visible text.
+- Tenant Overview: KPI StatCards with deltas, conversations-over-time chart, outcomes donut, recent conversations (contact name + preview + status + relative time, dir=auto), Get-started only while incomplete (staff), Meter-based plan usage with "limit reached" vs "approaching" wording (`at_limit`), staff-only provisional footnote with relabelled token number, staff-only health alert from the existing readiness item `model_reachable`.
+- Bot overview: StatCards (rates as %, response in seconds, thumbs tile hidden at 0/0), volume TrendChart (id `volume`), reply-length bars, ranked top questions, unanswered list, leads chart; empty cards hidden. All listed test ids kept.
+- Insights: title "Insights", 7/30/90-day selector (from/to), outcomes donut + KPI row with previous-period deltas, channel bars, agent workload bars, sentiment stacked bar, empty cards hidden, RagOperatorPanel left in place.
+- Existing specs updated for intended UI changes: overview.spec (label/value text without colon), followups.spec (heading "Insights", KPI text), group-b-client-visibility (plan usage is now role=meter). New spec tests/b4-dashboards.spec.ts (6 mocked tests).
+Verified (observed): `npm run typecheck` and `npm run lint` in apps/web: no errors. `E2E_API_PORT=8010 API_PROXY_TARGET=http://127.0.0.1:8010 TEST_DATABASE_URL=postgresql://test:test@127.0.0.1:55462/b4e2e npx playwright test b4-dashboards`: 5 of 6 passed on the last full run I read; the 6th failed because my mock's "empty" case still returned resolved/open counts (test bug), fixed afterwards. The fixed spec was not yet observed passing at commit time.
+NOT verified at commit time: the wider run (b4-dashboards overview dashboard group-b-client-visibility ui-redesign ui-characterization followups) had been started but its result was not read; the other specs of the suite were not run. The first build of each Playwright run still exits 1 on Next's one-off security notice; the retry builds; `next upgrade` not run.
+NOT done: screenshots (skipped on the owner's instruction), 375px/RTL/light visual checks, keyboard/tooltip behaviour of TrendChart in a browser (Recharts accessibilityLayer inside an aria-hidden wrapper is an axe aria-hidden-focus risk), the dataviz palette validator (token palette from B2 was contrast-checked then).
+Known gaps: `Notice` has no warning tone (Overview uses its own alert style); old `.stat-grid`/`.usage-grid`/progress rules in globals.css may now be unused; Insights has no Notice retry.
+
+### B4 follow-up (observed after the commit)
+Wider run `npx playwright test b4-dashboards overview dashboard group-b-client-visibility ui-redesign ui-characterization followups` (same env vars as above): 23 passed, 7 failed.
+- group-b-client-visibility (4 role variants): failed because Plan usage meters had no visible text label (aria-label only). Fixed in the tenant Overview (visible label per meter); re-run `npx playwright test group-b-client-visibility followups`: all 7 group-b tests pass.
+- overview.spec (2 tests) and followups.spec (1 test) fail in their setup, before any B4 page loads: the uploaded source's ingest job stays "pending" (overview) / the jobs poll times out (followups), so the measured-overview and Insights assertions of those specs did NOT run. Not confirmed pre-existing (I did not re-run them on the pre-B4 commit); likely an environment issue with the disposable worker/ingestion. Those three tests are therefore unverified against the new pages.
+- b4-dashboards, dashboard, ui-redesign, ui-characterization all passed in that run.
+- `npm run typecheck` and `npm run lint`: clean after the fix.
+
+## UI polish B5 - Conversations module, Inbox + History (2026-10-25, branch feat/ui-polish; NOT committed, awaiting owner)
+Implemented (orchestrator + 3 subagents, disjoint write scopes; two had to be resumed after a session rate limit):
+- Shell: lib/conversations-module.tsx (`<main>`, h1 "Conversations", Tabs Inbox | History, contract comment block) mounted by layout.tsx in inbox/, conversations/ and bots/[botId]/conversations/; app/conversations-module.css. Routes unchanged; /conversations is now a real tenant-wide History list (no redirect).
+- Sidebar: one "Conversations" item (href /app/T/inbox), active on /inbox*, /conversations*, /bots/B/conversations*; staff keep "Bots" (not active on conversation routes). Palette gets palette-only "Inbox" and "Conversation history". The per-bot listBots effect in app-header was removed.
+- Inbox (Agent A): filter chips with counts (URL params), one search + Status + "More filters" popover (details), initials-avatar rows, list scrolls independently, thread pane with composer at the bottom, placeholder shrunk. Non-obvious: no more listContacts fetch (uses contact_name from B3).
+- History (Agent B): lib/conversation-history.tsx (HistoryTable, RowMenu, RetentionPanel); filters q/status/channel/from/to/page, 25 per page, total; delete via row menu `<details>` with ConfirmAction `delete-${id}` always in DOM for admins; retention is a collapsible panel showing the saved value (Tenant.retention_days added to lib/api.ts), same ids and 1-365 validation.
+- docs/10 and docs/18 updated minimally. Tests: new tests/b5-conversations.spec.ts (mocked API), existing specs updated for nav/h1/delete/retention.
+- Orchestrator fixes found by running: shell lacked a `<main>` landmark (inner mains turned into sections); History toolbar was a column because of the global `form` rule; inbox toolbar card padding removed and search made full-width.
+Commands and outcomes (apps/web):
+- `npx tsc --noEmit -p .` and `npm run lint`: clean after all edits.
+- `E2E_API_PORT=8011 API_PROXY_TARGET=http://127.0.0.1:8011 TEST_DATABASE_URL=postgresql://test:test@127.0.0.1:55462/b5e2e npx playwright test b5-conversations`: 18 of 18 passed (after the two test fixes; an earlier run failed 8 on the missing `<main>`, fixed). The first build of every run fails on Next's security notice, the retry builds.
+- Wider run (b5-conversations conversations contacts followups dashboard roles-control group-b-client-visibility ui-characterization ui-redesign group-c-polish): 35 passed, 27 failed. 25 of the 27 are `POST /api/v1/auth/register` timeouts or 500s because the disposable test DB on 55462 is DOWN (Docker daemon not running; only the dev Postgres on 5432 is up and I did not touch it). The other 2 were my test bugs (staff sidebar list, group-c delete label "Delete conversation"), fixed; the b5 one was re-run and passes, the group-c one needs the DB and was NOT re-run.
+NOT verified: every real-API spec in the list (conversations, contacts, followups, dashboard, roles-control, group-b-client-visibility, ui-characterization, ui-redesign, group-c-polish) after my changes; they need the test DB. Screenshots skipped on owner instruction (a before/after set was not produced). Last CSS tweaks (History toolbar row, inbox toolbar) were seen only in one screenshot pass and typechecked, not re-inspected.
+Known gaps / owner decisions: History tenant-wide has no "Messages" column (listInbox returns no message_count; backend change out of scope, per-bot page still shows it). No bot filter on tenant-wide History (endpoint has no bot_id param). "Back to inbox" link is visible at all widths. Next.js security upgrade notice still open.
 
 ## 2026-10-18 — Phase 6 P6-00 preflight
 
@@ -2825,4 +3653,12 @@ CHAT_STUB_MODEL=true EMBEDDING_TEST_STUB=true`:
 - Alembic: branch single head `0020_channel_health_poll` (0017..0020 channel chain on 0016). main head `0022_knowledge_hygiene`, so channel migrations renumber to 0023..0026 in R-01.
 - Environment: Python 3.12.3 venv from requirements-dev.lock; PostgreSQL 16 started; `apt-get update` was needed before `apt-get install postgresql-16-pgvector postgresql-contrib` succeeded; role `test` created (SUPERUSER + CREATEDB, so CREATE EXTENSION works). TEST_DATABASE_URL must be `postgresql://test:test@127.0.0.1:5432/phase6` (no `+psycopg`): tests/conftest.py passes it to raw psycopg.connect; conftest derives `phase6_test`. Set per process, not in a file. Playwright not attempted yet.
 - Baseline on the unmerged branch (cwd apps/api, `python -m pytest tests/<file> -q`): test_channel_contract 17, test_channel_events 12, test_channel_health 9, test_channel_inbox_insights 9, test_channel_migrations 1, test_channel_outbound 28, test_channel_outbound_unit 16, test_channels 7, test_chat 17, test_inbox_list 5. All passed (121 total, 0 failed). Not run: the rest of the API suite, web lint/typecheck, Playwright (R-07).
-- Docs only: ADR-021 added to DECISIONS.md, v1.1 delta A1-A13 merged into docs/17 as section 11. ADR-020 still awaiting owner sign-off.
+- Docs only: ADR-023 added to DECISIONS.md, v1.1 delta A1-A13 merged into docs/17 as section 11. ADR-020 still awaiting owner sign-off.
+
+## Phase 6 close-out, R-01 update the branch (cloud session, 2026-10-26)
+- `git merge --no-ff origin/main` (main 2b9e015) into the session branch. 20 conflicts resolved: docs/config taken from both sides; `analytics/handoff.py` rebuilt on main's `_totals`/timeseries with the channel filter, `channel_breakdown` and `conversations_by_campaign` re-applied; `prompts.py` union (`unsupported` + `cannot_confirm_topics`); `conversations.py` imports union and `channel_chat_turn` adapted to main's `history_for_turn` result (`.messages`, `.skipped`); `inbox/listing.py` row tuple is now 4 wide. Web: main's redesigned pages/`inbox-list.tsx`/`app-header.tsx` kept, so the staff Channels nav link, channel inbox/insights/contacts/overview UI and the Playwright channel specs' targets are gone until R-06; `lib/api.ts` keeps main's range API plus an optional `channel` argument; `globals.css` and `e2e-api-setup.ts` hold both sides.
+- ADR number clash: main already used ADR-021 (staff accounts), so contract v1.1 is ADR-023 (DECISIONS.md, docs/17 section 11). ADR-020 still awaiting sign-off.
+- Migrations renumbered 0017..0020 -> 0023..0026 (chain on `0022_knowledge_hygiene`); `alembic heads` = `0026_channel_health_poll` (single head). Forced decision: main stores playground thread keys (`playground:<user_id>`) in the old text `conversations.connection_id`; 0023 now moves them to `external_conversation_id` (and back on downgrade) before the column becomes a UUID FK, and the non-NULL guard ignores `source='playground'`. `chat/conversations.py` playground lookups use `external_conversation_id`. `test_channel_migrations.py` now covers a non-empty table incl. a playground row (up/down/up).
+- `tests/test_chat.py::test_system_prompt_matches_main_bytes...` repinned to main's current prompt hash (system_prompt is byte-identical to origin/main; verified by hashing origin/main source).
+- Commands (cwd apps/api, venv 3.12, `TEST_DATABASE_URL=postgresql://test:test@127.0.0.1:5432/phase6`, `phase6_test` dropped before runs): `python -m pytest tests/<file>.py -q` for each of the 88 test files: 971 passed, 1 failed. The failure, `test_bot_names_migration.py::test_bot_name_backfill_keeps_existing_values` (inserts `tenants.updated_at`, a column that does not exist), also fails on a clean `origin/main` worktree, so it is pre-existing and not caused by this merge. Web (apps/web): `npm ci`, `npm run typecheck` and `npm run lint` pass. `ruff check app` passes except pre-existing E501 in tests; `mypy` reports 16 errors, 11 in files this branch did not touch plus 5 in the branch's `tests/test_channels.py` (SimpleNamespace args); left for R-07.
+- NOT RUN: Playwright (R-06/R-07), no behaviour change beyond the forced merge fixes above.

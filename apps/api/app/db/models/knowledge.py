@@ -38,7 +38,7 @@ from app.db.models.types import TSVECTOR, VECTOR1024
 
 # --- allowed/checked values -------------------------------------------------
 SOURCE_KIND_VALUES = ("pdf", "docx", "txt", "md", "qa_csv")
-SOURCE_STATUS_VALUES = ("stored", "queued", "ingested", "failed")
+SOURCE_STATUS_VALUES = ("stored", "queued", "ingested", "failed", "removed")
 JOB_TYPE_VALUES = (
     "ingest_batch",
     "retention_purge",
@@ -150,7 +150,8 @@ class Source(Base):
     __table_args__ = (
         CheckConstraint("kind IN ('pdf', 'docx', 'txt', 'md', 'qa_csv')", name="ck_sources_kind"),
         CheckConstraint(
-            "status IN ('stored', 'queued', 'ingested', 'failed')", name="ck_sources_status"
+            "status IN ('stored', 'queued', 'ingested', 'failed', 'removed')",
+            name="ck_sources_status"
         ),
         CheckConstraint("size_bytes >= 0", name="ck_sources_size"),
         ForeignKeyConstraint(
@@ -225,6 +226,8 @@ class Document(Base):
     priority: Mapped[int] = mapped_column(default=0, server_default=sa_text("0"))
     text: Mapped[str] = mapped_column(Text, nullable=False)
     total_chars: Mapped[int] = mapped_column(nullable=False)
+    # Identical chunks of other sources dropped around this document (H2).
+    duplicates_removed: Mapped[int] = mapped_column(default=0, server_default=sa_text("0"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utcnow
     )
@@ -276,6 +279,9 @@ class KnowledgeRevision(Base):
     status: Mapped[str] = mapped_column(Text, nullable=False, default="draft")
     created_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Set only while EVERY chunk of this revision carries this embedding identity
+    # (the backfill sets it; ingest into the draft clears it). NULL = keyword-only.
+    embedding_model: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utcnow
     )

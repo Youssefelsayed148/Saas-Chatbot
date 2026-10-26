@@ -35,7 +35,7 @@ on this deployment.
 |---|---|---|
 | parent → iframe | `chatbot:locator` | the loader hands over the locator |
 | iframe → parent | `chatbot:ready` | frame booted; parent answers with the locator |
-| iframe → parent | `chatbot:size` | auto-height inside `window.innerHeight` bounds |
+| iframe → parent | `chatbot:size` | informational only: the loader CSS owns the panel height (clamp 320-640px, never above the bubble); the frame reports intrinsic content height, kept for older loaders |
 | iframe → parent | `chatbot:brand` | colour/position/dir so the bubble matches settings (P4-03) |
 | iframe → parent | `chatbot:close` | Escape pressed inside the frame |
 

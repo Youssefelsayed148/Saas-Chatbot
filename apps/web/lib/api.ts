@@ -9,22 +9,32 @@
 export const SESSION_COOKIE = "chatbot_session";
 export const CSRF_COOKIE = "chatbot_csrf";
 
+/** Per-field validation detail (docs/05): dotted field path + message. */
+export interface FieldError {
+  field: string;
+  message: string;
+}
+
 export class ApiError extends Error {
   readonly code: string;
   readonly status: number;
   readonly requestId: string | undefined;
+  /** 422 field details, when the API sent them; empty otherwise. */
+  readonly fieldErrors: FieldError[];
 
   constructor(
     code: string,
     status: number,
     message: string,
     requestId?: string,
+    fieldErrors: FieldError[] = [],
   ) {
     super(message);
     this.name = "ApiError";
     this.code = code;
     this.status = status;
     this.requestId = requestId;
+    this.fieldErrors = fieldErrors;
   }
 }
 
@@ -84,6 +94,30 @@ export interface HandoffAnalytics {
   resolved_vs_open: { resolved: number; open: number };
   sentiment_distribution: Record<string, number>;
   agent_workload: Record<string, number>;
+  /** Same-length window immediately before `from`..`to` (B3 BE-2). Optional: older mocks omit it. */
+  previous?: HandoffAnalyticsPrevious;
+}
+
+export interface HandoffAnalyticsPrevious {
+  from: string;
+  to: string;
+  total_conversations: number;
+  handoff_count: number;
+  handoff_rate: number | null;
+  average_first_human_reply_seconds: number | null;
+}
+
+/** One UTC day, zero-filled by the API (B3 BE-1). Website conversations only. */
+export interface ConversationTimeseriesDay {
+  day: string;
+  conversations: number;
+  handoffs: number;
+  resolved: number;
+}
+export interface ConversationTimeseries {
+  from: string;
+  to: string;
+  days: ConversationTimeseriesDay[];
 }
 
 export interface ChannelBreakdownRow {
@@ -200,14 +234,34 @@ export function cancelFollowUp(
   });
 }
 
+/** `from`/`to` are inclusive ISO dates (YYYY-MM-DD); both omitted = last 30 days. */
+function rangeQuery(from?: string, to?: string): string {
+  const query = new URLSearchParams();
+  if (from) query.set("from", from);
+  if (to) query.set("to", to);
+  return query.size ? `?${query.toString()}` : "";
+}
+
 export function handoffAnalytics(
   tenantId: string,
-  filters: { channel?: string } = {},
+  from?: string,
+  to?: string,
+  channel?: string,
 ): Promise<HandoffAnalytics> {
-  const query = new URLSearchParams();
-  if (filters.channel) query.set("channel", filters.channel);
+  const query = new URLSearchParams(rangeQuery(from, to).replace(/^\?/, ""));
+  if (channel) query.set("channel", channel);
   const suffix = query.size ? `?${query.toString()}` : "";
   return api<HandoffAnalytics>(`tenants/${tenantId}/analytics${suffix}`);
+}
+
+export function conversationTimeseries(
+  tenantId: string,
+  from?: string,
+  to?: string,
+): Promise<ConversationTimeseries> {
+  return api<ConversationTimeseries>(
+    `tenants/${tenantId}/analytics/timeseries${rangeQuery(from, to)}`,
+  );
 }
 
 export interface Membership {
@@ -233,6 +287,8 @@ export interface Tenant {
   name: string;
   slug: string;
   status: string;
+  /** Message retention override in days; null means the deployment default. */
+  retention_days?: number | null;
   created_at: string;
 }
 
@@ -248,6 +304,7 @@ export interface Bot {
     welcome_message?: { en?: string; ar?: string };
     opening_questions?: string[];
     default_language?: "en" | "ar";
+    knowledge_language?: "en" | "ar";
     support_email?: string;
     support_phone?: string;
     colour?: string;
@@ -255,7 +312,19 @@ export interface Bot {
     handoff_enabled?: boolean;
     allowed_domains?: string[];
     avatar?: string;
+    /** Widget colour slots and preset id (#14); absent = default look. */
+    theme?: {
+      preset?: string;
+      header?: string;
+      send_button?: string;
+      user_bubble?: string;
+      bot_bubble?: string;
+      text?: string;
+      launcher?: string;
+    };
   };
+  /** Staff-only; the API blanks it for members (#15). */
+  tone_and_rules?: string | null;
   widget_locator?: string;
   created_at: string;
   updated_at: string;
@@ -339,10 +408,33 @@ export interface PlatformTenantDetail {
     slug: string;
     status: string;
     plan_label: string;
+    created_at: string;
   };
-  bots: Array<{ id: string; name: string; status: string; published: boolean }>;
+  counts: { members: number; bots: number };
+  quota: {
+    placeholder: true;
+    plan: string;
+    usage: Record<string, number>;
+    limits: Record<string, number>;
+  };
+  bots: Array<{
+    id: string;
+    name: string;
+    status: string;
+    published: boolean;
+    widget_state: string;
+    source_count: number;
+    last_ingestion_job_status: string | null;
+    published_revision_id: string | null;
+    published_at: string | null;
+  }>;
   failed_jobs: Array<{ id: string; type: string; error: string | null }>;
-  members: Array<{ user_id: string; email: string; role: string }>;
+  members: Array<{
+    user_id: string;
+    email: string;
+    role: string;
+    status: string;
+  }>;
   pending_invitations: Array<{ id: string; email: string; role: string }>;
   recent_audit: Array<{
     action: string;
@@ -390,7 +482,10 @@ export interface TenantQuotaStatus {
   plan: string;
   usage: Record<string, number>;
   limits: Record<string, number>;
+  /** Counters at 80% or more of the limit. */
   warnings: string[];
+  /** Subset of `warnings` with used >= limit (B3 BE-7); the rest are approaching. */
+  at_limit?: string[];
   measured_tokens_this_month: number;
 }
 
@@ -576,19 +671,6 @@ export async function platformPauseBot(
   });
 }
 
-export interface PlatformOnboardingResult {
-  request_id: string;
-  status: string;
-  result?: {
-    tenant_id?: string;
-    tenant_slug?: string;
-    bot_id?: string | null;
-    admin_invite?: { link_path?: string };
-    files?: Array<{ display?: string; bot_id?: string }>;
-  };
-  replayed?: boolean;
-}
-
 export interface ConversationDetailResponse {
   conversation: Conversation;
   messages: Array<{
@@ -615,6 +697,9 @@ export interface InboxConversation {
   id: string;
   bot_id: string;
   contact_id: string | null;
+  /** Null when the conversation has no contact yet (B3 BE-6). */
+  contact_name?: string | null;
+  created_at?: string;
   channel: string;
   mode: string;
   status: string;
@@ -669,7 +754,7 @@ export interface InboxThread {
 
 export async function listInbox(
   tenantId: string,
-  filters: Record<string, string | boolean | undefined> = {},
+  filters: Record<string, string | number | boolean | undefined> = {},
 ): Promise<InboxResponse> {
   const query = new URLSearchParams();
   for (const [key, value] of Object.entries(filters)) {
@@ -833,13 +918,13 @@ export function csrfHeader(): Record<string, string> {
 }
 
 interface ApiOptions {
-  method?: "GET" | "POST" | "PATCH" | "DELETE";
+  method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   body?: unknown;
   /** Accept 401 responses instead of triggering the global sign-out redirect. */
   tolerate401?: boolean;
 }
 
-const WRITES_REQUIRING_CSRF = new Set(["POST", "PATCH", "DELETE"]);
+const WRITES_REQUIRING_CSRF = new Set(["POST", "PATCH", "PUT", "DELETE"]);
 
 export async function api<T>(
   path: string,
@@ -873,7 +958,12 @@ export async function api<T>(
   if (!response.ok) {
     const error = (
       payload as {
-        error?: { code?: string; message?: string; request_id?: string };
+        error?: {
+          code?: string;
+          message?: string;
+          request_id?: string;
+          details?: { fields?: FieldError[] };
+        };
       }
     )?.error;
     // Global rule: an expired/invalid session sends the user back to the login page.
@@ -890,6 +980,7 @@ export async function api<T>(
       response.status,
       error?.message ?? `Request failed (${response.status}).`,
       error?.request_id,
+      error?.details?.fields ?? [],
     );
   }
   return payload as T;
@@ -931,6 +1022,18 @@ export async function logout(): Promise<void> {
   } finally {
     void 0;
   }
+}
+
+export async function changePassword(
+  currentPassword: string,
+  newPassword: string,
+): Promise<void> {
+  // On success the API rotates this session (fresh cookie) and revokes every
+  // other session of the user; this context stays signed in.
+  await api<unknown>("auth/change-password", {
+    method: "POST",
+    body: { current_password: currentPassword, new_password: newPassword },
+  });
 }
 
 export async function me(): Promise<Me> {
@@ -1007,12 +1110,32 @@ export async function patchBot(
     name?: string;
     status?: "active" | "paused";
     config?: Record<string, unknown>;
+    tone_and_rules?: string | null;
   },
 ): Promise<Bot> {
   return api<Bot>(`tenants/${tenantId}/bots/${botId}`, {
     method: "PATCH",
     body: patch,
   });
+}
+
+export type ReadinessStatus = "ok" | "todo" | "warning";
+export interface ReadinessItem {
+  id: string;
+  label: string;
+  status: ReadinessStatus;
+  detail: string;
+  section: "contact" | "messages" | "access" | "knowledge" | "tier";
+}
+export interface Readiness {
+  ready: boolean;
+  items: ReadinessItem[];
+}
+export async function getBotReadiness(
+  tenantId: string,
+  botId: string,
+): Promise<Readiness> {
+  return api<Readiness>(`tenants/${tenantId}/bots/${botId}/readiness`);
 }
 
 export async function archiveBot(
@@ -1132,6 +1255,104 @@ export async function platformMe(): Promise<Me> {
   return api<Me>("platform/me");
 }
 
+export interface PlatformBotRow {
+  id: string;
+  name: string;
+  organization: { id: string; name: string };
+  status: string;
+  widget_state: string;
+  source_count: number;
+  last_ingestion_job_status: string | null;
+  published_revision_id: string | null;
+}
+export function platformBots(query = "") {
+  return api<{ bots: PlatformBotRow[]; total: number }>(
+    `platform/bots?${query}`,
+  );
+}
+export function platformCreateBot(organization_id: string, name: string) {
+  return api<Bot>("platform/bots", {
+    method: "POST",
+    body: { organization_id, name },
+  });
+}
+
+export type ClientRole = Role;
+export interface StaffUser {
+  id: string;
+  email: string;
+  phone: string | null;
+  is_active: boolean;
+  created_at: string;
+  memberships: Array<{
+    organization_id: string;
+    organization_name: string;
+    role: ClientRole;
+    status: string;
+  }>;
+}
+export interface PasswordChoice {
+  password?: string;
+  generate?: boolean;
+}
+export interface IssuedUser {
+  user: StaffUser;
+  generated_password: string | null;
+}
+export function platformUsers(query = "") {
+  return api<{ users: StaffUser[]; total: number }>(`platform/users?${query}`);
+}
+export function platformUser(id: string) {
+  return api<StaffUser>(`platform/users/${id}`);
+}
+export function platformCreateUser(
+  body: PasswordChoice & {
+    email: string;
+    phone?: string;
+    organization_id?: string;
+    role?: ClientRole;
+  },
+) {
+  return api<IssuedUser>("platform/users", { method: "POST", body });
+}
+export function platformAssignUser(
+  id: string,
+  organization_id: string,
+  role: ClientRole,
+) {
+  return api<StaffUser>(`platform/users/${id}/memberships`, {
+    method: "POST",
+    body: { organization_id, role },
+  });
+}
+export function platformUserRole(
+  id: string,
+  organization: string,
+  role: ClientRole,
+) {
+  return api<StaffUser>(`platform/users/${id}/memberships/${organization}`, {
+    method: "PATCH",
+    body: { role },
+  });
+}
+export function platformRemoveUser(id: string, organization: string) {
+  return api<void>(`platform/users/${id}/memberships/${organization}`, {
+    method: "DELETE",
+  });
+}
+export function platformResetPassword(id: string, body: PasswordChoice) {
+  return api<IssuedUser>(`platform/users/${id}/password`, {
+    method: "POST",
+    body,
+  });
+}
+export function platformUserActive(id: string, active: boolean) {
+  return api<StaffUser>(
+    `platform/users/${id}/${active ? "reactivate" : "deactivate"}`,
+    { method: "POST" },
+  );
+}
+
 export async function platformTenants(query: string): Promise<{
   tenants: PlatformTenantRow[];
   total: number;
@@ -1148,6 +1369,41 @@ export async function platformTenantDetail(
   return api<PlatformTenantDetail>(`platform/tenants/${tenantId}`);
 }
 
+export async function platformCreateOrganization(payload: {
+  name: string;
+  plan_label: string;
+}): Promise<{
+  id: string;
+  name: string;
+  slug: string;
+  plan_label: string;
+  status: string;
+  created_at: string;
+}> {
+  return api("platform/tenants", { method: "POST", body: payload });
+}
+
+export async function platformUpdateOrganization(
+  tenantId: string,
+  payload: { name: string; status: string },
+): Promise<{
+  id: string;
+  name: string;
+  slug: string;
+  plan_label: string;
+  status: string;
+  created_at: string;
+}> {
+  return api(`platform/tenants/${tenantId}`, {
+    method: "PATCH",
+    body: payload,
+  });
+}
+
+export async function platformPlanOptions(): Promise<PlatformQuotaPlans> {
+  return api("platform/quotas");
+}
+
 /** Fetch every staff-visible organization, including those beyond the API page cap. */
 export async function allPlatformTenants(): Promise<PlatformTenantRow[]> {
   const tenants: PlatformTenantRow[] = [];
@@ -1159,43 +1415,6 @@ export async function allPlatformTenants(): Promise<PlatformTenantRow[]> {
     if (page.tenants.length === 0) break;
   } while (tenants.length < total);
   return tenants;
-}
-
-export async function platformOnboard(
-  payload: {
-    client_name: string;
-    admin_email: string;
-    bot_name: string | null;
-  },
-  idempotencyKey: string,
-  files: FileList | null,
-): Promise<PlatformOnboardingResult> {
-  const form = new FormData();
-  form.set("client_name", payload.client_name);
-  form.set("admin_email", payload.admin_email);
-  if (payload.bot_name) form.set("bot_name", payload.bot_name);
-  if (files) Array.from(files).forEach((file) => form.append("files", file));
-  const headerValue = readCookie(CSRF_COOKIE) ?? csrfToken;
-  const response = await fetch(`/api/v1/platform/onboarding`, {
-    method: "POST",
-    headers: {
-      "Idempotency-Key": idempotencyKey,
-      ...(headerValue ? { "X-CSRF-Token": headerValue } : {}),
-    },
-    credentials: "same-origin",
-    body: form,
-  });
-  if (!response.ok) {
-    const errorPayload = (await response.json().catch(() => null)) as {
-      error?: { code?: string; message?: string };
-    } | null;
-    throw new ApiError(
-      errorPayload?.error?.code ?? "UNKNOWN_ERROR",
-      response.status,
-      errorPayload?.error?.message ?? `Onboarding failed (${response.status}).`,
-    );
-  }
-  return (await response.json()) as PlatformOnboardingResult;
 }
 
 export async function listMembers(tenantId: string): Promise<Member[]> {
@@ -1269,7 +1488,8 @@ export async function acceptInvitation(token: string): Promise<Me> {
 // --- knowledge (P2) ---------------------------------------------------------
 
 export type KnowledgeSourceKind = "pdf" | "docx" | "txt" | "md" | "qa_csv";
-export type KnowledgeSourceStatus = "stored" | "queued" | "ingested" | "failed";
+export type KnowledgeSourceStatus =
+  "stored" | "queued" | "ingested" | "failed" | "removed";
 
 export interface KnowledgeSource {
   id: string;
@@ -1284,6 +1504,11 @@ export interface KnowledgeSource {
   valid_rows: number | null;
   total_rows: number | null;
   created_at: string;
+  /** Reserved evidence slots for this file's documents. */
+  always_include: boolean;
+  /** Upload only: this file matched an existing source, nothing new was stored. */
+  duplicate: boolean;
+  message: string | null;
 }
 
 export type KnowledgeJobStatus =
@@ -1340,6 +1565,12 @@ export interface KnowledgeRevision {
   is_current: boolean;
   document_count: number;
   chunk_count: number;
+  embedding?: {
+    ready: boolean;
+    embedded_chunks: number;
+    chunk_count: number;
+    retrieval_mode: "hybrid" | "keyword_only";
+  };
 }
 
 export interface RevisionsResponse {
@@ -1385,6 +1616,61 @@ export async function uploadSources(
     );
   }
   return (payload ?? []) as KnowledgeSource[];
+}
+
+/** Upload a new version of a source; ingest again to apply it. */
+export async function replaceSource(
+  tenantId: string,
+  botId: string,
+  sourceId: string,
+  file: File,
+): Promise<KnowledgeSource> {
+  const form = new FormData();
+  form.append("file", file);
+  const response = await fetch(
+    `/api/v1/${KNOWLEDGE_ROOT(tenantId, botId)}/sources/${sourceId}/replace`,
+    {
+      method: "POST",
+      headers: csrfHeader(),
+      credentials: "same-origin",
+      body: form,
+    },
+  );
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    const error = (
+      payload as { error?: { code?: string; message?: string } } | null
+    )?.error;
+    throw new ApiError(
+      error?.code ?? "UNKNOWN_ERROR",
+      response.status,
+      error?.message ?? `Replace failed (${response.status}).`,
+    );
+  }
+  return payload as KnowledgeSource;
+}
+
+/** Remove a file from the draft; published knowledge is unchanged until publish. */
+export async function deleteSource(
+  tenantId: string,
+  botId: string,
+  sourceId: string,
+): Promise<void> {
+  await api<void>(`${KNOWLEDGE_ROOT(tenantId, botId)}/sources/${sourceId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function setSourceAlwaysInclude(
+  tenantId: string,
+  botId: string,
+  sourceId: string,
+  enabled: boolean,
+): Promise<KnowledgeSource> {
+  return api<KnowledgeSource>(
+    `${KNOWLEDGE_ROOT(tenantId, botId)}/sources/${sourceId}/always-include`,
+    { method: "PUT", body: { enabled } },
+  );
 }
 
 export async function qaTemplateHref(
@@ -1525,10 +1811,123 @@ export async function playgroundTurn(
   tenantId: string,
   botId: string,
   text: string,
+  knowledge: PlaygroundKnowledge = "published",
 ): Promise<PlaygroundTurnResponse> {
   return api<PlaygroundTurnResponse>(
     `tenants/${tenantId}/bots/${botId}/playground/messages`,
-    { method: "POST", body: { text } },
+    { method: "POST", body: { text, knowledge } },
+  );
+}
+
+/** Which knowledge a playground turn answers from (staff preview of the draft). */
+export type PlaygroundKnowledge = "published" | "draft";
+
+/** The stream broke before a `done` event arrived (network, provider or
+ * server error inside the stream). The caller falls back to the buffered turn. */
+export class PlaygroundStreamFailure extends Error {}
+
+export interface PlaygroundStreamHandlers {
+  signal: AbortSignal;
+  /** Text the model released so far (appended). */
+  onDelta: (text: string) => void;
+  /** The canned refusal replaces any model text. */
+  onCannotConfirm: (text: string) => void;
+}
+
+/**
+ * One playground turn over the staff SSE route (the website widget's stream
+ * with the same reconciliation). Resolves with the authoritative `done`
+ * payload. HTTP refusals (403/404/422/503...) throw ApiError exactly like the
+ * buffered call; anything that breaks mid-stream throws PlaygroundStreamFailure.
+ * An aborted signal rejects with its AbortError; the server then persists nothing.
+ */
+export async function playgroundTurnStream(
+  tenantId: string,
+  botId: string,
+  text: string,
+  handlers: PlaygroundStreamHandlers,
+  knowledge: PlaygroundKnowledge = "published",
+): Promise<PlaygroundTurnResponse> {
+  const response = await fetch(
+    `/api/v1/tenants/${tenantId}/bots/${botId}/playground/messages/stream`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...csrfHeader() },
+      credentials: "same-origin",
+      body: JSON.stringify({ text, knowledge }),
+      signal: handlers.signal,
+    },
+  );
+  rememberCsrfFrom(response.headers);
+  if (!response.ok || !response.body) {
+    let error:
+      { code?: string; message?: string; request_id?: string } | undefined;
+    try {
+      error = ((await response.json()) as { error?: typeof error }).error;
+    } catch {
+      error = undefined;
+    }
+    if (response.ok) throw new PlaygroundStreamFailure("No stream body.");
+    throw new ApiError(
+      error?.code ?? "UNKNOWN_ERROR",
+      response.status,
+      error?.message ?? `Request failed (${response.status}).`,
+      error?.request_id,
+      [],
+    );
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let done: PlaygroundTurnResponse | null = null;
+  try {
+    for (;;) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      buffer += decoder.decode(chunk.value, { stream: true });
+      let boundary = buffer.indexOf("\n\n");
+      while (boundary !== -1) {
+        const block = buffer.slice(0, boundary);
+        buffer = buffer.slice(boundary + 2);
+        boundary = buffer.indexOf("\n\n");
+        let event = "message";
+        const data: string[] = [];
+        for (const line of block.split("\n")) {
+          if (line.startsWith("event:")) event = line.slice(6).trim();
+          else if (line.startsWith("data:"))
+            data.push(line.slice(5).trimStart());
+        }
+        if (data.length === 0) continue; // comment / keep-alive
+        const payload = JSON.parse(data.join("\n")) as Record<string, unknown>;
+        if (event === "delta") handlers.onDelta(String(payload.text ?? ""));
+        else if (event === "cannot_confirm")
+          handlers.onCannotConfirm(String(payload.text ?? ""));
+        else if (event === "done")
+          done = payload as unknown as PlaygroundTurnResponse;
+        else if (event === "error")
+          throw new PlaygroundStreamFailure(
+            String(payload.message ?? "Stream error."),
+          );
+      }
+    }
+  } catch (caught) {
+    if (handlers.signal.aborted || caught instanceof PlaygroundStreamFailure)
+      throw caught;
+    throw new PlaygroundStreamFailure(
+      caught instanceof Error ? caught.message : "The stream failed.",
+    );
+  }
+  if (!done) throw new PlaygroundStreamFailure("The stream ended early.");
+  return done;
+}
+
+export async function playgroundNewSession(
+  tenantId: string,
+  botId: string,
+): Promise<PlaygroundConversation> {
+  return api<PlaygroundConversation>(
+    `tenants/${tenantId}/bots/${botId}/playground/conversation/new`,
+    { method: "POST" },
   );
 }
 
@@ -1536,6 +1935,29 @@ export interface PlaygroundConversation {
   conversation_id: string;
   message_count: number;
   messages: PlaygroundMessage[];
+}
+
+export interface ProviderAttempt {
+  attempt: number;
+  model: string;
+  /** ok | failed | blocked | unusable | timeout | network | budget_exhausted */
+  outcome: string;
+  http_status: number | null;
+  error_code: string | null;
+  finish_reason: string | null;
+  /** ok | empty | not_json | truncated | bad_envelope (200 responses only). */
+  content: string | null;
+  compat_retry: boolean;
+}
+
+export interface ProviderError {
+  status: number | string | null;
+  model: string | null;
+  http_status?: number | null;
+  error_code?: string | null;
+  finish_reason?: string | null;
+  content?: string | null;
+  attempts?: ProviderAttempt[];
 }
 
 export interface RagTrace {
@@ -1548,6 +1970,68 @@ export interface RagTrace {
     model: string | null;
     tokens: Record<string, number> | null;
     cost_usd: string | null;
+    /** Present when the provider call failed: status, the last attempt's model,
+     * HTTP status and sanitized error code, plus one record per model tried. */
+    provider_error?: ProviderError;
+    degradation_reason?: string | null;
+    streamed?: boolean;
+    stream_mode?: string;
+    time_to_first_token_ms?: number | null;
+    stream_invalid_reason?: string | null;
+    prompt_version?: string;
+    history_count?: number;
+    history_skipped_count?: number;
+    parsed_ok?: boolean;
+    /** Why a model reply was unusable: parse_failed | no_valid_source | post_check_rejected. */
+    invalid_output_reason?: string;
+    model_can_answer?: boolean | null;
+    model_source_count?: number;
+    kept_source_count?: number;
+    reconciled?: boolean;
+    revision_id?: string | null;
+    /** "draft" when a staff playground turn answered from draft knowledge. */
+    revision_kind?: "published" | "draft";
+    tier?: string | null;
+    generation_provider?: string | null;
+    applied_language?: string | null;
+    retrieval_query?: string | null;
+    fallback_query?: string | null;
+    rewrite_text?: string | null;
+    handoff_reason?: string | null;
+    skipped_steps?: string[];
+    /** Top candidates the gate rejected when no evidence reached the model. */
+    rejected_candidates?: {
+      document_title: string;
+      chunk_id: string;
+      locator: string;
+      vector_similarity: number | null;
+      fts_match: number;
+      rrf_score: number;
+      reason: string;
+    }[];
+    /** Which gate rule failed for a refused turn and how near the leader came. */
+    refusal_diagnosis?: {
+      outcome: "no_candidates" | "gate_rejected_all";
+      candidates: number;
+      failed_rules: string[];
+      rule_counts: Record<string, number>;
+      nearest: {
+        document_title: string;
+        locator: string;
+        cosine: number | null;
+        cosine_floor?: number | null;
+        fts_match: number;
+        fts_minimum?: number;
+        matched_terms: number;
+        required_terms?: number;
+        failed_rules?: string[];
+      } | null;
+      best: {
+        cosine: number | null;
+        fts_match: number;
+        matched_terms: number;
+      } | null;
+    } | null;
     chunks: {
       chunk_id: string;
       title: string;
@@ -1555,6 +2039,23 @@ export interface RagTrace {
       vector_similarity: number | null;
       fts_match: number;
       accepted: boolean;
+      query_terms?: string[];
+      matched_terms?: string[];
+      matched_term_count?: number;
+      query_term_count?: number;
+      gate?: {
+        passed: boolean;
+        accepted_by: string | null;
+        reason: string;
+        cosine: {
+          value: number | null;
+          floor: number | null;
+          passed: boolean | null;
+        };
+        terms: { matched: number; required: number; passed: boolean };
+        fts: { value: number; minimum: number; passed: boolean };
+        top_result: boolean | null;
+      };
     }[];
   };
 }
@@ -1611,9 +2112,14 @@ export async function patchRagLimits(
   });
 }
 export type RagTier = "standard" | "premium";
+export interface TierTarget {
+  provider: string;
+  model: string | null;
+}
 export interface RagStatus {
   retrieval_mode: string;
   tier: RagTier;
+  tier_targets: { standard: TierTarget; premium: TierTarget };
   active_embedding_model: string | null;
   embedding_ready: boolean;
   backfill: {

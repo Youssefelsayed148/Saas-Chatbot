@@ -18,6 +18,23 @@ import {
   type CSSProperties,
 } from "react";
 
+import {
+  brandInk,
+  launcherColour,
+  themeStyleVars,
+  themeVariant,
+  type WidgetTheme,
+} from "@/lib/widget-theme";
+import { widgetStyles } from "@/lib/widget-styles";
+import {
+  handoffFromTurn,
+  nextPollDelay,
+  parsePollHint,
+  POLL_HINT_HEADER,
+  shouldPoll,
+  type PollHint,
+} from "@/lib/widget-polling";
+
 type CitedSource = {
   chunk_id: string;
   title: string | null;
@@ -34,6 +51,8 @@ type WidgetConfig = {
   position: "left" | "right";
   default_language: "en" | "ar";
   dir: "ltr" | "rtl";
+  /** Optional per-slot colours (#14); absent = today's look. */
+  theme?: WidgetTheme;
 };
 
 type LeadFormState = {
@@ -111,6 +130,7 @@ function localized(key: string, lang: string): string {
       ar: "نبدأ جلسة جديدة…",
     },
     typing: { en: "The assistant is typing…", ar: "المساعد يكتب…" },
+    stop: { en: "Stop", ar: "إيقاف" },
     cite: { en: "Sources", ar: "المصادر" },
     open: { en: "Open chat window", ar: "افتح نافذة المحادثة" },
     scroll: { en: "Scroll to bottom", ar: "الانتقال إلى الأسفل" },
@@ -129,8 +149,50 @@ function localized(key: string, lang: string): string {
   return lang === "ar" ? entry.ar : entry.en;
 }
 
+// The in-flight assistant bubble while a reply streams in (S.5). It is
+// replaced by the persisted message id when the server sends `done`.
+const STREAMING_TURN_ID = "streaming-reply";
+
+interface DonePayload {
+  kind?: string;
+  visitor_message: { id: string; created_at: string };
+  ai_message: {
+    id: string;
+    text: string;
+    citations: CitedSource[];
+    needs_human: boolean;
+    created_at: string;
+  } | null;
+}
+
+/** Parse one SSE block ("event: x\ndata: {...}"); comments yield null. */
+function parseSseBlock(block: string): { event: string; data: unknown } | null {
+  let event = "";
+  const dataLines: string[] = [];
+  for (const line of block.split("\n")) {
+    if (line.startsWith("event:")) event = line.slice(6).trim();
+    else if (line.startsWith("data:"))
+      dataLines.push(line.slice(5).trimStart());
+  }
+  if (!event || dataLines.length === 0) return null;
+  try {
+    return { event, data: JSON.parse(dataLines.join("\n")) };
+  } catch {
+    return null;
+  }
+}
+
 function localTurnId(): string {
   return `local-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
+}
+
+function embedPageHost(): string | null {
+  // The parent loader appends the EMBEDDING page's location.hostname to the
+  // frame URL (docs/09 §host). It is a spoofable defence signal (docs/06),
+  // not authentication; the frame CSP is the browser-enforced guard.
+  const host = new URL(window.location.href).searchParams.get("host");
+  const trimmed = host?.trim() ?? "";
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 function widgetDebugEnabled(): boolean {
@@ -195,7 +257,7 @@ async function ensureSessionFor(
   const response = await fetch(`/api/public/v1/widgets/${locator}/sessions`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ page_origin: null }),
+    body: JSON.stringify({ page_origin: embedPageHost() }),
   });
   if (!response.ok) {
     const payload = (await response.json().catch(() => null)) as {
@@ -233,15 +295,6 @@ class ApiCodeError extends Error {
   }
 }
 
-function brandInk(colour?: string) {
-  if (!colour || !/^#[0-9a-f]{6}$/i.test(colour)) return "var(--ink-light)";
-  const rgb = [1, 3, 5]
-    .map((i) => parseInt(colour.slice(i, i + 2), 16) / 255)
-    .map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
-  return 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2] > 0.179
-    ? "var(--ink-dark)"
-    : "var(--ink-light)";
-}
 export default function WidgetFramePage() {
   const [status, setStatus] = useState<"loading" | "ready" | "error">(
     "loading",
@@ -261,11 +314,24 @@ export default function WidgetFramePage() {
     error: null,
   });
   const [typing, setTyping] = useState(false);
+  // True from the first streamed character until the turn ends (S.5).
+  const [streaming, setStreaming] = useState(false);
+  // Final text of a streamed reply, announced once at `done` (not per token).
+  const [announce, setAnnounce] = useState("");
+  const abortRef = useRef<AbortController | null>(null);
+  const turnActiveRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const locatorRef = useRef<string | null>(null);
   const sessionRef = useRef<{ id: string; token: string } | null>(null);
   const lastPollAtRef = useRef<string | null>(null);
   const pollingRef = useRef(false);
+  // Polling rules (H5): the server's X-Poll-Hint wins; a handoff seen in a turn
+  // keeps polling on until the first hint arrives. Errors back off exponentially.
+  const pollHintRef = useRef<PollHint | null>(null);
+  const handoffRef = useRef(false);
+  const pollErrorsRef = useRef(0);
+  const pollTimerRef = useRef<number | null>(null);
+  const schedulePollRef = useRef<(delayMs?: number) => void>(() => undefined);
   const lang = config?.default_language ?? "en";
   const dir = config?.dir ?? "ltr";
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -279,6 +345,18 @@ export default function WidgetFramePage() {
     if (text) {
       setTurns([{ id: "welcome", role: "assistant", text }]);
     }
+  }
+
+  function applyPollHint(response: Response) {
+    const hint = parsePollHint(response.headers.get(POLL_HINT_HEADER));
+    if (hint) pollHintRef.current = hint;
+  }
+
+  /** A turn that handed over to a human (re)starts polling until the server says idle. */
+  function noteHandoff(kind?: string | null, needsHuman?: boolean | null) {
+    if (!handoffFromTurn(kind, needsHuman)) return;
+    handoffRef.current = true;
+    pollHintRef.current = null;
   }
 
   async function resumeHistory(
@@ -308,6 +386,8 @@ export default function WidgetFramePage() {
       created_at: string;
     }>;
     lastPollAtRef.current = rows.at(-1)?.created_at ?? null;
+    applyPollHint(response);
+    schedulePollRef.current();
     const restored: Turn[] = rows.map((row) => ({
       id: row.id,
       role: row.sender_type === "visitor" ? "visitor" : "assistant",
@@ -324,7 +404,7 @@ export default function WidgetFramePage() {
 
   async function pollSession() {
     const session = sessionRef.current;
-    if (!session || pollingRef.current) return;
+    if (!session || pollingRef.current || turnActiveRef.current) return;
     pollingRef.current = true;
     try {
       const since = lastPollAtRef.current
@@ -336,11 +416,14 @@ export default function WidgetFramePage() {
         { headers: { "X-Session-Token": session.token } },
       );
       if (!response.ok) {
+        pollErrorsRef.current += 1;
         if (widgetDebugEnabled()) {
           console.debug("[widget-debug] poll response", response.status);
         }
         return;
       }
+      pollErrorsRef.current = 0;
+      applyPollHint(response);
       const rows = (await response.json()) as Array<{
         id: string;
         sender_type: string;
@@ -381,20 +464,72 @@ export default function WidgetFramePage() {
         ];
       });
     } catch {
+      pollErrorsRef.current += 1;
       if (widgetDebugEnabled()) {
         console.debug("[widget-debug] poll failed");
       }
-      // Polling is best effort; the next interval retries without changing the thread.
+      // Polling is best effort; the next attempt backs off without changing the thread.
     } finally {
       pollingRef.current = false;
     }
   }
 
+  // Poll only while a reply can arrive without the visitor acting (human
+  // agent, scheduled follow-up); back off on errors; stop when idle or hidden.
   useEffect(() => {
     if (status !== "ready" || !config) return;
-    const timer = window.setInterval(() => void pollSession(), 2000);
-    return () => window.clearInterval(timer);
-    // Session refs change without a render; the interval reads the latest ref.
+    let cancelled = false;
+    const clear = () => {
+      if (pollTimerRef.current !== null) {
+        window.clearTimeout(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
+    };
+    const wanted = () =>
+      shouldPoll({
+        hint: pollHintRef.current,
+        handoff: handoffRef.current,
+        hidden: document.hidden,
+      });
+    const schedule = (delayMs?: number) => {
+      clear();
+      if (cancelled || !wanted()) return;
+      pollTimerRef.current = window.setTimeout(
+        () => void tick(),
+        delayMs ?? nextPollDelay(pollErrorsRef.current),
+      );
+    };
+    const tick = async () => {
+      pollTimerRef.current = null;
+      if (cancelled || !wanted()) return;
+      await pollSession();
+      schedule();
+    };
+    // One immediate look (turn finished, tab visible again), then the hint decides.
+    const probe = async () => {
+      clear();
+      if (cancelled || !sessionRef.current) return;
+      await pollSession();
+      schedule();
+    };
+    schedulePollRef.current = (delayMs) => {
+      if (delayMs === 0) void probe();
+      else schedule(delayMs);
+    };
+    const onVisibility = () => {
+      if (!document.hidden) void probe();
+      else clear();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    schedule();
+    return () => {
+      cancelled = true;
+      clear();
+      document.removeEventListener("visibilitychange", onVisibility);
+      schedulePollRef.current = () => undefined;
+    };
+    // Session refs change without a render; the loop reads the latest refs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, config]);
 
   function setTypedError(code: string, message?: string) {
@@ -434,7 +569,7 @@ export default function WidgetFramePage() {
       window.parent.postMessage(
         {
           type: "chatbot:brand",
-          colour: cfg.colour,
+          colour: launcherColour(cfg.theme, cfg.colour),
           position: cfg.position,
           dir: cfg.dir,
         },
@@ -482,7 +617,21 @@ export default function WidgetFramePage() {
   }, []);
 
   const announceSize = useCallback(() => {
-    const height = document.documentElement.scrollHeight;
+    // Intrinsic content height, NOT documentElement.scrollHeight: the root is
+    // html,body{height:100%} so that equals this iframe's own current height and
+    // an older loader that follows it would stick at the first small value
+    // (150px -> 200px). Fixed chrome + the thread's content, never below 600.
+    const root = document.querySelector<HTMLElement>(".widget-frame");
+    let height = 600;
+    if (root) {
+      let intrinsic = 0;
+      for (const child of Array.from(root.children) as HTMLElement[]) {
+        intrinsic += child.classList.contains("widget-thread")
+          ? child.scrollHeight
+          : child.offsetHeight;
+      }
+      height = Math.max(height, intrinsic);
+    }
     window.parent.postMessage(
       { type: "chatbot:size", height },
       window.location.origin,
@@ -496,6 +645,185 @@ export default function WidgetFramePage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "end" });
   }, [turns, typing]);
+
+  function stopStream() {
+    abortRef.current?.abort();
+  }
+
+  /**
+   * Streamed turn (S.5): POST .../messages/stream and read Server-Sent Events
+   * with fetch + ReadableStream. Resolves to:
+   * - "done"     the turn finished (persisted by the server at `done`);
+   * - "fallback" the stream failed before any text: the caller makes ONE
+   *              request to the buffered endpoint;
+   * - "failed"   a typed error was shown (same handling as the buffered path);
+   * - "aborted"  the visitor pressed Stop (nothing is persisted server-side).
+   */
+  async function streamTurn(
+    session: { id: string; token: string },
+    text: string,
+    localTurn: Turn,
+    signal: AbortSignal,
+  ): Promise<"done" | "fallback" | "failed" | "aborted"> {
+    let response: Response;
+    try {
+      response = await fetch(
+        `/api/public/v1/sessions/${session.id}/messages/stream`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "text/event-stream",
+            "X-Session-Token": session.token,
+          },
+          body: JSON.stringify({ text, language: lang }),
+          signal,
+        },
+      );
+    } catch {
+      return signal.aborted ? "aborted" : "fallback";
+    }
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as {
+        error?: { code?: string; message?: string };
+      } | null;
+      if (payload?.error?.code) {
+        // An application refusal (paused, rate limit, expired session...):
+        // the buffered endpoint would answer the same, so show it directly.
+        setTypedError(payload.error.code, payload.error.message);
+        return "failed";
+      }
+      return "fallback"; // proxy or transport error
+    }
+    const type = response.headers.get("content-type") ?? "";
+    if (!response.body || !type.includes("text/event-stream")) {
+      return "fallback";
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let text_ = "";
+    let started = false;
+    const result: {
+      outcome: "done" | "fallback" | "failed" | "aborted" | null;
+    } = {
+      outcome: null,
+    };
+
+    const showStreamed = (next: string) => {
+      text_ = next;
+      if (!started) {
+        started = true;
+        setStreaming(true);
+        setTurns((current) => [
+          ...current,
+          { id: STREAMING_TURN_ID, role: "assistant", text: next },
+        ]);
+      } else {
+        setTurns((current) =>
+          current.map((turn) =>
+            turn.id === STREAMING_TURN_ID ? { ...turn, text: next } : turn,
+          ),
+        );
+      }
+    };
+
+    const finish = (payload: DonePayload) => {
+      noteHandoff(payload.kind, payload.ai_message?.needs_human);
+      lastPollAtRef.current =
+        payload.ai_message?.created_at ?? payload.visitor_message.created_at;
+      setTurns((current) => {
+        const withVisitorId = current.map((turn) =>
+          turn.id === localTurn.id
+            ? { ...turn, id: payload.visitor_message.id }
+            : turn,
+        );
+        const ai = payload.ai_message;
+        if (!ai) {
+          return withVisitorId.filter((turn) => turn.id !== STREAMING_TURN_ID);
+        }
+        const final: Turn = {
+          id: ai.id,
+          role: "assistant",
+          text: ai.text, // authoritative: replaces whatever streamed
+          citations: ai.citations,
+          needsHuman: ai.needs_human,
+        };
+        const rest = withVisitorId.filter(
+          (turn) => turn.id !== STREAMING_TURN_ID && turn.id !== ai.id,
+        );
+        return [...rest, final];
+      });
+      if (started && payload.ai_message) setAnnounce(payload.ai_message.text);
+      setReason(null);
+      setServerMessage(null);
+    };
+
+    const dropPartial = () => {
+      setTurns((current) =>
+        current.filter((turn) => turn.id !== STREAMING_TURN_ID),
+      );
+    };
+
+    const handle = (block: string) => {
+      const parsed = parseSseBlock(block);
+      if (!parsed) return;
+      const data = parsed.data as Record<string, unknown>;
+      if (parsed.event === "delta" && typeof data.text === "string") {
+        showStreamed(text_ + data.text);
+      } else if (
+        parsed.event === "cannot_confirm" &&
+        typeof data.text === "string"
+      ) {
+        showStreamed(data.text);
+      } else if (parsed.event === "done") {
+        finish(data as unknown as DonePayload);
+        result.outcome = "done";
+      } else if (parsed.event === "error") {
+        if (started) {
+          dropPartial();
+          setTypedError(String(data.code ?? "NETWORK"));
+          result.outcome = "failed";
+        } else {
+          result.outcome = "fallback";
+        }
+      }
+    };
+
+    try {
+      while (result.outcome === null) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder
+          .decode(value, { stream: true })
+          .replace(/\r\n/g, "\n");
+        let boundary = buffer.indexOf("\n\n");
+        while (boundary >= 0 && result.outcome === null) {
+          handle(buffer.slice(0, boundary));
+          buffer = buffer.slice(boundary + 2);
+          boundary = buffer.indexOf("\n\n");
+        }
+      }
+    } catch {
+      if (signal.aborted) {
+        dropPartial();
+        return "aborted";
+      }
+      if (!started) return "fallback";
+      dropPartial();
+      setReason("network");
+      return "failed";
+    } finally {
+      void reader.cancel().catch(() => undefined);
+    }
+    if (result.outcome !== null) return result.outcome;
+    // The stream ended without `done`.
+    if (!started) return "fallback";
+    dropPartial();
+    setReason("network");
+    return "failed";
+  }
 
   async function onSend(event: React.FormEvent, presetText?: string) {
     event.preventDefault();
@@ -511,7 +839,11 @@ export default function WidgetFramePage() {
       text,
     };
     setTurns((current) => [...current, localTurn]);
+    setAnnounce("");
     setTyping(true);
+    turnActiveRef.current = true;
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
       if (sessionRef.current === null) {
         sessionRef.current = await ensureSessionFor(locator);
@@ -520,6 +852,22 @@ export default function WidgetFramePage() {
         setTyping(false);
         return;
       }
+      const outcome = await streamTurn(
+        sessionRef.current,
+        text,
+        localTurn,
+        controller.signal,
+      );
+      if (outcome === "aborted") {
+        // Nothing was persisted: put the visitor's text back in the input.
+        setTurns((current) =>
+          current.filter((turn) => turn.id !== localTurn.id),
+        );
+        setDraft(text);
+        return;
+      }
+      if (outcome !== "fallback") return;
+      // The stream failed before any text: ONE request to the buffered endpoint.
       const response = await fetch(
         `/api/public/v1/sessions/${sessionRef.current.id}/messages`,
         {
@@ -543,6 +891,7 @@ export default function WidgetFramePage() {
         return;
       }
       const payload = (await response.json()) as {
+        kind?: string;
         visitor_message: { id: string; created_at: string };
         ai_message: {
           id: string;
@@ -552,6 +901,7 @@ export default function WidgetFramePage() {
           created_at: string;
         } | null;
       };
+      noteHandoff(payload.kind, payload.ai_message?.needs_human);
       lastPollAtRef.current =
         payload.ai_message?.created_at ?? payload.visitor_message.created_at;
       setTurns((current) => {
@@ -589,7 +939,12 @@ export default function WidgetFramePage() {
         setReason("network");
       }
     } finally {
+      turnActiveRef.current = false;
+      abortRef.current = null;
+      setStreaming(false);
       setTyping(false);
+      // One look right after the turn: a handoff / scheduled follow-up resumes polling.
+      schedulePollRef.current(0);
     }
   }
 
@@ -718,10 +1073,12 @@ export default function WidgetFramePage() {
       lang={lang}
       className="widget-frame"
       data-testid="widget-frame-body"
+      data-widget-variant={themeVariant(config?.theme)}
       style={
         {
           "--widget-brand": config?.colour,
           "--widget-ink": brandInk(config?.colour),
+          ...themeStyleVars(config?.theme),
         } as CSSProperties
       }
     >
@@ -747,7 +1104,11 @@ export default function WidgetFramePage() {
         </button>
       </header>
 
-      <main className="widget-thread" aria-live="polite">
+      <main
+        className="widget-thread"
+        aria-live={streaming ? "off" : "polite"}
+        aria-busy={streaming}
+      >
         {status === "loading" && (
           <p role="status" className="widget-note">
             {reason === "network" ? localized("network", lang) : "…"}
@@ -810,10 +1171,12 @@ export default function WidgetFramePage() {
                       ? "widget-visitor-msg"
                       : "widget-ai-msg"
                   }
+                  aria-busy={turn.id === STREAMING_TURN_ID ? true : undefined}
                 >
                   <div dir="auto">{turn.text}</div>
                   {turn.role === "assistant" &&
                     turn.id !== "welcome" &&
+                    turn.id !== STREAMING_TURN_ID &&
                     !turn.feedback && (
                       <span
                         className="widget-feedback"
@@ -852,7 +1215,7 @@ export default function WidgetFramePage() {
                 </li>
               ))}
             </ul>
-            {typing && (
+            {typing && !streaming && (
               <p
                 role="status"
                 className="widget-note typing"
@@ -896,7 +1259,7 @@ export default function WidgetFramePage() {
       )}
       {status === "ready" && !blocked && (
         <section
-          className="widget-lead"
+          className={lead.open ? "widget-lead open" : "widget-lead"}
           aria-label={localized("leadTitle", lang)}
         >
           {!lead.open ? (
@@ -1042,8 +1405,25 @@ export default function WidgetFramePage() {
           >
             {typing ? "…" : localized("send", lang)}
           </button>
+          {typing && (
+            <button
+              type="button"
+              onClick={stopStream}
+              data-testid="widget-stop"
+            >
+              {localized("stop", lang)}
+            </button>
+          )}
         </form>
       )}
+      <p
+        className="sr-only"
+        role="status"
+        aria-live="polite"
+        data-testid="widget-announce"
+      >
+        {announce}
+      </p>
       <p className="sr-only">{localized("scroll", lang)}</p>
     </div>
   );
@@ -1052,26 +1432,3 @@ export default function WidgetFramePage() {
 function closeWidget() {
   window.parent.postMessage({ type: "chatbot:close" }, window.location.origin);
 }
-
-const widgetStyles = `
-html,body{height:100%}
-.widget-frame{position:absolute;inset:0;display:flex;flex-direction:column;height:100%;background:var(--surface);color:var(--text);font-family:var(--font);font-size:14px;overflow:hidden}
-.widget-header{display:grid;grid-template-columns:32px 1fr 44px;column-gap:.6rem;align-items:center;padding:1rem 1.1rem;background:var(--widget-brand);color:var(--widget-ink,var(--ink-light));flex-shrink:0}
-.widget-header-caption{grid-column:2;grid-row:2}.widget-close{grid-column:3;grid-row:1/3;background:transparent;color:inherit;border:1px solid currentColor;min-inline-size:44px;min-block-size:44px;padding:0;font-size:1.3rem}.widget-close:focus-visible{outline-color:currentColor}
-.widget-brand-mark{grid-row:1/3;font-size:1.8rem;line-height:1}.widget-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:650;font-size:.95rem}.widget-header-caption{font-size:.7rem;opacity:.9}
-.widget-frame .widget-thread{flex:1;overflow-y:auto;padding:1.1rem;display:flex;flex-direction:column;gap:.8rem;min-height:0;inline-size:100%;max-inline-size:none;margin:0}
-.widget-turns{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.85rem}
-.widget-bubble{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius) var(--radius) var(--radius) 4px;padding:.75rem .9rem;max-inline-size:88%;align-self:flex-start;overflow-wrap:anywhere;line-height:1.65}
-.widget-bubble.visitor{background:var(--widget-brand);color:var(--widget-ink,var(--ink-light));align-self:flex-end;border-color:transparent;border-radius:var(--radius) var(--radius) 4px var(--radius)}
-[dir=rtl] .widget-bubble{border-radius:var(--radius) var(--radius) 4px var(--radius)}[dir=rtl] .widget-bubble.visitor{border-radius:var(--radius) var(--radius) var(--radius) 4px}
-.widget-citations{list-style:none;margin:.6rem 0 0;padding:0;display:flex;flex-wrap:wrap;gap:.3rem}.widget-source-chip{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.2rem .5rem;font-size:.7rem}.widget-source-chip a{color:var(--accent);text-decoration:none}
-.widget-feedback{display:flex;gap:.4rem;margin-block-start:.5rem}.widget-feedback button{background:transparent;color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:.85rem;padding:.25rem .45rem;min-block-size:32px}.widget-feedback-done{display:block;font-size:.7rem;margin-block-start:.4rem}.widget-handoff{font-size:.75rem;color:var(--warning);border-block-start:1px solid var(--border);padding-block-start:.4rem;margin-block:.5rem 0}
-.widget-note{padding:.5rem .2rem;color:var(--muted);font-size:.85rem;margin:0}.widget-note.error{color:var(--danger);background:var(--danger-soft);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.7rem}.widget-note.error button{display:block;margin-block-start:.5rem;font-size:.75rem}
-.widget-chips{display:flex;flex-wrap:wrap;gap:.5rem;margin-block-start:.5rem}.widget-chip{background:var(--surface);color:var(--accent);border:1px solid var(--border);border-radius:999px;padding:.5rem .8rem;font-size:.8rem;cursor:pointer;min-block-size:40px}
-.widget-frame .widget-composer{display:flex;flex-direction:row;gap:.5rem;padding:.85rem 1rem;border-block-start:1px solid var(--border);background:var(--surface);margin:0;max-inline-size:none;flex-shrink:0;inline-size:100%}
-.widget-composer-label{position:absolute;inline-size:1px;block-size:1px;overflow:hidden;clip-path:inset(50%)}.widget-composer input{flex:1;border:1px solid var(--border);border-radius:var(--radius-sm);padding:.65rem .8rem;font:inherit;min-inline-size:0;background:var(--bg);color:var(--text)}.widget-composer button{background:var(--widget-brand);color:var(--widget-ink,var(--ink-light));border:0;border-radius:var(--radius-sm);padding:.65rem .9rem;cursor:pointer;align-self:stretch}.widget-composer button:disabled{opacity:.6;cursor:progress}
-.widget-lead{padding:.75rem 1rem;border-block-start:1px solid var(--border);display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;max-block-size:55%;overflow-y:auto;flex-shrink:0;background:var(--surface)}.widget-lead>button{font-size:.8rem;background:var(--surface-raised);color:var(--accent);border:1px solid var(--border);inline-size:100%}
-.widget-lead-form{display:flex;flex-direction:column;gap:.6rem;inline-size:100%;max-inline-size:none}.widget-lead-form label{display:flex;flex-direction:column;gap:.25rem;font-size:.8rem;color:var(--muted)}.widget-lead-form input{inline-size:100%;padding:.5rem .7rem}.widget-lead-title{font-size:.9rem;margin:.1rem 0}.widget-lead-form .widget-lead-consent{flex-direction:row;align-items:flex-start;gap:.5rem}.widget-lead-consent input{inline-size:20px;flex-shrink:0}.widget-lead-actions{display:flex;gap:.5rem}.widget-lead-actions button:last-child{background:transparent;border:1px solid var(--border);color:var(--text)}
-.typing-dots{display:inline-flex;gap:4px;padding:.65rem .8rem;border:1px solid var(--border);border-radius:999px;background:var(--surface-raised)}.typing-dots i{inline-size:5px;block-size:5px;background:var(--muted);border-radius:50%;animation:widget-pulse .8s ease-in-out infinite alternate}.typing-dots i:nth-child(2){animation-delay:.15s}.typing-dots i:nth-child(3){animation-delay:.3s}@keyframes widget-pulse{to{opacity:.3;transform:translateY(-3px)}}
-@media(prefers-reduced-motion:reduce){.typing-dots i{animation:none}}
-`;

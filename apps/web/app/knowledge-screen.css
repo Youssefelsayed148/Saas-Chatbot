@@ -1,0 +1,116 @@
+/* Batch E: knowledge screen. Tokens only; logical properties for RTL. */
+.knowledge-page > * + * {
+  margin-block-start: var(--space-5);
+}
+.section-jump {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.section-jump a {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: var(--text-sm);
+}
+.section-jump a:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+.knowledge-page .ui-card > .section-heading {
+  margin-block-end: var(--space-3);
+}
+.knowledge-page .ui-card > .section-heading h2 {
+  margin: 0;
+}
+.file-summary {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+.knowledge-actions {
+  justify-content: flex-start;
+}
+.record-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.record-list > li {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+}
+.record-title {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.record-meta {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+}
+.record-list > li > button:not(.record-toggle) {
+  justify-self: start;
+}
+.record-toggle {
+  justify-self: start;
+  text-align: start;
+  color: var(--text);
+  font-weight: 600;
+}
+.doc-snippet {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.chunk-list {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.chunk-list > li {
+  padding: var(--space-2) var(--space-3);
+  border-inline-start: 3px solid var(--accent);
+  background: var(--surface-raised);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+}
+.view-field {
+  max-inline-size: 22rem;
+  margin-block-end: var(--space-4);
+}
+.knowledge-page progress {
+  inline-size: 6rem;
+}
+
+.chunk-list > li {
+  border-block-end: 0;
+  padding-block: var(--space-2);
+  overflow-wrap: anywhere;
+  min-inline-size: 0;
+}
+.record-list > li > button {
+  margin-inline-start: 0;
+}
+.record-meta {
+  unicode-bidi: plaintext;
+}
+.knowledge-page [id$="-heading"] {
+  scroll-margin-block-start: var(--space-6);
+}

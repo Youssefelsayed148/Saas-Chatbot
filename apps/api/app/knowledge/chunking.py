@@ -82,3 +82,41 @@ def _merge_with_overlap(pieces: list[str], chunk_size: int, chunk_overlap: int) 
     if current:
         chunks.append(current)
     return chunks
+
+
+# --- PDF page-break context (H5) --------------------------------------------
+
+_TERMINALS = ".!?؟…:;"
+_CLOSERS = "\"'”’)]»"
+_SENTENCE_BREAKS = (". ", "! ", "? ", "؟ ", "\n\n")
+CARRY_MAX_CHARS = 300
+
+
+def page_break_splits_sentence(previous: str, following: str) -> bool:
+    """True when the break between two PDF pages falls inside a sentence: the
+    previous page does not end in terminal punctuation and the next one does not
+    open like a new sentence (a lowercase or uncased letter continues one)."""
+    before, after = previous.rstrip(), following.lstrip()
+    if not before or not after:
+        return False
+    if before.rstrip(_CLOSERS)[-1:] in _TERMINALS or before[-1] in _TERMINALS:
+        return False
+    first = after[0]
+    if not first.isalpha():
+        return False
+    return first.islower() or first.upper() == first.lower()  # uncased scripts (Arabic)
+
+
+def trailing_sentence(text: str, max_chars: int = CARRY_MAX_CHARS) -> str:
+    """The last (unfinished) sentence of ``text``, at most ``max_chars`` long and
+    cut on a word boundary."""
+    body = text.rstrip()
+    start = max(
+        (body.rfind(mark) + len(mark) for mark in _SENTENCE_BREAKS if mark in body), default=0
+    )
+    tail = body[start:].strip()
+    if len(tail) > max_chars:
+        tail = tail[-max_chars:]
+        head, space, rest = tail.partition(" ")
+        tail = rest if space and rest else tail
+    return tail

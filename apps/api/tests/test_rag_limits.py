@@ -26,6 +26,32 @@ from tests.helpers import make_bot, seeded_tenant
 from tests.knowledge_helpers import run_one_ingest_job, start_ingestion, upload_sources
 
 
+def test_tier_targets_are_reported_from_the_api(app: FastAPI, db: Session) -> None:
+    """A1.6: the GET response carries the provider/model each tier maps to so
+    the UI shows real values instead of hard-coding them."""
+    users = seeded_tenant(app, db, "tier-targets")
+    settings = build_test_settings(
+        chat_free_model_chain=["chain-one:free", "chain-two:free"],
+        chat_openai_model="gpt-5.4-nano",
+    )
+    app.dependency_overrides[get_settings] = lambda: settings
+    try:
+        bid = UUID(make_bot(users)["id"])
+        path = f"/api/v1/tenants/{users.tenant_id}/bots/{bid}/rag"
+        status = users.call("staff", "GET", path).json()
+        assert status["tier_targets"] == {
+            "standard": {"provider": "openrouter", "model": "chain-one:free"},
+            "premium": {"provider": "openai", "model": "gpt-5.4-nano"},
+        }
+        # Tier switching itself is unchanged: same provider mapping.
+        patched = users.call("staff", "PATCH", path, json={"tier": "premium"})
+        assert patched.status_code == 200, patched.text
+        assert patched.json()["generation_provider"] == "openai"
+        assert patched.json()["generation_model"] is None
+    finally:
+        users.cleanup()
+
+
 def test_limits_are_optional_inherited_and_staff_only(app: FastAPI, db: Session) -> None:
     users = seeded_tenant(app, db, "rag-limits")
     other = seeded_tenant(app, db, "rag-limits-other")

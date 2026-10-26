@@ -7,6 +7,9 @@ over a materialized, already-filtered relation, never Python post-filtering.
 
 import json
 import logging
+import math
+import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from uuid import UUID
@@ -17,7 +20,7 @@ from sqlalchemy.orm import Session as OrmSession
 
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
-from app.db.models import Bot, Job
+from app.db.models import Bot, KnowledgeRevision
 from app.embeddings.providers import EmbeddingBatch, EmbeddingError, from_settings, validate_vector
 from app.quotas.ai import metered_embed
 from app.retrieval.service import (
@@ -30,6 +33,49 @@ from app.retrieval.service import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Query-embedding circuit breaker (#84): after this many failures (errors or
+# timeouts) inside the window, the vector leg is skipped for one window.
+# In-process, keyed by embedding identity; a success clears the count.
+EMBED_BREAKER_FAILURES = 3
+EMBED_BREAKER_WINDOW_SECONDS = 60.0
+_clock = time.monotonic
+_breaker_lock = threading.Lock()
+_embed_failures: dict[str, list[float]] = {}
+_embed_suspended_until: dict[str, float] = {}
+
+
+def reset_embed_breaker() -> None:
+    with _breaker_lock:
+        _embed_failures.clear()
+        _embed_suspended_until.clear()
+
+
+def _vector_leg_suspended(identity: str) -> bool:
+    with _breaker_lock:
+        return _embed_suspended_until.get(identity, 0.0) > _clock()
+
+
+def _record_embed_failure(identity: str) -> None:
+    now = _clock()
+    with _breaker_lock:
+        recent = [
+            at
+            for at in _embed_failures.get(identity, [])
+            if now - at < EMBED_BREAKER_WINDOW_SECONDS
+        ]
+        recent.append(now)
+        if len(recent) >= EMBED_BREAKER_FAILURES:
+            _embed_suspended_until[identity] = now + EMBED_BREAKER_WINDOW_SECONDS
+            recent = []
+        _embed_failures[identity] = recent
+
+
+def _record_embed_success(identity: str) -> None:
+    with _breaker_lock:
+        _embed_failures.pop(identity, None)
+
+
 VECTOR_COLUMNS = """
     c.id AS chunk_id, c.document_id, c.title, c.heading, c.text AS chunk_text,
     c.language, c.priority, c.ordinal, d.source_url, d.page_ref,
@@ -117,20 +163,53 @@ def fuse(
                 item.vector_similarity = chunk.vector_similarity
             else:
                 item.fts_match = chunk.fts_match
-    return sorted(by_id.values(), key=lambda chunk: (-chunk.rrf_score, str(chunk.chunk_id)))[:k]
+    # Equal fused scores are common (rank 1 in one list vs rank 1 in the other):
+    # decide by the stronger signals, then by what the content is called (document
+    # title, page, ordinal), so a re-seeded corpus ranks the same. The chunk id
+    # only separates chunks that are identical in all of those.
+    return sorted(by_id.values(), key=_fusion_order)[:k]
 
 
-def _active_backfill(db: OrmSession, tenant_id: UUID, bot_id: UUID) -> bool:
+def _fusion_order(
+    chunk: RetrievedChunk,
+) -> tuple[float, float, float, str, str, int, str]:
+    sim = chunk.vector_similarity
+    cosine = sim if sim is not None and math.isfinite(sim) else -2.0
+    return (
+        -chunk.rrf_score,
+        -cosine,
+        -chunk.rank,
+        chunk.title,
+        chunk.page_ref,
+        chunk.ordinal,
+        str(chunk.chunk_id),
+    )
+
+
+def _revision_embedding_model(
+    db: OrmSession, tenant_id: UUID, bot_id: UUID, revision_id: UUID
+) -> str | None:
+    """The identity every chunk of this revision carries, or None (keyword-only)."""
+    return db.scalar(
+        select(KnowledgeRevision.embedding_model)
+        .where(
+            KnowledgeRevision.tenant_id == tenant_id,
+            KnowledgeRevision.bot_id == bot_id,
+            KnowledgeRevision.id == revision_id,
+        )
+        .execution_options(populate_existing=True)
+    )
+
+
+def _is_draft_revision(db: OrmSession, tenant_id: UUID, bot_id: UUID, revision_id: UUID) -> bool:
     return (
         db.scalar(
-            select(Job.id)
-            .where(
-                Job.tenant_id == tenant_id,
-                Job.bot_id == bot_id,
-                Job.type == "reembed_backfill",
-                Job.status.in_(("pending", "running")),
+            select(KnowledgeRevision.id).where(
+                KnowledgeRevision.tenant_id == tenant_id,
+                KnowledgeRevision.bot_id == bot_id,
+                KnowledgeRevision.id == revision_id,
+                KnowledgeRevision.status == "draft",
             )
-            .limit(1)
         )
         is not None
     )
@@ -150,19 +229,27 @@ def retrieve_hybrid(
     translate_query: TranslateQuery | None = None,
     mode_override: str | None = None,
     channel: str = "website",
+    embed_timeout: float | None = None,
+    preview: bool = False,
 ) -> RetrievalResult:
+    """``preview=True`` (staff playground) reads an explicit DRAFT revision of this
+    tenant + bot instead of the published pointer. Anything that is not such a
+    draft returns an empty result, so a preview id can never expose another
+    bot's, tenant's or the live revision through this switch."""
     settings = settings or get_settings()
     bot = db.scalar(
         select(Bot)
         .where(
             Bot.tenant_id == tenant_id,
             Bot.id == bot_id,
-            Bot.published_revision_id == revision_id,
+            *(() if preview else (Bot.published_revision_id == revision_id,)),
             Bot.status != "archived",
         )
         .execution_options(populate_existing=True)
     )
     if bot is None:
+        return RetrievalResult(question_language, question_language, False)
+    if preview and not _is_draft_revision(db, tenant_id, bot_id, revision_id):
         return RetrievalResult(question_language, question_language, False)
 
     def keyword() -> RetrievalResult:
@@ -180,20 +267,29 @@ def retrieve_hybrid(
         )
 
     reason = None
+    identity: str | None = None
     if (mode_override or bot.retrieval_mode) == "fts_only":
         reason = "operator_fts_only"
-    elif not bot.embedding_ready or not bot.active_embedding_model:
-        reason = "embedding_index_unavailable"
-    elif _active_backfill(db, tenant_id, bot_id):
-        reason = "backfill_active"
+    else:
+        # Only the PUBLISHED revision's completeness matters; draft backfill
+        # progress and ingest never degrade the live bot.
+        identity = _revision_embedding_model(db, tenant_id, bot_id, revision_id)
+        if not identity:
+            reason = "embedding_index_unavailable"
     if reason:
         result = keyword()
         result.degradation_reason = reason
         logger.info("rag.fts_only reason=%s tenant=%s bot=%s", reason, tenant_id, bot_id)
         return result
 
-    identity = bot.active_embedding_model
     assert identity is not None
+    if _vector_leg_suspended(identity):
+        result = keyword()
+        result.degradation_reason = "embedding_suspended_after_failures"
+        logger.warning(
+            "rag.fts_only reason=embedding_suspended tenant=%s bot=%s", tenant_id, bot_id
+        )
+        return result
     bind = db.get_bind()
     engine = bind if isinstance(bind, Engine) else bind.engine
 
@@ -222,11 +318,22 @@ def retrieve_hybrid(
             )
         return found, batch
 
-    with ThreadPoolExecutor(max_workers=1, thread_name_prefix="rag-vector") as executor:
+    # No ``with``: leaving the block must never wait for a stalled embed thread.
+    executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="rag-vector")
+    submitted = _clock()
+    try:
         future = executor.submit(semantic)
         result = keyword()
+        wait = None if embed_timeout is None else max(0.0, embed_timeout - (_clock() - submitted))
         try:
-            vectors, batch = future.result()
+            vectors, batch = future.result(timeout=wait)
+        except TimeoutError:
+            _record_embed_failure(identity)
+            result.degradation_reason = "embedding_timeout"
+            logger.warning(
+                "rag.fts_only reason=embedding_timeout tenant=%s bot=%s", tenant_id, bot_id
+            )
+            return result
         except ApiError as error:
             if error.code != "QUOTA_EXCEEDED":
                 raise
@@ -237,7 +344,9 @@ def retrieve_hybrid(
                 bot_id,
             )
             return result
-        except (EmbeddingError, SQLAlchemyError):
+        except (EmbeddingError, SQLAlchemyError) as error:
+            if isinstance(error, EmbeddingError):
+                _record_embed_failure(identity)
             result.degradation_reason = "embedding_or_vector_failure"
             logger.warning(
                 "rag.fts_only reason=embedding_or_vector_failure tenant=%s bot=%s",
@@ -245,8 +354,11 @@ def retrieve_hybrid(
                 bot_id,
             )
             return result
-    # A concurrent backfill may start after the first readiness check. Never use
-    # its partial/new model index with the previously captured query identity.
+    finally:
+        executor.shutdown(wait=False, cancel_futures=True)
+    _record_embed_success(identity)
+    # A model-change backfill may rewrite this revision after the first check;
+    # never mix the previously captured query identity with a new index.
     bot = db.scalar(
         select(Bot)
         .where(Bot.tenant_id == tenant_id, Bot.id == bot_id)
@@ -254,10 +366,8 @@ def retrieve_hybrid(
     )
     if (
         bot is None
-        or bot.published_revision_id != revision_id
-        or not bot.embedding_ready
-        or bot.active_embedding_model != identity
-        or _active_backfill(db, tenant_id, bot_id)
+        or (not preview and bot.published_revision_id != revision_id)
+        or _revision_embedding_model(db, tenant_id, bot_id, revision_id) != identity
     ):
         result.degradation_reason = "backfill_changed_during_query"
         logger.info(
@@ -275,6 +385,7 @@ def retrieve_hybrid(
         revision_id=revision_id,
         question=result.fallback_query or question,
         language=result.applied_language,
+        ignore_terms=settings.retrieval_gate_ignore_terms,
     )
     # Same evidence rules as keyword mode (reserved always-include documents,
     # best document whole, small documents whole), applied to the fused ranking.
@@ -305,12 +416,15 @@ def retrieve_hybrid(
         revision_id=revision_id,
         question=result.fallback_query or question,
         language=result.applied_language,
+        ignore_terms=settings.retrieval_gate_ignore_terms,
     )
     for chunk in evidence:
         hit = fused.get(chunk.chunk_id)
         if hit is not None:
             chunk.fts_match, chunk.matched_terms = hit.fts_match, hit.matched_terms
             chunk.query_terms = hit.query_terms
+            chunk.query_term_labels = hit.query_term_labels
+            chunk.matched_term_labels = hit.matched_term_labels
     result.mode = "hybrid"
     result.candidates = ranked
     result.evidence = evidence

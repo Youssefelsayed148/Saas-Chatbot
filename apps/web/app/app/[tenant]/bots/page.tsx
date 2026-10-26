@@ -1,14 +1,23 @@
 "use client";
 
-import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import * as api from "@/lib/api";
 import { roleSatisfies, useSession } from "@/lib/session";
-import { LabelBadge, humanLabel } from "@/lib/labels";
-import { Empty, Loading, Notice } from "@/lib/ui";
+import { humanLabel } from "@/lib/labels";
+import {
+  Card,
+  Empty,
+  LinkButton,
+  Loading,
+  Meter,
+  Notice,
+  PageHeader,
+  StatusBadge,
+} from "@/lib/ui";
 import type { Bot } from "@/lib/api";
+import "@/app/bots-list.css";
 
 export default function BotsListPage() {
   const params = useParams<{ tenant: string }>();
@@ -57,31 +66,55 @@ export default function BotsListPage() {
 
   return (
     <main>
-      <p className="eyebrow">Chatbots</p>
-      <h1>Bots</h1>
-      <p className="page-purpose">
-        Build, train and install the assistants that help your visitors.
-      </p>
-      {canAdmin && (
-        <p>
-          <Link href={`/app/${tenantId}/settings/data`}>
-            Tenant data and audit
-          </Link>
-        </p>
-      )}
+      <PageHeader
+        eyebrow="Chatbots"
+        title="Bots"
+        purpose="Build, train and install the assistants that help your visitors."
+        actions={
+          canAdmin && (
+            <>
+              <LinkButton
+                variant="secondary"
+                href={`/app/${tenantId}/settings/requests`}
+              >
+                Request a change
+              </LinkButton>
+              <LinkButton
+                variant="secondary"
+                href={`/app/${tenantId}/settings/data`}
+              >
+                Tenant data and audit
+              </LinkButton>
+            </>
+          )
+        }
+      />
       {sessionLoading && <Loading label="Loading session…" />}
       {!sessionLoading && sessionError && (
         <Notice message={sessionError} tone="error" />
       )}
       {!sessionLoading && !sessionError && quota && (
-        <section aria-label="Plan usage">
-          <h2>Plan usage</h2>
-          <p>
-            {quota.plan} plan · Bots {quota.usage.bots}/{quota.limits.bots} ·
-            Seats {quota.usage.seats}/{quota.limits.seats} · Contacts{" "}
-            {quota.usage.contacts}/{quota.limits.contacts} · Monthly messages{" "}
-            {quota.usage.monthly_messages}/{quota.limits.monthly_messages}
-          </p>
+        <Card aria-label="Plan usage" title="Plan usage">
+          <p className="muted">{quota.plan} plan</p>
+          <div className="bots-quota">
+            {(
+              [
+                ["Bots", "bots"],
+                ["Seats", "seats"],
+                ["Contacts", "contacts"],
+                ["Monthly messages", "monthly_messages"],
+              ] as const
+            ).map(([label, key]) => (
+              <div key={key} className="bots-quota-item">
+                <span className="muted">{label}</span>
+                <Meter
+                  label={label}
+                  used={quota.usage[key]}
+                  limit={quota.limits[key]}
+                />
+              </div>
+            ))}
+          </div>
           {quota.warnings.length > 0 && (
             <p role="status">
               Approaching the plan limit for{" "}
@@ -92,10 +125,7 @@ export default function BotsListPage() {
             Plan limits are provisional. Measured provider tokens this month:{" "}
             {quota.measured_tokens_this_month}.
           </p>
-        </section>
-      )}
-      {!sessionLoading && !sessionError && (
-        <p className="muted">Contact us to add or change bots.</p>
+        </Card>
       )}
       {bots === null && !sessionLoading && <Loading label="Loading bots…" />}
       {botsError && <Notice message={botsError} tone="error" />}
@@ -105,33 +135,26 @@ export default function BotsListPage() {
         </Empty>
       )}
       {bots && bots.length > 0 && (
-        <table>
-          <caption className="sr-only">Bots</caption>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Status</th>
-              <th>Open</th>
-            </tr>
-          </thead>
-          <tbody>
-            {bots.map((bot) => (
-              <tr key={bot.id}>
-                <td>
-                  <Link href={`/app/${tenantId}/bots/${bot.id}/settings`}>
-                    {bot.name}
-                  </Link>
-                </td>
-                <td data-status={bot.status}>
-                  <LabelBadge value={bot.status} />
-                </td>
-                <td><Link href={`/app/${tenantId}/bots/${bot.id}/settings`}>Open bot</Link></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <ul className="bots-grid" aria-label="Bots">
+          {bots.map((bot) => (
+            <li key={bot.id} className="bot-card" data-testid="bot-card">
+              <h2 className="bot-card-name">{bot.name}</h2>
+              <StatusBadge value={bot.status} data-status={bot.status}>
+                {humanLabel(bot.status)}
+              </StatusBadge>
+              <LinkButton
+                variant="primary"
+                size="sm"
+                href={`/app/${tenantId}/bots/${bot.id}/settings`}
+                aria-label={`Open ${bot.name}`}
+              >
+                Open
+              </LinkButton>
+            </li>
+          ))}
+        </ul>
       )}
-      <label className="muted">
+      <label className="muted archived-toggle">
         <input
           type="checkbox"
           checked={showArchived}

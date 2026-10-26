@@ -161,7 +161,10 @@ def test_chat_turn_requires_ai_mode(
 
     session = _session()
     conversation = get_or_create_playground_conversation(
-        session, tenant_id=users.tenant_id, bot_id=UUID(bot_id), user_id=uuid4()
+        session,
+        tenant_id=users.tenant_id,
+        bot_id=UUID(bot_id),
+        user_id=UUID(users.users["staff"]["id"]),
     )
     conversation.mode = "human"
     session.commit()

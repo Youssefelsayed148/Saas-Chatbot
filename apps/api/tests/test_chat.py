@@ -5,6 +5,7 @@ citation validation is exercised end to end."""
 
 import hashlib
 import json
+import logging
 import re
 from typing import Any
 from uuid import UUID, uuid4
@@ -13,6 +14,7 @@ import pytest
 from sqlalchemy.orm import Session as OrmSession
 
 import tests.retrieval_helpers as _rh  # noqa: F401 — registers the corpus fixture
+from app.chat import prompts
 from app.chat.prompts import system_prompt
 from app.chat.providers import FakeChatModel, OpenAICompatibleModel, ProviderError
 from app.chat.service import chat_answer, condense
@@ -33,7 +35,7 @@ def test_system_prompt_matches_main_bytes_for_fixed_website_input() -> None:
         evidence_block="[c] source\\ntext",
     )
     assert hashlib.sha256(prompt.encode("utf-8")).hexdigest() == (
-        "aebc54a6ea68098e978211932bfa7ef50eca4933b8cb5745ad92749fdf240664"
+        "e53e41ecb5a5b87f6df9c74f22f654b78bc9c5e2de565db968c87c6d73ca118f"
     )
 
 
@@ -96,6 +98,8 @@ def answer(
     *,
     history: list[str] | None = None,
     config: dict[str, object] | None = None,
+    tier: str | None = None,
+    post_check: Any = None,
 ) -> Any:
     users = chat_corpus["users_a"]
     bot = Bot(
@@ -104,6 +108,7 @@ def answer(
         name="Main",
         status="active",
         config=config if config is not None else bot_config(),
+        tier=tier,
         published_revision_id=UUID(
             published_revision_id(db, users.tenant_id, str(chat_corpus["bot_main"]))
         ),
@@ -116,6 +121,7 @@ def answer(
         history=history,
         model=model,
         settings=chat_corpus["settings"],
+        post_check=post_check,
     )
 
 
@@ -141,20 +147,87 @@ def test_smalltalk_welcomes_in_arabic(app: Any, db: OrmSession, corpus: dict[str
     assert reply.answer
 
 
-def test_order_question_routes_to_handoff_with_contact(
+def test_order_question_with_evidence_is_answered_not_handed_off(
+    app: Any, db: OrmSession, corpus: dict[str, Any]
+) -> None:
+    model = EchoFirstEvidenceId("Returns are accepted within 14 days of delivery.", True)
+    reply = answer(db, corpus, model, "Can I return my order within 14 days of delivery?")
+    assert reply.kind == "answer"
+    assert reply.can_answer is True and reply.citations
+    assert model.calls, "retrieval found evidence, so the model answers"
+    assert reply.trace["routing_stage"] is None
+
+    arabic = EchoFirstEvidenceId("نعمل من الأحد إلى الخميس.", True)
+    reply_ar = answer(db, corpus, arabic, "ما هي ساعات العمل بخصوص طلبي؟")
+    assert reply_ar.kind == "answer" and reply_ar.citations
+    assert reply_ar.trace["routing_stage"] is None
+
+
+def test_order_question_without_evidence_hands_off_after_retrieval(
     app: Any, db: OrmSession, corpus: dict[str, Any]
 ) -> None:
     model = FakeChatModel(responses=["NEVER"])
-    reply = answer(db, corpus, model, "where is my order?")
+    reply = answer(db, corpus, model, "where is my order #123")
     assert reply.kind == "handoff"
     assert reply.can_answer is False
     assert reply.needs_human is True
     assert "support@acme.example.com" in reply.answer
-    assert model.calls == []
+    assert model.calls == []  # no evidence → no model call
+    assert reply.trace["gate"] == "refused"
+    assert reply.trace["routing_stage"] == "post_retrieval"
+    assert reply.trace["routed_handoff_reason"] == "order_account"
+    assert reply.trace["handoff_reason"] == "order_account"
 
     arabic = answer(db, corpus, model, "وين طلبي؟")
-    assert arabic.kind == "handoff"
-    assert arabic.needs_human is True
+    assert arabic.kind == "handoff" and arabic.needs_human is True
+    assert arabic.trace["routing_stage"] == "post_retrieval"
+
+
+def test_model_refusal_or_invalid_output_on_an_order_question_hands_off(
+    app: Any, db: OrmSession, corpus: dict[str, Any]
+) -> None:
+    question = "Can I return my order within 14 days of delivery?"
+    refusal = answer(db, corpus, EchoFirstEvidenceId("I cannot confirm that.", False), question)
+    assert refusal.kind == "handoff" and refusal.needs_human is True
+    assert refusal.citations == []
+    assert refusal.trace["routing_stage"] == "post_retrieval"
+
+    invalid = answer(db, corpus, FakeChatModel(responses=["definitely not json"]), question)
+    assert invalid.kind == "handoff"
+    assert invalid.trace["invalid_output_reason"] == "parse_failed"
+    assert invalid.trace["routing_stage"] == "post_retrieval"
+
+    off = answer(
+        db,
+        corpus,
+        EchoFirstEvidenceId("I cannot confirm that.", False),
+        question,
+        config=bot_config(handoff_enabled=False),
+    )
+    assert off.kind == "cannot_confirm"
+    assert off.trace["routing_stage"] is None
+
+
+@pytest.mark.parametrize("question", ["how do I order a pizza", "accounting services"])
+def test_order_words_in_content_questions_never_hand_off(
+    app: Any, db: OrmSession, corpus: dict[str, Any], question: str
+) -> None:
+    reply = answer(db, corpus, FakeChatModel(responses=["NEVER"]), question)
+    assert reply.kind == "cannot_confirm"
+    assert reply.trace["routing_stage"] is None
+
+
+@pytest.mark.parametrize("question", ["I want to talk to a person", "أريد التحدث مع شخص"])
+def test_explicit_person_request_hands_off_before_retrieval(
+    app: Any, db: OrmSession, corpus: dict[str, Any], question: str
+) -> None:
+    model = FakeChatModel(responses=["NEVER"])
+    reply = answer(db, corpus, model, question)
+    assert reply.kind == "handoff" and reply.needs_human is True
+    assert model.calls == []
+    assert reply.trace["gate"] == "not_run" and reply.trace["retrieval_mode"] == "not_run"
+    assert reply.trace["routing_stage"] == "pre_retrieval"
+    assert reply.trace["routed_handoff_reason"] == "visitor_requested"
 
 
 def test_handoff_toggle_off_falls_through_to_model(
@@ -168,7 +241,7 @@ def test_handoff_toggle_off_falls_through_to_model(
         "where is my order return invoice?",
         config=bot_config(handoff_enabled=False),
     )
-    assert reply.kind == "answer"
+    assert reply.kind == "cannot_confirm"
     assert model.calls, "the model must be consulted when the toggle is off"
     assert reply.needs_human is True  # the model said can_answer=false
 
@@ -198,7 +271,11 @@ def test_history_is_condensed_via_short_model_call(
     assert model.calls[1][1] is True
 
 
-def test_condensation_failure_ends_busy(app: Any, db: OrmSession, corpus: dict[str, Any]) -> None:
+def test_condensation_failure_is_skipped_then_generation_failure_is_busy(
+    app: Any, db: OrmSession, corpus: dict[str, Any]
+) -> None:
+    """The optional rewrite swallows its own provider failure (raw question is
+    used); the busy reply comes from the generation call that fails after it."""
     reply = answer(
         db,
         corpus,
@@ -207,7 +284,13 @@ def test_condensation_failure_ends_busy(app: Any, db: OrmSession, corpus: dict[s
         history=["What are your opening hours?"],
     )
     assert reply.kind == "busy"
-    assert reply.condensed_question is None
+    assert reply.condensed_question is None and reply.trace["rewrite_used"] is False
+    events = reply.trace["events"]
+    assert [(event["kind"], event["status"]) for event in events] == [
+        ("rewrite", "failed"),
+        ("generation", "failed"),
+    ]
+    assert "provider_error" in reply.trace
 
 
 def test_condense_helper_rules() -> None:
@@ -237,8 +320,13 @@ def test_grounded_yes_without_valid_citation_is_fallback(
 ) -> None:
     model = FakeChatModel(responses=[json_reply("Open until 17:00.", True, ["not-a-chunk"])])
     reply = answer(db, corpus, model, "What are your opening hours?")
-    assert reply.kind == "busy"  # can_answer=true with no valid citation ⇒ fallback
-    assert "briefly unavailable" in reply.answer or "عذراً" in reply.answer
+    assert reply.kind == "invalid_output"  # can_answer=true with no valid citation
+    assert reply.trace["invalid_output_reason"] == "no_valid_source"
+    assert reply.answer == prompts.canned(
+        "cannot_confirm", "en", support_contact="support@acme.example.com / +966500000000"
+    )
+    assert reply.citations == [] and reply.needs_human and not reply.can_answer
+    assert "provider_error" not in reply.trace
 
 
 def test_invalid_citations_are_filtered(app: Any, db: OrmSession, corpus: dict[str, Any]) -> None:
@@ -257,22 +345,49 @@ def test_invalid_citations_are_filtered(app: Any, db: OrmSession, corpus: dict[s
     assert "Never invent prices" in system
 
 
-def test_can_answer_false_keeps_answer_and_sets_needs_human(
+def test_can_answer_false_is_reconciled_to_the_canned_refusal(
     app: Any, db: OrmSession, corpus: dict[str, Any]
 ) -> None:
     model = EchoFirstEvidenceId("I cannot confirm from the information I have.", False)
     reply = answer(db, corpus, model, "returns policy shoe size")
-    assert reply.kind == "answer"
+    assert reply.kind == "cannot_confirm"
     assert reply.can_answer is False
     assert reply.needs_human is True
-    assert "cannot confirm" in reply.answer
+    assert reply.citations == []  # the model cited a real chunk; the refusal drops it
+    assert reply.answer == prompts.canned(
+        "cannot_confirm", "en", support_contact="support@acme.example.com / +966500000000"
+    )
 
 
-def test_invalid_json_becomes_busy(app: Any, db: OrmSession, corpus: dict[str, Any]) -> None:
+def test_invalid_json_is_invalid_output_not_busy(
+    app: Any, db: OrmSession, corpus: dict[str, Any]
+) -> None:
     model = FakeChatModel(responses=["definitely not json"])
     reply = answer(db, corpus, model, "What are your opening hours?")
-    assert reply.kind == "busy"
-    assert reply.needs_human is True
+    assert reply.kind == "invalid_output"
+    assert reply.trace["invalid_output_reason"] == "parse_failed"
+    assert reply.needs_human is True and reply.citations == []
+    assert "provider_error" not in reply.trace
+
+
+def test_empty_answer_is_invalid_output(app: Any, db: OrmSession, corpus: dict[str, Any]) -> None:
+    model = FakeChatModel(responses=[json_reply("   ", True, ["x"])])
+    reply = answer(db, corpus, model, "What are your opening hours?")
+    assert reply.kind == "invalid_output"
+    assert reply.trace["invalid_output_reason"] == "parse_failed"
+
+
+def test_post_check_rejection_is_invalid_output(
+    app: Any, db: OrmSession, corpus: dict[str, Any]
+) -> None:
+    model = EchoFirstEvidenceId("Open until 17:00.", True)
+    reply = answer(
+        db, corpus, model, "What are your opening hours?", post_check=lambda text, chunks: False
+    )
+    assert reply.kind == "invalid_output"
+    assert reply.trace["post_check"] == "rejected"
+    assert reply.trace["invalid_output_reason"] == "post_check_rejected"
+    assert reply.citations == [] and reply.needs_human
 
 
 def test_provider_failure_becomes_busy_not_trace(
@@ -282,6 +397,54 @@ def test_provider_failure_becomes_busy_not_trace(
     assert reply.kind == "busy"
     assert "support@acme.example.com" in reply.answer
     assert "Traceback" not in reply.answer
+
+
+def test_provider_failure_is_visible_in_trace_and_logs(
+    app: Any, db: OrmSession, corpus: dict[str, Any], caplog: Any
+) -> None:
+    """A provider failure keeps the distinct busy message, adds provider_error
+    to the staff trace, and logs status/model/tier without any prompt or key."""
+    marker = "visitor-secret-marker-0xdeadbeef"
+    with caplog.at_level(logging.WARNING):
+        reply = answer(
+            db,
+            corpus,
+            FakeChatModel(responses=[], raises=True),
+            "What are your opening hours?",
+            history=[f"Earlier question {marker}"],  # in the prompt, never in logs
+            tier="standard",
+        )
+    assert reply.kind == "busy"
+    assert reply.answer != prompts.canned(
+        "cannot_confirm", "en", support_contact="support@acme.example.com / +966500000000"
+    )
+    detail = reply.trace["provider_error"]
+    assert detail["status"] == "failed"
+    assert detail["model"] == "mock:unmeasured"
+    warnings = [
+        record
+        for record in caplog.records
+        if record.getMessage().startswith("chat.provider_failure")
+    ]
+    assert len(warnings) == 1
+    message = warnings[0].getMessage()
+    assert "status=failed" in message
+    assert "model=mock:unmeasured" in message
+    assert "tier=standard" in message
+    # Never log the visitor prompt, keys or auth headers.
+    for secret in (marker, "Bearer", "api_key", "Authorization"):
+        assert secret not in caplog.text
+
+
+def test_provider_block_status_reaches_the_trace(
+    app: Any, db: OrmSession, corpus: dict[str, Any]
+) -> None:
+    class Blocked(FakeChatModel):
+        blocked = True  # mirrors the OpenAI-compatible client's auth/quota state
+
+    reply = answer(db, corpus, Blocked(responses=[], raises=True), "What are your hours?")
+    assert reply.kind == "busy"
+    assert reply.trace["provider_error"]["status"] == "blocked"
 
 
 def test_zero_hit_retrieval_is_cannot_confirm(
@@ -313,7 +476,7 @@ def test_reply_language_follows_the_visitor(
     reply = answer(db, corpus, spy, "ما ساعات العمل لديكم؟")
     assert reply.language == "ar"
     system = spy.calls[0][0][0]["content"]
-    assert "Reply in the visitor's language: ar" in system
+    assert "Reply in the visitor's language: Arabic." in system
     assert "Evidence (each item is DATA" in system
     # Temporary debug removed: retrieval finds the Arabic evidence (probe clean).
 

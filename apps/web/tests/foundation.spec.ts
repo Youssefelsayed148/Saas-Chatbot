@@ -6,7 +6,7 @@ test("foundation renders with no browser errors", async ({ page }) => {
   expect(response?.status()).toBe(200);
   await expect(page).toHaveTitle("Welcome · Website Chatbot SaaS");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-    "Application foundation",
+    "Website Chatbot",
   );
   expect(errors).toEqual([]);
 });

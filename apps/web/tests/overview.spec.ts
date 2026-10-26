@@ -28,9 +28,7 @@ async function registerAndPrepare(page: Page, store: string, hours: string) {
     `Overview ${store}`,
   );
   await page
-    .getByRole("row", { name: new RegExp(botName) })
-    .getByRole("link")
-    .first()
+    .getByRole("link", { name: new RegExp(`Open ${botName}`) })
     .click();
   await page.waitForURL(/\/settings$/);
   const botId = new URL(page.url()).pathname.split("/")[4];
@@ -175,16 +173,16 @@ test("workspace shell + measured overview with per-bot scoping and CSV", async (
 
   const section = page.getByTestId("overview-summary");
   await expect(section.locator("[data-test='messages']")).toContainText(
-    "Messages: 2",
+    /Messages\s*2/,
     {
       timeout: 20_000,
     },
   );
   // Both visits share the browser's stored session for this locator, so the
   // measured numbers have ONE conversation/web open (docs/14 §9 measured data).
-  await expect(section).toContainText("Conversations: 1");
-  await expect(section).toContainText("Widget opens: 1");
-  await expect(section).toContainText("Leads: 1");
+  await expect(section).toContainText(/Conversations\s*1/);
+  await expect(section).toContainText(/Widget opens\s*1/);
+  await expect(section).toContainText(/Leads\s*1/);
 
   // Setup requires an operator; isolation must be asserted as a client admin.
   const caller = await (await page.request.get("/api/v1/auth/me")).json();
