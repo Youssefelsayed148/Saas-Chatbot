@@ -1,7 +1,8 @@
 name: Foundation validation
+# Manual only: run it from the repository Actions tab (Run workflow) when you want a full
+# validation on GitHub. It no longer starts on every push or pull request.
 on:
-  push:
-  pull_request:
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
