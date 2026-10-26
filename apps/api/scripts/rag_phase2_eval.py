@@ -383,7 +383,9 @@ def generation_main() -> int:
     if journal.exists() and not args.resume:
         raise ValueError("Generation already started; explicit --resume skips every started case.")
     saved = (
-        [json.loads(line) for line in results.read_text().splitlines()] if results.exists() else []
+        [json.loads(line) for line in results.read_text(encoding="utf-8").splitlines()]
+        if results.exists()
+        else []
     )
     if any(
         row["status"] in {"quota_or_rate_limit", "provider_authorization_failed"} for row in saved
