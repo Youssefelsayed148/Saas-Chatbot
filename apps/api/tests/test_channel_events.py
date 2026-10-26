@@ -277,10 +277,11 @@ def test_inbound_dedupe_sanitization_and_origin_is_written_once(
         event_id="evt-second",
         external_message_id="message-2",
         origin={"type": "campaign", "campaign_name": "Overwrite"},
+        contact=first["contact"],  # R-03: later events refresh details, so repeat them
     )
     assert _post(client, connection_id, secret, json.dumps(second).encode()).status_code == 202
     _run_event(db, "evt-second")
-    duplicate_message = _payload(connection_id, event_id="evt-third")
+    duplicate_message = _payload(connection_id, event_id="evt-third", contact=first["contact"])
     assert (
         _post(client, connection_id, secret, json.dumps(duplicate_message).encode()).status_code
         == 202

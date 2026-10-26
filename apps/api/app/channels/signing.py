@@ -33,4 +33,10 @@ def verify(
     if abs(current_time - timestamp_value) > TIMESTAMP_WINDOW_SECONDS:
         return False
     expected = sign(secret, timestamp_value, body)
-    return hmac.compare_digest(expected, signature)
+    # Compare bytes: compare_digest raises TypeError on a non-ASCII str, which would
+    # turn a crafted header into a 500 (and an oracle) instead of the generic 401.
+    try:
+        presented = signature.encode("utf-8")
+    except (AttributeError, UnicodeEncodeError):
+        return False
+    return hmac.compare_digest(expected.encode("ascii"), presented)

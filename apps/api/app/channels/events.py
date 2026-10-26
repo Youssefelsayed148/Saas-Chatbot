@@ -63,7 +63,9 @@ def _parse_time(value: Any) -> datetime:
     return parsed.astimezone(UTC)
 
 
-def _validate_payload(payload: object, connection_id: UUID) -> dict[str, Any]:
+def _validate_payload(
+    payload: object, connection_id: UUID, connection_channel: str
+) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise ValueError("object")
     if payload.get("version") != 1:
@@ -91,6 +93,9 @@ def _validate_payload(payload: object, connection_id: UUID) -> dict[str, Any]:
             raise ValueError("message identifiers")
         if payload["channel"] not in {"whatsapp", "messenger", "instagram"}:
             raise ValueError("channel")
+        # Tenant, bot and channel all come from the connection (contract v1.1 A1).
+        if payload["channel"] != connection_channel:
+            raise ValueError("channel mismatch")
         if payload.get("type") not in {"text", "unsupported"}:
             raise ValueError("message type")
         text = payload.get("text", "")
@@ -173,7 +178,7 @@ async def receive_channel_event(
         raise _unauthorized("signature_or_timestamp")
     try:
         decoded = json.loads(raw.decode("utf-8"))
-        payload = _remove_jsonb_nul(_validate_payload(decoded, connection_id))
+        payload = _remove_jsonb_nul(_validate_payload(decoded, connection_id, connection.channel))
     except (UnicodeDecodeError, json.JSONDecodeError, ValueError, TypeError):
         raise ApiError(422, "VALIDATION_ERROR", "Signed event body failed validation.") from None
     if request.headers.get("content-type", "").split(";")[0].strip().lower() != "application/json":

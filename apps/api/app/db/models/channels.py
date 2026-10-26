@@ -3,7 +3,15 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, ForeignKeyConstraint, Index, Text
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    ForeignKeyConstraint,
+    Index,
+    Text,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -67,6 +75,13 @@ class ChannelConnection(Base):
             ["tenant_id"], ["tenants.id"], name="fk_channel_connections_tenant", ondelete="CASCADE"
         ),
         Index("uq_channel_connections_tenant_id", "tenant_id", "id", unique=True),
+        Index(
+            "uq_channel_connections_live_ref",
+            "channel",
+            "many_channel_ref",
+            unique=True,
+            postgresql_where=text("many_channel_ref IS NOT NULL AND status <> 'revoked'"),
+        ),
         Index(
             "ix_channel_connections_tenant_status",
             "tenant_id",

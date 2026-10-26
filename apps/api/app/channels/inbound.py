@@ -1,6 +1,6 @@
 """Idempotent storage handlers for authenticated ManyOsirisChat events."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -38,6 +38,43 @@ def _event_time(payload: dict[str, Any], key: str = "occurred_at") -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(UTC)
 
 
+def clamp_received_at(payload: dict[str, Any], now: datetime | None = None) -> datetime:
+    """Many's ``received_at`` limited to [now-24h, now+5min]; otherwise our own clock
+    (contract v1.1 A10), so a skewed or hostile clock cannot reorder a thread."""
+    now = now or datetime.now(UTC)
+    try:
+        claimed = _event_time(payload, "received_at")
+    except ValueError:
+        return now
+    if not now - timedelta(hours=24) <= claimed <= now + timedelta(minutes=5):
+        return now
+    return claimed
+
+
+def _refresh_contact(contact: Contact, data: dict[str, Any]) -> None:
+    """Later events refresh name, phone and handle, but never overwrite what staff
+    typed: a field is replaced only if it is empty, the placeholder, or still the
+    value this channel gave us last time."""
+    fields = dict(contact.custom_fields or {})
+    name = _clean(data.get("name"), 120)
+    phone = _clean(data.get("phone"), 40)
+    handle = _clean(data.get("handle"), 120)
+    if name and name != fields.get("channel_name"):
+        if contact.display_name in {None, "", "Channel visitor", fields.get("channel_name")} or (
+            contact.display_name == fields.get("channel_handle")
+        ):
+            contact.display_name = name
+        fields["channel_name"] = name
+    if phone and phone != fields.get("channel_phone"):
+        if not contact.phone or contact.phone == fields.get("channel_phone"):
+            contact.phone = phone
+        fields["channel_phone"] = phone
+    if handle:
+        fields["channel_handle"] = handle
+    if fields != (contact.custom_fields or {}):
+        contact.custom_fields = fields
+
+
 def _identity(
     db: OrmSession, *, connection: ChannelConnection, payload: dict[str, Any]
 ) -> ContactIdentity:
@@ -49,10 +86,17 @@ def _identity(
             ContactIdentity.external_id == external_id,
         )
     )
-    if identity is not None:
-        return identity
     contact_data = payload.get("contact", {})
     contact_data = contact_data if isinstance(contact_data, dict) else {}
+    if identity is not None:
+        contact = db.scalar(
+            select(Contact).where(
+                Contact.tenant_id == connection.tenant_id, Contact.id == identity.contact_id
+            )
+        )
+        if contact is not None:
+            _refresh_contact(contact, contact_data)
+        return identity
     name = _clean(contact_data.get("name"), 120)
     phone = _clean(contact_data.get("phone"), 40)
     handle = _clean(contact_data.get("handle"), 120)
@@ -61,7 +105,15 @@ def _identity(
         display_name=name or handle or phone or "Channel visitor",
         phone=phone,
         source_channel=payload["channel"],
-        custom_fields={"channel_handle": handle} if handle else {},
+        custom_fields={
+            key: value
+            for key, value in (
+                ("channel_handle", handle),
+                ("channel_name", name),
+                ("channel_phone", phone),
+            )
+            if value
+        },
     )
     db.add(contact)
     db.flush()
@@ -163,7 +215,7 @@ def _received(
         sender_type="visitor",
         text=text,
         channel_message_id=external_message_id,
-        created_at=_event_time(payload, "received_at"),
+        created_at=clamp_received_at(payload),
     )
     db.add(message)
     now = datetime.now(UTC)
@@ -245,6 +297,59 @@ def _channel_status(db: OrmSession, connection: ChannelConnection, payload: dict
     )
 
 
+def _earlier_pending(db: OrmSession, event: ChannelEvent) -> list[ChannelEvent]:
+    """Unprocessed ``message.received`` events of the same conversation that arrived
+    before ``event`` (receipt time, then id), oldest first."""
+    return list(
+        db.scalars(
+            select(ChannelEvent)
+            .where(
+                ChannelEvent.tenant_id == event.tenant_id,
+                ChannelEvent.connection_id == event.connection_id,
+                ChannelEvent.event_type == "message.received",
+                ChannelEvent.status == "received",
+                ChannelEvent.id != event.id,
+                ChannelEvent.payload["external_conversation_id"].as_string()
+                == str(event.payload["external_conversation_id"]),
+                (ChannelEvent.received_at < event.received_at)
+                | ((ChannelEvent.received_at == event.received_at) & (ChannelEvent.id < event.id)),
+            )
+            .order_by(ChannelEvent.received_at, ChannelEvent.id)
+            .with_for_update()
+        )
+    )
+
+
+def _handle_received(
+    db: OrmSession,
+    event: ChannelEvent,
+    connection: ChannelConnection,
+    bot: Bot,
+    settings: Settings,
+) -> None:
+    payload = event.payload
+    bot_language = (
+        str(bot.config.get("default_language", "en")) if isinstance(bot.config, dict) else "en"
+    )
+    conversation, visitor_message, is_new = _received(db, connection, payload, bot_language)
+    if is_new and visitor_message is not None:
+        channel_chat_turn(
+            db,
+            tenant_id=connection.tenant_id,
+            bot=bot,
+            conversation=conversation,
+            connection=connection,
+            visitor_message=visitor_message,
+            question=str(payload.get("text", "")),
+            supported=payload.get("type") == "text",
+            settings=settings,
+        )
+    event.status = "processed"
+    event.processed_at = datetime.now(UTC)
+    # Make the turn visible before the next waiting event takes the lock.
+    db.commit()
+
+
 def run_channel_inbound(db: OrmSession, job: Job, settings: Settings | None = None) -> str | None:
     """Process a channel event with tenant/bot authority taken only from its connection."""
     settings = settings or get_settings()
@@ -284,29 +389,17 @@ def run_channel_inbound(db: OrmSession, job: Job, settings: Settings | None = No
         return None
     payload = event.payload
     if event.event_type == "message.received":
-        bot_language = (
-            str(bot.config.get("default_language", "en")) if isinstance(bot.config, dict) else "en"
-        )
         # One event at a time per conversation, held for the whole turn (several
         # workers, commits inside the turn): see conversation_turn_lock.
         with conversation_turn_lock(db, connection.id, str(payload["external_conversation_id"])):
-            conversation, visitor_message, is_new = _received(db, connection, payload, bot_language)
-            if is_new and visitor_message is not None:
-                channel_chat_turn(
-                    db,
-                    tenant_id=connection.tenant_id,
-                    bot=bot,
-                    conversation=conversation,
-                    connection=connection,
-                    visitor_message=visitor_message,
-                    question=str(payload.get("text", "")),
-                    supported=payload.get("type") == "text",
-                    settings=settings,
-                )
-            # Make the turn visible before the next waiting event takes the lock.
-            event.status = "processed"
-            event.processed_at = datetime.now(UTC)
-            db.commit()
+            # Order of receipt (A7): events of this conversation that arrived earlier
+            # and are still unprocessed (their job lost the race for the lock, or is
+            # waiting for a retry) run first. Their own jobs then find them processed.
+            db.refresh(event)
+            if event.status not in {"processed", "ignored"}:
+                for earlier in _earlier_pending(db, event):
+                    _handle_received(db, earlier, connection, bot, settings)
+                _handle_received(db, event, connection, bot, settings)
         return None
     elif event.event_type == "message.status":
         _message_status(db, connection, payload)

@@ -264,6 +264,7 @@ def create_channel_connection(
         raise ApiError(
             503, "CHANNEL_ENCRYPTION_UNAVAILABLE", "Channel secret encryption is unavailable."
         ) from exc
+    _require_free_channel_ref(db, payload.channel, payload.many_channel_ref, exclude=None)
     connection = ChannelConnection(
         id=uuid4(),
         tenant_id=tenant.id,
@@ -297,6 +298,26 @@ def get_channel_connection(
     return _staff_out(_require_connection(db, connection_id, lock=False))
 
 
+def _require_free_channel_ref(
+    db: OrmSession, channel: str, ref: str | None, *, exclude: UUID | None
+) -> None:
+    """One live connection per Many channel (D11); revoked ones free the reference."""
+    if not ref:
+        return
+    statement = select(ChannelConnection.id).where(
+        ChannelConnection.channel == channel,
+        ChannelConnection.many_channel_ref == ref,
+        ChannelConnection.status != "revoked",
+    )
+    if exclude is not None:
+        statement = statement.where(ChannelConnection.id != exclude)
+    taken = db.scalar(statement)
+    if taken is not None:
+        raise ApiError(
+            409, "CHANNEL_REF_IN_USE", "This Many channel is already linked to a connection."
+        )
+
+
 @router.patch(
     "/api/v1/platform/channel-connections/{connection_id}",
     response_model=StaffConnectionOut,
@@ -315,6 +336,10 @@ def update_channel_connection(
     values = payload.model_dump(exclude_unset=True)
     if "many_base_url" in values and values["many_base_url"] is not None:
         values["many_base_url"] = _validate_base_url(values["many_base_url"], settings)
+    if values.get("many_channel_ref"):
+        _require_free_channel_ref(
+            db, connection.channel, values["many_channel_ref"], exclude=connection.id
+        )
     for name, value in values.items():
         setattr(connection, name, value)
     connection.updated_at = datetime.now(UTC)

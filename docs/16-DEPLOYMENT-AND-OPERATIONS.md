@@ -38,7 +38,7 @@ database.
 1. Prereqs: staging deployed (ADR-007 hosting decision), the Many side in
    delegated mode for one WhatsApp number (MANY-AGENT-PROMPT.md), and the
    tenant limited to one bot and one connection.
-2. Apply migrations 0023–0026 before booting the API; the worker refuses to
+2. Apply migrations 0023–0027 before booting the API; the worker refuses to
    start against a non-migrated head implicitly (job type constraint).
 3. Create the connection as platform staff, copy the once-shown secret into
    the Many channel operator screen; many_base_url pins the staging peer.
