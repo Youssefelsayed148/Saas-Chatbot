@@ -109,7 +109,10 @@ def _validate_payload(payload: object, connection_id: UUID) -> dict[str, Any]:
             raise ValueError("origin")
     elif event_type == "message.status":
         if not isinstance(payload.get("status"), str) or payload["status"] not in {
-            "sent", "delivered", "read", "failed"
+            "sent",
+            "delivered",
+            "read",
+            "failed",
         }:
             raise ValueError("status")
         if not isinstance(payload.get("message_id") or payload.get("external_message_id"), str):
@@ -122,7 +125,11 @@ def _validate_payload(payload: object, connection_id: UUID) -> dict[str, Any]:
             raise ValueError("error_detail")
     elif event_type == "channel.status":
         if payload.get("status") not in {
-            "connected", "token_expiring", "webhook_unhealthy", "token_expired", "disconnected"
+            "connected",
+            "token_expiring",
+            "webhook_unhealthy",
+            "token_expired",
+            "disconnected",
         }:
             raise ValueError("status")
         if payload.get("detail") is not None and (
@@ -154,9 +161,7 @@ async def receive_channel_event(
         connection_id = UUID(connection_header)
     except (ValueError, AttributeError):
         raise _unauthorized("unknown_connection") from None
-    connection = db.scalar(
-        select(ChannelConnection).where(ChannelConnection.id == connection_id)
-    )
+    connection = db.scalar(select(ChannelConnection).where(ChannelConnection.id == connection_id))
     if connection is None or connection.status == "revoked":
         raise _unauthorized("unknown_or_revoked_connection")
     raw = await _raw_body(request)

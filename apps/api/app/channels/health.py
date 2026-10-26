@@ -335,10 +335,7 @@ def schedule_health_polls(
             Job,
             (Job.type == "channel_health_poll")
             & (Job.status.in_(("pending", "running")))
-            & (
-                Job.payload["connection_id"].astext
-                == cast(ChannelConnection.id, Text)
-            ),
+            & (Job.payload["connection_id"].astext == cast(ChannelConnection.id, Text)),
         )
         .where(
             ChannelConnection.status == "active",

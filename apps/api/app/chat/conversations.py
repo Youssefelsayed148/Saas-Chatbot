@@ -11,6 +11,8 @@ same event twice cannot double-count (docs/14 §7).
 """
 
 import logging
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID, uuid4
@@ -18,6 +20,9 @@ from uuid import UUID, uuid4
 from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
+from app.channels import config as channel_config
+from app.channels.guard import busy_reply_recent, inbound_rate_exceeded
+from app.channels.sanitize import to_plain_text
 from app.chat import prompts
 from app.chat.history import history_for_turn
 from app.chat.models import default_model
@@ -45,9 +50,10 @@ logger = logging.getLogger(__name__)
 def playground_key(user_id: UUID) -> str:
     """Playground threads are scoped to the staff user that started them.
 
-    Stored in ``external_conversation_id`` (``connection_id`` is a UUID foreign key
-    to channel connections since migration 0023): ``assigned_user_id`` cannot hold it because that FK needs a tenant membership
-    and platform staff running the playground may not have one."""
+    Stored in ``external_conversation_id`` (``connection_id`` is a UUID foreign
+    key to channel connections since migration 0023): ``assigned_user_id`` cannot
+    hold it because that FK needs a tenant membership and platform staff running
+    the playground may not have one."""
     return f"playground:{user_id}"
 
 
@@ -342,6 +348,154 @@ def _unavailable_turn(
     }
 
 
+@dataclass
+class AiTurn:
+    """What one AI answer produced (shared by the website and channel turns).
+
+    Kept as a small dataclass so later features (tool calls, structured actions)
+    can add fields without touching either caller's signature."""
+
+    ai_message: Message
+    reply: ChatReply
+    handed_off: bool = False
+    extras: dict[str, Any] = field(default_factory=dict)
+
+
+def run_ai_turn(
+    db: OrmSession,
+    *,
+    tenant_id: UUID,
+    bot: Bot,
+    conversation: Conversation,
+    visitor_message: Message,
+    question: str,
+    language_hint: str | None,
+    model: ChatModel | None,
+    settings: Settings,
+    preview_revision_id: UUID | None = None,
+    event_source: str | None = None,
+    degrade: Callable[[], ChatReply | None] | None = None,
+    shape_answer: Callable[[str], str] | None = None,
+    trace_extra: dict[str, object] | None = None,
+    channel_style: str = "",
+) -> AiTurn | None:
+    """The ONE reply brain: history, quota reservation, metered ``chat_answer``,
+    the AI message, handoff decision, usage event, settlement and handoff effects.
+
+    Callers own persistence of the visitor message, gating and the response shape.
+    Without ``degrade`` (website) any quota or provider failure propagates and the
+    reservation is released. With ``degrade`` (channels, no visitor waiting) a
+    missing model, exhausted quota or provider failure yields the reply returned by
+    ``degrade()``; ``None`` from it means "send nothing" and the turn ends."""
+    history = history_for_turn(
+        db, conversation, settings=settings, exclude_message_id=visitor_message.id
+    )
+    reservation: UUID | None = None
+    metered: MeteredChatModel | None = None
+    response_ms: int | None = None
+    reply: ChatReply | None = None
+    if model is None:
+        assert degrade is not None
+        reply = degrade()
+    else:
+        try:
+            reservation = reserve(
+                db,
+                tenant_id,
+                bot.id,
+                settings,
+                event_type="message",
+                model=None,
+                channel=conversation.channel,
+                source=event_source,
+            )
+        except ApiError as exc:
+            if degrade is None or exc.code != "QUOTA_EXCEEDED":
+                raise
+            reply = degrade()
+        else:
+            metered = MeteredChatModel(model, db, tenant_id, bot.id, settings, conversation.channel)
+            started = datetime.now(UTC)
+            try:
+                reply = chat_answer(
+                    db,
+                    tenant_id=tenant_id,
+                    bot=bot,
+                    question=question,
+                    history=history.messages,
+                    history_skipped=history.skipped,
+                    language_hint=language_hint,
+                    model=metered,
+                    settings=settings,
+                    preview_revision_id=preview_revision_id,
+                    channel_style=channel_style,
+                )
+            except BaseException as exc:
+                recoverable = degrade is not None and (
+                    isinstance(exc, ProviderError)
+                    or (isinstance(exc, ApiError) and exc.code == "QUOTA_EXCEEDED")
+                )
+                if degrade is not None and recoverable:
+                    release(db, tenant_id, bot.id, reservation, settings)
+                    reservation = None
+                    reply = degrade()
+                else:
+                    # Aborted turn: no answer was stored, so the message must not count.
+                    db.rollback()
+                    release(db, tenant_id, bot.id, reservation, settings)
+                    raise
+            response_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
+    if reply is None:
+        return None
+    reply.trace["channel"] = conversation.channel
+    if trace_extra:
+        reply.trace.update(trace_extra)
+    ai_message = append_message(
+        db,
+        conversation,
+        sender_type="ai",
+        text=shape_answer(reply.answer) if shape_answer is not None else reply.answer,
+        citations=reply.citations,
+        can_answer=reply.can_answer,
+        needs_human=reply.needs_human,
+        response_ms=response_ms,
+    )
+    decision = decide_handoff(
+        db,
+        bot=bot,
+        conversation=conversation,
+        question=question,
+        language=reply.language,
+        reply_kind=reply.kind,
+        can_answer=reply.can_answer,
+    )
+    reply.trace["handoff_reason"] = decision.reason if decision is not None else None
+    record_usage_event(
+        db,
+        tenant_id=tenant_id,
+        bot_id=bot.id,
+        kind="message",
+        external_key=f"message:{ai_message.id}",
+        message_id=ai_message.id,
+        conversation_id=conversation.id,
+        payload={
+            "provider_usage": metered.usage_totals if metered is not None else {},
+            "rag_trace": reply.trace,
+            "ai_metered": reservation is not None,
+            **({"source": event_source} if event_source else {}),
+        },
+    )
+    if reservation is not None:
+        settle(db, tenant_id, bot.id, reservation, settings, tokens=0, cost_usd=None, commit=False)
+    if decision is not None:
+        start_handoff(db, bot=bot, conversation=conversation, decision=decision)
+        ai_message.text = visitor_handoff_reply(bot, reply.language)
+        ai_message.citations = None
+        ai_message.can_answer = False
+        ai_message.needs_human = True
+    return AiTurn(ai_message=ai_message, reply=reply, handed_off=decision is not None)
+
+
 def visitor_chat_turn(
     db: OrmSession,
     *,
@@ -423,85 +577,21 @@ def visitor_chat_turn(
             language=language,
         )
 
-    history = history_for_turn(
-        db, conversation, settings=settings, exclude_message_id=visitor_message.id
-    )
-    message_reservation = reserve(
-        db,
-        tenant_id,
-        bot.id,
-        settings,
-        event_type="message",
-        model=None,
-        channel=conversation.channel,
-        source=event_source,
-    )
-    model = MeteredChatModel(model, db, tenant_id, bot.id, settings, conversation.channel)
-    started = datetime.now(UTC)
-    try:
-        reply = chat_answer(
-            db,
-            tenant_id=tenant_id,
-            bot=bot,
-            question=question,
-            history=history.messages,
-            history_skipped=history.skipped,
-            language_hint=language_hint,
-            model=model,
-            settings=settings,
-            preview_revision_id=preview_revision_id,
-        )
-    except BaseException:
-        # Aborted turn: no answer was stored, so the message must not count.
-        db.rollback()
-        release(db, tenant_id, bot.id, message_reservation, settings)
-        raise
-    response_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
-    reply.trace["channel"] = conversation.channel
-    ai_message = append_message(
-        db,
-        conversation,
-        sender_type="ai",
-        text=reply.answer,
-        citations=reply.citations,
-        can_answer=reply.can_answer,
-        needs_human=reply.needs_human,
-        response_ms=response_ms,
-    )
-    decision = decide_handoff(
-        db,
-        bot=bot,
-        conversation=conversation,
-        question=question,
-        language=reply.language,
-        reply_kind=reply.kind,
-        can_answer=reply.can_answer,
-    )
-    reply.trace["handoff_reason"] = decision.reason if decision is not None else None
-    record_usage_event(
+    turn = run_ai_turn(
         db,
         tenant_id=tenant_id,
-        bot_id=bot.id,
-        kind="message",
-        external_key=f"message:{ai_message.id}",
-        message_id=ai_message.id,
-        conversation_id=conversation.id,
-        payload={
-            "provider_usage": model.usage_totals,
-            "rag_trace": reply.trace,
-            "ai_metered": True,
-            **({"source": event_source} if event_source else {}),
-        },
+        bot=bot,
+        conversation=conversation,
+        visitor_message=visitor_message,
+        question=question,
+        language_hint=language_hint,
+        model=model,
+        settings=settings,
+        preview_revision_id=preview_revision_id,
+        event_source=event_source,
     )
-    settle(
-        db, tenant_id, bot.id, message_reservation, settings, tokens=0, cost_usd=None, commit=False
-    )
-    if decision is not None:
-        start_handoff(db, bot=bot, conversation=conversation, decision=decision)
-        ai_message.text = visitor_handoff_reply(bot, reply.language)
-        ai_message.citations = None
-        ai_message.can_answer = False
-        ai_message.needs_human = True
+    assert turn is not None  # only a degrading (channel) turn may return None
+    ai_message, reply = turn.ai_message, turn.reply
     db.commit()
     return {
         "conversation_id": str(conversation.id),
@@ -524,6 +614,27 @@ def visitor_chat_turn(
     }
 
 
+def _channel_style(bot: Bot) -> str:
+    """Per-bot DM style hint (``bot.config.channel_style_hint``) or the default."""
+    config = bot.config if isinstance(bot.config, dict) else {}
+    hint = config.get("channel_style_hint")
+    if isinstance(hint, str) and hint.strip():
+        return hint.strip()[: channel_config.STYLE_HINT_MAX]
+    return channel_config.DEFAULT_STYLE_HINT
+
+
+def _busy_texts(bot: Bot) -> set[str]:
+    """Every wording a busy/quota reply can have in a stored thread."""
+    return {
+        text
+        for lang in ("en", "ar")
+        for text in (
+            canned("busy", lang, support_contact=_support_contact(bot)),
+            visitor_handoff_reply(bot, lang),
+        )
+    }
+
+
 def channel_chat_turn(
     db: OrmSession,
     *,
@@ -537,8 +648,18 @@ def channel_chat_turn(
     settings: Settings | None = None,
     model: ChatModel | None = None,
 ) -> Message | None:
-    """Run a delegated-channel turn without changing the website turn contract."""
-    settings = settings or get_settings()
+    """A delegated-channel turn: channel gating around the shared reply brain.
+
+    Channel-only parts are the visitor-message persistence (done by the caller),
+    mode/status gating, the flood throttle, no-visitor-waiting delivery, plain-text
+    output and the outbound enqueue. The answer itself comes from ``run_ai_turn``,
+    the same code the website runs."""
+    from app.channels.outbound import enqueue_message
+
+    base_settings = settings or get_settings()
+    settings = base_settings.model_copy(
+        update={"chat_turn_deadline_seconds": channel_config.CHANNEL_TURN_DEADLINE_SECONDS}
+    )
     language = detect_language(question) or (
         str(bot.config.get("default_language", "en")) if isinstance(bot.config, dict) else "en"
     )
@@ -550,11 +671,17 @@ def channel_chat_turn(
         conversation.handoff_reason = None
         db.add(conversation)
 
+    # A person owns the thread: nothing below may flip it or answer (human mode wins
+    # over AI-off, pause and flood flags).
+    if conversation.mode == "human":
+        return None
     if connection.status != "active" or not connection.ai_enabled:
         conversation.status = "waiting_human"
         db.add(conversation)
         return None
-    if conversation.mode == "human":
+    if inbound_rate_exceeded(db, conversation):
+        conversation.status = "waiting_human"
+        db.add(conversation)
         return None
     if not supported:
         unsupported_decision = HandoffDecision("unsupported_message", language)
@@ -586,136 +713,46 @@ def channel_chat_turn(
             can_answer=False,
             needs_human=True,
         )
-        from app.channels.outbound import enqueue_message
-
+        notice.delivery_status = "pending"
         enqueue_message(db, conversation, notice, settings)
         return notice
 
-    pipeline_question = question[:1000]
-    history = history_for_turn(
-        db, conversation, settings=settings, exclude_message_id=visitor_message.id
+    allow_links = bool(
+        bot.config.get("channel_allow_source_links") if isinstance(bot.config, dict) else False
     )
-    configured_model = model or default_model(bot)
-    reservation: UUID | None = None
-    response_ms: int | None = None
-    metered_model: MeteredChatModel | None = None
-    if configured_model is None:
-        reply = _channel_busy_reply(bot, language)
-    else:
-        try:
-            reservation = reserve(
-                db,
-                tenant_id,
-                bot.id,
-                settings,
-                event_type="message",
-                model=None,
-                channel=conversation.channel,
-            )
-        except ApiError as exc:
-            if exc.code != "QUOTA_EXCEEDED":
-                raise
-            reply = _channel_busy_reply(bot, language)
-        else:
-            metered_model = MeteredChatModel(
-                configured_model, db, tenant_id, bot.id, settings, conversation.channel
-            )
-            started = datetime.now(UTC)
-            try:
-                reply = chat_answer(
-                    db,
-                    tenant_id=tenant_id,
-                    bot=bot,
-                    question=pipeline_question,
-                    history=history.messages,
-                    history_skipped=history.skipped,
-                    language_hint=language,
-                    model=metered_model,
-                    settings=settings,
-                )
-            except ProviderError:
-                release(db, tenant_id, bot.id, reservation, settings)
-                reservation = None
-                reply = _channel_busy_reply(bot, language)
-            except ApiError as exc:
-                if exc.code != "QUOTA_EXCEEDED":
-                    raise
-                release(db, tenant_id, bot.id, reservation, settings)
-                reservation = None
-                reply = _channel_busy_reply(bot, language)
-            response_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
 
-    reply.trace["channel"] = conversation.channel
-    reply.trace["connection_id"] = str(connection.id)
-    ai_message = append_message(
-        db,
-        conversation,
-        sender_type="ai",
-        text=reply.answer,
-        citations=reply.citations,
-        can_answer=reply.can_answer,
-        needs_human=reply.needs_human,
-        response_ms=response_ms,
-    )
-    ai_message.delivery_status = "pending"
-    record_usage_event(
+    def degrade() -> ChatReply | None:
+        # At most one busy/quota reply per conversation per window (A8).
+        if busy_reply_recent(db, conversation, _busy_texts(bot)):
+            return None
+        return _channel_busy_reply(bot, language)
+
+    turn = run_ai_turn(
         db,
         tenant_id=tenant_id,
-        bot_id=bot.id,
-        kind="message",
-        external_key=f"message:{ai_message.id}",
-        message_id=ai_message.id,
-        conversation_id=conversation.id,
-        payload={
-            "provider_usage": metered_model.usage_totals if metered_model is not None else {},
-            "rag_trace": reply.trace,
-            "ai_metered": reservation is not None,
-        },
-    )
-    if reservation is not None:
-        settle(
-            db,
-            tenant_id,
-            bot.id,
-            reservation,
-            settings,
-            tokens=0,
-            cost_usd=None,
-            commit=False,
-        )
-    decision = decide_handoff(
-        db,
         bot=bot,
         conversation=conversation,
-        question=pipeline_question,
-        language=reply.language,
-        reply_kind=reply.kind,
-        can_answer=reply.can_answer,
+        visitor_message=visitor_message,
+        question=question[:1000],
+        language_hint=language,
+        model=model or default_model(bot),
+        settings=settings,
+        degrade=degrade,
+        shape_answer=lambda answer: to_plain_text(answer, allow_links=allow_links),
+        trace_extra={"connection_id": str(connection.id)},
+        channel_style=_channel_style(bot),
     )
-    if decision is not None:
-        start_handoff(db, bot=bot, conversation=conversation, decision=decision)
-        ai_message.text = visitor_handoff_reply(bot, reply.language)
-        ai_message.citations = None
-        ai_message.can_answer = False
-        ai_message.needs_human = True
-    from app.channels.outbound import enqueue_message
-
+    if turn is None:
+        return None
+    ai_message = turn.ai_message
+    ai_message.delivery_status = "pending"
     enqueue_message(db, conversation, ai_message, settings)
     return ai_message
 
 
 def _channel_busy_reply(bot: Bot, language: str) -> ChatReply:
-    config = bot.config if isinstance(bot.config, dict) else {}
-    contact = (
-        " / ".join(
-            str(value).strip()
-            for value in (config.get("support_email"), config.get("support_phone"))
-            if isinstance(value, str) and value.strip()
-        )
-        or "our support team"
-    )
     return ChatReply(
-        answer=canned("busy", language, support_contact=contact),
+        answer=canned("busy", language, support_contact=_support_contact(bot)),
         can_answer=False,
         needs_human=True,
         language=language,

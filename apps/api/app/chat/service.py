@@ -483,6 +483,7 @@ def chat_answer(
     history_skipped: int = 0,
     post_check: Callable[[str, list[RetrievedChunk]], bool] | None = None,
     preview_revision_id: UUID | None = None,
+    channel_style: str = "",
 ) -> ChatReply:
     """``preview_revision_id``: staff-playground draft preview. When set, retrieval
     reads that revision (validated against tenant + bot as a draft); None keeps
@@ -730,6 +731,7 @@ def chat_answer(
         language=language,
         evidence_block=block,
         tone_and_rules=str(getattr(bot, "tone_and_rules", None) or ""),
+        channel_style=channel_style,
     )
     user_text = question
     extra: list[str] = []

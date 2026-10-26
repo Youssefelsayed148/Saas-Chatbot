@@ -5,8 +5,10 @@ from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as OrmSession
 
+from app.channels.guard import conversation_turn_lock
 from app.channels.health import apply_health, clean_text
 from app.chat.conversations import channel_chat_turn
 from app.core.config import Settings, get_settings
@@ -104,16 +106,37 @@ def _conversation(
             status="open",
             source="channel",
         )
-        db.add(conversation)
-        db.flush()
+        try:
+            with db.begin_nested():
+                db.add(conversation)
+                db.flush()
+        except IntegrityError:
+            # Lost a creation race (the turn lock normally prevents it): reuse the winner.
+            conversation = db.scalar(
+                select(Conversation).where(
+                    Conversation.tenant_id == connection.tenant_id,
+                    Conversation.connection_id == connection.id,
+                    Conversation.external_conversation_id == external_id,
+                )
+            )
+            assert conversation is not None
     elif conversation.origin is None and isinstance(payload.get("origin"), dict):
         # First available origin sticks; later messages cannot rewrite it.
         conversation.origin = payload["origin"]
     return conversation
 
 
+_UNSUPPORTED_PLACEHOLDER = {
+    "en": "Unsupported message type.",
+    "ar": "تعذر عرض هذه الرسالة.",
+}
+
+
 def _received(
-    db: OrmSession, connection: ChannelConnection, payload: dict[str, Any]
+    db: OrmSession,
+    connection: ChannelConnection,
+    payload: dict[str, Any],
+    bot_language: str = "en",
 ) -> tuple[Conversation, Message | None, bool]:
     identity = _identity(db, connection=connection, payload=payload)
     conversation = _conversation(db, connection=connection, identity=identity, payload=payload)
@@ -131,14 +154,8 @@ def _received(
         return conversation, message, False
     text = payload.get("text", "")
     if payload.get("type") == "unsupported":
-        text = (
-            "تعذر عرض هذه الرسالة."
-            if payload["channel"] in {"whatsapp", "messenger", "instagram"}
-            else "Unsupported message type."
-        )
-        conversation.status = "waiting_human"
-    elif connection.status == "paused":
-        conversation.status = "waiting_human"
+        # Localized by the bot language; gating and handoff happen in the turn.
+        text = _UNSUPPORTED_PLACEHOLDER.get(bot_language, _UNSUPPORTED_PLACEHOLDER["en"])
     message = Message(
         tenant_id=connection.tenant_id,
         bot_id=connection.bot_id,
@@ -215,9 +232,7 @@ def _message_status(db: OrmSession, connection: ChannelConnection, payload: dict
         )
 
 
-def _channel_status(
-    db: OrmSession, connection: ChannelConnection, payload: dict[str, Any]
-) -> None:
+def _channel_status(db: OrmSession, connection: ChannelConnection, payload: dict[str, Any]) -> None:
     """Pushed ``channel.status`` (docs/17 §4.3): newest wins, audited."""
     occurred_at = _event_time(payload)
     apply_health(
@@ -269,19 +284,30 @@ def run_channel_inbound(db: OrmSession, job: Job, settings: Settings | None = No
         return None
     payload = event.payload
     if event.event_type == "message.received":
-        conversation, visitor_message, is_new = _received(db, connection, payload)
-        if is_new and visitor_message is not None:
-            channel_chat_turn(
-                db,
-                tenant_id=connection.tenant_id,
-                bot=bot,
-                conversation=conversation,
-                connection=connection,
-                visitor_message=visitor_message,
-                question=str(payload.get("text", "")),
-                supported=payload.get("type") == "text",
-                settings=settings,
-            )
+        bot_language = (
+            str(bot.config.get("default_language", "en")) if isinstance(bot.config, dict) else "en"
+        )
+        # One event at a time per conversation, held for the whole turn (several
+        # workers, commits inside the turn): see conversation_turn_lock.
+        with conversation_turn_lock(db, connection.id, str(payload["external_conversation_id"])):
+            conversation, visitor_message, is_new = _received(db, connection, payload, bot_language)
+            if is_new and visitor_message is not None:
+                channel_chat_turn(
+                    db,
+                    tenant_id=connection.tenant_id,
+                    bot=bot,
+                    conversation=conversation,
+                    connection=connection,
+                    visitor_message=visitor_message,
+                    question=str(payload.get("text", "")),
+                    supported=payload.get("type") == "text",
+                    settings=settings,
+                )
+            # Make the turn visible before the next waiting event takes the lock.
+            event.status = "processed"
+            event.processed_at = datetime.now(UTC)
+            db.commit()
+        return None
     elif event.event_type == "message.status":
         _message_status(db, connection, payload)
     elif event.event_type == "channel.status":
