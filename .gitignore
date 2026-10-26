@@ -15,6 +15,7 @@ __pycache__/
 .env.local
 .env.*
 !.env.example
+!.env.production.example
 *.tsbuildinfo
 .npm-cache/
 .cache/
@@ -39,3 +40,6 @@ apps/api/.pytest_local_run/
 .ui-baseline-*/
 .ui-after-*/
 apps/web/.ui-*/
+
+# Production runtime data
+/backups/

@@ -14,10 +14,16 @@ apps/api/app/db/           Read-only database readiness probe
 apps/api/tests/            Isolated pytest tests
 apps/api/requirements*.lock Pinned runtime and development dependencies
 compose.yaml               Development db, migrator, API, worker, web and opt-in seed
+compose.prod.yaml          Production stack (Caddy HTTPS, db, API, worker, web, backups); see DEPLOY.md
+deploy/                    Caddyfile and backup script used by compose.prod.yaml
 .github/workflows/ci.yml    Separate frontend/backend validation jobs
 docs/, implementation/     V2 specifications and ticket evidence
 reference/original/        Historical documents, read-only references
 ```
+
+## Deploy
+
+Production runs entirely in Docker on a VPS: see [DEPLOY.md](DEPLOY.md) (`.env.production.example`, `scripts/deploy.sh`).
 
 ## Start locally
 

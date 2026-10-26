@@ -1,5 +1,17 @@
 # Execution checkpoint
 
+## 2026-10-26 - stale-test fixes, two bug fixes, production deploy stack (branch fix/stale-tests-and-baseline, from main)
+
+Disposable DB: pgvector container on 127.0.0.1:55462 (`TEST_DATABASE_URL=.../fixrun`, derived `fixrun_test`). Each pytest ran one file at a time. No full-suite rerun, no push, no paid or Meta calls.
+
+Code fixes: (1) `_merge_config` stored `[]` for an empty always_include list instead of clearing it; (2) an aborted streamed turn left the visitor message and inbox event behind because `reserve()` commits the session, now removed explicitly and tenant-scoped (`_discard_unanswered_message`); (3) `scripts/create_platform_staff.py` refused every non-`_dev`/`_demo` database, so no production admin could be created: new production path (ENVIRONMENT=production, PostgreSQL only) with a test; (4) `ingest.py` uses `sys.platform` so mypy passes on Windows.
+Stale tests fixed: staff_members (field names now allowed in 422, values must not echo), rag_gate provider chain (3 requests = one per model, no retries), knowledge_hygiene cross-tenant check (platform staff may act on any tenant by design), route matrix (PUT routes, count 90, replace upload), bot_names_migration (tenants has no updated_at), rag_stage0 baseline (`preview` kwarg), utf-8 file read in rag_gate.
+Lint: ruff now clean (per-file E501 ignore for tests and old migrations; four app lines wrapped; `ruff format` applied); `mypy` strict: Success, 244 files.
+
+Results (exact, one file each): hygiene 12 passed; bot_names_migration 1; staff_members 28; rag_gate + rag_stage0_baseline 45 (with PYTHONUTF8=1, then the utf-8 read fix); route matrix + rag_gate 37; chat_streaming disconnect test 1 passed (full file earlier: 20 passed, 1 failed = this bug); chat 26; conversations 13; widget_public 17; handoff 5; chat_streaming_unit 34; create_platform_staff 3. playground_parity: still running when committed. NOT run: Playwright (13 known failures untouched), embedding/hybrid/RAG-evaluation files.
+
+Deploy: `compose.prod.yaml`, `deploy/Caddyfile`, `deploy/backup.sh`, `.env.production.example`, `scripts/deploy.sh`, `DEPLOY.md`. `docker compose config` valid (only 80/443 published); api and web images built; local smoke test with fake keys and no Caddy (project saasprodsmoke, torn down afterwards): db, migrate, staff, api, worker, web all healthy; admin login 200 with Secure cookies; /platform anonymous 307 to login; widget loader 200. Caddy/HTTPS untested until a real domain.
+
 ## 2026-10-22 — A2 widget embedding & domain enforcement batch (branch fix/a2-widget-embedding, created from main)
 
 Commits (local only, no push/tag/merge): 5493fbb A2.1 loader host forwarding +
