@@ -17,7 +17,8 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 import httpx
-from sqlalchemy import Text, cast, select
+from sqlalchemy import Text, cast, select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as OrmSession
 
 from app.channels.signing import sign
@@ -39,6 +40,9 @@ STALE_AFTER = timedelta(minutes=STALE_AFTER_MINUTES)
 HEALTH_RESPONSE_BYTES = 64 * 1024
 HEALTH_TIMEOUT = httpx.Timeout(15.0, connect=5.0)
 HEALTH_PATH = "/api/saas/connections/{connection_id}/health"
+# Held (transaction scoped) while one worker schedules polls, so several
+# workers never race on the same connections. Arbitrary fixed 63-bit key.
+SCHEDULER_LOCK_KEY = 0x5E7C0A11_1EA17001
 
 
 class HealthPullFailure(Exception):
@@ -176,7 +180,10 @@ def parse_health_body(
             raise HealthPullFailure("many_invalid_response") from exc
     else:
         occurred = now or datetime.now(UTC)
-    return status, detail, occurred
+    # A9: the pull is the freshness source. A Many clock ahead of ours must
+    # not store a future time (it would freeze freshness and make every later
+    # signal look older), so a future ``checked_at`` counts as "now".
+    return status, detail, min(occurred, now or datetime.now(UTC))
 
 
 def _client() -> httpx.Client:
@@ -324,6 +331,10 @@ def schedule_health_polls(
     from app.jobs.queue import enqueue_job
 
     current = now or datetime.now(UTC)
+    # Several workers run this every cycle. Only one schedules at a time; the
+    # others skip the cycle (the next one finds the jobs already queued).
+    if not db.scalar(text("SELECT pg_try_advisory_xact_lock(:key)"), {"key": SCHEDULER_LOCK_KEY}):
+        return 0
     columns = (
         ChannelConnection.tenant_id,
         ChannelConnection.bot_id,
@@ -345,15 +356,21 @@ def schedule_health_polls(
     )
     scheduled = 0
     for tenant_id, bot_id, connection_id in db.execute(statement).all():
-        job = enqueue_job(
-            db,
-            tenant_id=tenant_id,
-            bot_id=bot_id,
-            job_type="channel_health_poll",
-            payload={"connection_id": str(connection_id)},
-            created_by=None,
-            settings=settings,
-        )
+        try:
+            # Savepoint: the partial unique index is the last line of defence
+            # if a job slipped in; one conflict must not lose the whole cycle.
+            with db.begin_nested():
+                job = enqueue_job(
+                    db,
+                    tenant_id=tenant_id,
+                    bot_id=bot_id,
+                    job_type="channel_health_poll",
+                    payload={"connection_id": str(connection_id)},
+                    created_by=None,
+                    settings=settings,
+                )
+        except IntegrityError:
+            continue
         job.run_at = current + timedelta(
             seconds=random.uniform(0.0, float(settings.channel_health_poll_jitter_seconds))
         )

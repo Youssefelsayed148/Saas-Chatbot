@@ -25,20 +25,38 @@ resources or enable public crawling without explicit approval.
 
 ### Migrations to include in the release (alembic, in order)
 
-`0023_manyosiris_channels` (connections + events + conversation/identity
-changes) · `0024_channel_inbound` (job type constraint, channel contact shape)
-· `0025_channel_send` (outbound bookkeeping/unique keys) ·
-`0026_channel_health_poll` (extends `ck_jobs_type`, adds the partial unique
-index `uq_channel_health_poll_connection` that caps poll concurrency). All four
-are reversible and were round-trip tested up and down on the disposable
-database.
+`0023_manyosiris_channels` (connections, events, `conversations.connection_id`
+Text to UUID, playground key moved to `external_conversation_id`) ·
+`0024_channel_inbound` (job type, channel contact shape) · `0025_channel_send`
+(outbound bookkeeping, `uq_channel_send_message`) · `0026_channel_health_poll`
+(job type, `uq_channel_health_poll_connection`) · `0027_channel_ref_unique`
+(unique live `(channel, many_channel_ref)`; refuses to run if duplicates exist,
+fix them first) · `0028_channel_unconfirmed` (`messages.accepted_at`,
+`unconfirmed` delivery state). All are reversible and were round-trip tested on
+the disposable database. Apply them before booting the API and worker.
+
+### Health model (contract v1.1 A9) and what to watch
+
+- Health comes from three signals: pushed `channel.status` events, the signed
+  5-minute pull (worker job `channel_health_poll`, active connections only) and
+  staff "Check now". Many's signed health endpoint is mandatory.
+- No event and no successful pull for 15 minutes shows `unknown / stale`. Stale
+  usually means the worker is down, Many is silent or the secret does not match.
+- Several workers can run: scheduling takes a database advisory lock, so one
+  worker schedules per cycle and there is at most one live poll job per
+  connection (partial unique index). Nothing needs configuring.
+- A future `checked_at` from Many (clock ahead) is treated as "now".
+- Messages accepted by Many with no status after 15 minutes become
+  `unconfirmed` (worker sweep, same cycle); a later real status overrides it.
+- Alert on: connections stale for more than 30 minutes, `channel_send` /
+  `channel_inbound` job failures, `failed` messages with `many_unreachable`.
 
 ### Staging canary (needs explicit owner approval + a real test number)
 
 1. Prereqs: staging deployed (ADR-007 hosting decision), the Many side in
    delegated mode for one WhatsApp number (MANY-AGENT-PROMPT.md), and the
    tenant limited to one bot and one connection.
-2. Apply migrations 0023–0027 before booting the API; the worker refuses to
+2. Apply migrations 0023–0028 before booting the API; the worker refuses to
    start against a non-migrated head implicitly (job type constraint).
 3. Create the connection as platform staff, copy the once-shown secret into
    the Many channel operator screen; many_base_url pins the staging peer.
@@ -64,6 +82,9 @@ database.
 - Secret compromise: rotate (previous secret stays valid for the grace
   window, default 24 h); repeated 401s on a fresh connection indicate a
   secret/clock mismatch.
-- Last resort: revoke + alembic downgrade 0020→0019 (undo the poll job type)
-  and deploy the previous image; never downgrade across 0017 with live data.
+- Messages that failed because the connection was paused can be sent again by
+  an agent with the inbox "Send again" action (never automatic).
+- Rollback = pause first (loses nothing). Last resort: revoke, deploy the
+  previous image, then downgrade one step at a time (0028 → 0027 → ...). Never
+  downgrade across 0023 with live channel data.
 

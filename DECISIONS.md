@@ -94,6 +94,8 @@ failure is already user-visible as a failed message in the inbox. If the owner
 prefers the literal consecutive-failure model, migration 0020 has unused head
 room and the change is small — decide before staging.
 
+**Sign-off request (prepared in R-05, 2026-10-26).** Decision to confirm: keep the retry-budget model instead of the literal "5 consecutive failures" counter. Evidence after the rebuild: health is also refreshed every 5 minutes by a signed pull (contract v1.1 A9), so a degraded flag set by one exhausted send clears on the next healthy pull and cannot stay wrong for long; with no signal for 15 minutes the UI shows `unknown/stale`. Cost of the alternative: one migration column plus reset logic and edits to accepted tests. Owner choices: (a) approve as built, (b) require the consecutive-failure counter before staging. Until answered this ADR stays "pending owner sign-off".
+
 ## 2026-10-26 - ADR-023: contract v1.1 adopted
 Approver: product owner, by issuing implementation/PHASE-06-V2/SAAS-REBUILD-PROMPT.md. Rationale: the Phase 6 review (REVIEW-REPORT.md) found gaps between contract v1 and the Many code (C1-C8) and SaaS defects (D1-D13); the delta A1-A13 closes the contract side. Alternatives: keep v1 and patch per defect (rejected: Many-side behaviour such as status duty, forwarding scope and error mapping would stay undefined). Impact: docs/17 gains section 11; the fake Many and contract suite pin A1-A13; Many implements the same delta in its own repo. ADR-020 (health degradation model) is NOT covered by this approval and remains awaiting owner sign-off; its text is prepared in R-05.
 ## 2026-10-21 — ADR-021: Staff-managed accounts (website MVP account slices S1–S4)

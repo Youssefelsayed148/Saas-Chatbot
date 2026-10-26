@@ -1,5 +1,6 @@
 """P6-05 health pull, poll job, scheduling, staleness and transition audit."""
 
+import json
 import socket
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -245,9 +246,7 @@ def test_poll_job_skips_non_active_and_foreign_connections(
         app, db, prefix=f"channel-foreign-{uuid4().hex[:8]}", plan_label="business"
     )
     other_bot = make_bot(other)
-    foreign_job = _poll_job(
-        db, connection, tenant_id=other.tenant_id, bot_id=UUID(other_bot["id"])
-    )
+    foreign_job = _poll_job(db, connection, tenant_id=other.tenant_id, bot_id=UUID(other_bot["id"]))
     assert run_channel_health_poll(db, foreign_job, settings) is None
     db.commit()
     assert fake.health_requests == []
@@ -279,9 +278,7 @@ def test_poll_job_retries_transient_then_degrades_on_exhaustion(
     assert rows[0].metadata_json.get("source") == "poll"
 
 
-def test_schedule_health_polls_jitter_batch_and_single_live_job(
-    app: Any, db: Session
-) -> None:
+def test_schedule_health_polls_jitter_batch_and_single_live_job(app: Any, db: Session) -> None:
     connection_a = _direct_connection(db, app)
     connection_b = _direct_connection(db, app)
     _direct_connection(db, app, status="paused")
@@ -387,3 +384,64 @@ def test_staleness_shows_unknown_stale_in_both_read_models(
     assert fresh.json()["health_reason"] == "connected"
     client_fresh = users.call("viewer", "GET", f"/api/v1/tenants/{users.tenant_id}/channels")
     assert client_fresh.json()["items"][0]["health_status"] == "healthy"
+
+
+def test_schedule_skips_while_another_worker_holds_the_scheduler_lock(
+    app: Any, db: Session, engine: Any
+) -> None:
+    """Multi-worker safety: a second scheduler skips instead of racing."""
+    connection = _direct_connection(db, app)
+    settings = build_test_settings(
+        channel_secret_encryption_keys=SecretStr(app.state.channel_test_key),
+        chat_stub_model=True,
+        environment="test",
+    )
+    other = Session(bind=engine)
+    try:
+        assert schedule_health_polls(other, settings) >= 1  # holds the xact lock
+        assert schedule_health_polls(db, settings) == 0  # skipped, not an error
+        other.commit()
+        # The lock is gone after commit and the live job already exists.
+        assert schedule_health_polls(db, settings) == 0
+        db.commit()
+    finally:
+        other.close()
+    live = list(
+        db.scalars(
+            select(Job).where(
+                Job.type == "channel_health_poll",
+                Job.status == "pending",
+                Job.tenant_id == connection.tenant_id,
+            )
+        )
+    )
+    assert len(live) == 1
+
+
+def test_future_checked_at_counts_as_now_so_freshness_is_not_frozen() -> None:
+    now = datetime(2026, 10, 26, 12, 0, tzinfo=UTC)
+    future = (now + timedelta(hours=2)).isoformat().replace("+00:00", "Z")
+    body = json.dumps({"status": "connected", "checked_at": future}).encode()
+    status, _detail, occurred = health.parse_health_body(body, now=now)
+    assert status == "connected"
+    assert occurred == now
+
+
+def test_a9_successful_poll_clears_stale(
+    app: Any, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    connection = _direct_connection(db, app)
+    connection.health_status = "healthy"
+    connection.health_reason = "connected"
+    connection.health_updated_at = datetime.now(UTC) - timedelta(minutes=40)
+    db.commit()
+    assert health.effective_health(connection) == ("unknown", "stale")
+
+    fake = FakeMany(str(connection.id), "direct-poll-secret")
+    fake.health_responses.append("connected")
+    _wire_fake(monkeypatch, fake)
+    job = _poll_job(db, connection)
+    assert run_channel_health_poll(db, job, _settings(app, app.state.channel_test_key)) is None
+    db.commit()
+    db.refresh(connection)
+    assert health.effective_health(connection) == ("healthy", "connected")
