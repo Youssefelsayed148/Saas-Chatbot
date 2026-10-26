@@ -118,6 +118,10 @@ TENANT_ROUTE_ROLES: dict[tuple[str, str], str] = {
     ("POST", "/api/v1/tenants/{tenant_id}/conversations/{conversation_id}/resolve"): "editor",
     ("POST", "/api/v1/tenants/{tenant_id}/conversations/{conversation_id}/assign"): "editor",
     ("POST", "/api/v1/tenants/{tenant_id}/conversations/{conversation_id}/messages"): "editor",
+    (
+        "POST",
+        "/api/v1/tenants/{tenant_id}/conversations/{conversation_id}/messages/{message_id}/resend",
+    ): "editor",
     ("POST", "/api/v1/tenants/{tenant_id}/conversations/{conversation_id}/notes"): "editor",
     ("GET", "/api/v1/tenants/{tenant_id}/inbox"): "viewer",
     ("GET", "/api/v1/tenants/{tenant_id}/inbox/counts"): "viewer",

@@ -140,7 +140,7 @@ def test_channel_migration_up_down_up_preserves_website_rows(db: Session, engine
                 "AND table_name IN ('channel_connections', 'channel_events')"
             )
         ).scalar_one()
-    assert version == "0027_channel_ref_unique"
+    assert version == "0028_channel_unconfirmed"
     assert column_type == "uuid"
     assert tuple(website_row[:4]) == before[:4]
     assert tuple(website_row[4:6]) == ("website", "website")

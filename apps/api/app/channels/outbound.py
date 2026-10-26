@@ -17,12 +17,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.channels.config import (
+    REPLY_BYTE_LIMITS,
     REPLY_CHAR_LIMITS,
     SEND_BACKOFF_SECONDS,
     SEND_CONNECT_SECONDS,
     SEND_MAX_ATTEMPTS,
     SEND_READ_SECONDS,
     SEND_RESPONSE_BYTES,
+    UNCONFIRMED_AFTER_SECONDS,
 )
 from app.channels.router import _validate_base_url
 from app.channels.secrets import decrypt_secret
@@ -43,7 +45,13 @@ class OutboundPayload(BaseModel):
     kind: Literal["reply", "agent", "handoff"]
 
 
-PERMANENT_CODES = {"window_closed", "template_required", "recipient_unreachable"}
+PERMANENT_CODES = {
+    "window_closed",
+    "template_required",
+    "recipient_unreachable",
+    "message_too_long",
+    "channel_disconnected",
+}
 
 
 class SendRetry(Exception):
@@ -58,10 +66,27 @@ class UnsafeTarget(Exception):
     pass
 
 
-def split_reply(text: str, channel: str) -> list[str]:
+def _fit_length(text: str, channel: str) -> int:
+    """Longest prefix (in characters) that respects the channel's character limit and,
+    for Instagram, its UTF-8 byte limit."""
     limit = REPLY_CHAR_LIMITS[channel]
+    byte_limit = REPLY_BYTE_LIMITS.get(channel)
+    if byte_limit is None:
+        return limit
+    used = 0
+    for index, char in enumerate(text[:limit]):
+        used += len(char.encode("utf-8"))
+        if used > byte_limit:
+            return index
+    return min(limit, len(text))
+
+
+def split_reply(text: str, channel: str) -> list[str]:
     parts: list[str] = []
-    while len(text) > limit:
+    while True:
+        limit = _fit_length(text, channel)
+        if len(text) <= limit:
+            break
         prefix = text[: limit + 1]
         boundaries = list(re.finditer(r"[.!?؟。！]\s+|\n+", prefix))
         cut = boundaries[-1].end() if boundaries else prefix.rfind(" ") + 1
@@ -330,6 +355,7 @@ def run_channel_send(db: Session, job: Job, settings: Settings) -> str | None:
             if not isinstance(many_id, str) or not many_id.strip() or len(many_id) > 512:
                 raise ValueError("Invalid Many acknowledgement.")
             message.channel_message_id = many_id
+            message.accepted_at = datetime.now(UTC)
             # The callback alone advances the delivery state.
             return None
         if 400 <= status < 500 and status != 429:
@@ -362,3 +388,69 @@ def run_channel_send(db: Session, job: Job, settings: Settings) -> str | None:
         connection.health_updated_at = datetime.now(UTC)
         return "Many could not be reached within the delivery retry budget."
     raise SendRetry(retry_delay(job.attempts, retry_after))
+
+
+def requeue_message(
+    db: Session, conversation: Conversation, message: Message, settings: Settings
+) -> None:
+    """Send a message again after a ``connection_paused`` failure (owner-triggered).
+
+    Resets the delivery state and enqueues one new send job; the caller has already
+    verified the connection is active and commits."""
+    message.delivery_status = "pending"
+    message.error_code = None
+    message.accepted_at = None
+    # One send job per message is a database invariant (uq_channel_send_message), so
+    # the finished job is re-armed instead of adding a second one.
+    job = db.scalar(
+        select(Job)
+        .where(
+            Job.tenant_id == message.tenant_id,
+            Job.type == "channel_send",
+            Job.payload["message_id"].astext == str(message.id),
+        )
+        .with_for_update()
+    )
+    if job is None:
+        job = enqueue_job(
+            db,
+            tenant_id=message.tenant_id,
+            bot_id=message.bot_id,
+            job_type="channel_send",
+            payload={"message_id": str(message.id)},
+            created_by=message.sender_user_id,
+            settings=settings,
+        )
+    else:
+        job.status = "pending"
+        job.attempts = 0
+        job.error = None
+        job.run_at = datetime.now(UTC)
+        job.finished_at = None
+        job.lease_expires_at = None
+        job.leased_by = None
+        job.cancel_requested = False
+    job.max_attempts = SEND_MAX_ATTEMPTS
+    _changed(db, message)
+
+
+def sweep_unconfirmed(db: Session, *, now: datetime | None = None, limit: int = 500) -> int:
+    """Mark messages Many accepted long ago but never reported on as ``unconfirmed``
+    (neutral in the UI). A later real status from Many overrides it (D8, A2)."""
+    cutoff = (now or datetime.now(UTC)) - timedelta(seconds=UNCONFIRMED_AFTER_SECONDS)
+    rows = db.scalars(
+        select(Message)
+        .where(
+            Message.delivery_status == "pending",
+            Message.channel_message_id.is_not(None),
+            Message.accepted_at.is_not(None),
+            Message.accepted_at <= cutoff,
+        )
+        .order_by(Message.accepted_at)
+        .limit(limit)
+        .with_for_update(skip_locked=True)
+    ).all()
+    for message in rows:
+        message.delivery_status = "unconfirmed"
+        _changed(db, message)
+    return len(rows)

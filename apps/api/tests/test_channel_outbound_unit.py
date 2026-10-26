@@ -40,8 +40,13 @@ def test_split_sentence_boundaries_and_unbroken_text(channel: str) -> None:
     full = "One sentence. " * 140
     parts = split_reply(full, channel)
     assert "".join(parts) == full and all(len(p) <= 1000 for p in parts)
+    assert all(len(p.encode("utf-8")) <= 900 for p in parts) or channel != "instagram"
     assert all(p.endswith(". ") for p in parts)
-    assert split_reply("س" * 2100, channel) == ["س" * 1000, "س" * 1000, "س" * 100]
+    if channel == "instagram":
+        # Instagram is limited in UTF-8 bytes (900): "س" is two bytes, so 450 per part.
+        assert split_reply("س" * 2100, channel) == ["س" * 450] * 4 + ["س" * 300]
+    else:
+        assert split_reply("س" * 2100, channel) == ["س" * 1000, "س" * 1000, "س" * 100]
 
 
 def test_fake_many_real_streaming_client_and_signature(monkeypatch: pytest.MonkeyPatch) -> None:

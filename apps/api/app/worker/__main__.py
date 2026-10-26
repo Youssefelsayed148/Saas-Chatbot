@@ -101,10 +101,16 @@ def main() -> None:
                 session = session_factory(engine)()
                 try:
                     from app.channels.health import schedule_health_polls
+                    from app.channels.outbound import sweep_unconfirmed
 
                     scheduled = schedule_health_polls(session, settings)
+                    swept = sweep_unconfirmed(session)
                     session.commit()
-                    print(f"jobs: scheduled {scheduled} channel health poll(s)", flush=True)
+                    print(
+                        f"jobs: scheduled {scheduled} channel health poll(s), "
+                        f"{swept} delivery(ies) marked unconfirmed",
+                        flush=True,
+                    )
                 except Exception:
                     session.rollback()
                     logging.exception("Channel health poll scheduling failed; will retry.")

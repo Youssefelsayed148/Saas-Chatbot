@@ -12,7 +12,7 @@ from app.chat.conversations import append_message, messages_of
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
 from app.core.tenancy import TenantContext, TenantContextDep
-from app.db.models import ChannelConnection, Conversation, Membership, UsageEvent
+from app.db.models import ChannelConnection, Conversation, Membership, Message, UsageEvent
 from app.inbox.handoff import add_system_message
 
 router = APIRouter(prefix="/api/v1/tenants/{tenant_id}/conversations")
@@ -301,6 +301,68 @@ def agent_reply(
             "created_at": message.created_at.isoformat(),
         }
     }
+
+
+@router.post("/{conversation_id}/messages/{message_id}/resend")
+def resend_message(
+    conversation_id: UUID,
+    message_id: UUID,
+    context: TenantContextDep,
+    _: CsrfOk,
+    settings: CurrentSettings,
+) -> dict[str, Any]:
+    """Send again a channel message that failed because the connection was paused."""
+    context.require_role("editor")
+    row = _conversation(context, conversation_id, lock=True)
+    message = context.db.scalar(
+        select(Message)
+        .where(
+            Message.tenant_id == context.tenant_id,
+            Message.conversation_id == row.id,
+            Message.id == message_id,
+            Message.sender_type.in_(("ai", "agent")),
+        )
+        .with_for_update()
+    )
+    if message is None:
+        raise ApiError(404, "NOT_FOUND", "Message not found.")
+    if (
+        row.source != "channel"
+        or message.delivery_status != "failed"
+        or message.error_code != "connection_paused"
+    ):
+        raise ApiError(
+            409,
+            "NOT_RESENDABLE",
+            "Only messages that failed while the channel was paused can be resent.",
+        )
+    connection = context.db.scalar(
+        select(ChannelConnection)
+        .where(
+            ChannelConnection.tenant_id == context.tenant_id,
+            ChannelConnection.id == row.connection_id,
+        )
+        .with_for_update()
+    )
+    if connection is None or connection.status != "active":
+        raise ApiError(
+            409,
+            "CONNECTION_PAUSED",
+            "This channel connection is paused or revoked. Resume it before resending.",
+        )
+    from app.channels.outbound import requeue_message
+
+    requeue_message(context.db, row, message, settings)
+    add_system_message(
+        context.db,
+        conversation=row,
+        text="A message was sent again.",
+        action="message.resent",
+        actor_user_id=context.user.id,
+        metadata={"message_id": str(message.id)},
+    )
+    context.db.commit()
+    return {"message": {"id": str(message.id), "delivery_status": message.delivery_status}}
 
 
 @router.post("/{conversation_id}/notes", status_code=201)

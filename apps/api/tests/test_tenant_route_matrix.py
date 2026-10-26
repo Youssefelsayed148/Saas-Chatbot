@@ -14,6 +14,7 @@ from app.core.tenancy import ROLE_LEVELS
 from app.db.models import (
     Bot,
     ChangeRequest,
+    ChannelConnection,
     Contact,
     Conversation,
     Document,
@@ -295,6 +296,50 @@ def test_every_openapi_route_role_and_cross_tenant(
                 db.add(target_cv)
                 db.commit()
                 path = template.format(**{**ids, "conversation_id": target_cv.id})
+            if template.endswith("/messages/{message_id}/resend"):
+                # Needs a channel message that failed while its connection was paused.
+                resend_connection = ChannelConnection(
+                    tenant_id=tid,
+                    bot_id=bid,
+                    channel="whatsapp",
+                    display_name="Matrix",
+                    many_base_url="https://many.example.test",
+                    status="active",
+                    secret_ciphertext="matrix",
+                    secret_key_version=1,
+                )
+                db.add(resend_connection)
+                db.flush()
+                resend_conversation = Conversation(
+                    tenant_id=tid,
+                    bot_id=bid,
+                    channel="whatsapp",
+                    connection_id=resend_connection.id,
+                    external_conversation_id=f"matrix-{uuid4().hex}",
+                    mode="ai",
+                    status="open",
+                    source="channel",
+                )
+                db.add(resend_conversation)
+                db.flush()
+                resend_message = Message(
+                    tenant_id=tid,
+                    bot_id=bid,
+                    conversation_id=resend_conversation.id,
+                    sender_type="ai",
+                    text="Matrix reply",
+                    delivery_status="failed",
+                    error_code="connection_paused",
+                )
+                db.add(resend_message)
+                db.commit()
+                path = template.format(
+                    **{
+                        **ids,
+                        "conversation_id": resend_conversation.id,
+                        "message_id": resend_message.id,
+                    }
+                )
             if "{tenant_id}" in template and role != "staff":
                 denied = client.request(
                     method,

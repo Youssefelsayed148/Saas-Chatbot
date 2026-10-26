@@ -327,7 +327,7 @@ def test_poll_migration_round_trip_and_unique_live_job(db: Any, engine: Any) -> 
     run_migrations(url)
     with engine.connect() as conn:
         version = conn.scalar(text("SELECT version_num FROM alembic_version"))
-        assert version == "0027_channel_ref_unique"
+        assert version == "0028_channel_unconfirmed"
         assert (
             conn.scalar(
                 text(

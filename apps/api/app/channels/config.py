@@ -23,3 +23,21 @@ DEFAULT_STYLE_HINT = (
     "no markdown, no source links or citations."
 )
 STYLE_HINT_MAX = 300
+
+# Instagram text is limited in UTF-8 BYTES (contract v1.1 A4); Arabic is two bytes
+# per character. Characters stay capped by REPLY_CHAR_LIMITS as well.
+REPLY_BYTE_LIMITS = {"instagram": 900}
+# Closed set of delivery error codes (A3). Anything else is stored as ``unknown``.
+CHANNEL_ERROR_CODES = frozenset(
+    {
+        "window_closed",
+        "template_required",
+        "recipient_unreachable",
+        "rate_limited",
+        "channel_disconnected",
+        "message_too_long",
+        "unknown",
+    }
+)
+# Accepted by Many (202) but no status callback within this time: ``unconfirmed`` (A2).
+UNCONFIRMED_AFTER_SECONDS = 15 * 60

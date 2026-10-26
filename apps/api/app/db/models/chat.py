@@ -317,6 +317,8 @@ class Message(Base):
     channel_message_id: Mapped[str | None] = mapped_column(Text)
     delivery_status: Mapped[str | None] = mapped_column(Text)
     error_code: Mapped[str | None] = mapped_column(Text)
+    # When Many acknowledged the send (202); the unconfirmed sweep reads it.
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utcnow
     )
@@ -328,7 +330,7 @@ class Message(Base):
         ),
         CheckConstraint(
             "delivery_status IS NULL OR delivery_status IN "
-            "('pending', 'sent', 'delivered', 'read', 'failed')",
+            "('pending', 'unconfirmed', 'sent', 'delivered', 'read', 'failed')",
             name="ck_messages_delivery_status",
         ),
         CheckConstraint("response_ms IS NULL OR response_ms >= 0", name="ck_messages_response_ms"),

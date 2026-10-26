@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as OrmSession
 
+from app.channels.config import CHANNEL_ERROR_CODES
 from app.channels.guard import conversation_turn_lock
 from app.channels.health import apply_health, clean_text
 from app.chat.conversations import channel_chat_turn
@@ -24,7 +25,7 @@ from app.db.models import (
 )
 from app.inbox.events import add_inbox_event
 
-_STATUS_RANK = {"pending": 0, "sent": 1, "delivered": 2, "read": 3}
+_STATUS_RANK = {"pending": 0, "unconfirmed": 0, "sent": 1, "delivered": 2, "read": 3}
 
 
 def _clean(value: object, limit: int) -> str | None:
@@ -271,7 +272,8 @@ def _message_status(db: OrmSession, connection: ChannelConnection, payload: dict
     if incoming == "failed":
         if _STATUS_RANK.get(current, 0) < _STATUS_RANK["delivered"]:
             message.delivery_status = "failed"
-            message.error_code = _clean(payload.get("error_code"), 64)
+            code = _clean(payload.get("error_code"), 64)
+            message.error_code = code if code in CHANNEL_ERROR_CODES else "unknown"
     elif current != "failed" and _STATUS_RANK[incoming] > _STATUS_RANK.get(current, 0):
         message.delivery_status = incoming
     if previous_state != (message.delivery_status, message.error_code):

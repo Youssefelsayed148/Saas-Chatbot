@@ -22,6 +22,10 @@ class FakeMany:
         self.deliveries: dict[str, str] = {}
         self.health_requests: list[httpx.Headers] = []
         self.health_responses: deque[int | Exception | str] = deque()
+        # Contract v1.1 A4: Many never truncates silently. When set, a text over the
+        # platform limit fails permanently with ``message_too_long``.
+        self.limit_chars: int | None = None
+        self.limit_bytes: int | None = None
 
     def handle(self, request: httpx.Request) -> httpx.Response:
         if request.method == "GET" and "/api/saas/connections/" in request.url.path:
@@ -43,6 +47,14 @@ class FakeMany:
         payload = json.loads(request.content)
         self.requests.append(payload)
         self.headers.append(request.headers)
+        text = payload.get("text", "")
+        if (self.limit_chars is not None and len(text) > self.limit_chars) or (
+            self.limit_bytes is not None and len(text.encode("utf-8")) > self.limit_bytes
+        ):
+            return httpx.Response(
+                400,
+                stream=httpx.ByteStream(json.dumps({"error_code": "message_too_long"}).encode()),
+            )
         outcome = self.responses.popleft() if self.responses else 202
         if isinstance(outcome, Exception):
             raise outcome
