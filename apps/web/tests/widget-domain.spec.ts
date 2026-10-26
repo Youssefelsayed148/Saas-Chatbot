@@ -266,6 +266,8 @@ test("an empty allowed-domains list keeps the check off for every site", async (
     { timeout: 45_000 },
   );
 
+  // The sample page is staff-only and cookies are per host: sign in on this host too.
+  await seedStaffOnHost(page, ALLOWED_HOST);
   await openSampleSite(page, ALLOWED_HOST, open.locator);
   await page.getByTestId("widget-bubble").click();
   const secondFrame = page

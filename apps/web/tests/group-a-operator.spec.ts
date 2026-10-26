@@ -35,8 +35,8 @@ test("staff /app and switcher load every org without memberships", async ({
       json: {
         placeholder: true,
         plan: "starter",
-        usage: {},
-        limits: {},
+        usage: { bots: 0, seats: 1, contacts: 0, monthly_messages: 0 },
+        limits: { bots: 3, seats: 5, contacts: 500, monthly_messages: 1000 },
         warnings: [],
         measured_tokens_this_month: 0,
       },
@@ -122,7 +122,7 @@ test("non-staff /app keeps invitation empty state and membership switcher", asyn
   ]);
   await page.reload();
   await expect(
-    page.getByRole("link", { name: "Client membership", exact: true }),
+    page.getByRole("link", { name: "Open Client membership", exact: true }),
   ).toBeVisible();
   await expect(
     page

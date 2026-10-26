@@ -373,11 +373,7 @@ test("real stack on the stub model streams through the proxy and persists at don
   const { tenantId } = await registerOperator(page, "WidgetStream", {
     botName: "Stream real",
   });
-  await page
-    .getByRole("row", { name: /Stream real/ })
-    .getByRole("link")
-    .first()
-    .click();
+  await page.getByRole("link", { name: /Open Stream real/ }).click();
   await page.waitForURL(/\/settings$/);
   const botId = new URL(page.url()).pathname.split("/")[4];
   const bot = (await (

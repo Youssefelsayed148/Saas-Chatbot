@@ -84,19 +84,27 @@ test("inbox agent takes over an unanswered widget thread, replies, then returns 
   let conversationId = "";
   for (let turn = 0; turn < 2; turn += 1) {
     await input.fill("Do you sell purple elephants?");
+    const repliesBefore = await frame.getByTestId("widget-ai-msg").count();
     const responsePromise = page.waitForResponse(
       (response) =>
         response.url().includes("/api/public/v1/sessions/") &&
-        response.url().endsWith("/messages") &&
+        /\/messages(\/stream)?$/.test(new URL(response.url()).pathname) &&
         response.request().method() === "POST",
     );
     await frame.getByTestId("widget-send").click();
     const response = await responsePromise;
     expect(response.ok()).toBeTruthy();
-    const payload = (await response.json()) as { conversation_id: string };
-    conversationId = payload.conversation_id;
+    // The body is an event stream that cannot be read back: the turn is committed
+    // once the widget shows this turn's reply.
+    await expect(frame.getByTestId("widget-ai-msg")).toHaveCount(
+      repliesBefore + 1,
+    );
   }
 
+  const inbox = (await (
+    await page.request.get(`/api/v1/tenants/${tenantId}/inbox?limit=5`)
+  ).json()) as { conversations: { id: string }[] };
+  conversationId = inbox.conversations[0].id;
   await page.goto(`/app/${tenantId}/inbox/${conversationId}`);
   await expect(page.getByTestId("inbox-status")).toHaveText(
     "Waiting for human",

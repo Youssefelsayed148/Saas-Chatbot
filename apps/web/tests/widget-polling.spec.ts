@@ -95,49 +95,53 @@ async function mockWidget(
   await page.route("**/api/public/v1/sessions/*/messages/stream", (route) =>
     route.fulfill({ status: 502, body: "bad gateway" }),
   );
-  await page.route("**/api/public/v1/sessions/*/messages", (route) => {
-    if (route.request().method() === "GET") {
-      const hint =
-        options.hints[Math.min(state.gets, options.hints.length - 1)];
-      state.gets += 1;
-      const rows =
-        options.agentOnPoll === state.gets
-          ? [
-              {
-                id: "agent-1",
-                sender_type: "agent",
-                text: "A human here, how can I help?",
-                citations: [],
-                needs_human: false,
-                created_at: "2026-10-25T10:00:05Z",
-              },
-            ]
-          : [];
+  // The poll carries a ?since= cursor, so match the path with or without a query.
+  await page.route(
+    /\/api\/public\/v1\/sessions\/[^/]+\/messages(\?.*)?$/,
+    (route) => {
+      if (route.request().method() === "GET") {
+        const hint =
+          options.hints[Math.min(state.gets, options.hints.length - 1)];
+        state.gets += 1;
+        const rows =
+          options.agentOnPoll === state.gets
+            ? [
+                {
+                  id: "agent-1",
+                  sender_type: "agent",
+                  text: "A human here, how can I help?",
+                  citations: [],
+                  needs_human: false,
+                  created_at: "2026-10-25T10:00:05Z",
+                },
+              ]
+            : [];
+        return route.fulfill({
+          json: rows,
+          headers: { "X-Poll-Hint": hint },
+        });
+      }
       return route.fulfill({
-        json: rows,
-        headers: { "X-Poll-Hint": hint },
+        status: 201,
+        json: {
+          conversation_id: "c1",
+          visitor_message: { id: "v-1", created_at: "2026-10-25T10:00:00Z" },
+          ai_message: options.turn.needsHuman
+            ? null
+            : {
+                id: "a-1",
+                text: "Returns are accepted within 14 days.",
+                citations: [],
+                can_answer: true,
+                needs_human: false,
+                created_at: "2026-10-25T10:00:01Z",
+              },
+          kind: options.turn.kind,
+          language: "en",
+        },
       });
-    }
-    return route.fulfill({
-      status: 201,
-      json: {
-        conversation_id: "c1",
-        visitor_message: { id: "v-1", created_at: "2026-10-25T10:00:00Z" },
-        ai_message: options.turn.needsHuman
-          ? null
-          : {
-              id: "a-1",
-              text: "Returns are accepted within 14 days.",
-              citations: [],
-              can_answer: true,
-              needs_human: false,
-              created_at: "2026-10-25T10:00:01Z",
-            },
-        kind: options.turn.kind,
-        language: "en",
-      },
-    });
-  });
+    },
+  );
   return state;
 }
 

@@ -12,9 +12,7 @@ async function createOrgAndBot(
   page: Page,
 ): Promise<{ tenantId: string; botId: string; locator: string }> {
   const { tenantId, botName } = await registerOperator(page, "Install", {});
-  await page
-    .getByRole("link", { name: new RegExp(`Open ${botName}`) })
-    .click();
+  await page.getByRole("link", { name: new RegExp(`Open ${botName}`) }).click();
   await page.waitForURL(/\/settings$/);
   const botId = new URL(page.url()).pathname.split("/")[4];
   const bot = (await (
@@ -39,7 +37,7 @@ test("activate a draft bot on Settings, then Install shows snippet + sample help
   // Activate from the Settings tab (P4-01 lifecycle through the UI).
   await page.goto(`/app/${tenantId}/bots/${botId}/settings`);
   await page.getByTestId("activate-bot").click();
-  await expect(page.getByText("Status:", { exact: false })).toHaveAttribute(
+  await expect(page.locator(".status-card")).toHaveAttribute(
     "data-status",
     "active",
     { timeout: 10_000 },

@@ -222,7 +222,8 @@ test("duplicate upload is skipped; always-include, replace and remove work with 
 
   // Always include asks for confirmation.
   page.once("dialog", (dialog) => void dialog.accept());
-  await page.getByTestId("source-always-include").check();
+  // A controlled checkbox: it flips after the PUT round trip, so click, then wait.
+  await page.getByTestId("source-always-include").click();
   await expect(page.getByTestId("source-always-include")).toBeChecked();
 
   // Replace with a changed version; the source row is kept.
