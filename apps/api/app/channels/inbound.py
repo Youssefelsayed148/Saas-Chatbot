@@ -288,7 +288,9 @@ def _message_status(db: OrmSession, connection: ChannelConnection, payload: dict
 
 def _channel_status(db: OrmSession, connection: ChannelConnection, payload: dict[str, Any]) -> None:
     """Pushed ``channel.status`` (docs/17 §4.3): newest wins, audited."""
-    occurred_at = _event_time(payload)
+    # A future ``occurred_at`` (skewed Many clock) must not shadow later genuine signals,
+    # the same clamp the pull path applies in health.parse_health_body.
+    occurred_at = min(_event_time(payload), datetime.now(UTC))
     apply_health(
         db,
         connection,

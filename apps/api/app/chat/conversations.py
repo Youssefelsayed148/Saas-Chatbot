@@ -652,9 +652,22 @@ def _channel_style(bot: Bot) -> str:
     return channel_config.DEFAULT_STYLE_HINT
 
 
+def _contact_keep(bot: Bot) -> tuple[str, ...]:
+    """The bot's support contact strings that the DM sanitizer must not strip (a URL)."""
+    config = bot.config if isinstance(bot.config, dict) else {}
+    parts = tuple(
+        str(value).strip()
+        for value in (config.get("support_email"), config.get("support_phone"))
+        if isinstance(value, str) and value.strip()
+    )
+    return (*parts, _support_contact(bot))
+
+
 def _busy_texts(bot: Bot) -> set[str]:
-    """Every wording a busy/quota reply can have in a stored thread."""
-    return {
+    """Every wording a busy/quota reply can have in a stored thread (as sent: the
+    canned text and its plain-text form, which is what the thread stores)."""
+    keep = _contact_keep(bot)
+    raw = {
         text
         for lang in ("en", "ar")
         for text in (
@@ -662,6 +675,7 @@ def _busy_texts(bot: Bot) -> set[str]:
             visitor_handoff_reply(bot, lang),
         )
     }
+    return raw | {to_plain_text(text, keep=keep) for text in raw}
 
 
 def channel_chat_turn(
@@ -767,7 +781,9 @@ def channel_chat_turn(
         model=model or default_model(bot),
         settings=settings,
         degrade=degrade,
-        shape_answer=lambda answer: to_plain_text(answer, allow_links=allow_links),
+        shape_answer=lambda answer: to_plain_text(
+            answer, allow_links=allow_links, keep=_contact_keep(bot)
+        ),
         trace_extra={"connection_id": str(connection.id)},
         channel_style=_channel_style(bot),
     )

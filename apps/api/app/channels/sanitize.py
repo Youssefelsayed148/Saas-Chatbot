@@ -21,8 +21,21 @@ _BLANKS = re.compile(r"\n{3,}")
 _SPACES = re.compile(r"[ \t]{2,}")
 
 
-def to_plain_text(text: str, *, allow_links: bool = False) -> str:
-    """Strip markdown and citation markers; keep line breaks and `- ` bullets."""
+def to_plain_text(text: str, *, allow_links: bool = False, keep: tuple[str, ...] = ()) -> str:
+    """Strip markdown and citation markers; keep line breaks and `- ` bullets.
+
+    ``keep`` lists literal strings that must survive untouched (the bot's own support
+    contact, which may be a URL): they are swapped for placeholders while stripping."""
+    protected = [value for value in dict.fromkeys(keep) if value]
+    for index, value in enumerate(protected):
+        text = text.replace(value, f"\ue000{index}\ue001")
+    out = _plain_text(text, allow_links=allow_links)
+    for index, value in enumerate(protected):
+        out = out.replace(f"\ue000{index}\ue001", value)
+    return out
+
+
+def _plain_text(text: str, *, allow_links: bool) -> str:
     out = _FENCE.sub(lambda m: m.group(1), text)
     out = _INLINE_CODE.sub(r"\1", out)
     out = _IMAGE.sub(r"\1", out)
