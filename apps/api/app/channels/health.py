@@ -17,9 +17,10 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 import httpx
-from sqlalchemy import Text, cast, select, text
+from sqlalchemy import Text, cast, func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as OrmSession
+from sqlalchemy.orm import aliased
 
 from app.channels.signing import sign
 from app.core.audit import record_audit
@@ -340,6 +341,17 @@ def schedule_health_polls(
         ChannelConnection.bot_id,
         ChannelConnection.id,
     )
+    poll = aliased(Job)
+    last_poll = (
+        select(func.max(poll.created_at))
+        .where(
+            poll.type == "channel_health_poll",
+            poll.tenant_id == ChannelConnection.tenant_id,
+            poll.payload["connection_id"].astext == cast(ChannelConnection.id, Text),
+        )
+        .correlate(ChannelConnection)
+        .scalar_subquery()
+    )
     statement = (
         select(*columns)
         .outerjoin(
@@ -352,6 +364,9 @@ def schedule_health_polls(
             ChannelConnection.status == "active",
             Job.id.is_(None),
         )
+        # Least recently polled first (never polled = first), so a fleet larger than
+        # one batch is still covered over successive cycles.
+        .order_by(last_poll.asc().nulls_first(), ChannelConnection.id)
         .limit(settings.channel_health_poll_batch)
     )
     scheduled = 0

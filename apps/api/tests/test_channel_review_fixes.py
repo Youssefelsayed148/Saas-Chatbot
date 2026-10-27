@@ -216,3 +216,30 @@ def test_event_database_work_runs_off_the_event_loop(
     body = _payload(connection_id, event_id="evt-loop")
     assert _post(client, connection_id, secret, json.dumps(body).encode()).status_code == 202
     assert seen == [False]
+
+
+def test_health_polls_cover_more_connections_than_one_batch(app: Any, db: Session) -> None:
+    from pydantic import SecretStr
+    from sqlalchemy import select as sa_select
+
+    from app.channels.health import schedule_health_polls
+    from app.db.models import Job
+    from tests.test_channel_health import _direct_connection
+
+    connections = [_direct_connection(db, app) for _ in range(5)]
+    settings = build_test_settings(
+        channel_secret_encryption_keys=SecretStr(app.state.channel_test_key),
+        chat_stub_model=True,
+        environment="test",
+        channel_health_poll_batch=2,
+        channel_health_poll_jitter_seconds=1,
+    )
+    polled: set[str] = set()
+    for _cycle in range(3):
+        assert schedule_health_polls(db, settings) == 2
+        db.commit()
+        for job in db.scalars(sa_select(Job).where(Job.type == "channel_health_poll")):
+            polled.add(str(job.payload["connection_id"]))
+            job.status = "succeeded"
+        db.commit()
+    assert polled == {str(connection.id) for connection in connections}
