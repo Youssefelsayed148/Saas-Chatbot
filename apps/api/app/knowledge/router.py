@@ -125,6 +125,23 @@ def replace_source(
     )
 
 
+@router.post("/sources/bulk-delete", response_model=schemas.BulkDeleteSourcesResponse)
+def bulk_delete_sources(
+    tenant_id: UUID,
+    bot_id: UUID,
+    body: schemas.BulkDeleteSourcesRequest,
+    context: TenantContextDep,
+    _: CsrfOk,
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> schemas.BulkDeleteSourcesResponse:
+    """Remove several files from the draft at once (platform staff); all or nothing."""
+    context.require_operator()
+    deleted = service.delete_sources(
+        context, bot_id, body.source_ids, storage=get_storage(settings)
+    )
+    return schemas.BulkDeleteSourcesResponse(deleted=deleted)
+
+
 @router.delete("/sources/{source_id}", status_code=204)
 def delete_source(
     tenant_id: UUID,

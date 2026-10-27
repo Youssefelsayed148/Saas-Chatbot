@@ -307,7 +307,11 @@ def plan_source(
         # break, the previous page's unfinished sentence leads this page's first
         # chunk so retrieval keeps its context. The citation stays this page.
         carry = ""
-        if source.kind == "pdf" and page_break_splits_sentence(previous_text, page.text):
+        if (
+            source.kind == "pdf"
+            and not page.continued_from_previous
+            and page_break_splits_sentence(previous_text, page.text)
+        ):
             carry = trailing_sentence(previous_text)
         previous_text = page.text
         page_language = (

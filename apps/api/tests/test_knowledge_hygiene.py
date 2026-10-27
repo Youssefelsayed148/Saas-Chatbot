@@ -286,6 +286,102 @@ def test_delete_frees_storage_quota_and_clears_always_include(
     assert bot is not None and "always_include_source_ids" not in bot.config
 
 
+def test_bulk_delete_removes_several_sources_in_one_call(
+    rooted_app: FastAPI, db: OrmSession, tmp_path: Path
+) -> None:
+    users, bot_id = _setup(rooted_app, db, "h2-bulk")
+    keep = _upload_one(users, bot_id, "keep.md", MD_AR.read_bytes(), tmp_path)
+    one = _upload_one(users, bot_id, "one.md", MD_EN.read_bytes(), tmp_path)
+    two = _upload_one(users, bot_id, "two.md", MD_EN.read_bytes() + b"\n\nExtra.\n", tmp_path)
+    _ingest(users, bot_id, tmp_path)
+    files = [
+        tmp_path / str(db.scalar(select(Source.storage_key).where(Source.id == UUID(row["id"]))))
+        for row in (one, two)
+    ]
+    assert all(path.exists() for path in files)
+    base = _base(users, bot_id)
+
+    response = users.call(
+        "staff",
+        "POST",
+        f"{base}/sources/bulk-delete",
+        json={"source_ids": [one["id"], two["id"], one["id"]]},  # a repeated id counts once
+    )
+    assert response.status_code == 200, response.text
+    assert response.json() == {"deleted": 2}
+    assert not any(path.exists() for path in files)
+    listed = users.call("staff", "GET", f"{base}/sources").json()
+    assert [row["id"] for row in listed] == [keep["id"]]
+    assert {d["source_id"] for d in _documents(users, bot_id, "draft")} == {keep["id"]}
+    db.expire_all()
+    audited = db.scalar(
+        select(func.count())
+        .select_from(AuditEvent)
+        .where(AuditEvent.action == "knowledge.source_removed")
+    )
+    assert audited == 2
+
+
+def test_bulk_delete_is_all_or_nothing(rooted_app: FastAPI, db: OrmSession, tmp_path: Path) -> None:
+    users, bot_id = _setup(rooted_app, db, "h2-bulk2")
+    users_b, bot_b = _setup(rooted_app, db, "h2-bulk2-b")
+    mine = _upload_one(users, bot_id, "mine.md", MD_AR.read_bytes(), tmp_path)
+    foreign = _upload_one(users_b, bot_b, "foreign.md", MD_EN.read_bytes(), tmp_path)
+    base = _base(users, bot_id)
+
+    unknown = users.call(
+        "staff",
+        "POST",
+        f"{base}/sources/bulk-delete",
+        json={"source_ids": [mine["id"], "00000000-0000-4000-8000-000000000000"]},
+    )
+    assert unknown.status_code == 404
+    # Tenant B's source id is indistinguishable from an unknown one, and nothing is deleted.
+    hidden = users.call(
+        "staff",
+        "POST",
+        f"{base}/sources/bulk-delete",
+        json={"source_ids": [mine["id"], foreign["id"]]},
+    )
+    assert hidden.status_code == 404
+    assert [row["id"] for row in users.call("staff", "GET", f"{base}/sources").json()] == [
+        mine["id"]
+    ]
+    assert [
+        row["id"] for row in users_b.call("staff", "GET", f"{_base(users_b, bot_b)}/sources").json()
+    ] == [foreign["id"]]
+
+    # A source that is being ingested blocks the whole request.
+    db.expire_all()
+    row = db.get(Source, UUID(mine["id"]))
+    assert row is not None
+    row.status = "queued"
+    db.commit()
+    busy = users.call(
+        "staff", "POST", f"{base}/sources/bulk-delete", json={"source_ids": [mine["id"]]}
+    )
+    assert busy.status_code == 409 and busy.json()["error"]["code"] == "SOURCE_BUSY"
+
+
+def test_bulk_delete_validation_roles_and_csrf(
+    rooted_app: FastAPI, db: OrmSession, tmp_path: Path
+) -> None:
+    users, bot_id = _setup(rooted_app, db, "h2-bulk3")
+    source = _upload_one(users, bot_id, "a.md", MD_EN.read_bytes(), tmp_path)
+    base = _base(users, bot_id)
+    url = f"{base}/sources/bulk-delete"
+    assert users.call("staff", "POST", url, json={"source_ids": []}).status_code == 422
+    assert (
+        users.call("staff", "POST", url, json={"source_ids": [source["id"]] * 101}).status_code
+        == 422
+    )
+    for role in ("admin", "editor", "viewer"):
+        assert users.call(role, "POST", url, json={"source_ids": [source["id"]]}).status_code == 403
+    client = users.as_user("staff")
+    assert client.post(url, json={"source_ids": [source["id"]]}).status_code == 403
+    assert _source_count(db, bot_id) == 1
+
+
 # --- 4. cross-source duplicate chunks -------------------------------------------
 
 

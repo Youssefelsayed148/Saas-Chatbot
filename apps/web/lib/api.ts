@@ -1523,6 +1523,18 @@ export async function deleteSource(
   });
 }
 
+/** Remove several files from the draft in one all-or-nothing call. */
+export async function bulkDeleteSources(
+  tenantId: string,
+  botId: string,
+  sourceIds: string[],
+): Promise<{ deleted: number }> {
+  return api<{ deleted: number }>(
+    `${KNOWLEDGE_ROOT(tenantId, botId)}/sources/bulk-delete`,
+    { method: "POST", body: { source_ids: sourceIds } },
+  );
+}
+
 export async function setSourceAlwaysInclude(
   tenantId: string,
   botId: string,

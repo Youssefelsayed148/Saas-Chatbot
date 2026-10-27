@@ -20,6 +20,7 @@ from docx.text.paragraph import Paragraph
 
 from app.knowledge.front_matter import split_front_matter
 from app.knowledge.parsing import ParsedPage, ParsedSection, ParseError
+from app.knowledge.pdf_structure import merge_continued_sections, split_page_sections
 
 # Parsing settings live on Settings; these are passed in explicitly to keep
 # the parsers pure and easy to test.
@@ -65,7 +66,8 @@ def normalise_pdf_text(text: str) -> str:
 
 
 def parse_pdf(data: bytes, original_name: str, limits: ParseLimits) -> list[ParsedPage]:
-    """One section per page (docs/14 §3); scanned PDFs are rejected — no OCR in MVP."""
+    """Heading sections per page, joined across page breaks (pdf_structure); scanned PDFs are
+    rejected — no OCR in MVP."""
     try:
         reader = pypdf.PdfReader(io.BytesIO(data), strict=False)
     except Exception as error:  # noqa: BLE001 - pypdf raises many error types
@@ -92,9 +94,12 @@ def parse_pdf(data: bytes, original_name: str, limits: ParseLimits) -> list[Pars
                 page_number=index,
                 title=f"{original_name} — Page {index}",
                 text=text,
-                sections=[ParsedSection(heading=None, text=text)],
+                sections=split_page_sections(text)
+                if text
+                else [ParsedSection(heading=None, text=text)],
             )
         )
+    pages = merge_continued_sections(pages)
     if all(page.text == "" for page in pages):
         raise ParseError(
             "No extractable text found (the PDF looks scanned). "

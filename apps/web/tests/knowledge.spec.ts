@@ -30,6 +30,10 @@ async function openKnowledgeAsOperator(
   await expect(page.getByRole("heading", { name: "Knowledge" })).toBeVisible();
 }
 
+async function openTab(page: Page, name: string) {
+  await page.getByRole("tab", { name, exact: true }).click();
+}
+
 test("fresh signup shows the knowledge upload controls without a reload", async ({
   page,
 }) => {
@@ -67,8 +71,7 @@ test("upload, ingest through the worker, preview, publish", async ({
 
   // One button stores the file and runs the ingest; the REAL worker processes the job.
   await page.getByRole("button", { name: "Ingest files" }).click();
-  const sources = page.locator("[data-testid='sources-list']");
-  await expect(sources).toContainText("sample-brochure.md");
+  // The page moves to the Jobs tab; only the active section is rendered.
   const jobs = page.locator("[data-testid='jobs-list']");
   await expect(jobs.locator("[data-job-status]").first()).toHaveAttribute(
     "data-job-status",
@@ -76,7 +79,13 @@ test("upload, ingest through the worker, preview, publish", async ({
     { timeout: 45_000 },
   );
 
+  await openTab(page, "Files");
+  const sources = page.locator("[data-testid='sources-list']");
+  await expect(sources).toContainText("sample-brochure.md");
+  await expect(page.locator("[data-testid='jobs-list']")).toHaveCount(0);
+
   // Draft documents appear with the chunk preview and the source_url citation.
+  await openTab(page, "Documents and chunks");
   await page.getByLabel("View").selectOption("draft");
   const documents = page.locator("[data-testid='documents-list']");
   await expect(documents).toContainText("Opening hours");
@@ -88,6 +97,7 @@ test("upload, ingest through the worker, preview, publish", async ({
   await expect(page.locator("[data-testid='chunk-list']")).toContainText("#0");
 
   // Publishing switches the pointer; the revisions list shows the published row.
+  await openTab(page, "Revisions");
   await page.getByRole("button", { name: "Publish", exact: true }).click();
   await expect(
     page.getByText(/Published — visitors now use this knowledge/),
@@ -99,6 +109,7 @@ test("upload, ingest through the worker, preview, publish", async ({
   ).toBeVisible();
 
   // The published view (default) now shows the documents too.
+  await openTab(page, "Documents and chunks");
   await page.getByLabel("View").selectOption("published");
   await expect(documents).toContainText("Opening hours");
 });
@@ -115,11 +126,12 @@ test("oversize uploads are rejected through the same-origin proxy with 413", asy
     mimeType: "text/markdown",
     buffer: Buffer.alloc(10 * 1024 * 1024 + 1, 0x61),
   });
-  await page.getByRole("button", { name: "Upload", exact: true }).click();
+  await page.getByRole("button", { name: "Ingest files" }).click();
   await expect(page.getByText(/Files may be at most 10 MB/)).toBeVisible({
     timeout: 30_000,
   });
   // Nothing was stored by the rejected batch.
+  await openTab(page, "Files");
   await expect(page.locator("[data-testid='sources-list'] li")).toHaveCount(0);
 });
 
@@ -202,15 +214,18 @@ test("duplicate upload is skipped; always-include, replace and remove work with 
   };
 
   await page.locator("#knowledge-file-input").setInputFiles(fixture);
-  await page.getByRole("button", { name: "Upload", exact: true }).click();
+  await page.getByRole("button", { name: "Ingest files" }).click();
+  await openTab(page, "Files");
   await expect(sources.locator("li")).toHaveCount(1);
 
   // The same bytes again: reported as skipped, no second row.
+  await openTab(page, "Upload");
   await page
     .locator("#knowledge-file-input")
     .setInputFiles({ ...fixture, name: "copy-of-brochure.md" });
-  await page.getByRole("button", { name: "Upload", exact: true }).click();
+  await page.getByRole("button", { name: "Ingest files" }).click();
   await expect(page.getByText(/already uploaded/)).toBeVisible();
+  await openTab(page, "Files");
   await expect(sources.locator("li")).toHaveCount(1);
 
   // Always include asks for confirmation.
@@ -233,4 +248,44 @@ test("duplicate upload is skipped; always-include, replace and remove work with 
   await page.getByRole("button", { name: "Remove file" }).click();
   await expect(page.getByText(/Removed .* from the draft/)).toBeVisible();
   await expect(sources.locator("li")).toHaveCount(0);
+});
+
+test("files can be multi-selected and removed together; tabs show one section", async ({
+  page,
+}) => {
+  test.setTimeout(150_000);
+  await openKnowledgeAsOperator(page);
+  const base = readFileSync(FIXTURE);
+  const names = ["one.md", "two.md", "three.md"];
+
+  await page.locator("#knowledge-file-input").setInputFiles(
+    names.map((name, index) => ({
+      name,
+      mimeType: "text/markdown",
+      buffer: Buffer.concat([base, Buffer.from(`\n\nVariant ${index}.\n`)]),
+    })),
+  );
+  await page.getByRole("button", { name: "Ingest files" }).click();
+
+  // Only the active tab's section is rendered.
+  await expect(page.locator("[data-testid='jobs-list']")).toBeVisible();
+  await expect(page.locator("[data-testid='sources-list']")).toHaveCount(0);
+  await openTab(page, "Files");
+  const rows = page.locator("[data-testid='sources-list'] li");
+  await expect(rows).toHaveCount(3);
+  await expect(page.locator("[data-testid='jobs-list']")).toHaveCount(0);
+
+  // Select two of the three; the bulk action counts them and removes only those.
+  await page.getByLabel("Select one.md").check();
+  await page.getByLabel("Select two.md").check();
+  await expect(page.getByTestId("bulk-count")).toHaveText("2 selected");
+  await page.getByTestId("source-bulk-delete").click();
+  await page.getByRole("button", { name: "Remove 2 files" }).click();
+  await expect(page.getByText(/Removed 2 files from the draft/)).toBeVisible();
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText("three.md");
+
+  // Select all covers what is left.
+  await page.getByTestId("source-select-all").check();
+  await expect(page.getByTestId("bulk-count")).toHaveText("1 selected");
 });

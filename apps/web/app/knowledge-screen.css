@@ -7,17 +7,46 @@
   flex-wrap: wrap;
   gap: var(--space-2);
 }
-.section-jump a {
+.section-jump a,
+.section-jump button {
   padding: var(--space-1) var(--space-3);
   border: 1px solid var(--border);
   border-radius: 999px;
+  background: transparent;
   color: var(--muted);
   text-decoration: none;
+  font: inherit;
   font-size: var(--text-sm);
+  cursor: pointer;
 }
-.section-jump a:hover {
+.section-jump a:hover,
+.section-jump button:hover {
   background: var(--surface-hover);
   color: var(--text);
+}
+.section-jump button.is-active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+.bulk-bar {
+  align-items: center;
+  margin-block-end: var(--space-3);
+}
+.record-list > li > .record-select {
+  justify-self: start;
+  inline-size: 1.1rem;
+  block-size: 1.1rem;
+}
+.link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
 }
 .knowledge-page .ui-card > .section-heading {
   margin-block-end: var(--space-3);
@@ -113,4 +142,8 @@
 }
 .knowledge-page [id$="-heading"] {
   scroll-margin-block-start: var(--space-6);
+}
+
+.chunk-list > li {
+  white-space: pre-wrap;
 }

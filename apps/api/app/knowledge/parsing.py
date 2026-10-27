@@ -40,3 +40,5 @@ class ParsedPage:
     source_url: str | None = None
     page_type: str | None = None
     language: str | None = None
+    # PDF only: this page's opening text was joined to the previous page's section.
+    continued_from_previous: bool = False

@@ -465,3 +465,77 @@ def test_reserved_documents_do_not_use_up_the_ranked_evidence_budget(
     assert sum(title.startswith("Reserved") for title in titles) == 3
     # final_k ranked documents still reach the gate, whatever is reserved.
     assert sum(title.startswith("Ranked") for title in titles) == 4
+
+
+def test_long_document_hit_brings_its_neighbouring_chunks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.retrieval import service as retrieval_service
+
+    best = chunk(title="Best", document_total_chars=100)
+    long_document = uuid4()
+    pieces = [
+        chunk(title="Long", document_id=long_document, ordinal=n, document_total_chars=5000)
+        for n in range(5)
+    ]
+    asked: list[list[int] | None] = []
+
+    def fake_whole(*_args: Any, document_id: Any, ordinals: Any = None, **_kwargs: Any) -> Any:
+        if document_id == best.document_id:
+            return [best]
+        asked.append(ordinals)
+        return [piece for piece in pieces if ordinals is None or piece.ordinal in ordinals]
+
+    monkeypatch.setattr(retrieval_service, "_whole_document_chunks", fake_whole)
+    settings = build_test_settings(retrieval_final_k=6, retrieval_max_evidence_chunks=8)
+    evidence = retrieval_service.assemble_evidence(
+        None,  # type: ignore[arg-type]
+        tenant_id=uuid4(),
+        bot_id=uuid4(),
+        revision_id=uuid4(),
+        language="en",
+        ranked=[best, pieces[2]],
+        settings=settings,
+        always_include_document_ids=None,
+    )
+    # Reading order: the hit's previous chunk, the hit, the next chunk.
+    assert [(item.title, item.ordinal) for item in evidence] == [
+        ("Best", 0),
+        ("Long", 1),
+        ("Long", 2),
+        ("Long", 3),
+    ]
+    assert asked == [[1, 3]]
+
+
+def test_neighbours_respect_the_remaining_evidence_budget(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.retrieval import service as retrieval_service
+
+    best = chunk(title="Best", document_total_chars=100)
+    long_document = uuid4()
+    pieces = [
+        chunk(title="Long", document_id=long_document, ordinal=n, document_total_chars=5000)
+        for n in range(5)
+    ]
+
+    def fake_whole(*_args: Any, document_id: Any, ordinals: Any = None, **_kwargs: Any) -> Any:
+        if document_id == best.document_id:
+            return [best]
+        return [piece for piece in pieces if ordinals is None or piece.ordinal in ordinals]
+
+    monkeypatch.setattr(retrieval_service, "_whole_document_chunks", fake_whole)
+    # final_k 2: the best document takes one slot, the hit takes the other, no room for more.
+    settings = build_test_settings(retrieval_final_k=2, retrieval_max_evidence_chunks=8)
+    evidence = retrieval_service.assemble_evidence(
+        None,  # type: ignore[arg-type]
+        tenant_id=uuid4(),
+        bot_id=uuid4(),
+        revision_id=uuid4(),
+        language="en",
+        ranked=[best, pieces[2]],
+        settings=settings,
+        always_include_document_ids=None,
+    )
+    assert [(item.title, item.ordinal) for item in evidence] == [("Best", 0), ("Long", 2)]

@@ -60,8 +60,24 @@ def _atomic_pieces(
 
 
 def _hard_slices(text: str, chunk_size: int, chunk_overlap: int) -> list[str]:
-    step = max(1, chunk_size - max(0, chunk_overlap))
-    return [text[start : start + chunk_size] for start in range(0, len(text), step)]
+    """Fixed-size windows for text with no usable separator; each window ends on a space
+    when one lies in its second half, so words are not cut."""
+    slices: list[str] = []
+    start = 0
+    while start < len(text):
+        end = min(start + chunk_size, len(text))
+        if end < len(text):
+            space = text.rfind(" ", start + chunk_size // 2, end)
+            if space > start:
+                end = space + 1
+        slices.append(text[start:end])
+        if end >= len(text):
+            break
+        start = max(end - max(0, chunk_overlap), start + 1)
+        word_start = text.find(" ", start, end)  # begin the overlap on a whole word
+        if word_start != -1:
+            start = word_start + 1
+    return slices
 
 
 def _merge_with_overlap(pieces: list[str], chunk_size: int, chunk_overlap: int) -> list[str]:
