@@ -3,6 +3,7 @@
 import csv
 import io
 import json
+import re
 from datetime import UTC, datetime
 from typing import Annotated
 from uuid import UUID, uuid4
@@ -51,14 +52,22 @@ def _stages(context: TenantContext) -> list[ContactStage]:
     return list(rows)
 
 
-_EXPORT_SAFE_PREFIXES = ("=", "+", "-", "@")
+_EXPORT_SAFE_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+_PHONE_SHAPE = re.compile(r"^\+?[\d\s().-]+$")
 
 
 def _export_safe(value: str) -> str:
     """Neutralize CSV formula injection: escape leading spreadsheet operators."""
-    if value.startswith(_EXPORT_SAFE_PREFIXES) or value.startswith("\t"):
+    if value.startswith(_EXPORT_SAFE_PREFIXES):
         return f"'{value}"
     return value
+
+
+def _export_phone(value: str | None) -> str:
+    """A real phone number may start with ``+``; anything else goes through the guard."""
+    if not value:
+        return ""
+    return value if _PHONE_SHAPE.fullmatch(value) else _export_safe(value)
 
 
 def _ensure_reachable_and_unique(
@@ -241,14 +250,14 @@ def export_contacts(context: TenantContextDep) -> Response:
         writer.writerow(
             [
                 row.id,
-                row.display_name,
-                row.email,
-                row.phone,
-                row.stage,
+                _export_safe(row.display_name or ""),
+                _export_safe(row.email or ""),
+                _export_phone(row.phone),
+                _export_safe(row.stage or ""),
                 # Spreadsheet program guard: a value that Excel/Sheets could
                 # otherwise evaluate as a formula is quoted out (D12 exports).
                 ";".join(_export_safe(value) for value in channels_by_contact.get(row.id, [])),
-                ";".join(str(x) for x in row.tags),
+                ";".join(_export_safe(str(x)) for x in row.tags),
                 json.dumps(row.custom_fields, ensure_ascii=False, sort_keys=True),
                 json.dumps(row.consent, ensure_ascii=False, sort_keys=True),
                 row.created_at.isoformat(),
