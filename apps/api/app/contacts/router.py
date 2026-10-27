@@ -53,7 +53,8 @@ def _stages(context: TenantContext) -> list[ContactStage]:
 
 
 _EXPORT_SAFE_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
-_PHONE_SHAPE = re.compile(r"^\+?[\d\s().-]+$")
+# Only a leading "+" followed by a digit is exempt; a leading "-" or "(" is still escaped.
+_PHONE_SHAPE = re.compile(r"^\+\d[\d\s().-]*$")
 
 
 def _export_safe(value: str) -> str:
@@ -64,10 +65,13 @@ def _export_safe(value: str) -> str:
 
 
 def _export_phone(value: str | None) -> str:
-    """A real phone number may start with ``+``; anything else goes through the guard."""
+    """Only ``+`` then digits is exempt; a leading ``-`` or ``(`` and formulas are escaped."""
     if not value:
         return ""
-    return value if _PHONE_SHAPE.fullmatch(value) else _export_safe(value)
+    if _PHONE_SHAPE.fullmatch(value):
+        return value
+    # "(" is not a general formula lead, but a phone must not lead with it unescaped.
+    return f"'{value}" if value.startswith("(") else _export_safe(value)
 
 
 def _ensure_reachable_and_unique(

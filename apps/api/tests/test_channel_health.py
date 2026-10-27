@@ -313,6 +313,43 @@ def test_schedule_health_polls_jitter_batch_and_single_live_job(app: Any, db: Se
     db.commit()
 
 
+def test_schedule_health_polls_orders_never_polled_then_least_recent(app: Any, db: Session) -> None:
+    never = _direct_connection(db, app)
+    old = _direct_connection(db, app)
+    recent = _direct_connection(db, app)
+    settings = build_test_settings(
+        channel_secret_encryption_keys=SecretStr(app.state.channel_test_key),
+        chat_stub_model=True,
+        environment="test",
+        channel_health_poll_batch=1,
+        channel_health_poll_jitter_seconds=1,
+    )
+    now = datetime.now(UTC)
+    for connection, age in ((old, timedelta(hours=5)), (recent, timedelta(hours=1))):
+        job = Job(
+            tenant_id=connection.tenant_id,
+            bot_id=connection.bot_id,
+            type="channel_health_poll",
+            payload={"connection_id": str(connection.id)},
+            status="succeeded",
+            created_at=now - age,
+        )
+        db.add(job)
+    db.commit()
+    order: list[str] = []
+    for _cycle in range(3):
+        assert schedule_health_polls(db, settings, now=now) == 1
+        db.commit()
+        live = db.scalar(
+            select(Job).where(Job.type == "channel_health_poll", Job.status == "pending")
+        )
+        assert live is not None
+        order.append(live.payload["connection_id"])
+        live.status = "succeeded"
+        db.commit()
+    assert order == [str(never.id), str(old.id), str(recent.id)]
+
+
 def test_poll_migration_round_trip_and_unique_live_job(db: Any, engine: Any) -> None:
     from sqlalchemy import text
 
@@ -324,7 +361,16 @@ def test_poll_migration_round_trip_and_unique_live_job(db: Any, engine: Any) -> 
     run_migrations(url)
     with engine.connect() as conn:
         version = conn.scalar(text("SELECT version_num FROM alembic_version"))
-        assert version == "0029_channel_event_payload_purge"
+        assert version == "0030_channel_health_poll_index"
+        assert (
+            conn.scalar(
+                text(
+                    "SELECT count(*) FROM pg_indexes "
+                    "WHERE indexname = 'ix_jobs_channel_health_poll_last'"
+                )
+            )
+            == 1
+        )
         assert (
             conn.scalar(
                 text(

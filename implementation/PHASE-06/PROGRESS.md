@@ -400,3 +400,12 @@ Environment: `apt-get update` then `apt-get install -y postgresql-16-pgvector po
 Commands and outcomes (only the touched test files):
 1. `TEST_DATABASE_URL=postgresql://test:test@127.0.0.1:5432/phase6_test python -m pytest tests/test_channel_outbound.py -q` (in apps/api) -> **35 passed**. (The `postgresql+psycopg://` form fails in this conftest with a psycopg conninfo error; the plain `postgresql://` form works.)
 2. `node --test tests/channel-delivery.unit.mjs` (in apps/web) -> **16 pass, 0 fail**.
+
+## C-02 (2026-10-27)
+
+(a) `apps/api/app/contacts/router.py`: `_PHONE_SHAPE` is now `^\+\d[\d\s().-]*$`; a phone with a leading `-` or `(` (or any formula lead) is escaped with `'`. `(` is escaped for phones only (it is not in the general formula prefix list; names are unchanged).
+(b) Chose the index, not a column: migration `0030_channel_health_poll_index` adds partial index `ix_jobs_channel_health_poll_last` on `jobs (tenant_id, (payload->>'connection_id'), created_at) WHERE type = 'channel_health_poll'`. The scheduler query is untouched, so behaviour is identical. The three tests that pinned head `0029` now pin `0030` (test_channel_health, test_channel_migrations, test_channel_outbound). docs/04 and docs/16 list 0030.
+Tests added: phone guard parametrized (+20 100 123 4567 kept, -1-1, (20) 100, =1+1, +SUM(A1), +(1), @1 escaped), CSV export test with `-1-1`, `=1+1`, `+20 100 123 4567`, `(555) 010`; `test_schedule_health_polls_orders_never_polled_then_least_recent` (batch 1: never polled, then 5 h old, then 1 h old); index existence asserted in the poll migration round-trip test.
+Command: `TEST_DATABASE_URL=postgresql://test:test@127.0.0.1:5432/phase6_test python -m pytest tests/test_contacts_export_safety.py tests/test_channel_health.py tests/test_channel_migrations.py tests/test_channel_outbound.py -q` (apps/api). First run: 2 failed (the `(` case, which was not escaped yet), 65 passed. After the fix, `tests/test_contacts_export_safety.py` alone: **18 passed**; the other three files (65 tests) passed in the first run and are unaffected by the later router-only change.
+
+Follow-up ticket (NOT done here, main-owned): `alembic check` drift `bots.uq_bots_widget_locator` and `provisioning_requests`. Needs its own ticket on main.

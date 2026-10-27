@@ -26,6 +26,47 @@ def test_phone_numbers_keep_their_plus_but_formulas_are_quoted() -> None:
     assert _export_phone(None) == ""
 
 
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("+20 100 123 4567", "+20 100 123 4567"),
+        ("+1 (555) 010-0000", "+1 (555) 010-0000"),
+        ("0100 123 4567", "0100 123 4567"),
+        ("-1-1", "'-1-1"),
+        ("(20) 100", "'(20) 100"),
+        ("=1+1", "'=1+1"),
+        ("+SUM(A1)", "'+SUM(A1)"),
+        ("+(1)", "'+(1)"),
+        ("@1", "'@1"),
+    ],
+)
+def test_phone_guard_exempts_only_plus_then_digits(value: str, expected: str) -> None:
+    assert _export_phone(value) == expected
+
+
+def test_export_csv_escapes_formula_phones_and_keeps_real_numbers(
+    app: FastAPI, db: OrmSession, corpus: dict[str, Any]
+) -> None:
+    users = corpus["users_a"]
+    base = f"/api/v1/tenants/{users.tenant_id}/contacts"
+    phones = ["-1-1", "=1+1", "+20 100 123 4567", "(555) 010"]
+    for index, phone in enumerate(phones):
+        response = users.call(
+            "admin",
+            "POST",
+            base,
+            json={"display_name": f"Phone {index}", "phone": phone},
+        )
+        assert response.status_code in (200, 201), response.text
+    exported = users.call("admin", "GET", f"{base}/export.csv")
+    rows = list(csv.DictReader(io.StringIO(exported.text, newline="")))
+    by_name = {row["display_name"]: row for row in rows}
+    assert by_name["Phone 0"]["phone"] == "'-1-1"
+    assert by_name["Phone 1"]["phone"] == "'=1+1"
+    assert by_name["Phone 2"]["phone"] == "+20 100 123 4567"
+    assert by_name["Phone 3"]["phone"] == "'(555) 010"
+
+
 def test_export_csv_quotes_display_name_and_other_text_columns(
     app: FastAPI, db: OrmSession, corpus: dict[str, Any]
 ) -> None:
