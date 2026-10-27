@@ -422,3 +422,21 @@ Added `scripts/check_contract_copies.py` (stdlib; `--root` for tests): fails if 
 Assumption to confirm: wiring into `config` (instead of a new top-level target) is the intended reading of "the existing validation Makefile target".
 Tests: `scripts/test_check_contract_copies.py` (unittest; runs the script on a temporary copy: match passes; V1 mismatch, delta mismatch, section 11 drift and a missing file each exit 1).
 Commands: `python3 scripts/check_contract_copies.py` -> `contract copies OK`, exit 0; `make check-contract` -> same; `cd scripts && python3 -m unittest test_check_contract_copies -v` -> **6 tests OK**.
+
+## C-05 Final verification (2026-10-27, HEAD affe9e7 plus this docs commit)
+
+Run once (a first API loop was killed after 2 files because `alembic check` showed my 0030 index as drift; the index was declared in the `Job` model, committed as affe9e7, ruff/mypy re-run, and the whole API loop restarted from file 1).
+1. `cd apps/api && ruff check .` -> All checks passed; `ruff format --check .` -> 299 files already formatted; `mypy app` -> Success, 127 source files (re-run after affe9e7).
+2. API, one pytest run per file over `tests/test_*.py` (97 files, PYTHONUTF8=1, TEST_DATABASE_URL=postgresql://test:test@127.0.0.1:5432/phase6_test): **1112 passed, 9 failed** (test_embedding_readiness 3, test_hybrid_retrieval 3, test_rag_evaluation 2, test_tone_prompt 1). The same four files in a clean `origin/main` worktree (d189893, DB mainchk_test): identical failure counts. `test_trace_context.py` passes on both trees here. pgvector in this VM is 0.6.0, probable cause of the retrieval failures (not investigated). See PRE-EXISTING-FAILURES.md.
+3. Alembic on fresh DB `phase6_alembic_test` (DATABASE_URL set per process): `upgrade head`; `downgrade 0022_knowledge_hygiene`; `downgrade base`; `upgrade head`: all exit 0, `heads` -> single `0030_channel_health_poll_index`. (`downgrade 0022` as written in the ticket is not a revision id; 0022 is `0022_knowledge_hygiene`.) `alembic check`: only the main-owned drift listed below.
+4. Web (apps/web): `npm run typecheck` exit 0; `npm run lint` exit 0; `node --test tests/*.unit.mjs` -> 24 pass, 0 fail.
+5. Playwright, three channel specs via temporary config (`executablePath` /opt/pw-browsers/chromium-1243/chrome-linux64/chrome, E2E_PYTHON=venv, disposable DB phase6e2e_e2e_test): **5 passed (55.0s)**; temp config deleted. Other specs NOT RUN.
+6. `make check-contract`: contract copies OK; `scripts` unittest: 6 OK.
+
+Follow-up list (not done here):
+- `alembic check` drift owned by main: `bots.uq_bots_widget_locator`, `provisioning_requests` indexes (own ticket on main).
+- B1 (is P7 / a green Playwright run a gate) stays OPEN for the owner; this session verified only the three channel specs.
+- S10 is undefined: no definition of S10 exists in the repo docs I was given, so nothing was done for it.
+- ADR-020 still awaits owner sign-off (unchanged).
+- Re-run the retrieval/embedding/RAG-eval files on pgvector 0.8.0; confirm test_trace_context flakiness.
+- Makefile wiring assumption in C-04 (`config` depends on `check-contract`).
