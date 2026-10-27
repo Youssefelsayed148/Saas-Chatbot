@@ -127,6 +127,14 @@ class Job(Base):
                 "type = 'channel_health_poll' AND status IN ('pending', 'running')"
             ),
         ),
+        # Last-poll lookup of the health scheduler (migration 0030).
+        Index(
+            "ix_jobs_channel_health_poll_last",
+            "tenant_id",
+            sa_text("(payload->>'connection_id')"),
+            "created_at",
+            postgresql_where=sa_text("type = 'channel_health_poll'"),
+        ),
     )
 
 
