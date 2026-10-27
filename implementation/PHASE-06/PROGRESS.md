@@ -409,3 +409,9 @@ Tests added: phone guard parametrized (+20 100 123 4567 kept, -1-1, (20) 100, =1
 Command: `TEST_DATABASE_URL=postgresql://test:test@127.0.0.1:5432/phase6_test python -m pytest tests/test_contacts_export_safety.py tests/test_channel_health.py tests/test_channel_migrations.py tests/test_channel_outbound.py -q` (apps/api). First run: 2 failed (the `(` case, which was not escaped yet), 65 passed. After the fix, `tests/test_contacts_export_safety.py` alone: **18 passed**; the other three files (65 tests) passed in the first run and are unaffected by the later router-only change.
 
 Follow-up ticket (NOT done here, main-owned): `alembic check` drift `bots.uq_bots_widget_locator` and `provisioning_requests`. Needs its own ticket on main.
+
+## C-03 (2026-10-27)
+
+Added `apps/api/tests/fixtures/contract/signing_vectors.json` (secret = 40 x "s", timestamp "1760000000"; body `{"text":"مرحبا ✓"}` -> `sha256=5e40dcd701ffe2adc2ba2940bf94a02f3cbe639b1e7ec9a4ac59c4c146f13d50`; second vector with an empty body -> `sha256=3d0334f7dad871341364fcfae113d3fa28a51a9bb55ac983f9fe6b0b9b119dbd`). Both digests were computed locally with Python `hmac`/`hashlib` as HMAC-SHA256(secret, timestamp + "." + body); the first matches the value given in the ticket exactly.
+Added `fixtures/contract/examples/*.json` (5 files, placeholders `{{connection_id}}`, `{{event_id}}`, `{{now}}`, `{{message_id}}`; see `fixtures/contract/README.md`) and `tests/test_channel_contract_fixtures.py`: sign/verify against both vectors; every example passes the real `_validate_payload` and gets 202 from `POST /api/channels/manyosiris/events` with a correct signature; 11 over-cap / wrong-type variants raise in `_validate_payload` and get the signed 422 `VALIDATION_ERROR`.
+Command: `TEST_DATABASE_URL=postgresql://test:test@127.0.0.1:5432/phase6_test python -m pytest tests/test_channel_contract_fixtures.py -q` (apps/api) -> **21 passed**. `ruff check` + `ruff format` on the new test file: clean.

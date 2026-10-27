@@ -1,0 +1,19 @@
+{
+  "description": "HMAC-SHA256(secret, timestamp + '.' + body); signature = 'sha256=' + hex digest. Body is the exact UTF-8 bytes of body_utf8 (compact JSON, non-ASCII not escaped).",
+  "vectors": [
+    {
+      "name": "arabic-and-symbol-body",
+      "secret": "ssssssssssssssssssssssssssssssssssssssss",
+      "timestamp": "1760000000",
+      "body_utf8": "{\"text\":\"مرحبا ✓\"}",
+      "signature": "sha256=5e40dcd701ffe2adc2ba2940bf94a02f3cbe639b1e7ec9a4ac59c4c146f13d50"
+    },
+    {
+      "name": "empty-body",
+      "secret": "ssssssssssssssssssssssssssssssssssssssss",
+      "timestamp": "1760000000",
+      "body_utf8": "",
+      "signature": "sha256=3d0334f7dad871341364fcfae113d3fa28a51a9bb55ac983f9fe6b0b9b119dbd"
+    }
+  ]
+}

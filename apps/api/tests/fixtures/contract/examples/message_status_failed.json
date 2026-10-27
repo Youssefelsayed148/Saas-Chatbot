@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "event_id": "{{event_id}}",
+  "event_type": "message.status",
+  "connection_id": "{{connection_id}}",
+  "occurred_at": "{{now}}",
+  "status": "failed",
+  "message_id": "{{message_id}}",
+  "error_code": "window_closed",
+  "error_detail": "Outside the 24 hour window"
+}
