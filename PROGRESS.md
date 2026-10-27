@@ -3776,3 +3776,24 @@ Open: free-tier OpenRouter quality diagnosis (parked by the owner); phase 6 bran
 - `ruff format` applied to knowledge.py, test_channel_contract.py, test_channel_events.py, test_handoff.py; `... or True` in test_channel_turn.py replaced by real assertions. Health.py comment now says migration 0026.
 - Docs: CONTRACT-V1.1-DELTA (both copies) now ADOPTED as ADR-023, new section A14 (also in docs/17 section 11); `many-pack/CONTRACT-V1.md` is a byte copy of docs/17; docs/16 lists 0029, the rollback reality for 0023/0024 (rollback = pause) and known limitations (events route lookup before throttle; `received_at` up to +5 min).
 - Targeted runs: test_channel_outbound `-k "paused_at_job or undecryptable"`, test_channel_turn `-k human_mode`, review-fixes rotation test: passed.
+
+### Batch 6 verification (single run, cloud session 2026-10-27)
+Environment: Ubuntu 24.04, Python 3.12.3, PostgreSQL 16.15 with pgvector 0.8.0 built from source (`SELECT extversion FROM pg_extension WHERE extname='vector'` = 0.8.0), disposable DB `phase6_test`, random password, never printed.
+1. `ruff check .` clean; `ruff format --check .` 296 files formatted; `mypy app` clean (127 files). (One typing fix, commit "typing for purged event payloads", came from this step.)
+2. Full API suite, each of the 96 files run separately with `python -m pytest tests/<file>.py -q -p no:cacheprovider` (cwd apps/api, TEST_DATABASE_URL per process): 1083 passed, 2 failed. test_chat_streaming.py (21 passed, 4m35s) and test_chat_streaming_unit.py (34) included. The 2 failures (test_tone_prompt::test_empty_tone_leaves_prompt_body_byte_identical, test_trace_context::test_zero_evidence_lists_the_top_rejected_candidates) also fail identically on a clean origin/main worktree (own DB): "also fails on main", none is NEW.
+3. Alembic on a fresh DB: `upgrade head`, `downgrade 0022_knowledge_hygiene`, `downgrade base`, `upgrade head` all succeeded; `alembic heads` = `0029_channel_event_payload_purge` only. `alembic check` still FAILS on drift that exists on main and in untouched files (`bots.uq_bots_widget_locator`, `provisioning_requests` index/constraint); the two channel indexes are fixed. Not fixed on purpose (not in scope, main-owned).
+4. Web (apps/web): `npm ci`, `npm run typecheck` (next typegen + tsc) clean, `npm run lint` (eslint --max-warnings 0) clean, node unit tests channel-delivery 15 passed + insights 8 passed.
+5. Playwright, channel specs only: `E2E_PYTHON=/tmp/venv/bin/python npx playwright test -c <temporary config with executablePath of the pre-installed Chromium, deleted afterwards> channels channel-insights channel-delivery` with the stack booted by globalSetup on port 8000: 5 passed. The default config failed first because the Playwright-expected chromium revision is not installed (browser launch error, not a test failure). `next build` succeeded in this run (Next 16.4.3 on main). All other Playwright specs: NOT VERIFIED.
+- `PRE-EXISTING-FAILURES.md` rewritten against merged main.
+
+## Assumptions (review-fix run)
+- B2 re-drive criterion uses `created_at` ordering of non-visitor messages after the stored visitor message; a visitor message with a clamped old `received_at` that has any later reply counts as answered (no double reply).
+- B3: dedupe rows are deleted when older than BOTH the tenant cutoff and 30 days; an unprocessed event whose payload was purged becomes `ignored/payload_purged`.
+- S3: "URL support contact" handled by protecting the configured `support_email`/`support_phone` strings in the DM sanitizer, not by changing how the canned text is built.
+- S9: campaign context cap 500 characters (named constant), chosen below the 2000-character wire cap.
+- S5: the connection lookup stays before the body read (so an unknown connection is rejected without reading the body); both run in the threadpool.
+- S7: "last poll" = newest `channel_health_poll` job per connection (never polled first).
+- S4: phone numbers keep a real leading `+`; other text columns get the apostrophe guard.
+- Rotation twice within 24 h: allowed and documented (emergency use), not refused.
+- `S10` appears in the task text's finding range (S1-S10) but no S10 item is defined in the prompt; nothing was done for it. `alembic check` drift in main-owned files left as is.
+- B1 (P7 / green Playwright gate): OPEN for the owner; nothing merged to main.
