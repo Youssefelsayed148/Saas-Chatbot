@@ -8,6 +8,7 @@ the guarded deterministic test embedder, never a silent production substitute.
 import hashlib
 import math
 import re
+import threading
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Protocol
@@ -63,6 +64,32 @@ def configured_identity(settings: Settings) -> str:
     return f"{settings.embedding_provider}:{model}"
 
 
+_POOL_LOCK = threading.Lock()
+_POOL: dict[float, httpx.Client] = {}
+
+
+def _shared_client(timeout: float) -> httpx.Client:
+    """One keep-alive connection pool per timeout, shared by every query embed.
+
+    A client per call re-did DNS, TCP and TLS for every visitor question inside the
+    5 s embed budget. ``httpx.Client`` is thread-safe; the short keep-alive drops idle
+    connections before the provider closes them, and ``retries`` only covers connects.
+    """
+    with _POOL_LOCK:
+        client = _POOL.get(timeout)
+        if client is None or client.is_closed:
+            client = httpx.Client(
+                timeout=timeout,
+                transport=httpx.HTTPTransport(
+                    retries=1,
+                    limits=httpx.Limits(max_keepalive_connections=4, keepalive_expiry=15),
+                ),
+                follow_redirects=False,
+            )
+            _POOL[timeout] = client
+        return client
+
+
 class HTTPEmbedder:
     def __init__(
         self,
@@ -97,10 +124,15 @@ class HTTPEmbedder:
         headers = {"Authorization": f"Bearer {self._api_key}"} if self._api_key else {}
         received = False
         try:
-            with httpx.Client(
-                timeout=self.timeout, transport=self.transport, follow_redirects=False
-            ) as client:
-                response = client.post(self.base_url + endpoint, headers=headers, json=body)
+            if self.transport is None:
+                response = _shared_client(self.timeout).post(
+                    self.base_url + endpoint, headers=headers, json=body
+                )
+            else:
+                with httpx.Client(
+                    timeout=self.timeout, transport=self.transport, follow_redirects=False
+                ) as client:
+                    response = client.post(self.base_url + endpoint, headers=headers, json=body)
             if response.status_code != 200:
                 raise EmbeddingError("Embedding provider is unavailable.")
             received = True

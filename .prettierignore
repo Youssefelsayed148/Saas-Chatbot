@@ -5,3 +5,5 @@ package-lock.json
 test-results
 playwright-report
 *.tsbuildinfo
+# Generated from packages/widget/src/loader.js by packages/widget/scripts/sync-loader.mjs
+apps/web/public/widget/v1/loader.js

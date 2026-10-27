@@ -3,8 +3,8 @@ import { registerStaffSession } from "./e2e-helpers";
 
 /**
  * R3c-7 (#113): the open widget panel keeps a bounded height, the message list
- * scrolls inside it, the composer is never clipped and the "Leave your details"
- * form opens and closes without squeezing the composer out.
+ * scrolls inside it, the composer is never clipped and the "Contact us"
+ * sheet opens and closes without squeezing the composer out.
  *
  * Network edge only: the config, session, history and message endpoints are
  * mocked, the stream endpoint answers 502 so the widget takes its single
@@ -165,17 +165,13 @@ for (const layout of LAYOUTS) {
     expect(scroll.scrollTop).toBeGreaterThan(0);
     await expectInsideFrame(page, frame);
 
-    // The lead form opens inline and closes again without pushing the composer out.
+    // The contact sheet slides over the panel and closes again without moving the thread.
     const closedHeight = await threadHeight(frame);
     await frame.getByTestId("widget-lead-open").click();
     await expect(frame.getByTestId("widget-lead-form")).toBeVisible();
     await expectInsideFrame(page, frame);
     expect(await threadHeight(frame)).toBeGreaterThanOrEqual(120);
-    await frame
-      .getByTestId("widget-lead-form")
-      .getByRole("button")
-      .last()
-      .click();
+    await frame.locator(".widget-sheet-close").click();
     await expect(frame.getByTestId("widget-lead-form")).toHaveCount(0);
     await expectInsideFrame(page, frame);
     expect(await threadHeight(frame)).toBeCloseTo(closedHeight, 0);

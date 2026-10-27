@@ -26,3 +26,14 @@ def test_password_comes_from_env_and_is_validated(monkeypatch: Any) -> None:
     monkeypatch.delenv(PASSWORD_ENV)
     with pytest.raises(ValueError):
         read_password(interactive=False)
+
+
+def test_production_environment_accepts_a_non_demo_database_name() -> None:
+    from scripts.create_platform_staff import guard_staff_database
+
+    url = "postgresql://saas:secret@db:5432/saas"
+    assert guard_staff_database(url, "production") == ("db", "saas")
+    with pytest.raises(ValueError):
+        guard_staff_database(url, "development")  # the demo-only guard still applies elsewhere
+    with pytest.raises(ValueError):
+        guard_staff_database("mysql://u:p@db/saas", "production")

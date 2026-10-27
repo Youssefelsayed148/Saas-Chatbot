@@ -1,0 +1,29 @@
+# Public entrypoint: automatic HTTPS (Let's Encrypt) for {$DOMAIN}.
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	# Not for /api: chat replies stream over SSE and must never be buffered or compressed.
+	@compressible not path /api/*
+	encode @compressible zstd gzip
+
+	request_body {
+		max_size 540MB
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+
+	# Caddy replaces any client-supplied X-Forwarded-For, so the API's per-IP
+	# rate limits see the real client address. Keep the API unpublished.
+	reverse_proxy web:3000 {
+		flush_interval -1
+		transport http {
+			read_timeout 5m
+			write_timeout 5m
+		}
+	}
+}

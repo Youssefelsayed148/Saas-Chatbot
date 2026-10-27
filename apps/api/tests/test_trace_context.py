@@ -4,7 +4,7 @@ the gate refuses everything, the closest rejected candidates. No prompt text and
 no raw model output are ever part of it."""
 
 import json
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 import pytest
@@ -121,4 +121,4 @@ def test_handoff_reason_reaches_the_stored_trace(
     assert response.status_code == 201, response.text
     db.expire_all()
     event = db.scalars(select(UsageEvent).where(UsageEvent.kind == "message")).one()
-    assert event.payload["rag_trace"]["handoff_reason"] == "provider_failure"
+    assert cast(dict[str, Any], event.payload["rag_trace"])["handoff_reason"] == "provider_failure"

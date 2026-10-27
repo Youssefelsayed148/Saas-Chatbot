@@ -8,6 +8,7 @@ system instruction later).
 """
 
 import io
+import unicodedata
 import zipfile
 from dataclasses import dataclass
 from pathlib import PurePosixPath
@@ -19,6 +20,7 @@ from docx.text.paragraph import Paragraph
 
 from app.knowledge.front_matter import split_front_matter
 from app.knowledge.parsing import ParsedPage, ParsedSection, ParseError
+from app.knowledge.pdf_structure import merge_continued_sections, split_page_sections
 
 # Parsing settings live on Settings; these are passed in explicitly to keep
 # the parsers pure and easy to test.
@@ -52,8 +54,20 @@ def clean_extracted(text: str) -> str:
 # --- PDF ---------------------------------------------------------------------
 
 
+def normalise_pdf_text(text: str) -> str:
+    """Fold PDF glyph codepoints back to the letters they stand for.
+
+    Many PDFs (Arabic exports above all) put presentation forms (U+FB50-FEFF)
+    and Latin ligatures (U+FB00-FB06) in the text layer. NFKC maps them to the
+    plain letters, so search terms and the stored ``text_norm`` match what
+    visitors type; plain text is unchanged.
+    """
+    return unicodedata.normalize("NFKC", text)
+
+
 def parse_pdf(data: bytes, original_name: str, limits: ParseLimits) -> list[ParsedPage]:
-    """One section per page (docs/14 §3); scanned PDFs are rejected — no OCR in MVP."""
+    """Heading sections per page, joined across page breaks (pdf_structure); scanned PDFs are
+    rejected — no OCR in MVP."""
     try:
         reader = pypdf.PdfReader(io.BytesIO(data), strict=False)
     except Exception as error:  # noqa: BLE001 - pypdf raises many error types
@@ -68,7 +82,7 @@ def parse_pdf(data: bytes, original_name: str, limits: ParseLimits) -> list[Pars
     pages: list[ParsedPage] = []
     for index, page in enumerate(reader.pages, start=1):
         try:
-            extracted = page.extract_text() or ""
+            extracted = normalise_pdf_text(page.extract_text() or "")
         except Exception:  # noqa: BLE001 - untrusted input
             extracted = ""
         text = clean_extracted(extracted)
@@ -80,9 +94,12 @@ def parse_pdf(data: bytes, original_name: str, limits: ParseLimits) -> list[Pars
                 page_number=index,
                 title=f"{original_name} — Page {index}",
                 text=text,
-                sections=[ParsedSection(heading=None, text=text)],
+                sections=split_page_sections(text)
+                if text
+                else [ParsedSection(heading=None, text=text)],
             )
         )
+    pages = merge_continued_sections(pages)
     if all(page.text == "" for page in pages):
         raise ParseError(
             "No extractable text found (the PDF looks scanned). "

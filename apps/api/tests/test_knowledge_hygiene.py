@@ -191,7 +191,9 @@ def test_delete_removes_from_draft_then_publish_and_rollback_restores(
     gone = _upload_one(users, bot_id, "gone.md", MD_EN.read_bytes(), tmp_path)
     _ingest(users, bot_id, tmp_path)
     first_revision = publish_draft(users, bot_id)
-    storage_file = tmp_path / str(db.scalar(select(Source.storage_key).where(Source.id == UUID(gone["id"]))))
+    storage_file = tmp_path / str(
+        db.scalar(select(Source.storage_key).where(Source.id == UUID(gone["id"])))
+    )
     assert storage_file.exists()
 
     response = users.call("staff", "DELETE", f"{_base(users, bot_id)}/sources/{gone['id']}")
@@ -200,9 +202,15 @@ def test_delete_removes_from_draft_then_publish_and_rollback_restores(
 
     listed = users.call("staff", "GET", f"{_base(users, bot_id)}/sources").json()
     assert [row["id"] for row in listed] == [keep["id"]]
-    assert users.call("staff", "GET", f"{_base(users, bot_id)}/sources/{gone['id']}").status_code == 404
+    assert (
+        users.call("staff", "GET", f"{_base(users, bot_id)}/sources/{gone['id']}").status_code
+        == 404
+    )
     # Deleting again is a hidden resource.
-    assert users.call("staff", "DELETE", f"{_base(users, bot_id)}/sources/{gone['id']}").status_code == 404
+    assert (
+        users.call("staff", "DELETE", f"{_base(users, bot_id)}/sources/{gone['id']}").status_code
+        == 404
+    )
 
     # Published knowledge is unchanged until publish; the draft no longer has it.
     assert gone["id"] in {d["source_id"] for d in _documents(users, bot_id, "published")}
@@ -229,7 +237,9 @@ def test_delete_removes_from_draft_then_publish_and_rollback_restores(
     assert gone["id"] in {d["source_id"] for d in _documents(users, bot_id, "published")}
 
     audited = db.scalar(
-        select(func.count()).select_from(AuditEvent).where(AuditEvent.action == "knowledge.source_removed")
+        select(func.count())
+        .select_from(AuditEvent)
+        .where(AuditEvent.action == "knowledge.source_removed")
     )
     assert audited == 1
 
@@ -242,7 +252,10 @@ def test_removed_source_is_not_resurrected_by_retry_or_a_new_draft(
     gone = _upload_one(users, bot_id, "gone.md", MD_EN.read_bytes(), tmp_path)
     _ingest(users, bot_id, tmp_path)
     publish_draft(users, bot_id)
-    assert users.call("staff", "DELETE", f"{_base(users, bot_id)}/sources/{gone['id']}").status_code == 204
+    assert (
+        users.call("staff", "DELETE", f"{_base(users, bot_id)}/sources/{gone['id']}").status_code
+        == 204
+    )
     publish_draft(users, bot_id)
     # A brand-new draft is copied from the published snapshot: still without the source.
     third = _upload_one(users, bot_id, "third.md", MD_EN.read_bytes() + b"\nMore.\n", tmp_path)
@@ -259,13 +272,114 @@ def test_delete_frees_storage_quota_and_clears_always_include(
     users, bot_id = _setup(rooted_app, db, "h2-del3")
     source = _upload_one(users, bot_id, "gone.md", MD_EN.read_bytes(), tmp_path)
     base = _base(users, bot_id)
-    assert users.call("staff", "PUT", f"{base}/sources/{source['id']}/always-include", json={"enabled": True}).status_code == 200
+    assert (
+        users.call(
+            "staff", "PUT", f"{base}/sources/{source['id']}/always-include", json={"enabled": True}
+        ).status_code
+        == 200
+    )
     assert users.call("staff", "DELETE", f"{base}/sources/{source['id']}").status_code == 204
     db.expire_all()
     row = db.get(Source, UUID(source["id"]))
     bot = db.get(Bot, UUID(bot_id))
     assert row is not None and row.status == "removed" and row.size_bytes == 0
     assert bot is not None and "always_include_source_ids" not in bot.config
+
+
+def test_bulk_delete_removes_several_sources_in_one_call(
+    rooted_app: FastAPI, db: OrmSession, tmp_path: Path
+) -> None:
+    users, bot_id = _setup(rooted_app, db, "h2-bulk")
+    keep = _upload_one(users, bot_id, "keep.md", MD_AR.read_bytes(), tmp_path)
+    one = _upload_one(users, bot_id, "one.md", MD_EN.read_bytes(), tmp_path)
+    two = _upload_one(users, bot_id, "two.md", MD_EN.read_bytes() + b"\n\nExtra.\n", tmp_path)
+    _ingest(users, bot_id, tmp_path)
+    files = [
+        tmp_path / str(db.scalar(select(Source.storage_key).where(Source.id == UUID(row["id"]))))
+        for row in (one, two)
+    ]
+    assert all(path.exists() for path in files)
+    base = _base(users, bot_id)
+
+    response = users.call(
+        "staff",
+        "POST",
+        f"{base}/sources/bulk-delete",
+        json={"source_ids": [one["id"], two["id"], one["id"]]},  # a repeated id counts once
+    )
+    assert response.status_code == 200, response.text
+    assert response.json() == {"deleted": 2}
+    assert not any(path.exists() for path in files)
+    listed = users.call("staff", "GET", f"{base}/sources").json()
+    assert [row["id"] for row in listed] == [keep["id"]]
+    assert {d["source_id"] for d in _documents(users, bot_id, "draft")} == {keep["id"]}
+    db.expire_all()
+    audited = db.scalar(
+        select(func.count())
+        .select_from(AuditEvent)
+        .where(AuditEvent.action == "knowledge.source_removed")
+    )
+    assert audited == 2
+
+
+def test_bulk_delete_is_all_or_nothing(rooted_app: FastAPI, db: OrmSession, tmp_path: Path) -> None:
+    users, bot_id = _setup(rooted_app, db, "h2-bulk2")
+    users_b, bot_b = _setup(rooted_app, db, "h2-bulk2-b")
+    mine = _upload_one(users, bot_id, "mine.md", MD_AR.read_bytes(), tmp_path)
+    foreign = _upload_one(users_b, bot_b, "foreign.md", MD_EN.read_bytes(), tmp_path)
+    base = _base(users, bot_id)
+
+    unknown = users.call(
+        "staff",
+        "POST",
+        f"{base}/sources/bulk-delete",
+        json={"source_ids": [mine["id"], "00000000-0000-4000-8000-000000000000"]},
+    )
+    assert unknown.status_code == 404
+    # Tenant B's source id is indistinguishable from an unknown one, and nothing is deleted.
+    hidden = users.call(
+        "staff",
+        "POST",
+        f"{base}/sources/bulk-delete",
+        json={"source_ids": [mine["id"], foreign["id"]]},
+    )
+    assert hidden.status_code == 404
+    assert [row["id"] for row in users.call("staff", "GET", f"{base}/sources").json()] == [
+        mine["id"]
+    ]
+    assert [
+        row["id"] for row in users_b.call("staff", "GET", f"{_base(users_b, bot_b)}/sources").json()
+    ] == [foreign["id"]]
+
+    # A source that is being ingested blocks the whole request.
+    db.expire_all()
+    row = db.get(Source, UUID(mine["id"]))
+    assert row is not None
+    row.status = "queued"
+    db.commit()
+    busy = users.call(
+        "staff", "POST", f"{base}/sources/bulk-delete", json={"source_ids": [mine["id"]]}
+    )
+    assert busy.status_code == 409 and busy.json()["error"]["code"] == "SOURCE_BUSY"
+
+
+def test_bulk_delete_validation_roles_and_csrf(
+    rooted_app: FastAPI, db: OrmSession, tmp_path: Path
+) -> None:
+    users, bot_id = _setup(rooted_app, db, "h2-bulk3")
+    source = _upload_one(users, bot_id, "a.md", MD_EN.read_bytes(), tmp_path)
+    base = _base(users, bot_id)
+    url = f"{base}/sources/bulk-delete"
+    assert users.call("staff", "POST", url, json={"source_ids": []}).status_code == 422
+    assert (
+        users.call("staff", "POST", url, json={"source_ids": [source["id"]] * 101}).status_code
+        == 422
+    )
+    for role in ("admin", "editor", "viewer"):
+        assert users.call(role, "POST", url, json={"source_ids": [source["id"]]}).status_code == 403
+    client = users.as_user("staff")
+    assert client.post(url, json={"source_ids": [source["id"]]}).status_code == 403
+    assert _source_count(db, bot_id) == 1
 
 
 # --- 4. cross-source duplicate chunks -------------------------------------------
@@ -307,7 +421,9 @@ def test_always_include_survives_reingest_draft_copy_and_replace(
     _ingest(users, bot_id, tmp_path)
     publish_draft(users, bot_id)
 
-    on = users.call("staff", "PUT", f"{base}/sources/{source['id']}/always-include", json={"enabled": True})
+    on = users.call(
+        "staff", "PUT", f"{base}/sources/{source['id']}/always-include", json={"enabled": True}
+    )
     assert on.status_code == 200 and on.json()["always_include"] is True
     listed = {row["id"]: row for row in users.call("staff", "GET", f"{base}/sources").json()}
     assert listed[source["id"]]["always_include"] is True
@@ -317,21 +433,32 @@ def test_always_include_survives_reingest_draft_copy_and_replace(
         db.expire_all()
         bot = db.get(Bot, UUID(bot_id))
         assert bot is not None and bot.published_revision_id is not None
-        return always_include_document_ids(db, bot, bot.published_revision_id, upload_settings(tmp_path))
+        return always_include_document_ids(
+            db, bot, bot.published_revision_id, upload_settings(tmp_path)
+        )
 
     before = reserved()
     assert before
-    live_docs = {d["id"] for d in _documents(users, bot_id, "published") if d["source_id"] == source["id"]}
+    live_docs = {
+        d["id"] for d in _documents(users, bot_id, "published") if d["source_id"] == source["id"]
+    }
     assert before <= live_docs
 
     # Replace + re-ingest + publish: document ids change, the reservation follows the source.
-    assert _replace(users, bot_id, source["id"], "contact.md", MD_EN.read_bytes() + b"\nNew line.\n").status_code == 200
+    assert (
+        _replace(
+            users, bot_id, source["id"], "contact.md", MD_EN.read_bytes() + b"\nNew line.\n"
+        ).status_code
+        == 200
+    )
     _ingest(users, bot_id, tmp_path)
     publish_draft(users, bot_id)
     after = reserved()
     assert after and after.isdisjoint(before)
 
-    off = users.call("staff", "PUT", f"{base}/sources/{source['id']}/always-include", json={"enabled": False})
+    off = users.call(
+        "staff", "PUT", f"{base}/sources/{source['id']}/always-include", json={"enabled": False}
+    )
     assert off.status_code == 200 and off.json()["always_include"] is False
     assert reserved() == set()
 
@@ -345,20 +472,31 @@ def test_bot_settings_validate_always_include_ids(
     foreign = _upload_one(users_b, bot_b, "a.md", MD_EN.read_bytes(), tmp_path)
     base = _base(users, bot_id)
 
-    ok = users.call("staff", "PATCH", base, json={"config": {"always_include_source_ids": [mine["id"]]}})
+    ok = users.call(
+        "staff", "PATCH", base, json={"config": {"always_include_source_ids": [mine["id"]]}}
+    )
     assert ok.status_code == 200, ok.text
     assert ok.json()["config"]["always_include_source_ids"] == [mine["id"]]
     # Another tenant's source id is indistinguishable from an unknown one.
-    bad = users.call("staff", "PATCH", base, json={"config": {"always_include_source_ids": [foreign["id"]]}})
+    bad = users.call(
+        "staff", "PATCH", base, json={"config": {"always_include_source_ids": [foreign["id"]]}}
+    )
     assert bad.status_code == 422
     too_many = users.call(
-        "staff", "PATCH", base, json={"config": {"always_include_source_ids": [mine["id"]] + [foreign["id"]] * 3}}
+        "staff",
+        "PATCH",
+        base,
+        json={"config": {"always_include_source_ids": [mine["id"]] + [foreign["id"]] * 3}},
     )
     assert too_many.status_code == 422
-    not_uuid = users.call("staff", "PATCH", base, json={"config": {"always_include_source_ids": ["nope"]}})
+    not_uuid = users.call(
+        "staff", "PATCH", base, json={"config": {"always_include_source_ids": ["nope"]}}
+    )
     assert not_uuid.status_code == 422
     cleared = users.call("staff", "PATCH", base, json={"config": {"always_include_source_ids": []}})
-    assert cleared.status_code == 200 and "always_include_source_ids" not in cleared.json()["config"]
+    assert (
+        cleared.status_code == 200 and "always_include_source_ids" not in cleared.json()["config"]
+    )
 
 
 # --- tenant A/B, roles, CSRF on every new endpoint ------------------------------
@@ -377,25 +515,48 @@ def test_new_endpoints_are_tenant_scoped_and_staff_only(
     base_b = _base(users_b, bot_b)
     assert users_b.call("staff", "DELETE", f"{base_b}/sources/{sid}").status_code == 404
     assert _replace(users_b, bot_b, sid, "x.md", data).status_code == 404
-    assert users_b.call("staff", "PUT", f"{base_b}/sources/{sid}/always-include", json={"enabled": True}).status_code == 404
-    # Tenant B's session on tenant A's path is not a member / not allowed to see it.
+    assert (
+        users_b.call(
+            "staff", "PUT", f"{base_b}/sources/{sid}/always-include", json={"enabled": True}
+        ).status_code
+        == 404
+    )
+    # Tenant B's client admin on tenant A's path is not a member: hidden (404).
+    # (Platform staff may act on any tenant by design, so "staff" is not used here.)
     base_a_via_b = f"/api/v1/tenants/{users_a.tenant_id}/bots/{bot_a}"
-    assert users_b.call("staff", "DELETE", f"{base_a_via_b}/sources/{sid}").status_code in (403, 404)
+    assert users_b.call("admin", "DELETE", f"{base_a_via_b}/sources/{sid}").status_code in (
+        403,
+        404,
+    )
 
     # Non-staff roles are refused.
     base = _base(users_a, bot_a)
     for role in ("admin", "editor", "viewer"):
         assert users_a.call(role, "DELETE", f"{base}/sources/{sid}").status_code == 403
         assert _replace(users_a, bot_a, sid, "x.md", data, role=role).status_code == 403
-        assert users_a.call(role, "PUT", f"{base}/sources/{sid}/always-include", json={"enabled": True}).status_code == 403
+        assert (
+            users_a.call(
+                role, "PUT", f"{base}/sources/{sid}/always-include", json={"enabled": True}
+            ).status_code
+            == 403
+        )
 
     # CSRF is required.
     client = users_a.as_user("staff")
     assert client.delete(f"{base}/sources/{sid}").status_code == 403
-    assert client.put(f"{base}/sources/{sid}/always-include", json={"enabled": True}).status_code == 403
-    assert client.post(f"{base}/sources/{sid}/replace", files={"file": ("x.md", data)}).status_code == 403
+    assert (
+        client.put(f"{base}/sources/{sid}/always-include", json={"enabled": True}).status_code
+        == 403
+    )
+    assert (
+        client.post(f"{base}/sources/{sid}/replace", files={"file": ("x.md", data)}).status_code
+        == 403
+    )
 
     db.expire_all()
     still = db.get(Source, UUID(sid))
     assert still is not None and still.status == "stored" and still.sha256 == source["sha256"]
-    assert db.scalar(select(func.count()).select_from(Document).where(Document.source_id == UUID(sid))) == 0
+    assert (
+        db.scalar(select(func.count()).select_from(Document).where(Document.source_id == UUID(sid)))
+        == 0
+    )

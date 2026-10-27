@@ -17,7 +17,7 @@ dependencies = [
     "email-validator==2.3.0",
     "python-multipart==0.0.32",
     # P2 knowledge ingestion (docs/14 §3): parsers need PDF/DOCX/YAML.
-    "pypdf==6.20.1",
+    "pypdf==6.21.2",
     "python-docx==1.2.0",
     "PyYAML==6.0.3",
     "httpx==0.28.1",
@@ -46,6 +46,11 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+# Long SQL string literals in tests and historical migrations stay readable as one line.
+"tests/*" = ["E501"]
+"alembic/versions/*" = ["E501"]
 
 [tool.mypy]
 python_version = "3.12"

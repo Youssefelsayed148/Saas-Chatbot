@@ -151,7 +151,7 @@ class Source(Base):
         CheckConstraint("kind IN ('pdf', 'docx', 'txt', 'md', 'qa_csv')", name="ck_sources_kind"),
         CheckConstraint(
             "status IN ('stored', 'queued', 'ingested', 'failed', 'removed')",
-            name="ck_sources_status"
+            name="ck_sources_status",
         ),
         CheckConstraint("size_bytes >= 0", name="ck_sources_size"),
         ForeignKeyConstraint(
@@ -431,9 +431,13 @@ class Chunk(Base):
         Index("ix_chunks_fts_en", "fts_en", postgresql_using="gin"),
         Index("ix_chunks_fts_simple", "fts_simple", postgresql_using="gin"),
         Index("ix_chunks_fts_ar", "fts_ar", postgresql_using="gin"),
-        Index("ix_chunks_embedding_hnsw", "embedding", postgresql_using="hnsw",
-              postgresql_ops={"embedding": "vector_cosine_ops"},
-              postgresql_where=sa_text("embedding IS NOT NULL")),
+        Index(
+            "ix_chunks_embedding_hnsw",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+            postgresql_where=sa_text("embedding IS NOT NULL"),
+        ),
     )
 
 

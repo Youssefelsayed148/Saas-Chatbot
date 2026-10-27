@@ -76,7 +76,8 @@ def test_openai_calibration_cache_http_is_mocked_and_not_replayed(tmp_path: Path
     assert cached.embed(["one"]).vectors == [vector] and len(calls) == 1
     assert read_cache(output, embedder.identity).embed(["two"]).vectors == [vector]
     batches = [
-        json.loads(line) for line in (tmp_path / "embedding-usage.jsonl").read_text().splitlines()
+        json.loads(line)
+        for line in (tmp_path / "embedding-usage.jsonl").read_text(encoding="utf-8").splitlines()
     ]
     assert len(batches) == 1 and batches[0]["tokens"] == 12
     with pytest.raises(ValueError, match="already started"):
@@ -165,7 +166,8 @@ def test_two_mode_retrieval_eval_is_entirely_offline(
         metrics["modes"]["fts_only"]["cases"] == metrics["modes"]["hybrid"]["cases"] == len(cases)
     )
     rows = [
-        json.loads(line) for line in (tmp_path / "retrieval-results.jsonl").read_text().splitlines()
+        json.loads(line)
+        for line in (tmp_path / "retrieval-results.jsonl").read_text(encoding="utf-8").splitlines()
     ]
     assert len(rows) == 2 * len(cases) and all(
         row["actual_mode"] == row["requested_mode"] for row in rows

@@ -48,6 +48,14 @@ class AlwaysIncludeRequest(BaseModel):
     enabled: bool
 
 
+class BulkDeleteSourcesRequest(BaseModel):
+    source_ids: list[UUID] = Field(min_length=1, max_length=100)
+
+
+class BulkDeleteSourcesResponse(BaseModel):
+    deleted: int
+
+
 class IngestionStartRequest(BaseModel):
     """All stored sources by default; explicit ids re-run a subset."""
 

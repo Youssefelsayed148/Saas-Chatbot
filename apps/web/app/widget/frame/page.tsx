@@ -10,6 +10,7 @@
  * carries its own scoped CSP (next.config `source: "/widget/:path*"`).
  */
 
+import { MessageBody } from "@/lib/message-body";
 import {
   useCallback,
   useEffect,
@@ -92,9 +93,18 @@ function localized(key: string, lang: string): string {
       ar: "المساعد غير مهيأ بعد. عد قريباً.",
     },
     leadTitle: {
-      en: "Leave your details",
-      ar: "اترك بياناتك",
+      en: "Contact us",
+      ar: "تواصل معنا",
     },
+    leadIntro: {
+      en: "Leave your details and our team will get back to you.",
+      ar: "اترك بياناتك وسيتواصل معك فريقنا.",
+    },
+    leadEmailInvalid: {
+      en: "Please enter a valid email address.",
+      ar: "يرجى إدخال بريد إلكتروني صحيح.",
+    },
+    leadClose: { en: "Close contact form", ar: "إغلاق النموذج" },
     leadName: { en: "Name", ar: "الاسم" },
     leadEmail: { en: "Email", ar: "البريد الإلكتروني" },
     leadPhone: { en: "Phone", ar: "الهاتف" },
@@ -108,7 +118,7 @@ function localized(key: string, lang: string): string {
         "follow up on this chat.",
       ar: "",
     },
-    leadSubmit: { en: "Send my details", ar: "أرسل بياناتي" },
+    leadSubmit: { en: "Send to our team", ar: "أرسل إلى الفريق" },
     leadDone: {
       en: "Thanks — our team will get back to you.",
       ar: "شكراً — سيتواصل معك فريقنا.",
@@ -280,6 +290,8 @@ async function ensureSessionFor(
   });
   return { id: payload.session_id, token: payload.token };
 }
+
+const EMAIL_SHAPE = /^\S+@\S+\.\S+$/;
 
 const CONSENT_TEXT_EN =
   "I agree that this business may store my name and contact details to " +
@@ -988,6 +1000,14 @@ export default function WidgetFramePage() {
       }));
       return;
     }
+    if (lead.email.trim() && !EMAIL_SHAPE.test(lead.email.trim())) {
+      setLead((state) => ({
+        ...state,
+        status: "error",
+        error: localized("leadEmailInvalid", lang),
+      }));
+      return;
+    }
     if (!lead.name.trim() || (!lead.email.trim() && !lead.phone.trim())) {
       setLead((state) => ({
         ...state,
@@ -1054,9 +1074,17 @@ export default function WidgetFramePage() {
     }
   }
 
+  const leadOpenRef = useRef(false);
+  useEffect(() => {
+    leadOpenRef.current = lead.open;
+  }, [lead.open]);
+
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") {
+      if (event.key !== "Escape") return;
+      if (leadOpenRef.current) {
+        setLead((state) => ({ ...state, open: false, error: null }));
+      } else {
         closeWidget();
       }
     }
@@ -1173,7 +1201,11 @@ export default function WidgetFramePage() {
                   }
                   aria-busy={turn.id === STREAMING_TURN_ID ? true : undefined}
                 >
-                  <div dir="auto">{turn.text}</div>
+                  {turn.role === "visitor" ? (
+                    <div dir="auto">{turn.text}</div>
+                  ) : (
+                    <MessageBody text={turn.text} />
+                  )}
                   {turn.role === "assistant" &&
                     turn.id !== "welcome" &&
                     turn.id !== STREAMING_TURN_ID &&
@@ -1254,39 +1286,88 @@ export default function WidgetFramePage() {
 
       {status === "ready" && !blocked && lead.status === "done" && (
         <p role="status" className="widget-note" data-testid="widget-lead-done">
+          <span aria-hidden="true" className="widget-done-mark">
+            ✓
+          </span>
           {localized("leadDone", lang)}
         </p>
       )}
-      {status === "ready" && !blocked && (
-        <section
-          className={lead.open ? "widget-lead open" : "widget-lead"}
-          aria-label={localized("leadTitle", lang)}
-        >
-          {!lead.open ? (
-            <button
-              type="button"
-              className="widget-chip"
-              data-testid="widget-lead-open"
-              onClick={() => setLead((state) => ({ ...state, open: true }))}
+      {status === "ready" && !blocked && lead.status !== "done" && (
+        <div className="widget-contact-bar">
+          <button
+            type="button"
+            className="widget-contact-btn"
+            data-testid="widget-lead-open"
+            onClick={() => setLead((state) => ({ ...state, open: true }))}
+          >
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              width="16"
+              height="16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             >
-              {localized("leadTitle", lang)}
-            </button>
-          ) : (
+              <rect x="3" y="5" width="18" height="14" rx="2" />
+              <path d="m3 7 9 6 9-6" />
+            </svg>
+            {localized("leadTitle", lang)}
+          </button>
+        </div>
+      )}
+      {status === "ready" && !blocked && lead.open && (
+        <div className="widget-sheet-layer">
+          <button
+            type="button"
+            className="widget-sheet-backdrop"
+            aria-label={localized("leadClose", lang)}
+            tabIndex={-1}
+            onClick={() =>
+              setLead((state) => ({ ...state, open: false, error: null }))
+            }
+          />
+          <section
+            className="widget-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="widget-lead-title"
+          >
+            <header className="widget-sheet-head">
+              <div>
+                <h2 id="widget-lead-title" dir="auto">
+                  {localized("leadTitle", lang)}
+                </h2>
+                <p dir="auto">{localized("leadIntro", lang)}</p>
+              </div>
+              <button
+                type="button"
+                className="widget-sheet-close"
+                aria-label={localized("leadClose", lang)}
+                onClick={() =>
+                  setLead((state) => ({ ...state, open: false, error: null }))
+                }
+              >
+                ✕
+              </button>
+            </header>
             <form
               className="widget-lead-form"
               data-testid="widget-lead-form"
+              noValidate
               onSubmit={(leadEvent) => {
                 leadEvent.preventDefault();
                 void submitLead();
               }}
             >
-              <h2 dir="auto" className="widget-lead-title">
-                {localized("leadTitle", lang)}
-              </h2>
-              <label dir="auto">
-                <span>{localized("leadName", lang)}</span>
+              <label className="widget-field" dir="auto">
                 <input
                   dir="auto"
+                  autoFocus
+                  placeholder=" "
+                  autoComplete="name"
                   data-testid="widget-lead-name"
                   maxLength={200}
                   value={lead.name}
@@ -1297,12 +1378,18 @@ export default function WidgetFramePage() {
                     }))
                   }
                 />
+                <span>{localized("leadName", lang)}</span>
               </label>
-              <label dir="auto">
-                <span>{localized("leadEmail", lang)}</span>
+              <label className="widget-field" dir="auto">
                 <input
                   dir="auto"
                   type="email"
+                  placeholder=" "
+                  autoComplete="email"
+                  aria-invalid={
+                    lead.email.trim() !== "" &&
+                    !EMAIL_SHAPE.test(lead.email.trim())
+                  }
                   data-testid="widget-lead-email"
                   maxLength={320}
                   value={lead.email}
@@ -1313,11 +1400,14 @@ export default function WidgetFramePage() {
                     }))
                   }
                 />
+                <span>{localized("leadEmail", lang)}</span>
               </label>
-              <label dir="auto">
-                <span>{localized("leadPhone", lang)}</span>
+              <label className="widget-field" dir="auto">
                 <input
                   dir="auto"
+                  type="tel"
+                  placeholder=" "
+                  autoComplete="tel"
                   data-testid="widget-lead-phone"
                   maxLength={40}
                   value={lead.phone}
@@ -1328,6 +1418,7 @@ export default function WidgetFramePage() {
                     }))
                   }
                 />
+                <span>{localized("leadPhone", lang)}</span>
               </label>
               <label dir={dir} className="widget-lead-consent">
                 <input
@@ -1354,31 +1445,21 @@ export default function WidgetFramePage() {
                   {lead.error}
                 </p>
               )}
-              <div className="widget-lead-actions">
-                <button
-                  type="submit"
-                  data-testid="widget-lead-submit"
-                  disabled={lead.status === "saving"}
-                >
-                  {lead.status === "saving"
-                    ? "…"
-                    : localized("leadSubmit", lang)}
-                </button>
-                <button
-                  type="button"
-                  aria-label={
-                    lang === "ar" ? "إغلاق النموذج" : "Close details form"
-                  }
-                  onClick={() =>
-                    setLead((state) => ({ ...state, open: false, error: null }))
-                  }
-                >
-                  ✕
-                </button>
-              </div>
+              <button
+                type="submit"
+                className="widget-lead-submit"
+                data-testid="widget-lead-submit"
+                disabled={lead.status === "saving"}
+              >
+                {lead.status === "saving" ? (
+                  <span className="widget-spinner" aria-hidden="true" />
+                ) : (
+                  localized("leadSubmit", lang)
+                )}
+              </button>
             </form>
-          )}
-        </section>
+          </section>
+        </div>
       )}
       {status === "ready" && !blocked && (
         <form

@@ -3,7 +3,7 @@ widget UI language (``default_language``) no longer does."""
 
 import json
 import re
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 import pytest
@@ -137,7 +137,7 @@ def test_knowledge_language_resolution_and_schema() -> None:
 def test_patch_null_clears_knowledge_language() -> None:
     from app.bots.service import BotService
 
-    service = BotService(None)  # type: ignore[arg-type] — _merge_config never touches the db
+    service = BotService(cast(Any, None))  # _merge_config never touches the db
     bot = Bot(config={"knowledge_language": "en", "default_language": "ar"})
     merged = service._merge_config(bot, BotConfig(knowledge_language=None))
     assert "knowledge_language" not in merged and merged["default_language"] == "ar"

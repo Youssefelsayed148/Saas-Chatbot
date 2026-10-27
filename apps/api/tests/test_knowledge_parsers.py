@@ -18,7 +18,7 @@ from app.knowledge.chunking import split_text
 from app.knowledge.csv_qa import CsvStructureError, parse_qa_csv, qa_template_csv
 from app.knowledge.ingest import parse_source
 from app.knowledge.language import content_hash, detect_language, normalise_text
-from app.knowledge.parsers import ParseLimits, parse_docx, parse_pdf, parse_text
+from app.knowledge.parsers import ParseLimits, normalise_pdf_text, parse_docx, parse_pdf, parse_text
 from app.knowledge.parsing import ParsedPage, ParseError
 from tests.fixtures_factory import (
     make_corrupt_pdf,
@@ -150,6 +150,15 @@ def test_pdf_nul_bytes_stripped() -> None:
     data = make_pdf_pages([["Price: 100\x00 USD"]])
     pages = parse_pdf(data, "nul.pdf", limits(parse_limits_settings()))
     assert "\x00" not in "".join(page.text for page in pages)
+
+
+def test_pdf_glyph_codepoints_fold_to_plain_letters() -> None:
+    # Presentation-form Arabic (as pypdf returns it from many exports) and a Latin ligature.
+    glyphs = "\ufe8e\ufedf\ufe8e\ufeb3\ufe98\ufeae\ufe8e\ufea9 \ufb00ective"
+    folded = normalise_pdf_text(glyphs)
+    assert "\u0627\u0644\u0627\u0633\u062a\u0631\u0627\u062f" in folded
+    assert folded.endswith("ffective")
+    assert normalise_pdf_text("Plain text 100 USD") == "Plain text 100 USD"
 
 
 # --- DOCX --------------------------------------------------------------------

@@ -98,11 +98,12 @@ def test_revision_embedding_state_migrates_up_down_up(base_url: str) -> None:
         run_migrations(url, upgrade_to="0021_revision_embedding_state")
         with engine.connect() as connection:
             assert "embedding_model" in _columns(connection)
-            values = dict(
-                connection.execute(
+            values: dict[str, str | None] = {
+                str(row[0]): row[1]
+                for row in connection.execute(
                     text("SELECT id::text, embedding_model FROM knowledge_revisions")
-                ).all()
-            )
+                )
+            }
         assert values[ready_revision] == MODEL
         assert values[partial_revision] is None  # one chunk lacks a vector
         run_migrations(url, upgrade_to="", downgrade_to="0020_usage_event_unavailable")

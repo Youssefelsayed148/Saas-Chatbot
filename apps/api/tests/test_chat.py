@@ -35,7 +35,7 @@ def test_system_prompt_matches_main_bytes_for_fixed_website_input() -> None:
         evidence_block="[c] source\\ntext",
     )
     assert hashlib.sha256(prompt.encode("utf-8")).hexdigest() == (
-        "e53e41ecb5a5b87f6df9c74f22f654b78bc9c5e2de565db968c87c6d73ca118f"
+        "8e28195c8405d82d0601f7fdec70d93570cc2a97dce04fab8764943f1f5a804e"
     )
 
 

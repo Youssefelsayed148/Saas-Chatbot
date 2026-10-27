@@ -1,8 +1,10 @@
-"""Create or update a platform-staff user in a development database.
+"""Create or update a platform-staff user.
 
 The password comes from the PLATFORM_STAFF_PASSWORD environment variable or an
 interactive prompt. It is never accepted as an argument, hardcoded or printed.
-Refuses any database not named *_dev / *_demo (same guard as the demo seed).
+Outside ENVIRONMENT=production it refuses any database not named *_dev / *_demo
+(same guard as the demo seed). With ENVIRONMENT=production (the deployed stack)
+it accepts any PostgreSQL database, because that is how the first admin exists.
 """
 
 import argparse
@@ -13,6 +15,7 @@ from uuid import uuid4
 
 from pydantic import SecretStr
 from sqlalchemy import select
+from sqlalchemy.engine import make_url
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -24,6 +27,19 @@ from app.db.session import create_db_engine, session_factory
 from scripts.seed_demo import guard_database
 
 PASSWORD_ENV = "PLATFORM_STAFF_PASSWORD"
+
+
+def guard_staff_database(database_url: str, environment: str) -> tuple[str, str]:
+    """Development keeps the demo-database guard; production only requires PostgreSQL."""
+    if environment != "production":
+        return guard_database(database_url, environment)
+    try:
+        url = make_url(database_url)
+    except Exception:
+        raise ValueError("DATABASE_URL must be a PostgreSQL URL.") from None
+    if url.get_backend_name() != "postgresql" or not url.database:
+        raise ValueError("DATABASE_URL must be a PostgreSQL URL.")
+    return url.host or "", url.database
 
 
 def read_password(*, interactive: bool) -> str:
@@ -62,7 +78,9 @@ def main(argv: list[str] | None = None) -> int:
         if "@" not in args.email:
             raise ValueError("Pass --email or set PLATFORM_STAFF_EMAIL to a valid address.")
         database_url = os.environ.get("DATABASE_URL", "")
-        host, name = guard_database(database_url, os.environ.get("ENVIRONMENT", "development"))
+        host, name = guard_staff_database(
+            database_url, os.environ.get("ENVIRONMENT", "development")
+        )
         password = read_password(interactive=sys.stdin.isatty())
         settings = Settings.model_construct(database_url=SecretStr(database_url))
         engine = create_db_engine(settings)

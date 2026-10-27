@@ -171,7 +171,11 @@
   justify-content: center;
   gap: var(--space-3);
   padding: var(--space-7) var(--space-6);
-  background: linear-gradient(160deg, var(--accent-soft), var(--surface-raised));
+  background: linear-gradient(
+    160deg,
+    var(--accent-soft),
+    var(--surface-raised)
+  );
   border-inline-end: 1px solid var(--border);
 }
 .auth-panel > * {

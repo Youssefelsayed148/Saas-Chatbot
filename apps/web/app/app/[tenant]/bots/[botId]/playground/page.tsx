@@ -1,5 +1,6 @@
 "use client";
 
+import { MessageBody } from "@/lib/message-body";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -349,7 +350,11 @@ export default function PlaygroundPage() {
               ) : (
                 <li key={message.id} data-role={message.sender_type}>
                   <div dir="auto" className="message-text">
-                    {message.text}
+                    {message.sender_type === "ai" ? (
+                      <MessageBody text={message.text} />
+                    ) : (
+                      message.text
+                    )}
                   </div>
                   {message.citations && message.citations.length > 0 && (
                     <ul data-testid="citations" aria-label="Sources">
@@ -437,7 +442,11 @@ export default function PlaygroundPage() {
                     className="message-text"
                     data-testid="pending-answer"
                   >
-                    {pending.answer || "…"}
+                    {pending.answer ? (
+                      <MessageBody text={pending.answer} />
+                    ) : (
+                      "…"
+                    )}
                   </div>
                 </li>
               </>

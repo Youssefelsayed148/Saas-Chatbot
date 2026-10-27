@@ -6,7 +6,7 @@ anyio==4.15.1
 argon2-cffi==25.1.0
 argon2-cffi-bindings==26.1.0
 ast-serialize==0.12.1
-certifi==2026.7.22
+certifi==2026.10.19
 cffi==2.1.1
 cryptography==50.0.2
 click==8.5.0
@@ -37,7 +37,7 @@ pydantic==2.14.1
 pydantic-core==2.50.1
 pydantic-settings==2.15.0
 pygments==2.21.0
-pypdf==6.20.1
+pypdf==6.21.2
 pytest==9.1.1
 python-docx==1.2.0
 python-dotenv==1.2.4

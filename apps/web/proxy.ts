@@ -25,15 +25,16 @@ const MAX_ACCEPTED_BODY_BYTES = 520 * 1024 * 1024;
 // Same target the rewrites in next.config.ts point at the FastAPI process.
 const apiOrigin = process.env.API_PROXY_TARGET ?? "http://127.0.0.1:8000";
 
-async function frameAncestorsHeader(
-  locator: string,
-): Promise<string | null> {
+async function frameAncestorsHeader(locator: string): Promise<string | null> {
   try {
     const response = await fetch(
       `${apiOrigin}/api/public/v1/widgets/${encodeURIComponent(
         locator,
       )}/frame-ancestors`,
-      { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(2500) },
+      {
+        headers: { Accept: "application/json" },
+        signal: AbortSignal.timeout(2500),
+      },
     );
     if (!response.ok) return null;
     const payload = (await response.json()) as { frame_ancestors?: string };

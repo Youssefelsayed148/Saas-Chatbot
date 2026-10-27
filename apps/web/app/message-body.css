@@ -1,0 +1,38 @@
+.md-body {
+  display: grid;
+  gap: 0.6rem;
+  line-height: 1.6;
+  min-inline-size: 0;
+}
+.md-body .md-paragraph,
+.md-body .md-label {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.md-body .md-label {
+  font-weight: 650;
+  margin-block-start: 0.15rem;
+}
+.md-body .md-list {
+  margin: 0;
+  padding-inline-start: 1.3rem;
+  display: grid;
+  gap: 0.4rem;
+}
+.md-body ul.md-list {
+  list-style: disc;
+}
+.md-body ol.md-list {
+  list-style: decimal;
+}
+.md-body .md-list li::marker {
+  color: var(--accent);
+  font-weight: 700;
+}
+.md-body .md-list li {
+  padding-inline-start: 0.15rem;
+  overflow-wrap: anywhere;
+}
+.md-body strong {
+  font-weight: 650;
+}

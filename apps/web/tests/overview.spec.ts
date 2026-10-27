@@ -27,9 +27,7 @@ async function registerAndPrepare(page: Page, store: string, hours: string) {
     page,
     `Overview ${store}`,
   );
-  await page
-    .getByRole("link", { name: new RegExp(`Open ${botName}`) })
-    .click();
+  await page.getByRole("link", { name: new RegExp(`Open ${botName}`) }).click();
   await page.waitForURL(/\/settings$/);
   const botId = new URL(page.url()).pathname.split("/")[4];
   const csrf = await csrfToken(page);
@@ -110,12 +108,15 @@ async function visitAndLead(
   const messageResponse = page.waitForResponse(
     (response) =>
       response.request().method() === "POST" &&
-      /^\/api\/public\/v1\/sessions\/[^/]+\/messages$/.test(
+      /^\/api\/public\/v1\/sessions\/[^/]+\/messages(\/stream)?$/.test(
         new URL(response.url()).pathname,
       ),
   );
   await frame.getByTestId("widget-send").click();
-  expect((await messageResponse).status()).toBe(201);
+  // The widget streams the turn (200, SSE); the buffered fallback answers 201.
+  const turnResponse = await messageResponse;
+  expect([200, 201]).toContain(turnResponse.status());
+  await turnResponse.finished(); // the turn is committed once the body ends
   await expect(frame.getByTestId("widget-ai-msg").last()).toBeVisible({
     timeout: 45_000,
   });

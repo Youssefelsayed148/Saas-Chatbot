@@ -176,7 +176,7 @@ def test_every_openapi_route_role_and_cross_tenant(
         if not path.startswith("/api/v1/tenants"):
             continue
         for method, operation in methods.items():
-            if method.upper() not in {"GET", "POST", "PATCH", "DELETE"}:
+            if method.upper() not in {"GET", "POST", "PUT", "PATCH", "DELETE"}:
                 continue
             minimum = operation.get("x-minimum-role")
             assert minimum in {*ROLE_LEVELS, "authenticated", "platform_staff_only"}, (method, path)
@@ -185,7 +185,7 @@ def test_every_openapi_route_role_and_cross_tenant(
     operations.sort(
         key=lambda item: (
             item[1].endswith("/data") and item[0] == "DELETE",
-            {"GET": 0, "POST": 1, "PATCH": 2, "DELETE": 3}[item[0]],
+            {"GET": 0, "POST": 1, "PUT": 2, "PATCH": 2, "DELETE": 3}[item[0]],
         )
     )
     try:
@@ -212,7 +212,7 @@ def test_every_openapi_route_role_and_cross_tenant(
                 path = template.format(**{**ids, "contact_id": merge_source.id})
             body: dict[str, Any] = {}
             kwargs: dict[str, Any] = {}
-            if method in {"POST", "PATCH", "DELETE"}:
+            if method in {"POST", "PUT", "PATCH", "DELETE"}:
                 body = {
                     "name": "Matrix",
                     "text": "Please help",
@@ -260,6 +260,27 @@ def test_every_openapi_route_role_and_cross_tenant(
                 kwargs["json"] = body
                 if template.endswith(("/rag", "/rag/backfill")):
                     kwargs["json"] = {}
+                if template.endswith("/sources/bulk-delete"):
+                    spare = Source(
+                        **{
+                            column.key: getattr(source, column.key)
+                            for column in Source.__table__.columns
+                            if column.key not in {"id", "created_at", "updated_at"}
+                        }
+                    )
+                    spare.content_hash = uuid4().hex
+                    spare.storage_key = f"{uuid4().hex}.md"
+                    db.add(spare)
+                    db.commit()
+                    kwargs["json"] = {"source_ids": [str(spare.id)]}
+                if template.endswith("/always-include"):
+                    kwargs["json"] = {"enabled": True}
+                if template.endswith("/sources/{source_id}/replace"):
+                    kwargs = {
+                        "files": {
+                            "file": ("matrix.md", b"# Matrix\nA replaced source.", "text/markdown")
+                        }
+                    }
                 if template.endswith("/sources/files"):
                     kwargs = {
                         "files": [
@@ -397,9 +418,9 @@ def test_exact_route_contract_and_operator_knowledge(app: Any) -> None:
         for path, methods in app.openapi()["paths"].items()
         if path.startswith("/api/v1/tenants")
         for method, operation in methods.items()
-        if method.upper() in {"GET", "POST", "PATCH", "DELETE"}
+        if method.upper() in {"GET", "POST", "PUT", "PATCH", "DELETE"}
     }
-    assert len(actual) == len(TENANT_ROUTE_ROLES) == 83
+    assert len(actual) == len(TENANT_ROUTE_ROLES) == 93
     assert actual == TENANT_ROUTE_ROLES
     base = "/api/v1/tenants/{tenant_id}/bots/{bot_id}"
     for suffix in (

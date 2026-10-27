@@ -1,5 +1,6 @@
 "use client";
 
+import { MessageBody } from "@/lib/message-body";
 import { useParams, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -342,7 +343,11 @@ export default function InboxConversationPage() {
                     {new Date(message.created_at).toLocaleString()}
                   </time>
                   <div dir="auto" className="message-text">
-                    {noteText}
+                    {message.sender_type === "ai" && !isNote ? (
+                      <MessageBody text={noteText} />
+                    ) : (
+                      noteText
+                    )}
                   </div>
                   {me?.is_platform_staff && message.citations.length > 0 && (
                     <details className="source-details" open>

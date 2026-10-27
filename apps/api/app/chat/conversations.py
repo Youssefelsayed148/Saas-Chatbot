@@ -17,7 +17,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session as OrmSession
 
 from app.channels import config as channel_config
@@ -32,7 +32,14 @@ from app.chat.service import ChatReply, _support_contact, chat_answer
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
 from app.core.ratelimit import purge_expired_windows
-from app.db.models import Bot, ChannelConnection, Conversation, Message, UsageEvent
+from app.db.models import (
+    Bot,
+    ChannelConnection,
+    Conversation,
+    InboxEvent,
+    Message,
+    UsageEvent,
+)
 from app.inbox.events import add_inbox_event
 from app.inbox.handoff import (
     HandoffDecision,
@@ -214,6 +221,11 @@ def append_message(
     response_ms: int | None = None,
 ) -> Message:
     now = datetime.now(UTC)
+    last = conversation.last_message_at
+    if last is not None and now <= last:
+        # Messages are ordered by created_at: never let two share a timestamp, or the
+        # tie would be broken by their random ids and the history order would flip.
+        now = last + timedelta(microseconds=1)
     message = Message(
         id=uuid4(),
         tenant_id=conversation.tenant_id,
@@ -361,6 +373,17 @@ class AiTurn:
     extras: dict[str, Any] = field(default_factory=dict)
 
 
+def _discard_unanswered_message(db: OrmSession, tenant_id: UUID, message_id: UUID) -> None:
+    """Delete a visitor message whose turn was aborted before any answer was stored."""
+    db.execute(
+        delete(InboxEvent).where(
+            InboxEvent.tenant_id == tenant_id, InboxEvent.message_id == message_id
+        )
+    )
+    db.execute(delete(Message).where(Message.tenant_id == tenant_id, Message.id == message_id))
+    db.commit()
+
+
 def run_ai_turn(
     db: OrmSession,
     *,
@@ -441,7 +464,12 @@ def run_ai_turn(
                     reply = degrade()
                 else:
                     # Aborted turn: no answer was stored, so the message must not count.
+                    # reserve() committed the session, so the visitor message is already
+                    # durable and rollback alone would leave it behind unanswered. The
+                    # website discards it; channel turns keep it and are re-driven on retry.
                     db.rollback()
+                    if degrade is None:
+                        _discard_unanswered_message(db, tenant_id, visitor_message.id)
                     release(db, tenant_id, bot.id, reservation, settings)
                     raise
             response_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)

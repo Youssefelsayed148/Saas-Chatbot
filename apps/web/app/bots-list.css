@@ -36,4 +36,7 @@
   align-items: center;
   gap: 0.5rem;
 }
-.bots-quota-item{display:grid;gap:.25rem}
+.bots-quota-item {
+  display: grid;
+  gap: 0.25rem;
+}

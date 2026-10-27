@@ -150,7 +150,7 @@ def _candidate(page: list[Any] | None, cosine: float, fts: float, matched: int) 
 
 def test_page_sweep_counts_leaks_and_wrong_refusals_without_applying_anything() -> None:
     page = ["01-shipping-en_1", 1]
-    records = [
+    records: list[dict[str, Any]] = [
         {
             "behavior": "grounded",
             "language": "en",

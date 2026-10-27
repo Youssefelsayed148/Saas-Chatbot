@@ -649,20 +649,13 @@ def replace_source(
     return UploadOutcome(source)
 
 
-def delete_source(
-    context: TenantContext, bot_id: UUID, source_id: UUID, storage: Storage | None = None
-) -> None:
-    """Remove a source from the DRAFT revision and mark it ``removed`` (soft delete).
+def _remove_source_from_draft(
+    context: TenantContext, bot: Bot, draft: KnowledgeRevision, source: Source
+) -> str:
+    """Drop one source's draft rows and soft-delete it; returns its storage key.
 
-    Published and archived revisions keep their rows, so live answers and rollback are
-    unchanged until the next publish. The stored file is deleted after the commit.
+    No commit here: the caller commits, then deletes the stored file.
     """
-    bot = _get_editable_bot(context, bot_id)
-    source = get_source(context, bot_id, source_id)
-    if source.status == "queued":
-        raise ApiError(409, "SOURCE_BUSY", "This file is being ingested; try again shortly.")
-    storage = storage or get_storage()
-    draft = get_or_create_draft_revision(context.db, bot, context.user.id)
     context.db.execute(
         delete(Chunk).where(
             Chunk.tenant_id == context.tenant_id,
@@ -696,8 +689,43 @@ def delete_source(
         target_type="source",
         target_id=str(source.id),
     )
+    return storage_key
+
+
+def delete_source(
+    context: TenantContext, bot_id: UUID, source_id: UUID, storage: Storage | None = None
+) -> None:
+    """Remove a source from the DRAFT revision and mark it ``removed`` (soft delete).
+
+    Published and archived revisions keep their rows, so live answers and rollback are
+    unchanged until the next publish. The stored file is deleted after the commit.
+    """
+    delete_sources(context, bot_id, [source_id], storage=storage)
+
+
+def delete_sources(
+    context: TenantContext,
+    bot_id: UUID,
+    source_ids: list[UUID],
+    storage: Storage | None = None,
+) -> int:
+    """Remove several sources from the draft in one transaction; returns how many.
+
+    All-or-nothing: an unknown or other-tenant id is a 404 and a source that is being
+    ingested is a 409, in both cases before anything is deleted.
+    """
+    bot = _get_editable_bot(context, bot_id)
+    unique_ids = list(dict.fromkeys(source_ids))
+    sources = [get_source(context, bot_id, source_id) for source_id in unique_ids]
+    if any(source.status == "queued" for source in sources):
+        raise ApiError(409, "SOURCE_BUSY", "A file is being ingested; try again shortly.")
+    storage = storage or get_storage()
+    draft = get_or_create_draft_revision(context.db, bot, context.user.id)
+    storage_keys = [_remove_source_from_draft(context, bot, draft, source) for source in sources]
     context.db.commit()
-    storage.delete(storage_key)
+    for storage_key in storage_keys:
+        storage.delete(storage_key)
+    return len(storage_keys)
 
 
 def list_documents(

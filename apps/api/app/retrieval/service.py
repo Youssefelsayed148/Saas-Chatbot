@@ -272,8 +272,11 @@ def _whole_document_chunks(
     revision_id: UUID,
     language: str | None,
     document_id: UUID,
+    ordinals: list[int] | None = None,
 ) -> list[RetrievedChunk]:
     """All chunks of one document (retrieved whole), in ordinal order.
+
+    ``ordinals`` narrows the result to those chunk positions (neighbour expansion).
 
     ``language`` is the document's own language (the matched chunk's), never
     the pass language: a cross-language hit must still come back whole. None
@@ -303,6 +306,7 @@ def _whole_document_chunks(
               AND c.revision_id = CAST(:revision_id AS uuid)
               AND (CAST(:language AS text) IS NULL OR c.language = CAST(:language AS text))
               AND c.document_id = CAST(:document_id AS uuid)
+              AND (CAST(:ordinals AS int[]) IS NULL OR c.ordinal = ANY(CAST(:ordinals AS int[])))
             ORDER BY c.ordinal, c.id
             """
         ),
@@ -312,6 +316,7 @@ def _whole_document_chunks(
             "revision_id": str(revision_id),
             "language": language,
             "document_id": str(document_id),
+            "ordinals": ordinals,
         },
     ).mappings()
     return [
@@ -424,6 +429,9 @@ def assemble_evidence(
         )
     while len(evidence) > settings.retrieval_max_evidence_chunks:
         evidence.pop()
+    # Reserved chunks are not ranked evidence: they may still fail the relevance gate,
+    # so they must never use up the soft budget the ranked documents rely on.
+    reserved_count = len(evidence)
 
     # 2) The best document is included whole; it may exceed the soft budget
     #    (final_k) but never the hard cap (max_evidence_chunks).
@@ -442,7 +450,7 @@ def assemble_evidence(
 
     # 3) Lower-ranked documents must fit whole (small docs) or contribute
     #    their single best chunk to the remaining soft budget.
-    remaining = settings.retrieval_final_k - len(evidence)
+    remaining = settings.retrieval_final_k + reserved_count - len(evidence)
     for candidate in ranked[1:]:
         if remaining <= 0:
             break
@@ -459,8 +467,22 @@ def assemble_evidence(
                 add(whole)
                 remaining -= len(whole)
         else:
+            # A long document contributes its best chunk plus the chunks on either side,
+            # so an answer that straddles a chunk boundary is not cut off.
             remaining -= 1
+            neighbours = _whole_document_chunks(
+                db,
+                tenant_id=tenant_id,
+                bot_id=bot_id,
+                revision_id=revision_id,
+                language=candidate.language,
+                document_id=candidate.document_id,
+                ordinals=[candidate.ordinal - 1, candidate.ordinal + 1],
+            )[: max(remaining, 0)]
+            remaining -= len(neighbours)
+            add([n for n in neighbours if n.ordinal < candidate.ordinal])
             add([candidate])
+            add([n for n in neighbours if n.ordinal > candidate.ordinal])
     del evidence[settings.retrieval_max_evidence_chunks :]
     return evidence
 

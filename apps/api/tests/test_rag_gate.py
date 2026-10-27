@@ -96,7 +96,7 @@ def test_provider_quota_auth_stops_fallback_and_subsequent_calls(status: int) ->
     assert len(calls) == model.requests_used == 1
 
 
-def test_provider_has_no_retries_and_only_one_fallback() -> None:
+def test_provider_has_no_retries_and_walks_the_fallback_chain_once() -> None:
     calls = []
 
     def response(request: httpx.Request) -> httpx.Response:
@@ -114,7 +114,8 @@ def test_provider_has_no_retries_and_only_one_fallback() -> None:
     )
     with pytest.raises(ProviderError):
         model.complete([], json_mode=True, max_tokens=120)
-    assert len(calls) == model.requests_used == 2
+    # No retries: exactly one request per configured model (primary + fallback chain).
+    assert len(calls) == model.requests_used == 3
 
 
 def test_failed_gate_never_calls_generation_and_returns_safe_handoff(monkeypatch: Any) -> None:
@@ -145,7 +146,7 @@ def test_stage0_raw_fts_gate_measurements(db: Session, tmp_path: Path) -> None:
     bot = db.scalar(select(Bot).where(Bot.tenant_id == seed.tenant_id, Bot.id == seed.bot_id))
     assert bot is not None and bot.published_revision_id is not None
     cases_file = Path(__file__).parent / "fixtures" / "rag-phase2-eval.jsonl"
-    cases = [json.loads(line) for line in cases_file.read_text().splitlines()]
+    cases = [json.loads(line) for line in cases_file.read_text(encoding="utf-8").splitlines()]
     chunks = list(
         db.scalars(
             select(Chunk).where(
@@ -434,3 +435,107 @@ def test_provider_trace_keeps_the_real_http_status(monkeypatch: Any) -> None:
         assert reply.kind == "busy"
         detail: Any = reply.trace["provider_error"]
         assert detail["http_status"] == status and detail["status"] == expected
+
+
+def test_reserved_documents_do_not_use_up_the_ranked_evidence_budget(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.retrieval import service as retrieval_service
+
+    reserved = [chunk(title=f"Reserved {n}", vector_similarity=None) for n in range(3)]
+    ranked = [chunk(title=f"Ranked {n}", document_total_chars=100) for n in range(5)]
+    by_document = {item.document_id: [item] for item in [*reserved, *ranked]}
+    monkeypatch.setattr(
+        retrieval_service,
+        "_whole_document_chunks",
+        lambda *_args, document_id, **_kwargs: by_document[document_id],
+    )
+    settings = build_test_settings(retrieval_final_k=4, retrieval_max_evidence_chunks=8)
+    evidence = retrieval_service.assemble_evidence(
+        None,  # type: ignore[arg-type]
+        tenant_id=uuid4(),
+        bot_id=uuid4(),
+        revision_id=uuid4(),
+        language="en",
+        ranked=ranked,
+        settings=settings,
+        always_include_document_ids={str(item.document_id) for item in reserved},
+    )
+    titles = [item.title for item in evidence]
+    assert sum(title.startswith("Reserved") for title in titles) == 3
+    # final_k ranked documents still reach the gate, whatever is reserved.
+    assert sum(title.startswith("Ranked") for title in titles) == 4
+
+
+def test_long_document_hit_brings_its_neighbouring_chunks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.retrieval import service as retrieval_service
+
+    best = chunk(title="Best", document_total_chars=100)
+    long_document = uuid4()
+    pieces = [
+        chunk(title="Long", document_id=long_document, ordinal=n, document_total_chars=5000)
+        for n in range(5)
+    ]
+    asked: list[list[int] | None] = []
+
+    def fake_whole(*_args: Any, document_id: Any, ordinals: Any = None, **_kwargs: Any) -> Any:
+        if document_id == best.document_id:
+            return [best]
+        asked.append(ordinals)
+        return [piece for piece in pieces if ordinals is None or piece.ordinal in ordinals]
+
+    monkeypatch.setattr(retrieval_service, "_whole_document_chunks", fake_whole)
+    settings = build_test_settings(retrieval_final_k=6, retrieval_max_evidence_chunks=8)
+    evidence = retrieval_service.assemble_evidence(
+        None,  # type: ignore[arg-type]
+        tenant_id=uuid4(),
+        bot_id=uuid4(),
+        revision_id=uuid4(),
+        language="en",
+        ranked=[best, pieces[2]],
+        settings=settings,
+        always_include_document_ids=None,
+    )
+    # Reading order: the hit's previous chunk, the hit, the next chunk.
+    assert [(item.title, item.ordinal) for item in evidence] == [
+        ("Best", 0),
+        ("Long", 1),
+        ("Long", 2),
+        ("Long", 3),
+    ]
+    assert asked == [[1, 3]]
+
+
+def test_neighbours_respect_the_remaining_evidence_budget(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.retrieval import service as retrieval_service
+
+    best = chunk(title="Best", document_total_chars=100)
+    long_document = uuid4()
+    pieces = [
+        chunk(title="Long", document_id=long_document, ordinal=n, document_total_chars=5000)
+        for n in range(5)
+    ]
+
+    def fake_whole(*_args: Any, document_id: Any, ordinals: Any = None, **_kwargs: Any) -> Any:
+        if document_id == best.document_id:
+            return [best]
+        return [piece for piece in pieces if ordinals is None or piece.ordinal in ordinals]
+
+    monkeypatch.setattr(retrieval_service, "_whole_document_chunks", fake_whole)
+    # final_k 2: the best document takes one slot, the hit takes the other, no room for more.
+    settings = build_test_settings(retrieval_final_k=2, retrieval_max_evidence_chunks=8)
+    evidence = retrieval_service.assemble_evidence(
+        None,  # type: ignore[arg-type]
+        tenant_id=uuid4(),
+        bot_id=uuid4(),
+        revision_id=uuid4(),
+        language="en",
+        ranked=[best, pieces[2]],
+        settings=settings,
+        always_include_document_ids=None,
+    )
+    assert [(item.title, item.ordinal) for item in evidence] == [("Best", 0), ("Long", 2)]

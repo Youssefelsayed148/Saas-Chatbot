@@ -3,7 +3,7 @@ buffered and streamed widget paths (never a 503), recorded as an
 ``unavailable`` event (not a billable ``message``), with no handoff; staff see
 it in the trace and in the readiness checklist. Keys are never echoed."""
 
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from fastapi import FastAPI
@@ -37,7 +37,7 @@ def assert_unavailable_recorded(db: OrmSession, text: str) -> None:
     assert "message" not in events, "an unavailable turn is not a billable message"
     assert "handoff" not in events
     (event,) = events["unavailable"]
-    trace = event.payload["rag_trace"]
+    trace = cast(dict[str, Any], event.payload["rag_trace"])
     assert trace["provider_error"] == {
         "status": "not_configured",
         "http_status": None,

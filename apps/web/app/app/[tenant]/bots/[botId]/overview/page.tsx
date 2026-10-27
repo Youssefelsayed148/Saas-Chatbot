@@ -225,7 +225,10 @@ export default function OverviewPage() {
             <StatCard
               data-test="avg_messages"
               label="Avg messages per conversation"
-              value={String(Math.round((summary.avg_messages_per_conversation ?? 0) * 10) / 10)}
+              value={String(
+                Math.round((summary.avg_messages_per_conversation ?? 0) * 10) /
+                  10,
+              )}
             />
             <StatCard
               data-test="fallback"

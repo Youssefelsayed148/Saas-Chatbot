@@ -7,8 +7,9 @@ Revises: 0010_platform_ops
 from collections.abc import Sequence
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 revision: str = "0011_quota_overrides"
 down_revision: str | None = "0010_platform_ops"

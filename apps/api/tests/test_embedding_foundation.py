@@ -280,3 +280,10 @@ def test_default_embedding_identity_and_optional_ollama(monkeypatch: pytest.Monk
         configured_identity(Settings.model_construct(embedding_provider="ollama"))
         == "ollama:bge-m3"
     )
+
+
+def test_query_embeds_share_one_connection_pool() -> None:
+    from app.embeddings.providers import _shared_client
+
+    assert _shared_client(5.0) is _shared_client(5.0)
+    assert _shared_client(5.0) is not _shared_client(25.0)

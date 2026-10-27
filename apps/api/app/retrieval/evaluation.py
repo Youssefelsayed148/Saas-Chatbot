@@ -294,7 +294,7 @@ class CappedChatTransport(httpx.BaseTransport):
         if not 1 <= limit <= 40:
             raise ValueError("Chat request limit must be between 1 and 40.")
         self.journal, self.limit = journal, limit
-        self.used = len(journal.read_text().splitlines()) if journal.exists() else 0
+        self.used = len(journal.read_text(encoding="utf-8").splitlines()) if journal.exists() else 0
         self.inner = inner or httpx.HTTPTransport(retries=0)
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
