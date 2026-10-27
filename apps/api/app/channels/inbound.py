@@ -130,11 +130,11 @@ def _identity(
     return identity
 
 
-def _clean_origin(origin: object) -> dict[str, str] | None:
+def _clean_origin(origin: object) -> dict[str, object] | None:
     """Only the contract's origin fields are stored (already length-validated)."""
     if not isinstance(origin, dict):
         return None
-    keep = {
+    keep: dict[str, object] = {
         key: origin[key]
         for key in ("type", "campaign_name", "opening_message_text", "campaign_ref")
         if isinstance(origin.get(key), str)
@@ -326,7 +326,7 @@ def _earlier_pending(db: OrmSession, event: ChannelEvent) -> list[ChannelEvent]:
                 ChannelEvent.status == "received",
                 ChannelEvent.id != event.id,
                 ChannelEvent.payload["external_conversation_id"].as_string()
-                == str(event.payload["external_conversation_id"]),
+                == str((event.payload or {}).get("external_conversation_id")),
                 (ChannelEvent.received_at < event.received_at)
                 | ((ChannelEvent.received_at == event.received_at) & (ChannelEvent.id < event.id)),
             )
@@ -359,6 +359,11 @@ def _handle_received(
     settings: Settings,
 ) -> None:
     payload = event.payload
+    if payload is None:  # purged by retention before it was processed
+        event.status = "ignored"
+        event.error_code = "payload_purged"
+        event.processed_at = datetime.now(UTC)
+        return
     bot_language = (
         str(bot.config.get("default_language", "en")) if isinstance(bot.config, dict) else "en"
     )
