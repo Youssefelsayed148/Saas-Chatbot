@@ -7,6 +7,10 @@ SEND_RESPONSE_BYTES = 64 * 1024
 SEND_CONNECT_SECONDS = 5.0
 SEND_READ_SECONDS = 15.0
 
+# Dedupe rows (connection_id, event_id) outlive their purged payload by this long
+# (contract v1 section 3 requires at least 30 days).
+CHANNEL_EVENT_DEDUPE_DAYS = 30
+
 # Inbound flood guard (contract v1.1 A8): above this many visitor messages per
 # minute from one contact on one connection, messages are stored, the thread is
 # flagged waiting_human, and the AI stays silent.

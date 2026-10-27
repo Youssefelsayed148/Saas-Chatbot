@@ -99,7 +99,8 @@ class ChannelEvent(Base):
     connection_id: Mapped[UUID] = mapped_column(nullable=False)
     event_id: Mapped[str] = mapped_column(Text, nullable=False)
     event_type: Mapped[str] = mapped_column(Text, nullable=False)
-    payload: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    # NULL once the tenant's message retention purged it; the dedupe columns stay.
+    payload: Mapped[dict[str, object] | None] = mapped_column(JSONB, nullable=True)
     status: Mapped[str] = mapped_column(Text, nullable=False, default="received")
     error_code: Mapped[str | None] = mapped_column(Text)
     received_at: Mapped[datetime] = mapped_column(

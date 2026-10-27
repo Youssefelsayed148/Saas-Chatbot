@@ -475,7 +475,7 @@ def test_send_migration_round_trip_and_unique_message_key(db: Session, engine: E
     run_migrations(url)
     with engine.connect() as conn:
         version = conn.scalar(text("SELECT version_num FROM alembic_version"))
-        assert version == "0028_channel_unconfirmed"
+        assert version == "0029_channel_event_payload_purge"
         assert (
             conn.scalar(
                 text("SELECT count(*) FROM pg_indexes WHERE indexname = 'uq_channel_send_message'")

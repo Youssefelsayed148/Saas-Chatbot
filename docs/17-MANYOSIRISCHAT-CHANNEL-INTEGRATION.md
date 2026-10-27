@@ -80,7 +80,7 @@ Signed (empty body; signature over `timestamp + "."`). Returns `{"status": <as i
 
 ## 7. Identity, privacy and data
 
-`contact_identities(contact_id, channel, connection_id, external_id)` unique per (tenant, connection, external_id). Consent/opt-in for follow-ups and broadcasts is recorded per contact and channel (used when outreach is built; out of scope in v1). Message text is never logged. Stored event payloads follow the tenant's message retention and are purged with it; tenant export and deletion cover connections and events and never include secrets. Staff see connection details; client roles see only channel, display name, status and health (read-only, on Overview).
+`contact_identities(contact_id, channel, connection_id, external_id)` unique per (tenant, connection, external_id). Consent/opt-in for follow-ups and broadcasts is recorded per contact and channel (used when outreach is built; out of scope in v1). Message text is never logged. Stored event payloads follow the tenant's message retention: at the tenant's retention cutoff `channel_events.payload` is set to NULL (migration 0029) and the dedupe row (connection_id, event_id) is deleted once it is also older than 30 days; tenant export and deletion cover connections and events and never include secrets. Staff see connection details; client roles see only channel, display name, status and health (read-only, on Overview).
 
 ## 8. Scope
 

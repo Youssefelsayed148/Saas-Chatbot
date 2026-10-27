@@ -17,7 +17,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session as OrmSession
 
 from app.channels import config as channel_config
@@ -35,6 +35,7 @@ from app.core.ratelimit import purge_expired_windows
 from app.db.models import (
     Bot,
     ChannelConnection,
+    ChannelEvent,
     Conversation,
     InboxEvent,
     Message,
@@ -878,6 +879,25 @@ def run_retention_purge(db: OrmSession, settings: Settings) -> int:
         )
         deleted = int(getattr(result, "rowcount", 0) or 0)
         total += deleted
+        # Channel event payloads hold customer text, phone numbers and handles: they
+        # follow the message retention. The dedupe row (connection, event id) stays for
+        # CHANNEL_EVENT_DEDUPE_DAYS, then goes (docs/17 section 7).
+        db.execute(
+            update(ChannelEvent)
+            .where(
+                ChannelEvent.tenant_id == tenant_id,
+                ChannelEvent.received_at < cutoff,
+                ChannelEvent.payload.is_not(None),
+            )
+            .values(payload=None)
+        )
+        db.execute(
+            _delete(ChannelEvent).where(
+                ChannelEvent.tenant_id == tenant_id,
+                ChannelEvent.received_at
+                < min(cutoff, now - timedelta(days=channel_config.CHANNEL_EVENT_DEDUPE_DAYS)),
+            )
+        )
         purge_expired_windows(db, older_than_epoch=int(now.timestamp()) - days * 86400)
     db.commit()
     return total

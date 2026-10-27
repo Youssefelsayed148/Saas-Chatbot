@@ -98,6 +98,9 @@ room and the change is small — decide before staging.
 
 ## 2026-10-26 - ADR-023: contract v1.1 adopted
 Approver: product owner, by issuing implementation/PHASE-06-V2/SAAS-REBUILD-PROMPT.md. Rationale: the Phase 6 review (REVIEW-REPORT.md) found gaps between contract v1 and the Many code (C1-C8) and SaaS defects (D1-D13); the delta A1-A13 closes the contract side. Alternatives: keep v1 and patch per defect (rejected: Many-side behaviour such as status duty, forwarding scope and error mapping would stay undefined). Impact: docs/17 gains section 11; the fake Many and contract suite pin A1-A13; Many implements the same delta in its own repo. ADR-020 (health degradation model) is NOT covered by this approval and remains awaiting owner sign-off; its text is prepared in R-05.
+### ADR-023 addendum (2026-10-27): channel event retention
+Owner decision (review fixes B3): at the tenant's message-retention cutoff `channel_events.payload` is set to NULL (migration 0029, column now nullable); the dedupe row (connection_id, event_id) is deleted when it is older than both the cutoff and 30 days (`CHANNEL_EVENT_DEDUPE_DAYS`). An unprocessed event whose payload was purged is marked `ignored` / `payload_purged`.
+
 ## 2026-10-21 — ADR-021: Staff-managed accounts (website MVP account slices S1–S4)
 Approver: product owner (slice prompts S1–S4, "GO" confirmations 2026-10-21). Decision:
 - Registration is CLOSED by default: `self_serve_signup=false` hides the Register link on /login, `/register` states registration is by invitation only, and `POST /auth/register` without a valid invitation token returns 403 `INVITATION_REQUIRED`. The P7 self-service provisioning path remains in the codebase, exercisable only with the flag explicitly on.

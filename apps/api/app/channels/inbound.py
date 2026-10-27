@@ -407,6 +407,12 @@ def run_channel_inbound(db: OrmSession, job: Job, settings: Settings | None = No
         event.error_code = "connection_bot_unavailable"
         event.processed_at = datetime.now(UTC)
         return None
+    if event.payload is None:
+        # Purged by retention before it was processed: nothing left to act on.
+        event.status = "ignored"
+        event.error_code = "payload_purged"
+        event.processed_at = datetime.now(UTC)
+        return None
     payload = event.payload
     if event.event_type == "message.received":
         # One event at a time per conversation, held for the whole turn (several
