@@ -55,6 +55,10 @@ PERMANENT_CODES = {
 }
 
 
+# Job-payload flag: some attempt of this send was answered with HTTP 401 (contract A15).
+AUTH_REJECTED_KEY = "auth_rejected"
+
+
 class SendRetry(Exception):
     """A sanitized retry outcome; never carry request/response content."""
 
@@ -329,7 +333,8 @@ def run_channel_send(db: Session, job: Job, settings: Settings) -> str | None:
         _fail(db, message, "channel_recipient_missing")
         return None
     retry_after = None
-    auth_rejected = False
+    # A15: a 401 seen by any attempt in the budget outlives later transient failures.
+    auth_rejected = bool(job.payload.get(AUTH_REJECTED_KEY))
     try:
         url, hostname = resolve_target(connection.many_base_url, settings)
         body = (
@@ -381,6 +386,7 @@ def run_channel_send(db: Session, job: Job, settings: Settings) -> str | None:
         if status == 401:
             # A15: secret rotation skews the two sides, so 401 is retried inside the budget.
             auth_rejected = True
+            job.payload = {**job.payload, AUTH_REJECTED_KEY: True}
         elif 400 <= status < 500 and status != 429:
             try:
                 data = json.loads(raw)
@@ -452,6 +458,7 @@ def requeue_message(
     else:
         job.status = "pending"
         job.attempts = 0
+        job.payload = {k: v for k, v in job.payload.items() if k != AUTH_REJECTED_KEY}
         job.error = None
         job.run_at = datetime.now(UTC)
         job.finished_at = None

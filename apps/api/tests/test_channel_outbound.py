@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 import app.channels.outbound as outbound
 from app.channels.inbound import run_channel_inbound
-from app.channels.outbound import enqueue_message
+from app.channels.outbound import enqueue_message, requeue_message
 from app.channels.secrets import encrypt_secret
 from app.chat.conversations import append_message
 from app.core.config import Settings
@@ -211,6 +211,59 @@ def test_401_until_budget_gives_many_auth_rejected(send_context: Any, db: Sessio
     assert message.delivery_status == "failed" and message.error_code == "many_auth_rejected"
     assert connection.health_status == "degraded"
     assert connection.health_reason == "many_auth_rejected"
+
+
+def test_401_then_timeouts_until_budget_still_gives_many_auth_rejected(
+    send_context: Any, db: Session
+) -> None:
+    """A15: a 401 early in the budget is not masked by a later transient failure."""
+    connection, _conversation, message, job, settings, fake = send_context
+    fake.responses.extend([401, *[httpx.ReadTimeout("secret exception text")] * 5])
+    for _ in range(6):
+        run(db, job, settings)
+    assert job.status == "failed" and job.attempts == 6 and len(fake.requests) == 6
+    assert message.delivery_status == "failed" and message.error_code == "many_auth_rejected"
+    assert connection.health_status == "degraded"
+    assert connection.health_reason == "many_auth_rejected"
+
+
+def test_timeouts_then_401_at_budget_gives_many_auth_rejected(
+    send_context: Any, db: Session
+) -> None:
+    connection, _conversation, message, job, settings, fake = send_context
+    fake.responses.extend([*[httpx.ReadTimeout("secret exception text")] * 5, 401])
+    for _ in range(6):
+        run(db, job, settings)
+    assert job.status == "failed" and len(fake.requests) == 6
+    assert message.delivery_status == "failed" and message.error_code == "many_auth_rejected"
+    assert connection.health_reason == "many_auth_rejected"
+
+
+def test_transient_failures_without_any_401_stay_many_unreachable(
+    send_context: Any, db: Session
+) -> None:
+    connection, _conversation, message, job, settings, fake = send_context
+    fake.responses.extend([httpx.ReadTimeout("x")] * 3 + [503] * 3)
+    for _ in range(6):
+        run(db, job, settings)
+    assert message.error_code == "many_unreachable"
+    assert connection.health_reason == "many_unreachable"
+
+
+def test_requeue_clears_the_remembered_401(send_context: Any, db: Session) -> None:
+    connection, conversation, message, job, settings, fake = send_context
+    fake.responses.extend([401, *[500] * 5])
+    for _ in range(6):
+        run(db, job, settings)
+    assert message.error_code == "many_auth_rejected" and job.payload.get("auth_rejected")
+    requeue_message(db, conversation, message, settings)
+    db.commit()
+    assert "auth_rejected" not in job.payload
+    fake.responses.extend([500] * 6)
+    for _ in range(6):
+        run(db, job, settings)
+    assert message.error_code == "many_unreachable"
+    assert connection.health_reason == "many_unreachable"
 
 
 @pytest.mark.parametrize(
