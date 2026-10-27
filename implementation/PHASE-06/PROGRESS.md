@@ -440,3 +440,25 @@ Follow-up list (not done here):
 - ADR-020 still awaits owner sign-off (unchanged).
 - Re-run the retrieval/embedding/RAG-eval files on pgvector 0.8.0; confirm test_trace_context flakiness.
 - Makefile wiring assumption in C-04 (`config` depends on `check-contract`).
+
+
+## Close-out session 2 (2026-10-27, branch claude/phase-6-channels-jj0a4y = feature/phase-6-channels 8987b24 at start; pushed only to origin/feature/phase-6-channels)
+
+Rules in force: no merge to main, no PR, no real Meta/Many calls, disposable DBs only, ManyOsirisChat repo untouched. DECISIONS.md has not been edited.
+
+### Batch 1 - Environment (no code change)
+
+Environment: Ubuntu 24.04 cloud VM, PostgreSQL 16.15, Redis 7.0.15, Python 3.12.3 venv `/tmp/claude-0/venv` (`uv venv --python 3.12`, `uv pip install -r apps/api/requirements-dev.lock`).
+1. pgvector 0.8.0: the Ubuntu package is 0.6.0 (`apt-cache madison postgresql-16-pgvector`), GitHub is blocked by the session scope and apt.postgresql.org returns 403 from the proxy. Built from the upstream tarball in the Ubuntu archive pool instead: `curl -O http://archive.ubuntu.com/ubuntu/pool/universe/p/pgvector/pgvector_0.8.0.orig.tar.gz` (sha256 `867a2c328d4928a5a9d6f052cd3bc78c7d60228a9b914ad32aa3db88e9de27b0`), `apt-get install postgresql-server-dev-16`, `make && make install`, `service postgresql restart`. Roles/DBs: role `test` (superuser, CREATEDB), `phase6_test`; clean-main DB `mainchk_test`. `service redis-server start` -> `redis-cli ping` PONG.
+   `SELECT extversion FROM pg_extension WHERE extname='vector'` (in `phase6_test`) -> **0.8.0**.
+2. Re-run of the four files, `cd apps/api && PYTHONUTF8=1 TEST_DATABASE_URL=postgresql://test:test@127.0.0.1:5432/<db> python -m pytest tests/<file>.py -q -p no:cacheprovider`. Branch tree = HEAD 8987b24 / DB `phase6_test`; clean main = detached worktree of origin/main d189893 / DB `mainchk_test`; both on pgvector 0.8.0.
+
+| File | pgvector 0.6.0 (earlier record) | 0.8.0 branch | 0.8.0 clean main |
+|---|---|---|---|
+| test_embedding_readiness.py | 3 failed, 3 passed | **6 passed** | **6 passed** |
+| test_hybrid_retrieval.py | 3 failed, 8 passed | **11 passed** | **11 passed** |
+| test_rag_evaluation.py | 2 failed, 10 passed | **12 passed** | **12 passed** |
+| test_tone_prompt.py | 1 failed, 4 passed | 1 failed, 4 passed | 1 failed, 4 passed |
+
+Conclusion: the 8 embedding/hybrid/RAG-eval failures are caused by the pgvector version (0.6.0); they pass on 0.8.0 on both trees.
+**Not a pgvector issue (OPEN for the owner, instruction said to stop and ask):** `test_tone_prompt.py::test_empty_tone_leaves_prompt_body_byte_identical` still fails on 0.8.0 on both trees. First failing assertion (`tests/test_tone_prompt.py:27`): `assert hashlib.sha256(body.encode()).hexdigest() == BASELINE_SHA256` -> got `33c62542...0d72580`, expected `2cd35a17...8928cebe`. The test needs no database; it is not line endings (CRLF rendering gives a third hash `0830e2ee...`) and it fails identically on clean main, so it is a stale baseline hash in the test (or an unrecorded template change at version 2026-10-25.1), not Phase 6. I did not touch it and continued with the remaining batches because it is accepted-known and identical on main; please decide whether main should re-pin the hash.

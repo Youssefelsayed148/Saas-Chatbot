@@ -27,3 +27,16 @@ All nine fail identically on clean main, so none is caused by Phase 6. The embed
 ## Playwright
 
 Only the three channel specs (channels, channel-insights, channel-delivery): **5 passed** (55 s), using a temporary config with `executablePath` of the installed Chromium 1243 (the config was deleted afterwards). Every other spec is NOT VERIFIED here.
+
+## Update 2026-10-27 (close-out session 2, batch 1): pgvector 0.8.0 re-run
+
+PostgreSQL 16.15 with pgvector built from source: `SELECT extversion ... 'vector'` -> **0.8.0**. The four files re-run on this branch (8987b24) and on clean `origin/main` (d189893):
+
+| File | Branch | Clean main |
+|---|---|---|
+| `test_embedding_readiness.py` | 6 passed | 6 passed |
+| `test_hybrid_retrieval.py` | 11 passed | 11 passed |
+| `test_rag_evaluation.py` | 12 passed | 12 passed |
+| `test_tone_prompt.py` | 1 failed, 4 passed | 1 failed, 4 passed |
+
+Cause of the 8 retrieval/embedding/RAG-eval failures: **pgvector 0.6.0** (they pass on 0.8.0). `test_tone_prompt.py::test_empty_tone_leaves_prompt_body_byte_identical` is unrelated to pgvector and fails identically on clean main: the prompt SHA-256 is `33c62542...0d72580`, the test pins `2cd35a17...8928cebe` (DB-free test; stale baseline hash or an unrecorded template change at 2026-10-25.1). Owner decision pending. The tables above (0.6.0) are kept as the historical record; batch 5 rewrites this file with the full-suite result.
