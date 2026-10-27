@@ -8,6 +8,7 @@ from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -170,13 +171,7 @@ def _remove_jsonb_nul(value: Any) -> Any:
     return value
 
 
-@router.post("/api/channels/manyosiris/events", status_code=202)
-async def receive_channel_event(
-    request: Request, db: DbSession, settings: CurrentSettings
-) -> JSONResponse:
-    connection_header = request.headers.get("x-osiris-connection", "")
-    timestamp = request.headers.get("x-osiris-timestamp", "")
-    signature = request.headers.get("x-osiris-signature", "")
+def _load_connection(db: OrmSession, connection_header: str) -> ChannelConnection:
     try:
         connection_id = UUID(connection_header)
     except (ValueError, AttributeError):
@@ -184,7 +179,22 @@ async def receive_channel_event(
     connection = db.scalar(select(ChannelConnection).where(ChannelConnection.id == connection_id))
     if connection is None or connection.status == "revoked":
         raise _unauthorized("unknown_or_revoked_connection")
-    raw = await _raw_body(request)
+    return connection
+
+
+def _ingest(
+    db: OrmSession,
+    settings: Settings,
+    connection: ChannelConnection,
+    raw: bytes,
+    *,
+    timestamp: str,
+    signature: str,
+    content_type: str,
+) -> JSONResponse:
+    """Verification and all database work (blocking; runs in the threadpool). The HMAC
+    is over the raw bytes exactly as received."""
+    connection_id = connection.id
     try:
         secrets = signing_secrets(connection, settings)
     except ValueError:
@@ -196,7 +206,7 @@ async def receive_channel_event(
         payload = _remove_jsonb_nul(_validate_payload(decoded, connection_id, connection.channel))
     except (UnicodeDecodeError, json.JSONDecodeError, ValueError, TypeError):
         raise ApiError(422, "VALIDATION_ERROR", "Signed event body failed validation.") from None
-    if request.headers.get("content-type", "").split(";")[0].strip().lower() != "application/json":
+    if content_type.split(";")[0].strip().lower() != "application/json":
         raise ApiError(422, "VALIDATION_ERROR", "Signed event body failed validation.")
 
     now = datetime.now(UTC)
@@ -261,3 +271,25 @@ async def receive_channel_event(
     connection.last_event_at = now
     db.commit()
     return JSONResponse(status_code=202, content={"status": "accepted"})
+
+
+@router.post("/api/channels/manyosiris/events", status_code=202)
+async def receive_channel_event(
+    request: Request, db: DbSession, settings: CurrentSettings
+) -> JSONResponse:
+    # Blocking SQLAlchemy work must not run on the event loop: only the body read is
+    # async, everything else goes through the threadpool.
+    connection = await run_in_threadpool(
+        _load_connection, db, request.headers.get("x-osiris-connection", "")
+    )
+    raw = await _raw_body(request)
+    return await run_in_threadpool(
+        _ingest,
+        db,
+        settings,
+        connection,
+        raw,
+        timestamp=request.headers.get("x-osiris-timestamp", ""),
+        signature=request.headers.get("x-osiris-signature", ""),
+        content_type=request.headers.get("content-type", ""),
+    )

@@ -191,3 +191,28 @@ def test_origin_field_caps_are_validated(
     body = _payload(connection_id, event_id="evt-origin", origin=origin)
     response = _post(client, connection_id, secret, json.dumps(body).encode())
     assert response.status_code == (202 if ok else 422), response.text
+
+
+def test_event_database_work_runs_off_the_event_loop(
+    client: Any, app: Any, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import asyncio
+
+    import app.channels.events as events_module
+
+    connection_id, secret = _connection(app, db)
+    original = events_module._ingest
+    seen: list[bool] = []
+
+    def spy(*args: Any, **kwargs: Any) -> Any:
+        try:
+            asyncio.get_running_loop()
+            seen.append(True)  # would block the loop
+        except RuntimeError:
+            seen.append(False)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(events_module, "_ingest", spy)
+    body = _payload(connection_id, event_id="evt-loop")
+    assert _post(client, connection_id, secret, json.dumps(body).encode()).status_code == 202
+    assert seen == [False]
