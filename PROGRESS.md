@@ -3767,3 +3767,12 @@ Open: free-tier OpenRouter quality diagnosis (parked by the owner); phase 6 bran
 - S8: `pull_health` streams with `Accept-Encoding: identity` and stops at 64 KB; test serves an endless body and stops after <100 chunks.
 - CSRF: test pins 403 without the header for all 7 mutating staff channel routes (create, patch, pause, resume, revoke, check-health, rotate-secret) and that nothing changed.
 - All in `tests/test_channel_review_fixes.py`; targeted runs only.
+
+### Batch 5 (nits, drift, docs)
+- Sanitizer: single `*` and `_`/`__` no longer strip inside arithmetic or identifiers (`2 * 3 * 4`, `5*3`, `file_name__init__` survive); `**bold**`, lists, `~~`, `_it_` still handled. 8 cases in test_channel_review_fixes.py.
+- Outbound: undecryptable secret -> permanent `secret_unavailable` (connection health `secret_unavailable`), no retry loop; revoked connection -> `connection_revoked` (paused stays `connection_paused`, the only resendable code). Web error text added. Test changes: `test_paused_at_job_time` expects the revoked code; new undecryptable test.
+- Rotation (assumption, logged below): a second rotation inside 24 h is allowed (emergency use) and drops the original secret; documented in docs/17 A14 and tested.
+- Models now declare `uq_channel_health_poll_connection` and `ix_messages_unconfirmed_sweep`; `alembic check` no longer reports them. It still reports drift for `bots.uq_bots_widget_locator` and `provisioning_requests` (migrations 0004/0006 vs models, both from main, not touched here).
+- `ruff format` applied to knowledge.py, test_channel_contract.py, test_channel_events.py, test_handoff.py; `... or True` in test_channel_turn.py replaced by real assertions. Health.py comment now says migration 0026.
+- Docs: CONTRACT-V1.1-DELTA (both copies) now ADOPTED as ADR-023, new section A14 (also in docs/17 section 11); `many-pack/CONTRACT-V1.md` is a byte copy of docs/17; docs/16 lists 0029, the rollback reality for 0023/0024 (rollback = pause) and known limitations (events route lookup before throttle; `received_at` up to +5 min).
+- Targeted runs: test_channel_outbound `-k "paused_at_job or undecryptable"`, test_channel_turn `-k human_mode`, review-fixes rotation test: passed.

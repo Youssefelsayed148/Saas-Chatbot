@@ -334,7 +334,7 @@ def schedule_health_polls(
     Called by the worker every ``channel_health_poll_interval_seconds``.
     Concurrency cap: at most ``channel_health_poll_batch`` connections get a
     job per cycle, the run time is jittered inside
-    ``channel_health_poll_jitter_seconds``, and migration 0020's partial
+    ``channel_health_poll_jitter_seconds``, and migration 0026's partial
     unique index keeps only one live job per connection. Returns the count.
     """
     from app.db.models import ChannelConnection, Job

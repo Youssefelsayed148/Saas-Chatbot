@@ -31,7 +31,7 @@ Text to UUID, playground key moved to `external_conversation_id`) ·
 (outbound bookkeeping, `uq_channel_send_message`) · `0026_channel_health_poll`
 (job type, `uq_channel_health_poll_connection`) · `0027_channel_ref_unique`
 (unique live `(channel, many_channel_ref)`; refuses to run if duplicates exist,
-fix them first) · `0028_channel_unconfirmed` (`messages.accepted_at`,
+fix them first) · `0029_channel_event_payload_purge` (`channel_events.payload` nullable for retention) · `0028_channel_unconfirmed` (`messages.accepted_at`,
 `unconfirmed` delivery state). All are reversible and were round-trip tested on
 the disposable database. Apply them before booting the API and worker.
 
@@ -56,7 +56,7 @@ the disposable database. Apply them before booting the API and worker.
 1. Prereqs: staging deployed (ADR-007 hosting decision), the Many side in
    delegated mode for one WhatsApp number (MANY-AGENT-PROMPT.md), and the
    tenant limited to one bot and one connection.
-2. Apply migrations 0023–0028 before booting the API; the worker refuses to
+2. Apply migrations 0023–0029 before booting the API; the worker refuses to
    start against a non-migrated head implicitly (job type constraint).
 3. Create the connection as platform staff, copy the once-shown secret into
    the Many channel operator screen; many_base_url pins the staging peer.
@@ -85,6 +85,16 @@ the disposable database. Apply them before booting the API and worker.
 - Messages that failed because the connection was paused can be sent again by
   an agent with the inbox "Send again" action (never automatic).
 - Rollback = pause first (loses nothing). Last resort: revoke, deploy the
-  previous image, then downgrade one step at a time (0028 → 0027 → ...). Never
-  downgrade across 0023 with live channel data.
+  previous image, then downgrade one step at a time (0029 → 0028 → ...). The
+  downgrade of 0024 FAILS once channel contacts without email or phone exist
+  (it restores the "reachable" check), and the downgrade of 0023 drops the
+  connections, events and per-conversation channel ids and can fail on
+  identities shared by several connections: neither is a safe rollback with live
+  channel data. The rollback plan for a live deployment is "pause the connection" (or
+  revoke), not a database downgrade. Downgrading 0029 turns purged payloads
+  into `{}`.
+- Known limitations: the unauthenticated events route does one connection
+  lookup before any throttle (the rate limit is per connection and runs after
+  the signature check); `received_at` may be up to 5 minutes in the future
+  (contract A10).
 
