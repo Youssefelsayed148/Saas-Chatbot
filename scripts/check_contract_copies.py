@@ -1,8 +1,9 @@
 """Fail when the channel-contract copies drift apart.
 
 Checks (stdlib only; never touches the network or the app):
-- ``many-pack/CONTRACT-V1.md`` is byte-identical to docs/17.
-- The two ``CONTRACT-V1.1-DELTA.md`` copies are byte-identical.
+- ``many-pack/CONTRACT-V1.md`` equals docs/17.
+- The two ``CONTRACT-V1.1-DELTA.md`` copies are equal.
+- "Equal" ignores line endings: a CRLF checkout (Windows ``core.autocrlf``) matches its LF original.
 - The A-clauses of the delta (from ``A1.`` to the end) equal docs/17 section 11
   (from ``A1.`` to the next ``## `` heading or the end).
 
@@ -17,6 +18,10 @@ DOC17 = "docs/17-MANYOSIRISCHAT-CHANNEL-INTEGRATION.md"
 PACK_V1 = "implementation/PHASE-06-V2/many-pack/CONTRACT-V1.md"
 DELTA = "implementation/PHASE-06-V2/CONTRACT-V1.1-DELTA.md"
 PACK_DELTA = "implementation/PHASE-06-V2/many-pack/CONTRACT-V1.1-DELTA.md"
+
+
+def _normalised(data: bytes) -> bytes:
+    return data.replace(b"\r\n", b"\n")
 
 
 def _clauses_from_delta(text: str) -> str:
@@ -45,11 +50,11 @@ def check(root: Path) -> list[str]:
         if not path.is_file():
             problems.append(f"missing: {name}")
         else:
-            files[name] = path.read_bytes()
+            files[name] = _normalised(path.read_bytes())
     if problems:
         return problems
     if files[PACK_V1] != files[DOC17]:
-        problems.append(f"{PACK_V1} is not a byte copy of {DOC17}")
+        problems.append(f"{PACK_V1} is not a copy of {DOC17}")
     if files[PACK_DELTA] != files[DELTA]:
         problems.append(f"{PACK_DELTA} differs from {DELTA}")
     section = _clauses_from_section_11(files[DOC17].decode("utf-8"))

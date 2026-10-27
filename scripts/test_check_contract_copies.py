@@ -44,12 +44,32 @@ class ContractCopiesGuard(unittest.TestCase):
         result = self.run_script()
         self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_crlf_copies_pass(self) -> None:
+        for name in (PACK_V1, DELTA):
+            path = self.root / name
+            path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
+        result = self.run_script()
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_all_crlf_checkout_passes(self) -> None:
+        for name in (DOC17, PACK_V1, DELTA, PACK_DELTA):
+            path = self.root / name
+            path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
+        self.assertEqual(check(self.root), [])
+
+    def test_crlf_does_not_hide_real_drift(self) -> None:
+        path = self.root / PACK_V1
+        path.write_bytes((path.read_bytes() + b"extra\n").replace(b"\n", b"\r\n"))
+        result = self.run_script()
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("not a copy", result.stderr)
+
     def test_v1_copy_mismatch_fails(self) -> None:
         path = self.root / PACK_V1
         path.write_bytes(path.read_bytes() + b"\n")
         result = self.run_script()
         self.assertEqual(result.returncode, 1)
-        self.assertIn("byte copy", result.stderr)
+        self.assertIn("not a copy", result.stderr)
 
     def test_delta_copy_mismatch_fails(self) -> None:
         path = self.root / PACK_DELTA
