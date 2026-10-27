@@ -191,6 +191,28 @@ def test_retry_exhaustion(send_context: Any, db: Session) -> None:
     assert connection.health_status == "degraded" and connection.health_reason == "many_unreachable"
 
 
+def test_401_is_retried_then_succeeds(send_context: Any, db: Session) -> None:
+    _connection, _conversation, message, job, settings, fake = send_context
+    fake.responses.extend([401, 202])
+    run(db, job, settings)
+    assert job.status == "pending" and message.delivery_status == "pending"
+    assert message.error_code is None
+    run(db, job, settings)
+    assert job.status == "succeeded" and message.channel_message_id == "many-1"
+    assert len(fake.requests) == 2
+
+
+def test_401_until_budget_gives_many_auth_rejected(send_context: Any, db: Session) -> None:
+    connection, _conversation, message, job, settings, fake = send_context
+    fake.responses.extend([401] * 6)
+    for _ in range(6):
+        run(db, job, settings)
+    assert job.status == "failed" and job.attempts == 6 and len(fake.requests) == 6
+    assert message.delivery_status == "failed" and message.error_code == "many_auth_rejected"
+    assert connection.health_status == "degraded"
+    assert connection.health_reason == "many_auth_rejected"
+
+
 @pytest.mark.parametrize(
     ("status", "code"), [("paused", "connection_paused"), ("revoked", "connection_revoked")]
 )
@@ -436,11 +458,20 @@ def test_channel_pipeline_enqueues_final_replies(
     "status,raw,expected",
     [
         (302, b"", "many_invalid_response"),
-        (401, b"oops", "many_http_401"),
+        (403, b"oops", "many_http_403"),
+        (404, b"oops", "many_http_404"),
+        (422, b"oops", "many_http_422"),
         (202, b"{}", None),
         (202, b"x" * 70000, None),
     ],
-    ids=["redirect", "permanent_4xx", "invalid_ack", "oversized_response"],
+    ids=[
+        "redirect",
+        "permanent_403",
+        "permanent_404",
+        "permanent_422",
+        "invalid_ack",
+        "oversized_response",
+    ],
 )
 def test_redirect_response_cap_and_invalid_ack(
     send_context: Any,

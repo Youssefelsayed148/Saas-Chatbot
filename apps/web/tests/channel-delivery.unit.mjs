@@ -94,6 +94,19 @@ for (const code of [
     assert.match(html, /template|required|recipient/);
   });
 }
+test("many_auth_rejected has a readable secret-mismatch reason", () => {
+  const html = render(ChannelDelivery, {
+    channel: "whatsapp",
+    message: {
+      sender_type: "ai",
+      delivery_status: "failed",
+      error_code: "many_auth_rejected",
+    },
+  });
+  assert.doesNotMatch(html, /many_auth_rejected/);
+  assert.match(html, /Failed:/);
+  assert.match(html, /rejected the connection secret/);
+});
 for (const status of ["paused", "revoked"]) {
   test(`${status} disables composer and explains why`, () => {
     const block = connectionReplyBlock("whatsapp", status);

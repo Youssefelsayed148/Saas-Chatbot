@@ -12,6 +12,8 @@ const reasons: Record<string, string> = {
   secret_unavailable:
     "The connection secret cannot be read. Contact support.",
   many_unreachable: "Delivery failed after repeated attempts to reach Many.",
+  many_auth_rejected:
+    "Many rejected the connection secret. Check that both sides use the same secret.",
   channel_disconnected: "The channel is disconnected.",
   rate_limited: "The channel delivery limit was reached.",
   invalid_many_target:

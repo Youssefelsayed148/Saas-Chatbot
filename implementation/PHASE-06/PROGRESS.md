@@ -391,3 +391,12 @@ Fixes committed during the final run (each rerun on the affected suite):
   commit).
 
 
+
+## C-01 (2026-10-27, close-out session, branch claude/phase-6-channels-closeout-nznxfu, HEAD before: 22acf2d)
+
+Contract A15 / ADR-024: SaaS->Many HTTP 401 is retried inside the 6-attempt budget, then `many_auth_rejected` + degraded health; other 4xx stay permanent.
+Files: `apps/api/app/channels/outbound.py`, `apps/api/tests/test_channel_outbound.py` (new: 401 then success; 401 until budget; 403/404/422 as `many_http_NNN` via the existing parametrized test, its 401 case moved to 403), `apps/web/lib/channel-delivery.tsx` + `apps/web/tests/channel-delivery.unit.mjs`, DECISIONS.md (ADR-024), docs/16, docs/17 s11 (A15, runbook, A14 list), both CONTRACT-V1.1-DELTA.md, many-pack/CONTRACT-V1.md (`cmp` against docs/17: identical).
+Environment: `apt-get update` then `apt-get install -y postgresql-16-pgvector postgresql-contrib`; `service postgresql start`; role `test` created; venv `/tmp/claude-0/venv` from `requirements-dev.lock`; `npm ci` in apps/web.
+Commands and outcomes (only the touched test files):
+1. `TEST_DATABASE_URL=postgresql://test:test@127.0.0.1:5432/phase6_test python -m pytest tests/test_channel_outbound.py -q` (in apps/api) -> **35 passed**. (The `postgresql+psycopg://` form fails in this conftest with a psycopg conninfo error; the plain `postgresql://` form works.)
+2. `node --test tests/channel-delivery.unit.mjs` (in apps/web) -> **16 pass, 0 fail**.

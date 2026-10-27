@@ -79,6 +79,11 @@ the disposable database. Apply them before booting the API and worker.
   message is `failed` / `many_unreachable` and health shows degraded
   (ADR-020); check the inbox error text and the audit rows before retrying
   a send. Paused-while-pending messages are NOT auto-resent on resume.
+- Secret rotation without losing sends (docs/17 A15): pause the connection,
+  rotate the secret, enter the new secret in Many, resume. A `401` from Many
+  is retried inside the 6-attempt budget (about 9 minutes); if it persists the
+  message fails with `many_auth_rejected` and health shows degraded with that
+  reason (both sides hold different secrets).
 - Secret compromise: rotate (previous secret stays valid for the grace
   window, default 24 h); repeated 401s on a fresh connection indicate a
   secret/clock mismatch.

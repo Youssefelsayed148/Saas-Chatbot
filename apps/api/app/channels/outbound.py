@@ -329,6 +329,7 @@ def run_channel_send(db: Session, job: Job, settings: Settings) -> str | None:
         _fail(db, message, "channel_recipient_missing")
         return None
     retry_after = None
+    auth_rejected = False
     try:
         url, hostname = resolve_target(connection.many_base_url, settings)
         body = (
@@ -377,7 +378,10 @@ def run_channel_send(db: Session, job: Job, settings: Settings) -> str | None:
             message.accepted_at = datetime.now(UTC)
             # The callback alone advances the delivery state.
             return None
-        if 400 <= status < 500 and status != 429:
+        if status == 401:
+            # A15: secret rotation skews the two sides, so 401 is retried inside the budget.
+            auth_rejected = True
+        elif 400 <= status < 500 and status != 429:
             try:
                 data = json.loads(raw)
                 code = data.get("error_code") if isinstance(data, dict) else None
@@ -401,11 +405,16 @@ def run_channel_send(db: Session, job: Job, settings: Settings) -> str | None:
         # Never persist/log exception strings (they can contain text or secrets).
         pass
     if job.attempts >= job.max_attempts:
-        _fail(db, message, "many_unreachable")
+        reason = "many_auth_rejected" if auth_rejected else "many_unreachable"
+        _fail(db, message, reason)
         connection.health_status = "degraded"
-        connection.health_reason = "many_unreachable"
+        connection.health_reason = reason
         connection.health_updated_at = datetime.now(UTC)
-        return "Many could not be reached within the delivery retry budget."
+        return (
+            "Many rejected the signature within the delivery retry budget."
+            if auth_rejected
+            else "Many could not be reached within the delivery retry budget."
+        )
     raise SendRetry(retry_delay(job.attempts, retry_after))
 
 
