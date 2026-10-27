@@ -31,8 +31,8 @@ Text to UUID, playground key moved to `external_conversation_id`) ·
 (outbound bookkeeping, `uq_channel_send_message`) · `0026_channel_health_poll`
 (job type, `uq_channel_health_poll_connection`) · `0027_channel_ref_unique`
 (unique live `(channel, many_channel_ref)`; refuses to run if duplicates exist,
-fix them first) · `0030_channel_health_poll_index` (partial index for the health scheduler's last-poll lookup; no behaviour change) · `0029_channel_event_payload_purge` (`channel_events.payload` nullable for retention) · `0028_channel_unconfirmed` (`messages.accepted_at`,
-`unconfirmed` delivery state). All are reversible and were round-trip tested on
+fix them first) · `0028_channel_unconfirmed` (`messages.accepted_at`,
+`unconfirmed` delivery state) · `0029_channel_event_payload_purge` (`channel_events.payload` nullable for retention) · `0030_channel_health_poll_index` (partial index for the health scheduler's last-poll lookup; no behaviour change). All are reversible and were round-trip tested on
 the disposable database. Apply them before booting the API and worker.
 
 ### Health model (contract v1.1 A9) and what to watch
