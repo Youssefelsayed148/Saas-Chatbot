@@ -15,7 +15,7 @@ The coding agent builds exactly this. Values marked **default** are starting poi
 ## 3. Raw-data onboarding: parsing
 | Input | Rule |
 |---|---|
-| PDF | `pypdf`, one section per page, title "<file> — Page N", strip NUL chars. If no extractable text (scanned) reject with a clear message — no OCR in MVP |
+| PDF | `pypdf`, one section per page, title "<file> — Page N", strip NUL chars. Fold glyph codepoints with NFKC (Arabic presentation forms U+FB50–FEFF, Latin ligatures such as ﬀ) so stored text and `text_norm` match typed queries (2026-10-27) If no extractable text (scanned) reject with a clear message — no OCR in MVP |
 | DOCX | `python-docx`; split into sections at Heading styles (section title = heading); table rows converted to lines of text |
 | TXT / MD | UTF-8 (fallback latin-1); optional YAML front matter (below); split at markdown headings, else blank-line paragraphs |
 | CSV Q&A | columns `question, answer, topic, priority` (case-insensitive, UTF-8 BOM ok); priority integer 0–10 default 0; blank rows skipped; **row-level error report** (row number, reason) and a downloadable template; each valid row becomes ONE chunk "Q: … A: …", never split |
@@ -26,19 +26,23 @@ The coding agent builds exactly this. Values marked **default** are starting poi
 
 ## 4. Chunking
 - PDF page breaks (H5): when a page ends without terminal punctuation and the next page opens with a lowercase or uncased letter, the previous page's unfinished sentence (≤300 chars, cut on a word boundary) leads the next page's FIRST chunk. The document, its text and its `Page N` citation stay on the page the text belongs to.
-- Sections (above) → recursive character splitter: `chunk_size=1500`, `chunk_overlap=200`, separators `["\n\n", "\n", ". ", "! ", "? ", "؟ ", "، ", " ", ""]`.
+- Sections (above) → recursive character splitter: `chunk_size=900`, `chunk_overlap=120` (was 1500/200 until 2026-10-27), separators `["\n\n", "\n", ". ", "! ", "? ", "؟ ", "، ", " ", ""]`.
 - Each chunk keeps `title`, `heading`, `source_id`, `page/section ref`, `priority`, `language`, `content_hash`.
 - Indexed text = title + heading + text, so short sections stay findable.
-- A document whose total text ≤ 1500 chars (e.g. a short policy) is one chunk and is always retrieved whole.
+- A document whose total text ≤ `chunk_size` chars (900; e.g. a short policy) is one chunk and is always retrieved whole.
+
+- **Owner note (2026-10-27), chunk size.** Defaults changed `chunk_size` 1500 → 900, `chunk_overlap` 200 → 120 (the "short document is one chunk" threshold follows `chunk_size`). Measured on the NileCart test bot (22.6k English chars, 8 questions with known answer passages, production embedding model): mean answer cosine 0.530 → 0.566, answer inside the top 4 chunks 6/8 → 7/8, inside the top 6 8/8. 600 and 400 scored higher cosine but split procedures and ranked broad questions' answers 11th–14th. Paired with `retrieval_final_k` 4 → 6 (§5) so the prompt keeps the same size (6 × ~650 ≈ 4 × ~1050 chars). Existing sources must be re-ingested to take the new size.
 
 ## 5. Index and search query
 - `chunks` has generated, GIN-indexed `tsvector` columns: `fts_en` (english config on title+heading+text) and `fts_simple` (simple config on normalised text). Queries use the index (no per-query recomputation).
 - Query: tokenise `\w+`, lowercase, drop stop-words (English + Arabic lists) and 1-char tokens, OR-join (`|`); Arabic adds `ال` variants and `:*` prefix.
 - Always filter `tenant_id`, `bot_id`, `revision_id = bots.published_revision_id`, `language`.
-- Rank `ts_rank_cd`, one best chunk per document first, tie-break `priority DESC`. **Defaults:** `top_k=8` candidates, `final_k=4` chunks, `max_evidence_chunks=8`.
-- Small-document expansion: if a hit's document has total text ≤ 1500 chars, include the whole document (never split a rule from its conditions); the best document may exceed the soft evidence budget, lower-ranked ones must fit whole.
+- Rank `ts_rank_cd`, one best chunk per document first, tie-break `priority DESC`. **Defaults:** `top_k=8` candidates, `final_k=6` chunks (was 4, 2026-10-27), `max_evidence_chunks=8`.
+- Small-document expansion: if a hit's document has total text ≤ `chunk_size` chars, include the whole document (never split a rule from its conditions); the best document may exceed the soft evidence budget, lower-ranked ones must fit whole.
 - Optional "always include" documents per bot (e.g. a Contact document) get reserved evidence slots.
 - **H4 note (2026-10-25), matched-term count.** The "N distinct matched content terms" gate rule now ignores a built-in low-information list (English politeness/intent words such as please, tell, want, need; Arabic MSA plus Gulf, Egyptian and Levantine fillers such as ايه، كم، ازاي، فين، عايز، بدي، ابغى، ممكن) and the Arabic stop words spelt with أ إ ى (على، إلى، أو، متى), which never matched after normalisation. These words stay in the ranking query (`build_tsquery` is unchanged, including the unmatched stop words) and only leave the term count and the trace term labels; `retrieval_gate_ignore_terms` (store names) applies on top. No threshold default changed. A refused turn now also carries `trace.refusal_diagnosis` (failed rule(s), nearest candidate scores and shortfall, best score per signal); `chunks[].gate.failed_rules` lists the rules each candidate failed.
+
+- **Owner note (2026-10-27), vector floor.** `openai:text-embedding-3-large` cosine floor lowered 0.50 → 0.30 on the owner's instruction. Measured on the NileCart test bot (41 chunks): on-topic questions score 0.44–0.59 (a correct refund page scored 0.494 and was cut at 0.50), the nearest off-topic query ("weather in Cairo today") scored 0.284, "pizza recipe" 0.065. `ollama:bge-m3` unchanged. Still UNTUNED against the eval suite: re-run `tests/eval/recall_runner.py` before relying on it.
 
 ## 6. Answer generation
 - Providers behind two small interfaces: `ChatModel.complete(messages, json_mode, max_tokens)` (and later `Embedder`). OpenAI-compatible client with base URL, key, model, optional ordered fallback model list, `free_only` guard (reject non-`:free` model IDs and send zero price ceiling for OpenRouter).

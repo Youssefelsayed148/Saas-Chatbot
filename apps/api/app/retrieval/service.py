@@ -424,6 +424,9 @@ def assemble_evidence(
         )
     while len(evidence) > settings.retrieval_max_evidence_chunks:
         evidence.pop()
+    # Reserved chunks are not ranked evidence: they may still fail the relevance gate,
+    # so they must never use up the soft budget the ranked documents rely on.
+    reserved_count = len(evidence)
 
     # 2) The best document is included whole; it may exceed the soft budget
     #    (final_k) but never the hard cap (max_evidence_chunks).
@@ -442,7 +445,7 @@ def assemble_evidence(
 
     # 3) Lower-ranked documents must fit whole (small docs) or contribute
     #    their single best chunk to the remaining soft budget.
-    remaining = settings.retrieval_final_k - len(evidence)
+    remaining = settings.retrieval_final_k + reserved_count - len(evidence)
     for candidate in ranked[1:]:
         if remaining <= 0:
             break

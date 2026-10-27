@@ -435,3 +435,33 @@ def test_provider_trace_keeps_the_real_http_status(monkeypatch: Any) -> None:
         assert reply.kind == "busy"
         detail: Any = reply.trace["provider_error"]
         assert detail["http_status"] == status and detail["status"] == expected
+
+
+def test_reserved_documents_do_not_use_up_the_ranked_evidence_budget(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.retrieval import service as retrieval_service
+
+    reserved = [chunk(title=f"Reserved {n}", vector_similarity=None) for n in range(3)]
+    ranked = [chunk(title=f"Ranked {n}", document_total_chars=100) for n in range(5)]
+    by_document = {item.document_id: [item] for item in [*reserved, *ranked]}
+    monkeypatch.setattr(
+        retrieval_service,
+        "_whole_document_chunks",
+        lambda *_args, document_id, **_kwargs: by_document[document_id],
+    )
+    settings = build_test_settings(retrieval_final_k=4, retrieval_max_evidence_chunks=8)
+    evidence = retrieval_service.assemble_evidence(
+        None,  # type: ignore[arg-type]
+        tenant_id=uuid4(),
+        bot_id=uuid4(),
+        revision_id=uuid4(),
+        language="en",
+        ranked=ranked,
+        settings=settings,
+        always_include_document_ids={str(item.document_id) for item in reserved},
+    )
+    titles = [item.title for item in evidence]
+    assert sum(title.startswith("Reserved") for title in titles) == 3
+    # final_k ranked documents still reach the gate, whatever is reserved.
+    assert sum(title.startswith("Ranked") for title in titles) == 4

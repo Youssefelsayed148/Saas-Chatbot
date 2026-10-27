@@ -60,15 +60,15 @@ class Settings(BaseSettings):
     # Parsing happens in the worker, bounded by this wall-clock timeout per source.
     parse_timeout_seconds: int = Field(default=120, ge=1, le=3600)
     # Chunking defaults (docs/14 §4) — tune only via a dated note in docs/14.
-    chunk_size: int = Field(default=1500, ge=100)
-    chunk_overlap: int = Field(default=200, ge=0)
+    chunk_size: int = Field(default=900, ge=100)
+    chunk_overlap: int = Field(default=120, ge=0)
     # Job queue (ADR-011).
     job_lease_seconds: int = Field(default=900, ge=30)
     job_backoff_seconds: int = Field(default=30, ge=1)
     job_max_attempts: int = Field(default=3, ge=1, le=10)
     # Retrieval defaults (docs/14 §5) — tune only via a dated note in docs/14.
     retrieval_top_k: int = Field(default=8, ge=1)
-    retrieval_final_k: int = Field(default=4, ge=1)
+    retrieval_final_k: int = Field(default=6, ge=1)
     retrieval_max_evidence_chunks: int = Field(default=8, ge=1)
     # Chat providers (docs/14 §6, ADR-013): keys come from the environment and
     # are never logged. Free default = OpenRouter :free chain (fallback list).
@@ -126,7 +126,7 @@ class Settings(BaseSettings):
     rag_plan_limits: dict[str, RagLimits] = Field(default_factory=dict)
     # UNTUNED, pending owner calibration. No implicit transfer to other models.
     retrieval_vector_floors: dict[str, float] = Field(
-        default_factory=lambda: {"openai:text-embedding-3-large": 0.50, "ollama:bge-m3": 0.50}
+        default_factory=lambda: {"openai:text-embedding-3-large": 0.30, "ollama:bge-m3": 0.50}
     )
     # Keyword leg of the gate: a chunk needs `min_matched_terms` distinct content
     # terms (never more than the query has) AND a ts_rank_cd of at least

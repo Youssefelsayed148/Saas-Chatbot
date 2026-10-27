@@ -54,7 +54,7 @@ def test_defaults_are_unchanged() -> None:
     assert cfg.retrieval_min_matched_terms == 2
     assert cfg.retrieval_min_fts_match == 0.01
     assert cfg.retrieval_vector_floors == {
-        "openai:text-embedding-3-large": 0.50,
+        "openai:text-embedding-3-large": 0.30,  # owner-approved 2026-10-27 (docs/14 §5)
         "ollama:bge-m3": 0.50,
     }
     assert cfg.retrieval_gate_ignore_terms == []

@@ -8,6 +8,7 @@ system instruction later).
 """
 
 import io
+import unicodedata
 import zipfile
 from dataclasses import dataclass
 from pathlib import PurePosixPath
@@ -52,6 +53,17 @@ def clean_extracted(text: str) -> str:
 # --- PDF ---------------------------------------------------------------------
 
 
+def normalise_pdf_text(text: str) -> str:
+    """Fold PDF glyph codepoints back to the letters they stand for.
+
+    Many PDFs (Arabic exports above all) put presentation forms (U+FB50-FEFF)
+    and Latin ligatures (U+FB00-FB06) in the text layer. NFKC maps them to the
+    plain letters, so search terms and the stored ``text_norm`` match what
+    visitors type; plain text is unchanged.
+    """
+    return unicodedata.normalize("NFKC", text)
+
+
 def parse_pdf(data: bytes, original_name: str, limits: ParseLimits) -> list[ParsedPage]:
     """One section per page (docs/14 §3); scanned PDFs are rejected — no OCR in MVP."""
     try:
@@ -68,7 +80,7 @@ def parse_pdf(data: bytes, original_name: str, limits: ParseLimits) -> list[Pars
     pages: list[ParsedPage] = []
     for index, page in enumerate(reader.pages, start=1):
         try:
-            extracted = page.extract_text() or ""
+            extracted = normalise_pdf_text(page.extract_text() or "")
         except Exception:  # noqa: BLE001 - untrusted input
             extracted = ""
         text = clean_extracted(extracted)
