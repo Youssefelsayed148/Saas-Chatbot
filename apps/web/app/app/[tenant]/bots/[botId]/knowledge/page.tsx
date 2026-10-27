@@ -61,7 +61,6 @@ export default function KnowledgePage() {
     Record<string, api.KnowledgeChunk[] | null>
   >({});
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [uploading, setUploading] = useState(false);
   const [ingesting, setIngesting] = useState(false);
   const [publishing, setPublishing] = useState<string | null>(null);
   const [pageError, setPageError] = useState<string | null>(null);
@@ -122,54 +121,38 @@ export default function KnowledgePage() {
     return () => clearInterval(timer);
   }, [busy, loadAll, revisionView, pageError]);
 
-  async function onUpload(event: React.FormEvent) {
-    event.preventDefault();
-    setActionError(null);
-    setActionDone(null);
-    if (selectedFiles.length === 0) {
-      setActionError("Choose at least one file first.");
-      return;
-    }
-    setUploading(true);
-    try {
-      const created = await api.uploadSources(tenantId, botId, selectedFiles);
-      const skipped = created.filter((source) => source.duplicate);
-      const stored = created.length - skipped.length;
-      setSelectedFiles([]);
-      const input = document.getElementById(
-        "knowledge-file-input",
-      ) as HTMLInputElement | null;
-      if (input) input.value = "";
-      setActionDone(
-        [
-          stored > 0
-            ? `Stored ${stored} file${stored === 1 ? "" : "s"}. Start the ingest job when ready.`
-            : "Nothing new was stored.",
-          ...skipped.map((source) => source.message ?? "Duplicate skipped."),
-        ].join(" "),
-      );
-      await loadAll(revisionView);
-    } catch (caught) {
-      setActionError(
-        caught instanceof Error ? caught.message : "Upload failed.",
-      );
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  async function onIngest() {
+  // One step: store any newly chosen files, then start the ingest job.
+  async function onIngest(event?: React.FormEvent) {
+    event?.preventDefault();
     setActionError(null);
     setActionDone(null);
     setIngesting(true);
     try {
+      let note = "";
+      if (selectedFiles.length > 0) {
+        const created = await api.uploadSources(tenantId, botId, selectedFiles);
+        const skipped = created.filter((source) => source.duplicate);
+        setSelectedFiles([]);
+        const input = document.getElementById(
+          "knowledge-file-input",
+        ) as HTMLInputElement | null;
+        if (input) input.value = "";
+        note = skipped
+          .map((source) => source.message ?? "Duplicate skipped.")
+          .join(" ");
+      }
       await api.startIngestion(tenantId, botId, null);
-      setActionDone("Ingest job queued — parsing happens in the worker.");
+      setActionDone(
+        ["Ingest job queued — parsing happens in the worker.", note]
+          .filter(Boolean)
+          .join(" "),
+      );
       await loadAll(revisionView);
     } catch (caught) {
       setActionError(
         caught instanceof Error ? caught.message : "Could not start ingestion.",
       );
+      await loadAll(revisionView);
     } finally {
       setIngesting(false);
     }
@@ -385,10 +368,10 @@ export default function KnowledgePage() {
                 (download the template)
               </a>
             ) : null}
-            . Website page files prepared by staff fit here too. Parsing happens
-            after you start the ingest job.
+            . Website page files prepared by staff fit here too. Choose your
+            files, then ingest them into the knowledge base.
           </p>
-          <form onSubmit={onUpload}>
+          <form onSubmit={onIngest}>
             <label className="field">
               Files (max 20, up to 25 MB each under current plan limits)
               <input
@@ -396,7 +379,7 @@ export default function KnowledgePage() {
                 type="file"
                 multiple
                 accept={ACCEPTED_FILES}
-                disabled={!canEdit || uploading}
+                disabled={!canEdit || ingesting}
                 onChange={(event) =>
                   setSelectedFiles(Array.from(event.target.files ?? []))
                 }
@@ -406,24 +389,17 @@ export default function KnowledgePage() {
               {canEdit && (
                 <Button
                   type="submit"
-                  disabled={uploading || selectedFiles.length === 0}
-                >
-                  {uploading ? "Uploading…" : "Upload"}
-                </Button>
-              )}
-              {canEdit && (
-                <Button
-                  type="button"
-                  variant="quiet"
-                  onClick={() => void onIngest()}
-                  disabled={ingesting || storedSources.length === 0}
+                  disabled={
+                    ingesting ||
+                    (selectedFiles.length === 0 && storedSources.length === 0)
+                  }
                   title={
-                    storedSources.length === 0
-                      ? "Upload files first"
-                      : "Run parse → chunk → index for the stored files"
+                    selectedFiles.length === 0 && storedSources.length === 0
+                      ? "Choose files first"
+                      : "Store the chosen files, then run parse → chunk → index"
                   }
                 >
-                  {ingesting ? "Starting…" : "Ingest files"}
+                  {ingesting ? "Working…" : "Ingest files"}
                 </Button>
               )}
             </div>

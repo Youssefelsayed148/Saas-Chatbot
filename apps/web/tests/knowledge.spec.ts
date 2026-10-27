@@ -64,16 +64,11 @@ test("upload, ingest through the worker, preview, publish", async ({
     mimeType: "text/markdown",
     buffer: readFileSync(FIXTURE),
   });
-  await page.getByRole("button", { name: "Upload", exact: true }).click();
+
+  // One button stores the file and runs the ingest; the REAL worker processes the job.
+  await page.getByRole("button", { name: "Ingest files" }).click();
   const sources = page.locator("[data-testid='sources-list']");
   await expect(sources).toContainText("sample-brochure.md");
-  await expect(sources.locator("[data-source-status]")).toHaveAttribute(
-    "data-source-status",
-    "stored",
-  );
-
-  // Run the ingest; the REAL worker processes the job.
-  await page.getByRole("button", { name: "Ingest files" }).click();
   const jobs = page.locator("[data-testid='jobs-list']");
   await expect(jobs.locator("[data-job-status]").first()).toHaveAttribute(
     "data-job-status",
