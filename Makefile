@@ -13,7 +13,7 @@ SVC ?=
 
 .DEFAULT_GOAL := help
 .PHONY: help up build rebuild down restart ps logs logs-api logs-worker logs-web health \
-        seed staff migrate psql shell-api shell-web config reset-db nuke
+        seed staff migrate psql shell-api shell-web config check-contract reset-db nuke
 
 help: ## Show this help
 	@awk 'BEGIN{FS=":.*## "} /^[a-zA-Z_-]+:.*## /{printf "  %-12s %s\n",$$1,$$2}' $(MAKEFILE_LIST)
@@ -70,8 +70,11 @@ shell-api: ## Shell inside the API container
 shell-web: ## Shell inside the web container
 	$(DC) exec web sh
 
-config: ## Validate compose file (fails if required keys are missing; secrets are not printed)
+config: check-contract ## Validate compose file and contract copies (secrets are not printed)
 	$(DC) config --quiet && echo "compose config OK"
+
+check-contract: ## Fail if docs/17 section 11 and the three contract copies disagree
+	python3 scripts/check_contract_copies.py
 
 reset-db: ## DESTROYS database and uploads, then restarts fresh (asks first)
 	@printf "This deletes ALL data (db + uploads). Type 'yes' to continue: " && read a && [ "$$a" = yes ]
