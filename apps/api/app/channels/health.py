@@ -234,15 +234,24 @@ def pull_health(
         authority = f"[{hostname}]" if ":" in hostname else hostname
         if url.port is not None:
             authority += f":{url.port}"
-        with _client() as client:
-            response = client.get(
+        raw = bytearray()
+        with (
+            _client() as client,
+            client.stream(
+                "GET",
                 url,
-                headers={**headers, "Host": authority},
+                headers={**headers, "Host": authority, "Accept-Encoding": "identity"},
                 extensions={"sni_hostname": hostname},
-            )
-        if response.status_code != 200 or len(response.content) > HEALTH_RESPONSE_BYTES:
-            raise HealthPullFailure("many_invalid_response")
-        return parse_health_body(response.content)
+            ) as response,
+        ):
+            if response.status_code != 200:
+                raise HealthPullFailure("many_invalid_response")
+            # Stop reading at the cap: a hostile Many cannot make us buffer a huge body.
+            for chunk in response.iter_bytes(chunk_size=4096):
+                raw.extend(chunk)
+                if len(raw) > HEALTH_RESPONSE_BYTES:
+                    raise HealthPullFailure("many_invalid_response")
+        return parse_health_body(bytes(raw))
     except UnsafeTarget:
         raise HealthPullFailure("invalid_many_target") from None
     except (httpx.HTTPError, OSError):

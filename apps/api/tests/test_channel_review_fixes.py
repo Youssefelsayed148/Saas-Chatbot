@@ -243,3 +243,46 @@ def test_health_polls_cover_more_connections_than_one_batch(app: Any, db: Sessio
             job.status = "succeeded"
         db.commit()
     assert polled == {str(connection.id) for connection in connections}
+
+
+def test_health_pull_stops_reading_at_the_size_cap(
+    app: Any, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import socket
+
+    import httpx
+    from pydantic import SecretStr
+
+    import app.channels.health as health
+    from tests.test_channel_health import _direct_connection
+
+    connection = _direct_connection(db, app)
+    monkeypatch.setattr(
+        socket,
+        "getaddrinfo",
+        lambda *_a, **_k: [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 443))],
+    )
+    served = {"chunks": 0}
+
+    def endless() -> Any:
+        while served["chunks"] < 10_000:
+            served["chunks"] += 1
+            yield b"x" * 4096
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, content=endless())
+
+    monkeypatch.setattr(
+        health,
+        "_client",
+        lambda: httpx.Client(transport=httpx.MockTransport(handler), trust_env=False),
+    )
+    settings = build_test_settings(
+        channel_secret_encryption_keys=SecretStr(app.state.channel_test_key),
+        chat_stub_model=True,
+        environment="test",
+    )
+    with pytest.raises(health.HealthPullFailure) as caught:
+        health.pull_health(connection, settings)
+    assert caught.value.code == "many_invalid_response"
+    assert served["chunks"] < 100  # 64 KB cap, not the 40 MB the server offered
