@@ -10,6 +10,8 @@ DC := docker compose -f compose.yaml $(ENV_FILE)
 DB_USER ?= saas
 DB_NAME ?= saas_dev
 SVC ?=
+# Portable interpreter: python3 where it runs, else python (Windows installs only provide `python`).
+PYTHON ?= $(shell python3 -c "" >/dev/null 2>&1 && echo python3 || echo python)
 
 .DEFAULT_GOAL := help
 .PHONY: help up build rebuild down restart ps logs logs-api logs-worker logs-web health \
@@ -74,7 +76,7 @@ config: check-contract ## Validate compose file and contract copies (secrets are
 	$(DC) config --quiet && echo "compose config OK"
 
 check-contract: ## Fail if docs/17 section 11 and the three contract copies disagree
-	python3 scripts/check_contract_copies.py
+	$(PYTHON) scripts/check_contract_copies.py
 
 reset-db: ## DESTROYS database and uploads, then restarts fresh (asks first)
 	@printf "This deletes ALL data (db + uploads). Type 'yes' to continue: " && read a && [ "$$a" = yes ]
