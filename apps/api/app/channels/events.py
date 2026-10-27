@@ -63,6 +63,13 @@ def _parse_time(value: Any) -> datetime:
     return parsed.astimezone(UTC)
 
 
+ORIGIN_FIELD_LIMITS = {
+    "campaign_name": 120,
+    "opening_message_text": 2000,
+    "campaign_ref": 128,
+}
+
+
 def _validate_payload(
     payload: object, connection_id: UUID, connection_channel: str
 ) -> dict[str, Any]:
@@ -110,8 +117,16 @@ def _validate_payload(
             if isinstance(value, str) and len(value) > maximum:
                 raise ValueError("contact field")
         _parse_time(payload.get("received_at"))
-        if payload.get("origin") is not None and not isinstance(payload["origin"], dict):
-            raise ValueError("origin")
+        origin = payload.get("origin")
+        if origin is not None:
+            if not isinstance(origin, dict):
+                raise ValueError("origin")
+            if not isinstance(origin.get("type", "campaign"), str):
+                raise ValueError("origin")
+            for key, maximum in ORIGIN_FIELD_LIMITS.items():
+                value = origin.get(key)
+                if value is not None and (not isinstance(value, str) or len(value) > maximum):
+                    raise ValueError("origin")
     elif event_type == "message.status":
         if not isinstance(payload.get("status"), str) or payload["status"] not in {
             "sent",

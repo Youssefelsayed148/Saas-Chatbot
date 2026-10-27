@@ -402,6 +402,7 @@ def run_ai_turn(
     shape_answer: Callable[[str], str] | None = None,
     trace_extra: dict[str, object] | None = None,
     channel_style: str = "",
+    campaign_context: str = "",
 ) -> AiTurn | None:
     """The ONE reply brain: history, quota reservation, metered ``chat_answer``,
     the AI message, handoff decision, usage event, settlement and handoff effects.
@@ -453,6 +454,7 @@ def run_ai_turn(
                     settings=settings,
                     preview_revision_id=preview_revision_id,
                     channel_style=channel_style,
+                    campaign_context=campaign_context,
                 )
             except BaseException as exc:
                 recoverable = degrade is not None and (
@@ -652,6 +654,17 @@ def _channel_style(bot: Bot) -> str:
     return channel_config.DEFAULT_STYLE_HINT
 
 
+def _campaign_context(conversation: Conversation) -> str:
+    """The Many campaign's opening message (docs/17 section 3), if this thread started
+    from a campaign. Untrusted: the prompt fences and caps it."""
+    origin = conversation.origin
+    if isinstance(origin, dict) and origin.get("type") == "campaign":
+        text = origin.get("opening_message_text")
+        if isinstance(text, str):
+            return text
+    return ""
+
+
 def _contact_keep(bot: Bot) -> tuple[str, ...]:
     """The bot's support contact strings that the DM sanitizer must not strip (a URL)."""
     config = bot.config if isinstance(bot.config, dict) else {}
@@ -786,6 +799,7 @@ def channel_chat_turn(
         ),
         trace_extra={"connection_id": str(connection.id)},
         channel_style=_channel_style(bot),
+        campaign_context=_campaign_context(conversation),
     )
     if turn is None:
         return None

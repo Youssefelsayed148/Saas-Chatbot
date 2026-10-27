@@ -130,6 +130,18 @@ def _identity(
     return identity
 
 
+def _clean_origin(origin: object) -> dict[str, str] | None:
+    """Only the contract's origin fields are stored (already length-validated)."""
+    if not isinstance(origin, dict):
+        return None
+    keep = {
+        key: origin[key]
+        for key in ("type", "campaign_name", "opening_message_text", "campaign_ref")
+        if isinstance(origin.get(key), str)
+    }
+    return keep or None
+
+
 def _conversation(
     db: OrmSession,
     *,
@@ -154,7 +166,7 @@ def _conversation(
             channel=payload["channel"],
             connection_id=connection.id,
             external_conversation_id=external_id,
-            origin=origin if isinstance(origin, dict) else None,
+            origin=_clean_origin(origin),
             mode="ai",
             status="open",
             source="channel",
@@ -173,9 +185,9 @@ def _conversation(
                 )
             )
             assert conversation is not None
-    elif conversation.origin is None and isinstance(payload.get("origin"), dict):
+    elif conversation.origin is None and _clean_origin(payload.get("origin")) is not None:
         # First available origin sticks; later messages cannot rewrite it.
-        conversation.origin = payload["origin"]
+        conversation.origin = _clean_origin(payload["origin"])
     return conversation
 
 

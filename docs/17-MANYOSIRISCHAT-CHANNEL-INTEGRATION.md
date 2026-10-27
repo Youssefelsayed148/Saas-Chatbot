@@ -44,7 +44,7 @@ Common envelope: `version` (1), `event_id` (string, max 128), `event_type`, `con
 ### 4.1 `message.received`
 `channel`, `external_contact_id`, `contact` {`name?`, `phone?`, `handle?`}, `external_conversation_id`, `external_message_id`, `type` (`text` | `unsupported`), `text?` (max 4000 chars), `received_at`, `window_expires_at?`, `origin?`.
 
-`origin` (campaign context, optional): `{"type":"campaign","campaign_name": <max 120>, "opening_message_text": <max 2000>, "campaign_ref": <opaque, max 128>}`. Sent when the conversation started from a Many campaign. The SaaS stores it once on the conversation, shows "From campaign: <name>" in the inbox thread, and gives the opening message to the bot as context.
+`origin` (campaign context, optional): `{"type":"campaign","campaign_name": <max 120>, "opening_message_text": <max 2000>, "campaign_ref": <opaque, max 128>}`. Sent when the conversation started from a Many campaign. The SaaS stores it once on the conversation, shows "From campaign: <name>" in the inbox thread, and gives the opening message to the bot as untrusted, fenced context (capped at 500 characters, cannot override the system prompt). Fields over their caps are rejected with a signed 422.
 
 Behavior in the SaaS:
 - Tenant and bot come from the connection, never from the payload.
