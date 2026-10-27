@@ -9,7 +9,7 @@ Both on a fresh disposable database after `alembic upgrade head`, PostgreSQL 16.
 - clean `origin/main` d189893 (head `0022_knowledge_hygiene`): the drift below.
 - `feature/phase-6-channels` 8987b24 (head `0030_channel_health_poll_index`): the identical drift. Phase 6 adds none (the 0030 index is declared in the `Job` model).
 
-Command: `cd apps/api && DATABASE_URL=postgresql+psycopg://test:test@127.0.0.1:5432/<fresh_db> alembic check` (exit 255). Exact output (INFO setup lines and the two SAWarnings about the `vector` column type and the `bots`/`knowledge_revisions` FK cycle omitted; they are unrelated):
+Command: `cd apps/api && DATABASE_URL=postgresql+psycopg://test:test@127.0.0.1:5432/<fresh_db> alembic check`. Exact output (INFO setup lines and the two SAWarnings about the `vector` column type and the `bots`/`knowledge_revisions` FK cycle omitted; they are unrelated):
 
 ```
 INFO  [alembic.autogenerate.compare.constraints] Detected removed index 'uq_bots_widget_locator' on 'bots'
