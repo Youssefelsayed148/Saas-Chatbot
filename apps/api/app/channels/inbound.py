@@ -322,6 +322,21 @@ def _earlier_pending(db: OrmSession, event: ChannelEvent) -> list[ChannelEvent]:
     )
 
 
+def _unanswered(db: OrmSession, visitor_message: Message) -> bool:
+    """True when nothing (AI, staff or system) followed the stored visitor message."""
+    later = db.scalar(
+        select(Message.id)
+        .where(
+            Message.tenant_id == visitor_message.tenant_id,
+            Message.conversation_id == visitor_message.conversation_id,
+            Message.sender_type != "visitor",
+            Message.created_at >= visitor_message.created_at,
+        )
+        .limit(1)
+    )
+    return later is None
+
+
 def _handle_received(
     db: OrmSession,
     event: ChannelEvent,
@@ -334,7 +349,10 @@ def _handle_received(
         str(bot.config.get("default_language", "en")) if isinstance(bot.config, dict) else "en"
     )
     conversation, visitor_message, is_new = _received(db, connection, payload, bot_language)
-    if is_new and visitor_message is not None:
+    # reserve() commits the visitor message mid-turn, so a crashed turn leaves it stored
+    # with no reply. The queue retry finds it (is_new is False) and must run the turn
+    # again; a genuine duplicate already has its reply (or handoff notice) and does not.
+    if visitor_message is not None and (is_new or _unanswered(db, visitor_message)):
         channel_chat_turn(
             db,
             tenant_id=connection.tenant_id,
