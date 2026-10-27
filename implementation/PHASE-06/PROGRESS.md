@@ -474,3 +474,18 @@ Conclusion: the 8 embedding/hybrid/RAG-eval failures are caused by the pgvector 
 
 - 3a **S10 is undefined - owner attention.** Searched `docs/`, `implementation/`, `DECISIONS.md`, the root `PROGRESS.md` and all `*.md/*.py/*.ts/*.tsx/*.yaml/*.json` in the repo for the word `S10`, `S-10` and "S1-S10": the only hits are earlier notes saying it is undefined (root `PROGRESS.md:3798`, this file's close-out follow-up list). No definition exists, so I did nothing and did not guess. Please supply the S10 text (or say it is void).
 - 3b Wrote `implementation/PHASE-06/TICKET-alembic-drift.md` with the exact `alembic check` output (identical on clean main d189893 and on this branch), the cause table, a recommended model-only fix (verified on a throwaway edit: `alembic check` -> "No new upgrade operations detected"; edit reverted) and an untested migration alternative. No migration was added on this branch.
+
+### Batch 4a - P7 scope and status (read-only; nothing built on this branch)
+
+Sources: `implementation/MASTER-ROADMAP.md` (P7 section), `implementation/PHASE-CHECKLISTS.md` lines 71-79, root `PROGRESS.md` 2026-10-14 entries, `implementation/KNOWN-ISSUES.md`, `implementation/PHASE-07/*`. All P7 checklist boxes are **unticked** in PHASE-CHECKLISTS.md; status below is what the repo shows, not a sign-off.
+
+| Ticket | Scope | Status found in the repo |
+|---|---|---|
+| P7-01 | admin operations, job health, retry/cancel/pause with reason + audit, plan assignment, platform analytics, audit review | Code built (commit 58ed96d, tests `test_platform_ops.py`; owner reported 4 passed in Oct). Operations UI browser check UNVERIFIED (KNOWN-ISSUES). AI cost analytics intentionally absent (no provider pricing stored). |
+| P7-02 | quotas enforced and race-tested; sentiment job | Code built with PLACEHOLDER plan values (`app/quotas`, `test_quotas.py`). Quota values are not owner-approved; sentiment job built as a queue. |
+| P7-03 | self-service signup via ProvisioningService; concurrent retries create one tenant/bot | Code built (`test_self_service_signup.py`). |
+| P7-04 | tenant export/delete incl. contacts, conversations, identities; audit review screen | Code built (`test_tenant_data.py`); local-storage cleanup is best-effort on OS unlink errors (KNOWN-ISSUES). |
+| P7-05 | backup + restore drill; monitoring/alerts incl. failed deliveries and stuck jobs; full green Playwright; staging only after ADR-007 | **Documents only** (`PHASE-07/RUNBOOK.md` DRAFT, `BACKUP-RESTORE.md`, `MONITORING-ALERTS.md`, `HOSTING-OPTIONS.md`, `SECURITY-REVIEW.md`). Restore drill UNVERIFIED; alert delivery UNVERIFIED (needs hosting); full green Playwright: see 4b below. |
+| P7 gate | independent security review closed; phase report; owner sign-off | **Missing**: no independent reviewer findings or sign-off (SECURITY-REVIEW.md: "OPEN and UNVERIFIED"); no phase report; ADR-007 (hosting) OPEN gates staging. |
+
+What is missing for P7 completion: (1) a backup/restore drill on a disposable target, (2) an independent security review and its closure, (3) owner-approved quota/plan values (currently PLACEHOLDER), (4) a full green Playwright run (4b), (5) browser verification of the P7-01 operations UI, (6) the P7 phase report and owner sign-off, (7) ADR-007 only for staging. Per the roadmap P7 should precede P6; this branch built P6 first by the 2026-10-18 owner decision and keeps P7 complete as a merge gate.
