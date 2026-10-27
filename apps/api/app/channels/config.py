@@ -3,6 +3,7 @@
 REPLY_CHAR_LIMITS = {"whatsapp": 1000, "messenger": 1000, "instagram": 1000}
 SEND_MAX_ATTEMPTS = 6
 SEND_BACKOFF_SECONDS = 18  # Five exponential waits total about nine minutes.
+RETRY_AFTER_MAX_SECONDS = 300  # a hostile or buggy Many cannot park a message for a year
 SEND_RESPONSE_BYTES = 64 * 1024
 SEND_CONNECT_SECONDS = 5.0
 SEND_READ_SECONDS = 15.0

@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from app.channels.config import (
     REPLY_BYTE_LIMITS,
     REPLY_CHAR_LIMITS,
+    RETRY_AFTER_MAX_SECONDS,
     SEND_BACKOFF_SECONDS,
     SEND_CONNECT_SECONDS,
     SEND_MAX_ATTEMPTS,
@@ -203,12 +204,15 @@ def post_message(
             "POST",
             url,
             content=body,
-            headers={**headers, "Host": authority},
+            # Identity: the 202 body is read with a size cap; never ask Many to compress it.
+            headers={**headers, "Host": authority, "Accept-Encoding": "identity"},
             extensions={"sni_hostname": hostname},
         ) as response,
     ):
         raw = bytearray()
-        for chunk in response.iter_raw(chunk_size=4096):
+        # Decoded bytes (a server that compresses anyway stays readable); the cap applies
+        # to the decoded size.
+        for chunk in response.iter_bytes(chunk_size=4096):
             raw.extend(chunk)
             if len(raw) > SEND_RESPONSE_BYTES:
                 raise ValueError("Many response exceeds the size limit.")
@@ -226,7 +230,7 @@ def retry_delay(attempt: int, retry_after: str | None = None) -> float:
             except (ValueError, TypeError, OverflowError):
                 delay = 0
         if 0 <= delay < float("inf"):
-            backoff = max(backoff, delay)
+            backoff = max(backoff, min(delay, RETRY_AFTER_MAX_SECONDS))
     return float(backoff)
 
 

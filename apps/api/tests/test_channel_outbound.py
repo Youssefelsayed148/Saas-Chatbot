@@ -527,3 +527,26 @@ def test_job_queued_before_rotation_signs_with_new_secret(
     run(db, job, settings)
     assert job.status == "succeeded" and message.channel_message_id == "many-1"
     assert len(fake.requests) == 1
+
+
+def test_gzipped_202_is_readable_and_identity_encoding_is_requested(
+    send_context: Any, db: Session
+) -> None:
+    _connection, _conversation, message, job, settings, fake = send_context
+    fake.gzip_202 = True
+    run(db, job, settings)
+    assert job.status == "succeeded" and message.channel_message_id == "many-1"
+    assert fake.headers[0]["Accept-Encoding"] == "identity"
+    assert len(fake.requests) == 1
+
+
+def test_retry_after_from_many_is_capped(send_context: Any, db: Session) -> None:
+    _connection, _conversation, message, job, settings, fake = send_context
+    fake.responses.extend([(429, "31536000"), 202])
+    before = datetime.now(UTC)
+    run(db, job, settings)
+    assert job.status == "pending"
+    wait = (job.run_at - before).total_seconds()
+    assert 290 <= wait <= 310, wait
+    run(db, job, settings)
+    assert job.status == "succeeded" and message.channel_message_id == "many-1"

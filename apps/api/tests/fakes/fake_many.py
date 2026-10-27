@@ -1,5 +1,6 @@
 """Many contract peer with signature verification, idempotency and callbacks."""
 
+import gzip
 import json
 import time
 from collections import deque
@@ -26,6 +27,8 @@ class FakeMany:
         # platform limit fails permanently with ``message_too_long``.
         self.limit_chars: int | None = None
         self.limit_bytes: int | None = None
+        # Review S1: answer 202 with a gzip body even though identity was requested.
+        self.gzip_202 = False
 
     def handle(self, request: httpx.Request) -> httpx.Response:
         if request.method == "GET" and "/api/saas/connections/" in request.url.path:
@@ -69,7 +72,14 @@ class FakeMany:
             )
         key = payload["message_id"]
         many_id = self.deliveries.setdefault(key, f"many-{len(self.deliveries) + 1}")
-        return httpx.Response(202, stream=httpx.ByteStream(json.dumps({"id": many_id}).encode()))
+        body = json.dumps({"id": many_id}).encode()
+        if self.gzip_202:
+            return httpx.Response(
+                202,
+                headers={"Content-Encoding": "gzip"},
+                stream=httpx.ByteStream(gzip.compress(body)),
+            )
+        return httpx.Response(202, stream=httpx.ByteStream(body))
 
     def handle_health(self, request: httpx.Request) -> httpx.Response:
         """§5.2 health endpoint: GET, signed over an empty body."""
