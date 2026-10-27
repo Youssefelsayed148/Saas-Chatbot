@@ -3759,3 +3759,11 @@ Open: free-tier OpenRouter quality diagnosis (parked by the owner); phase 6 bran
 - S3: `to_plain_text(..., keep=...)` protects the bot's support contact strings; busy texts also compare their plain-text form. Test: URL contact survives, three over-quota messages give one busy reply.
 - S9: opening message passed to the bot as `campaign_context` (fenced `<<<CAMPAIGN_CONTEXT`, 500 chars, untrusted; website prompt bytes unchanged, hash test unaffected); `origin` fields validated (120/2000/128, strings only) with a signed 422, and only those fields are stored. Plan D7/P6-02b and docs/17 updated. Tests: prompt fencing/cap/no-override, channel turn passes the context, 8 origin cases.
 - Run: `pytest tests/test_channel_review_fixes.py tests/test_channel_events.py tests/test_channel_contract.py` 42 passed; test_channel_turn 11 passed; ruff clean on touched files.
+
+### Batch 4 (S4, S5, S7, S8, CSRF test)
+- S4: `contacts/router.py` export quotes `= + - @ \t \r` leads in display_name, email, stage, tags; phone keeps a real leading `+`. `tests/test_contacts_export_safety.py` 9 passed (with test_contacts.py).
+- S5: `receive_channel_event` stays `async` only for the body read; connection lookup and `_ingest` (HMAC over the raw bytes, validation, DB) run via `run_in_threadpool`. Spy test shows no running loop in `_ingest`. test_channel_events + test_channel_contract + test_channel_ingest_hardening: 35 passed.
+- S7: `schedule_health_polls` orders by the connection's last poll job (never polled first); test with 5 connections, batch 2, 3 cycles covers all.
+- S8: `pull_health` streams with `Accept-Encoding: identity` and stops at 64 KB; test serves an endless body and stops after <100 chunks.
+- CSRF: test pins 403 without the header for all 7 mutating staff channel routes (create, patch, pause, resume, revoke, check-health, rotate-secret) and that nothing changed.
+- All in `tests/test_channel_review_fixes.py`; targeted runs only.

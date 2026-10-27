@@ -286,3 +286,29 @@ def test_health_pull_stops_reading_at_the_size_cap(
         health.pull_health(connection, settings)
     assert caught.value.code == "many_invalid_response"
     assert served["chunks"] < 100  # 64 KB cap, not the 40 MB the server offered
+
+
+def test_every_mutating_staff_channel_route_requires_the_csrf_header(app: Any, db: Session) -> None:
+    from tests.test_channel_health import _staff_connection
+    from tests.test_channels import _create_payload
+
+    users, connection, _secret = _staff_connection(app, db)
+    staff = users.as_user("staff")
+    base = "/api/v1/platform/channel-connections"
+    one = f"{base}/{connection.id}"
+    calls = [
+        ("POST", base, _create_payload(users.tenant_id, str(connection.bot_id))),
+        ("PATCH", one, {"display_name": "No CSRF"}),
+        ("POST", f"{one}/pause", None),
+        ("POST", f"{one}/resume", None),
+        ("POST", f"{one}/revoke", None),
+        ("POST", f"{one}/check-health", None),
+        ("POST", f"{one}/rotate-secret", None),
+    ]
+    assert len(calls) == 7
+    for method, path, body in calls:
+        response = staff.request(method, path, json=body)  # no X-CSRF-Token header
+        assert response.status_code == 403, (method, path, response.status_code, response.text)
+    # Nothing changed: the connection is still active with its name.
+    db.refresh(connection)
+    assert connection.status == "active" and connection.display_name != "No CSRF"
