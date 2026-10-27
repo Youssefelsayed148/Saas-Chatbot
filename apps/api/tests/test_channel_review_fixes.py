@@ -312,3 +312,22 @@ def test_every_mutating_staff_channel_route_requires_the_csrf_header(app: Any, d
     # Nothing changed: the connection is still active with its name.
     db.refresh(connection)
     assert connection.status == "active" and connection.display_name != "No CSRF"
+
+
+@pytest.mark.parametrize(
+    ("raw", "plain"),
+    [
+        ("2 * 3 * 4", "2 * 3 * 4"),
+        ("5*3 and 2*4", "5*3 and 2*4"),
+        ("file_name__init__ here", "file_name__init__ here"),
+        ("snake_case_name and a_b_c", "snake_case_name and a_b_c"),
+        ("**Hours:** 9-5\n**Note**: closed", "Hours: 9-5\nNote: closed"),
+        ("1. First\n2. Second\n- a\n* b", "1. First\n2. Second\n- a\n- b"),
+        ("**bold *italic***", "bold italic"),
+        ("~~old~~ new and _it_ ok", "old new and it ok"),
+    ],
+)
+def test_sanitizer_keeps_arithmetic_and_identifiers_but_strips_emphasis(
+    raw: str, plain: str
+) -> None:
+    assert to_plain_text(raw) == plain
