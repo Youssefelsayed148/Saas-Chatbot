@@ -506,3 +506,14 @@ Failures and first error:
 5-12. `widget-streaming.spec.ts:242, 260, 278, 291, 316 (x2), 331, 343`: `getByTestId('widget-ai-msg').last().locator('div[dir=auto]')` text/count assertion (the streamed AI message bubble is not found in the expected form; e.g. expected "The validated reply.").
 
 Comparison with clean `origin/main` d189893 (detached worktree, `npm ci`, same temporary config, DB `mainchk_e2e_test`), re-running only the four failing spec files (group-c-polish, knowledge, overview, widget-streaming): **18 passed, 12 failed, the same 12 tests** (10.5 min). None is caused by Phase 6. Not investigated: root causes (the widget-streaming group looks like one cause in the widget's message markup, the overview pair like a shared slow/stuck step); specs other than these four were not re-run on main because they passed on the branch.
+
+### Batch 5 - The one full verification (pgvector 0.8.0; code = 8987b24 + batch 2 fixes)
+
+1. `cd apps/api && ruff check .` -> All checks passed. `ruff format --check .` -> 299 files already formatted. `mypy app` -> Success: no issues found in 127 source files.
+2. Full backend suite, one `python -m pytest tests/<file>.py -q -p no:cacheprovider -rf` per file over `tests/test_*.py` (97 files; `PYTHONUTF8=1 TEST_DATABASE_URL=postgresql://test:test@127.0.0.1:5432/phase6_test`; script outside the repo): **1123 passed, 2 failed**. Failures: `test_tone_prompt.py::test_empty_tone_leaves_prompt_body_byte_identical` (stale pinned hash; fails identically on clean main on 0.8.0, batch 1) and `test_trace_context.py::test_zero_evidence_lists_the_top_rejected_candidates` (`assert 'answer' == 'cannot_confirm'`). The second was re-run once on each tree for the comparison and fails identically on clean origin/main d189893 (1 failed, 4 passed) and on this branch (1 failed, 4 passed). It passed on pgvector 0.6.0 and fails on 0.8.0, so it depends on the pgvector version, not Phase 6. Everything else passes, including all of test_platform_ops (4), test_quotas, test_self_service_signup, test_tenant_data, and the channel files.
+3. Web (apps/web): `npm run typecheck` exit 0; `npm run lint` exit 0; `node --test tests/*.unit.mjs` -> 24 pass, 0 fail.
+4. Alembic on fresh DB `phase6_alembic_test` (`DATABASE_URL` set per process): `alembic upgrade head` exit 0; `alembic downgrade 0022_knowledge_hygiene` exit 0; `alembic downgrade base` exit 0; `alembic upgrade head` exit 0; `alembic heads` -> single `0030_channel_health_poll_index (head)`.
+5. `make check-contract` -> `contract copies OK`; `cd scripts && python3 -m unittest test_check_contract_copies` -> 9 tests OK.
+6. Playwright: run once in batch 4b (162 passed, 12 failed; same 12 fail on clean main).
+
+PRE-EXISTING-FAILURES.md now has a "Final record" section with these numbers.
