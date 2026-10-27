@@ -191,14 +191,16 @@ def test_retry_exhaustion(send_context: Any, db: Session) -> None:
     assert connection.health_status == "degraded" and connection.health_reason == "many_unreachable"
 
 
-@pytest.mark.parametrize("status", ["paused", "revoked"])
-def test_paused_at_job_time(send_context: Any, db: Session, status: str) -> None:
+@pytest.mark.parametrize(
+    ("status", "code"), [("paused", "connection_paused"), ("revoked", "connection_revoked")]
+)
+def test_paused_at_job_time(send_context: Any, db: Session, status: str, code: str) -> None:
     connection, _conversation, message, job, settings, fake = send_context
     connection.status = status
     db.commit()
     run(db, job, settings)
     assert not fake.requests
-    assert message.delivery_status == "failed" and message.error_code == "connection_paused"
+    assert message.delivery_status == "failed" and message.error_code == code
 
 
 def test_resume_does_not_resend_messages_failed_with_connection_paused(
@@ -550,3 +552,16 @@ def test_retry_after_from_many_is_capped(send_context: Any, db: Session) -> None
     assert 290 <= wait <= 310, wait
     run(db, job, settings)
     assert job.status == "succeeded" and message.channel_message_id == "many-1"
+
+
+def test_undecryptable_secret_is_its_own_error_not_many_unreachable(
+    send_context: Any, db: Session
+) -> None:
+    connection, _conversation, message, job, settings, fake = send_context
+    connection.secret_ciphertext = "not-a-fernet-token"
+    db.commit()
+    run(db, job, settings)
+    assert not fake.requests
+    assert job.status == "succeeded" and job.attempts == 1  # no retry loop
+    assert message.delivery_status == "failed" and message.error_code == "secret_unavailable"
+    assert connection.health_reason == "secret_unavailable"

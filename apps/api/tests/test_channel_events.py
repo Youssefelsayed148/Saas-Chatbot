@@ -109,9 +109,7 @@ def _post(
     )
 
 
-def _run_event(
-    db: Session, event_id: str, *, settings: Any | None = None
-) -> ChannelEvent:
+def _run_event(db: Session, event_id: str, *, settings: Any | None = None) -> ChannelEvent:
     event = db.scalar(select(ChannelEvent).where(ChannelEvent.event_id == event_id))
     assert event is not None
     job = Job(
@@ -256,9 +254,7 @@ def test_tenant_scoping_and_processed_job_rerun_are_idempotent(
     assert run_channel_inbound(db, replay) is None
     db.commit()
     assert db.scalar(select(func_count(Message.id))) == message_count_before
-    assert db.scalar(
-        select(func_count(Message.id)).where(Message.sender_type == "visitor")
-    ) == 2
+    assert db.scalar(select(func_count(Message.id)).where(Message.sender_type == "visitor")) == 2
 
 
 def test_inbound_dedupe_sanitization_and_origin_is_written_once(
@@ -287,9 +283,7 @@ def test_inbound_dedupe_sanitization_and_origin_is_written_once(
         == 202
     )
     _run_event(db, "evt-third")
-    assert db.scalar(
-        select(func_count(Message.id)).where(Message.sender_type == "visitor")
-    ) == 2
+    assert db.scalar(select(func_count(Message.id)).where(Message.sender_type == "visitor")) == 2
     contact = db.scalar(select(Contact))
     assert contact is not None and contact.display_name.startswith("Visitor Name")
     assert len(contact.display_name) == 120
@@ -311,9 +305,7 @@ def func_count(column: Any) -> Any:
 class _UnusedModel(ChatModel):
     usage_totals: dict[str, int] | None = {}
 
-    def complete(
-        self, messages: list[dict[str, str]], *, json_mode: bool, max_tokens: int
-    ) -> str:
+    def complete(self, messages: list[dict[str, str]], *, json_mode: bool, max_tokens: int) -> str:
         del messages, json_mode, max_tokens
         raise ProviderError("test provider unavailable")
 
@@ -508,9 +500,7 @@ def test_human_mode_is_silent_and_resolved_conversation_reopens_in_ai_mode(
     assert db.scalar(select(func_count(Message.id)).where(Message.sender_type == "ai")) == 1
 
 
-def test_ai_disabled_and_unsupported_hourly_reply_rules(
-    client: Any, app: Any, db: Session
-) -> None:
+def test_ai_disabled_and_unsupported_hourly_reply_rules(client: Any, app: Any, db: Session) -> None:
     connection_id, secret = _connection(app, db)
     connection = db.get(ChannelConnection, connection_id)
     assert connection is not None
@@ -605,10 +595,7 @@ def test_quota_and_provider_failures_store_handoff_replies_without_logging_text(
     )
     _run_event(db, "evt-provider-failure", settings=build_test_settings(chat_stub_model=True))
     failure_reply = db.scalar(
-        select(Message)
-        .where(Message.sender_type == "ai")
-        .order_by(Message.created_at.desc())
+        select(Message).where(Message.sender_type == "ai").order_by(Message.created_at.desc())
     )
     assert failure_reply is not None and "support" in failure_reply.text.lower()
     assert private_text not in caplog.text
-

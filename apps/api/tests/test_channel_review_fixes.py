@@ -331,3 +331,26 @@ def test_sanitizer_keeps_arithmetic_and_identifiers_but_strips_emphasis(
     raw: str, plain: str
 ) -> None:
     assert to_plain_text(raw) == plain
+
+
+def test_rotating_twice_inside_the_window_drops_the_oldest_secret(app: Any, db: Session) -> None:
+    """Documented behaviour: only the current and the immediately previous secret
+    verify, so an emergency second rotation cuts off the original at once."""
+    from app.channels.secrets import signing_secrets
+    from app.core.config import get_settings
+    from tests.test_channel_health import _staff_connection
+    from tests.test_channels import _platform_call
+
+    users, connection, first = _staff_connection(app, db)
+    staff = users.as_user("staff")
+    settings = app.dependency_overrides[get_settings]()
+    second = _platform_call(staff, "POST", f"/channel-connections/{connection.id}/rotate-secret")
+    assert second.status_code == 200
+    second_secret = second.json()["secret"]
+    db.refresh(connection)
+    assert set(signing_secrets(connection, settings)) == {second_secret, first}
+    third = _platform_call(staff, "POST", f"/channel-connections/{connection.id}/rotate-secret")
+    third_secret = third.json()["secret"]
+    db.refresh(connection)
+    assert set(signing_secrets(connection, settings)) == {third_secret, second_secret}
+    assert first not in signing_secrets(connection, settings)

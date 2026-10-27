@@ -117,6 +117,16 @@ class Job(Base):
             unique=True,
             postgresql_where=sa_text("type = 'channel_send'"),
         ),
+        # One live health-poll job per connection (migration 0026).
+        Index(
+            "uq_channel_health_poll_connection",
+            "tenant_id",
+            sa_text("(payload->>'connection_id')"),
+            unique=True,
+            postgresql_where=sa_text(
+                "type = 'channel_health_poll' AND status IN ('pending', 'running')"
+            ),
+        ),
     )
 
 

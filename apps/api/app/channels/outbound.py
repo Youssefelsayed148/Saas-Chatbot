@@ -293,7 +293,14 @@ def run_channel_send(db: Session, job: Job, settings: Settings) -> str | None:
         .execution_options(populate_existing=True)
     )
     if connection is None or connection.status != "active":
-        _fail(db, message, "connection_paused")
+        # Only a paused connection can be resumed and resent; revoked is final.
+        _fail(
+            db,
+            message,
+            "connection_revoked"
+            if connection is not None and connection.status == "revoked"
+            else "connection_paused",
+        )
         return None
     previous_id = job.payload.get("previous_message_id")
     if previous_id:
@@ -339,9 +346,17 @@ def run_channel_send(db: Session, job: Job, settings: Settings) -> str | None:
             .encode("utf-8")
         )
         timestamp = int(time.time())
-        secret = decrypt_secret(
-            connection.secret_ciphertext, settings.channel_secret_encryption_keys
-        )
+        try:
+            secret = decrypt_secret(
+                connection.secret_ciphertext, settings.channel_secret_encryption_keys
+            )
+        except ValueError:
+            # Not a network problem and retrying cannot help: operator must fix the key.
+            _fail(db, message, "secret_unavailable")
+            connection.health_status = "degraded"
+            connection.health_reason = "secret_unavailable"
+            connection.health_updated_at = datetime.now(UTC)
+            return None
         status, retry_after, raw = post_message(
             url,
             hostname,

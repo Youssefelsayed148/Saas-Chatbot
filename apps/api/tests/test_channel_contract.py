@@ -69,9 +69,7 @@ def _many_url(base_url: str | None) -> str:
 
 
 def _token(app: Any) -> str:
-    return getattr(app.state, "channel_test_key", None) or Fernet.generate_key().decode(
-        "ascii"
-    )
+    return getattr(app.state, "channel_test_key", None) or Fernet.generate_key().decode("ascii")
 
 
 def _run_job(db: OrmSession, job: Job, settings: Any) -> None:
@@ -144,9 +142,7 @@ def test_a2_five_minute_skew_boundary_in_both_directions(
         inside = _post(client, connection_id, secret, raw, timestamp=now + offset)
         assert inside.status_code == 202, (offset, inside.text)
     for offset in (-SKEW_SECONDS - 2, SKEW_SECONDS + 2):
-        raw = json.dumps(
-            _payload(connection_id, event_id=f"evt-skew-outside-{offset}")
-        ).encode()
+        raw = json.dumps(_payload(connection_id, event_id=f"evt-skew-outside-{offset}")).encode()
         outside = _post(client, connection_id, secret, raw, timestamp=now + offset)
         assert outside.status_code == 401, (offset, outside.text)
 
@@ -192,12 +188,8 @@ def test_b1_paused_accepts_202_stores_no_ai_no_send_agent_reply_409(
     assert event.status == "processed"
     visitor = db.scalar(select(Message).where(Message.sender_type == "visitor"))
     assert visitor is not None and visitor.text == "Hello"
-    assert db.scalar(
-        select(func.count(Message.id)).where(Message.sender_type == "ai")
-    ) == 0
-    assert db.scalar(
-        select(func.count(Job.id)).where(Job.type == "channel_send")
-    ) == 0
+    assert db.scalar(select(func.count(Message.id)).where(Message.sender_type == "ai")) == 0
+    assert db.scalar(select(func.count(Job.id)).where(Job.type == "channel_send")) == 0
     conversation = db.scalar(select(Conversation))
     assert conversation is not None
     assert conversation.status == "waiting_human"
@@ -245,9 +237,7 @@ def test_b2_paused_agent_reply_is_409_and_resume_does_not_resend(
     # Resume stays quiet about anything that failed while paused.
     connection.status = "active"
     db.commit()
-    assert db.scalar(
-        select(func.count(Job.id)).where(Job.type == "channel_send")
-    ) == 0
+    assert db.scalar(select(func.count(Job.id)).where(Job.type == "channel_send")) == 0
 
 
 def test_b3_revoked_rejects_every_signed_event_like_unknown(
@@ -263,9 +253,7 @@ def test_b3_revoked_rejects_every_signed_event_like_unknown(
     assert db.scalar(select(func.count(ChannelEvent.id))) == 0
 
 
-def test_b4_secret_is_encrypted_at_rest_and_never_returned(
-    app: Any, db: OrmSession
-) -> None:
+def test_b4_secret_is_encrypted_at_rest_and_never_returned(app: Any, db: OrmSession) -> None:
     """§2/§7: one secret per connection, shown once, stored encrypted, and
     present on no staff or client read model."""
     connection_id, secret = _connection(app, db)
@@ -433,9 +421,7 @@ def test_d1_outbound_is_signed_to_many_with_contract_headers(
 ) -> None:
     """§5.1: signed `POST {many_base_url}/api/saas/messages` where `message_id`
     (our id) is the idempotency key; only ai/agent replies are sent."""
-    connection, conversation, message, job, settings, fake = _outbound_context(
-        app, db, monkeypatch
-    )
+    connection, conversation, message, job, settings, fake = _outbound_context(app, db, monkeypatch)
     _run_job(db, job, settings)
     assert job.status == "succeeded"
     assert len(fake.requests) == 1
@@ -461,9 +447,7 @@ def test_d2_duplicate_and_crashed_runs_never_resend(
 ) -> None:
     """§5.1: Many dedupes on `message_id`; the SaaS sends a given AI message
     once even across repeated job executions."""
-    connection, conversation, message, job, settings, fake = _outbound_context(
-        app, db, monkeypatch
-    )
+    connection, conversation, message, job, settings, fake = _outbound_context(app, db, monkeypatch)
     for _ in range(3):
         job.status = "succeeded"
         db.commit()
@@ -526,9 +510,7 @@ def test_e1_budget_reuses_message_id_and_many_unreachable_degrades_health(
     """§6: retry 5xx/timeouts with the same `message_id`; after the retry
     budget the message is `failed`/`many_unreachable` and the connection is
     degraded."""
-    connection, conversation, message, job, settings, fake = _outbound_context(
-        app, db, monkeypatch
-    )
+    connection, conversation, message, job, settings, fake = _outbound_context(app, db, monkeypatch)
     for _ in range(6):
         fake.responses.append(500)
         _run_job(db, job, settings)
@@ -549,9 +531,7 @@ def test_e2_429_is_delayed_by_retry_after_and_4xx_ends_immediately(
 ) -> None:
     """§6: 429 with `Retry-After` schedules the retry later; other 4xx are
     permanent. (Full 4xx matrix and timeout cases live in test_channel_outbound.)"""
-    connection, conversation, message, job, settings, fake = _outbound_context(
-        app, db, monkeypatch
-    )
+    connection, conversation, message, job, settings, fake = _outbound_context(app, db, monkeypatch)
     fake.responses.append((429, "30"))
     _run_job(db, job, settings)
     assert len(fake.requests) == 1
@@ -566,9 +546,7 @@ def test_e3_no_alternative_send_path_after_exhaustion(
     """§1.4/§6: once the budget is spent the message is failed and nothing else
     is scheduled on the SaaS side. (The Many-side rule is docs/17 §1.4 item 4:
     Many must not fall back to its own AI — verified in the Many workstream.)"""
-    connection, conversation, message, job, settings, fake = _outbound_context(
-        app, db, monkeypatch
-    )
+    connection, conversation, message, job, settings, fake = _outbound_context(app, db, monkeypatch)
     for _ in range(6):
         fake.responses.append(500)
         _run_job(db, job, settings)
@@ -579,9 +557,7 @@ def test_e3_no_alternative_send_path_after_exhaustion(
         db.commit()
     assert job.status == "failed"
     assert message.delivery_status == "failed" and message.error_code == "many_unreachable"
-    assert db.scalar(
-        select(func.count(Job.id)).where(Job.type == "channel_send")
-    ) == 1
+    assert db.scalar(select(func.count(Job.id)).where(Job.type == "channel_send")) == 1
 
 
 # --- F. Sections 5.2 / 4.3: health pull and push -----------------------------
@@ -600,9 +576,7 @@ def test_f1_health_pull_is_a_signed_empty_body_get(
     _wire_fake(monkeypatch, fake)
     from app.channels.health import pull_health
 
-    settings = build_test_settings(
-        channel_secret_encryption_keys=SecretStr(_token(app))
-    )
+    settings = build_test_settings(channel_secret_encryption_keys=SecretStr(_token(app)))
     status, detail, checked = pull_health(connection, settings)
     assert len(fake.health_requests) == 1
     headers = fake.health_requests[0]

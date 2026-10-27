@@ -22,9 +22,7 @@ def test_unknown_conversation_source_keeps_handoff_disabled(db: OrmSession) -> N
     from app.inbox.handoff import decide_handoff
 
     bot = cast(Bot, SimpleNamespace(config={}))
-    conversation = cast(
-        Conversation, SimpleNamespace(source="legacy-import", status="open")
-    )
+    conversation = cast(Conversation, SimpleNamespace(source="legacy-import", status="open"))
     assert (
         decide_handoff(
             db,

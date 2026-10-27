@@ -96,6 +96,7 @@ def test_human_mode_beats_ai_off_and_paused_status_flips(
 ) -> None:
     connection_id, secret = _connection(app, db)
     _send(client, db, connection_id, secret, "h-seed")
+    ai_after_seed = _count(db, "ai")
     conversation = db.scalar(select(Conversation))
     connection = db.get(ChannelConnection, connection_id)
     assert conversation is not None and connection is not None
@@ -108,7 +109,9 @@ def test_human_mode_beats_ai_off_and_paused_status_flips(
         _send(client, db, connection_id, secret, f"h-{ai_enabled}-{status}")
         db.refresh(conversation)
         assert conversation.mode == "human" and conversation.status == "open"
-    assert _count(db, "ai") == 0 or True
+    # Human mode: none of the later messages got an AI reply.
+    assert _count(db, "ai") == ai_after_seed
+    assert _count(db, "visitor") == 3
 
 
 def test_unsupported_message_fires_handoff_and_is_localized(

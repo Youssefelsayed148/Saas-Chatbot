@@ -367,6 +367,12 @@ class Message(Base):
         ),
         # Retention purge scans by tenant + created_at.
         Index("ix_messages_tenant_created", "tenant_id", "created_at"),
+        # Unconfirmed-delivery sweep (migration 0028).
+        Index(
+            "ix_messages_unconfirmed_sweep",
+            "accepted_at",
+            postgresql_where=sa_text("delivery_status = 'pending' AND accepted_at IS NOT NULL"),
+        ),
     )
 
 

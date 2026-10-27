@@ -7,7 +7,10 @@ const reasons: Record<string, string> = {
   template_required:
     "An approved template is required to contact this recipient.",
   recipient_unreachable: "The recipient could not be reached.",
-  connection_paused: "The channel connection is paused or revoked.",
+  connection_paused: "The channel connection is paused.",
+  connection_revoked: "The channel connection was revoked.",
+  secret_unavailable:
+    "The connection secret cannot be read. Contact support.",
   many_unreachable: "Delivery failed after repeated attempts to reach Many.",
   channel_disconnected: "The channel is disconnected.",
   rate_limited: "The channel delivery limit was reached.",
