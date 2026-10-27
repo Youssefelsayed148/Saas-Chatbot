@@ -489,3 +489,20 @@ Sources: `implementation/MASTER-ROADMAP.md` (P7 section), `implementation/PHASE-
 | P7 gate | independent security review closed; phase report; owner sign-off | **Missing**: no independent reviewer findings or sign-off (SECURITY-REVIEW.md: "OPEN and UNVERIFIED"); no phase report; ADR-007 (hosting) OPEN gates staging. |
 
 What is missing for P7 completion: (1) a backup/restore drill on a disposable target, (2) an independent security review and its closure, (3) owner-approved quota/plan values (currently PLACEHOLDER), (4) a full green Playwright run (4b), (5) browser verification of the P7-01 operations UI, (6) the P7 phase report and owner sign-off, (7) ADR-007 only for staging. Per the roadmap P7 should precede P6; this branch built P6 first by the 2026-10-18 owner decision and keeps P7 complete as a merge gate.
+
+### Batch 4b - Full Playwright suite, run once (branch HEAD 1ef6afd's code; the only commits after 8987b24 touching web are none)
+
+Setup: Chromium 1243 preinstalled (`/opt/pw-browsers/chromium-1243/chrome-linux64/chrome`); temporary config = `apps/web/playwright.config.ts` plus `launchOptions.executablePath`, `globalTimeout` 5,400,000 ms and a JSON reporter (kept outside the repo and not committed; the file was removed from the tree after the run). `npm ci` at the repo root. Command (in `apps/web`): `PYTHONUTF8=1 E2E_PYTHON=/tmp/claude-0/venv/bin/python TEST_DATABASE_URL=postgresql://test:test@127.0.0.1:5432/phase6e2e_test npx playwright test -c <temp config>`; disposable DB, stub chat model, pgvector 0.8.0.
+
+Result: **162 passed, 12 failed, 0 skipped, 174 tests, 16.5 min. The suite is NOT green.**
+
+Per spec (pass/fail): account 5/0, b4-dashboards 6/0, b5-conversations 18/0, b6-limits 3/0, b6-settings 8/0, c-bot-settings 12/0, channel-delivery 2/0, channel-insights 1/0, channels 2/0, contacts 1/0, conversations 2/0, dashboard 5/0, followups 1/0, foundation 1/0, group-a-members 1/0, group-a-operator 4/0, group-b-client-visibility 6/0, **group-c-polish 10/1**, install 1/0, **knowledge 5/1**, login-register 7/0, message-body 5/0, organizations 2/0, **overview 0/2**, platform 2/0, playground 4/0, roles-control 2/0, security-headers 2/0, staff-bots 3/0, staff-members 4/0, ui-characterization 6/0, ui-redesign 4/0, widget-domain 2/0, widget-layout 3/0, widget-panel 9/0, widget-polling 6/0, **widget-streaming 3/8**, widget 4/0. All three channel specs pass.
+
+Failures and first error:
+1. `group-c-polish.spec.ts:129` job lists Retry/Cancel: `locator('[data-job-status="pending"]')` expected visible.
+2. `knowledge.spec.ts:204` duplicate upload: `getByText(/already uploaded/)` expected visible.
+3. `overview.spec.ts:136` workspace shell + overview: test timeout 240000 ms.
+4. `overview.spec.ts:220` unanswered list: test timeout 240000 ms.
+5-12. `widget-streaming.spec.ts:242, 260, 278, 291, 316 (x2), 331, 343`: `getByTestId('widget-ai-msg').last().locator('div[dir=auto]')` text/count assertion (the streamed AI message bubble is not found in the expected form; e.g. expected "The validated reply.").
+
+Comparison with clean `origin/main` d189893 (detached worktree, `npm ci`, same temporary config, DB `mainchk_e2e_test`), re-running only the four failing spec files (group-c-polish, knowledge, overview, widget-streaming): **18 passed, 12 failed, the same 12 tests** (10.5 min). None is caused by Phase 6. Not investigated: root causes (the widget-streaming group looks like one cause in the widget's message markup, the overview pair like a shared slow/stuck step); specs other than these four were not re-run on main because they passed on the branch. Two of the earlier KNOWN-ISSUES are consistent with this (widget-streaming and overview are main-owned website specs).
