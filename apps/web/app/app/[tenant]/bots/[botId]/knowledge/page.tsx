@@ -131,8 +131,8 @@ export default function KnowledgePage() {
     setActionError(null);
     setActionDone(null);
     setIngesting(true);
+    let note = "";
     try {
-      let note = "";
       if (selectedFiles.length > 0) {
         const created = await api.uploadSources(tenantId, botId, selectedFiles);
         const skipped = created.filter((source) => source.duplicate);
@@ -154,6 +154,19 @@ export default function KnowledgePage() {
       setTab("jobs");
       await loadAll(revisionView);
     } catch (caught) {
+      if (
+        note &&
+        caught instanceof api.ApiError &&
+        caught.status === 409 &&
+        caught.code === "NOTHING_TO_INGEST"
+      ) {
+        // A duplicate-only upload stored nothing new. Keep the useful
+        // duplicate notice instead of replacing it with an ingestion error.
+        setActionDone(note);
+        setTab("files");
+        await loadAll(revisionView);
+        return;
+      }
       setActionError(
         caught instanceof Error ? caught.message : "Could not start ingestion.",
       );

@@ -1,0 +1,383 @@
+[e2e] Starting API on http://127.0.0.1:8115/health with disposable database /many_test_c4_c5_e2e_test.
+e2e-db-ready
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 0001_initial, initial schema: users, sessions, tenants, memberships, bots, invitations, audit_events
+INFO  [alembic.runtime.migration] Running upgrade 0001_initial -> 0002_knowledge, knowledge schema: sources, source_pages, documents, knowledge_revisions,
+chunks, jobs; bots.published_revision_id
+INFO  [alembic.runtime.migration] Running upgrade 0002_knowledge -> 0003_conversation_core, conversation core: contacts, contact_identities, conversations, messages, usage_events
+INFO  [alembic.runtime.migration] Running upgrade 0003_conversation_core -> 0004_widget_public, widget public channel: bots.widget_locator, visitor_sessions,
+rate_limit_counters, conversations.session_id
+INFO  [alembic.runtime.migration] Running upgrade 0004_widget_public -> 0005_retention_leads, tenant retention setting, leads
+INFO  [alembic.runtime.migration] Running upgrade 0005_retention_leads -> 0006_provisioning, platform admin console: provisioning_requests
+INFO  [alembic.runtime.migration] Running upgrade 0006_provisioning -> 0007_inbox, inbox read state, tags, and durable live-update cursor
+INFO  [alembic.runtime.migration] Running upgrade 0007_inbox -> 0008_contacts, contact stage vocabulary for light CRM
+INFO  [alembic.runtime.migration] Running upgrade 0008_contacts -> 0009_follow_ups, website follow-up scheduling and queue type
+INFO  [alembic.runtime.migration] Running upgrade 0009_follow_ups -> 0010_platform_ops, platform operations plan labels
+INFO  [alembic.runtime.migration] Running upgrade 0010_platform_ops -> 0011_quota_overrides, placeholder quota overrides
+INFO  [alembic.runtime.migration] Running upgrade 0011_quota_overrides -> 0012_quota_jobs, placeholder quota usage events and sentiment queue
+INFO  [alembic.runtime.migration] Running upgrade 0012_quota_jobs -> 0013_roles_operator_control, Three client roles, change requests and durable soft-deletion ledger.
+INFO  [alembic.runtime.migration] Running upgrade 0013_roles_operator_control -> 0014_rag_embeddings, Additive 1024-dimensional RAG foundation; no existing rows rewritten.
+INFO  [alembic.runtime.migration] Running upgrade 0014_rag_embeddings -> 0015_rag_metering, Add optional bot caps and AI ledger events without rewriting existing rows.
+INFO  [alembic.runtime.migration] Running upgrade 0015_rag_metering -> 0016_arabic_fts, Index Arabic chunks with PostgreSQL's real ``arabic`` text-search configuration.
+INFO  [alembic.runtime.migration] Running upgrade 0016_arabic_fts -> 0017_staff_members, Staff member phone and account eligibility.
+INFO  [alembic.runtime.migration] Running upgrade 0017_staff_members -> 0018_bot_assistant_name, Merge bot names (#9): copy the legacy bots.name into config.assistant_name.
+INFO  [alembic.runtime.migration] Running upgrade 0018_bot_assistant_name -> 0019_bot_tone_and_rules, Per-bot staff tone and rules (#15): nullable text, capped at 2000 characters.
+INFO  [alembic.runtime.migration] Running upgrade 0019_bot_tone_and_rules -> 0020_usage_event_unavailable, A usage event kind for turns the assistant could not take (no model configured).
+INFO  [alembic.runtime.migration] Running upgrade 0020_usage_event_unavailable -> 0021_revision_embedding_state, Per-revision embedding completeness (H1).
+INFO  [alembic.runtime.migration] Running upgrade 0021_revision_embedding_state -> 0022_knowledge_hygiene, Knowledge hygiene (H2): removable sources and cross-source duplicate bookkeeping.
+INFO  [alembic.runtime.migration] Running upgrade 0022_knowledge_hygiene -> 0023_manyosiris_channels, Add ManyOsirisChat delegated channel connections and event storage.
+INFO  [alembic.runtime.migration] Running upgrade 0023_manyosiris_channels -> 0024_channel_inbound, Allow channel contacts without website contact fields and inbound jobs.
+INFO  [alembic.runtime.migration] Running upgrade 0024_channel_inbound -> 0025_channel_send, Register the durable channel send job and enforce one job per message.
+INFO  [alembic.runtime.migration] Running upgrade 0025_channel_send -> 0026_channel_health_poll, Register the periodic channel health poll job (PLAN D10, docs/17 §5.2).
+INFO  [alembic.runtime.migration] Running upgrade 0026_channel_health_poll -> 0027_channel_ref_unique, One live connection per (channel, many_channel_ref) (D11, contract v1.1).
+INFO  [alembic.runtime.migration] Running upgrade 0027_channel_ref_unique -> 0028_channel_unconfirmed, Delivery state ``unconfirmed`` and ``messages.accepted_at`` (A2, D8).
+INFO  [alembic.runtime.migration] Running upgrade 0028_channel_unconfirmed -> 0029_channel_event_payload_purge, ``channel_events.payload`` becomes nullable so retention can purge it (B3).
+INFO  [alembic.runtime.migration] Running upgrade 0029_channel_event_payload_purge -> 0030_channel_health_poll_index, Index the last-poll lookup used by the channel health scheduler.
+INFO:     Started server process [39158]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8115 (Press CTRL+C to quit)
+INFO:     127.0.0.1:60986 - "GET /health HTTP/1.1" 200 OK
+[e2e] Started the DB worker (python -m app.worker).
+
+Running 15 tests using 1 worker
+
+[1/15] [chromium] › tests/group-c-polish.spec.ts:129:5 › both job lists show Retry only for failed and Cancel only for queued/running
+worker: LAPTOP-SU9MG22P:39165:2639ab7f started
+INFO:     127.0.0.1:0 - "POST /api/v1/auth/register HTTP/1.1" 201 Created
+INFO:     127.0.0.1:32770 - "GET /api/v1/platform/me HTTP/1.1" 200 OK
+[2/15] [chromium] › tests/knowledge.spec.ts:204:5 › duplicate upload is skipped; always-include, replace and remove work with confirmations
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:0 - "POST /api/v1/auth/register HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "POST /api/v1/provisioning/self-service HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a1ec22f6-1814-4b0c-94ea-c82ddc969012/inbox/counts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a1ec22f6-1814-4b0c-94ea-c82ddc969012/bots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a1ec22f6-1814-4b0c-94ea-c82ddc969012/inbox?limit=5 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a1ec22f6-1814-4b0c-94ea-c82ddc969012/quota HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a1ec22f6-1814-4b0c-94ea-c82ddc969012/channels HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a1ec22f6-1814-4b0c-94ea-c82ddc969012/analytics/timeseries?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a1ec22f6-1814-4b0c-94ea-c82ddc969012/analytics?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/platform/tenants?limit=200&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a1ec22f6-1814-4b0c-94ea-c82ddc969012/bots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a1ec22f6-1814-4b0c-94ea-c82ddc969012/quota HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a1ec22f6-1814-4b0c-94ea-c82ddc969012/bots/fb541c7e-47fa-45ea-85a5-acba2a1ece8e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a1ec22f6-1814-4b0c-94ea-c82ddc969012/bots/fb541c7e-47fa-45ea-85a5-acba2a1ece8e/readiness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a1ec22f6-1814-4b0c-94ea-c82ddc969012/bots/fb541c7e-47fa-45ea-85a5-acba2a1ece8e/rag HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a1ec22f6-1814-4b0c-94ea-c82ddc969012/bots/fb541c7e-47fa-45ea-85a5-acba2a1ece8e/documents?revision=published HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a1ec22f6-1814-4b0c-94ea-c82ddc969012/bots/fb541c7e-47fa-45ea-85a5-acba2a1ece8e/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a1ec22f6-1814-4b0c-94ea-c82ddc969012/bots/fb541c7e-47fa-45ea-85a5-acba2a1ece8e/revisions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a1ec22f6-1814-4b0c-94ea-c82ddc969012/bots/fb541c7e-47fa-45ea-85a5-acba2a1ece8e/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/a1ec22f6-1814-4b0c-94ea-c82ddc969012/bots/fb541c7e-47fa-45ea-85a5-acba2a1ece8e/sources/files HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/a1ec22f6-1814-4b0c-94ea-c82ddc969012/bots/fb541c7e-47fa-45ea-85a5-acba2a1ece8e/ingestion HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a1ec22f6-1814-4b0c-94ea-c82ddc969012/bots/fb541c7e-47fa-45ea-85a5-acba2a1ece8e/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a1ec22f6-1814-4b0c-94ea-c82ddc969012/bots/fb541c7e-47fa-45ea-85a5-acba2a1ece8e/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a1ec22f6-1814-4b0c-94ea-c82ddc969012/bots/fb541c7e-47fa-45ea-85a5-acba2a1ece8e/revisions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a1ec22f6-1814-4b0c-94ea-c82ddc969012/bots/fb541c7e-47fa-45ea-85a5-acba2a1ece8e/documents?revision=published HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a1ec22f6-1814-4b0c-94ea-c82ddc969012/bots/fb541c7e-47fa-45ea-85a5-acba2a1ece8e/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a1ec22f6-1814-4b0c-94ea-c82ddc969012/bots/fb541c7e-47fa-45ea-85a5-acba2a1ece8e/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a1ec22f6-1814-4b0c-94ea-c82ddc969012/bots/fb541c7e-47fa-45ea-85a5-acba2a1ece8e/documents?revision=published HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a1ec22f6-1814-4b0c-94ea-c82ddc969012/bots/fb541c7e-47fa-45ea-85a5-acba2a1ece8e/revisions HTTP/1.1" 200 OK
+  1) [chromium] › tests/knowledge.spec.ts:204:5 › duplicate upload is skipped; always-include, replace and remove work with confirmations 
+
+    Error: expect(locator).toHaveCount(expected) failed
+
+    Locator:  locator('[data-testid=\'sources-list\']').locator('li')
+    Expected: 1
+    Received: 0
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveCount" locator('[data-testid=\'sources-list\']').locator('li') with timeout 5000ms
+      - waiting for locator('[data-testid=\'sources-list\']').locator('li')
+        14 × locator resolved to 0 elements
+           - unexpected value "0"
+
+
+      217 |   await page.getByRole("button", { name: "Ingest files" }).click();
+      218 |   await openTab(page, "Files");
+    > 219 |   await expect(sources.locator("li")).toHaveCount(1);
+          |                                       ^
+      220 |
+      221 |   // The same bytes again: reported as skipped, no second row.
+      222 |   await openTab(page, "Upload");
+        at /mnt/d/Projects/Work Projects/The Osiris Labs/ManyOsirisChat/.closeout-worktrees/c4-c5/apps/web/tests/knowledge.spec.ts:219:39
+
+    Error Context: test-results/knowledge-duplicate-upload-5d863-ove-work-with-confirmations-chromium/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/knowledge-duplicate-upload-5d863-ove-work-with-confirmations-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/knowledge-duplicate-upload-5d863-ove-work-with-confirmations-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[3/15] [chromium] › tests/overview.spec.ts:136:5 › workspace shell + measured overview with per-bot scoping and CSV
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:0 - "POST /api/v1/auth/register HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "POST /api/v1/provisioning/self-service HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/6f50f18f-e779-42be-9867-afaa69490a31/bots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/6f50f18f-e779-42be-9867-afaa69490a31/inbox/counts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/6f50f18f-e779-42be-9867-afaa69490a31/inbox?limit=5 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/6f50f18f-e779-42be-9867-afaa69490a31/quota HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/6f50f18f-e779-42be-9867-afaa69490a31/analytics/timeseries?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/6f50f18f-e779-42be-9867-afaa69490a31/channels HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/6f50f18f-e779-42be-9867-afaa69490a31/analytics?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/platform/tenants?limit=200&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/6f50f18f-e779-42be-9867-afaa69490a31/bots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/6f50f18f-e779-42be-9867-afaa69490a31/quota HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/6f50f18f-e779-42be-9867-afaa69490a31/bots/400a66ff-1f4c-44c7-ac5f-083d14aaaaab HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "PATCH /api/v1/tenants/6f50f18f-e779-42be-9867-afaa69490a31/bots/400a66ff-1f4c-44c7-ac5f-083d14aaaaab HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/6f50f18f-e779-42be-9867-afaa69490a31/bots/400a66ff-1f4c-44c7-ac5f-083d14aaaaab/readiness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/6f50f18f-e779-42be-9867-afaa69490a31/bots/400a66ff-1f4c-44c7-ac5f-083d14aaaaab/rag HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/6f50f18f-e779-42be-9867-afaa69490a31/bots/400a66ff-1f4c-44c7-ac5f-083d14aaaaab/sources/files HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/6f50f18f-e779-42be-9867-afaa69490a31/bots/400a66ff-1f4c-44c7-ac5f-083d14aaaaab/ingestion HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/6f50f18f-e779-42be-9867-afaa69490a31/bots/400a66ff-1f4c-44c7-ac5f-083d14aaaaab/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/6f50f18f-e779-42be-9867-afaa69490a31/bots/400a66ff-1f4c-44c7-ac5f-083d14aaaaab/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/6f50f18f-e779-42be-9867-afaa69490a31/bots/400a66ff-1f4c-44c7-ac5f-083d14aaaaab/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/6f50f18f-e779-42be-9867-afaa69490a31/bots/400a66ff-1f4c-44c7-ac5f-083d14aaaaab/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/6f50f18f-e779-42be-9867-afaa69490a31/bots/400a66ff-1f4c-44c7-ac5f-083d14aaaaab/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/6f50f18f-e779-42be-9867-afaa69490a31/bots/400a66ff-1f4c-44c7-ac5f-083d14aaaaab/revisions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/6f50f18f-e779-42be-9867-afaa69490a31/bots/400a66ff-1f4c-44c7-ac5f-083d14aaaaab/revisions/d05120ff-2df1-448c-a70e-9a5754cd2238/publish HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/6f50f18f-e779-42be-9867-afaa69490a31/bots/400a66ff-1f4c-44c7-ac5f-083d14aaaaab HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:0 - "POST /api/v1/auth/register HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "POST /api/v1/provisioning/self-service HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/71d99772-130e-4944-ab4f-878eac1ee0be/bots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/71d99772-130e-4944-ab4f-878eac1ee0be/inbox/counts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/71d99772-130e-4944-ab4f-878eac1ee0be/inbox?limit=5 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/71d99772-130e-4944-ab4f-878eac1ee0be/quota HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/71d99772-130e-4944-ab4f-878eac1ee0be/analytics/timeseries?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/71d99772-130e-4944-ab4f-878eac1ee0be/channels HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/71d99772-130e-4944-ab4f-878eac1ee0be/analytics?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/platform/tenants?limit=200&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/71d99772-130e-4944-ab4f-878eac1ee0be/bots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/71d99772-130e-4944-ab4f-878eac1ee0be/quota HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/71d99772-130e-4944-ab4f-878eac1ee0be/bots/52945376-2e72-4753-a7a3-37754700ce93 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "PATCH /api/v1/tenants/71d99772-130e-4944-ab4f-878eac1ee0be/bots/52945376-2e72-4753-a7a3-37754700ce93 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/71d99772-130e-4944-ab4f-878eac1ee0be/bots/52945376-2e72-4753-a7a3-37754700ce93/readiness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/71d99772-130e-4944-ab4f-878eac1ee0be/bots/52945376-2e72-4753-a7a3-37754700ce93/rag HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/71d99772-130e-4944-ab4f-878eac1ee0be/bots/52945376-2e72-4753-a7a3-37754700ce93/sources/files HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/71d99772-130e-4944-ab4f-878eac1ee0be/bots/52945376-2e72-4753-a7a3-37754700ce93/ingestion HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/71d99772-130e-4944-ab4f-878eac1ee0be/bots/52945376-2e72-4753-a7a3-37754700ce93/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/71d99772-130e-4944-ab4f-878eac1ee0be/bots/52945376-2e72-4753-a7a3-37754700ce93/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/71d99772-130e-4944-ab4f-878eac1ee0be/bots/52945376-2e72-4753-a7a3-37754700ce93/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/71d99772-130e-4944-ab4f-878eac1ee0be/bots/52945376-2e72-4753-a7a3-37754700ce93/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/71d99772-130e-4944-ab4f-878eac1ee0be/bots/52945376-2e72-4753-a7a3-37754700ce93/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/71d99772-130e-4944-ab4f-878eac1ee0be/bots/52945376-2e72-4753-a7a3-37754700ce93/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/71d99772-130e-4944-ab4f-878eac1ee0be/bots/52945376-2e72-4753-a7a3-37754700ce93/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/71d99772-130e-4944-ab4f-878eac1ee0be/bots/52945376-2e72-4753-a7a3-37754700ce93/revisions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/71d99772-130e-4944-ab4f-878eac1ee0be/bots/52945376-2e72-4753-a7a3-37754700ce93/revisions/ff1933ec-6b45-406e-9af2-9b4ef011b0e0/publish HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/71d99772-130e-4944-ab4f-878eac1ee0be/bots/52945376-2e72-4753-a7a3-37754700ce93 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56204 - "GET /api/v1/platform/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/platform/tenants?limit=200&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56204 - "GET /api/public/v1/widgets/w242e9fb13e99655db189fb3eb5facc8d/frame-ancestors HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/public/v1/widgets/w242e9fb13e99655db189fb3eb5facc8d/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/platform/tenants?limit=200&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/public/v1/widgets/w242e9fb13e99655db189fb3eb5facc8d/sessions HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "POST /api/public/v1/sessions/411cccdb-da50-4a74-ab63-f9220747dc6b/messages/stream HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/public/v1/sessions/411cccdb-da50-4a74-ab63-f9220747dc6b/messages?since=2026-10-28T08%3A43%3A45.194Z HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/public/v1/sessions/411cccdb-da50-4a74-ab63-f9220747dc6b/lead HTTP/1.1" 201 Created
+INFO:     127.0.0.1:56204 - "GET /api/v1/platform/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/platform/tenants?limit=200&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56204 - "GET /api/public/v1/widgets/w242e9fb13e99655db189fb3eb5facc8d/frame-ancestors HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/public/v1/widgets/w242e9fb13e99655db189fb3eb5facc8d/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/public/v1/sessions/411cccdb-da50-4a74-ab63-f9220747dc6b/messages HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/platform/tenants?limit=200&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/public/v1/sessions/411cccdb-da50-4a74-ab63-f9220747dc6b/messages/stream HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/public/v1/sessions/411cccdb-da50-4a74-ab63-f9220747dc6b/messages?since=2026-10-28T08%3A43%3A46.052Z HTTP/1.1" 200 OK
+  2) [chromium] › tests/overview.spec.ts:136:5 › workspace shell + measured overview with per-bot scoping and CSV 
+
+    Test timeout of 240000ms exceeded.
+
+    Error: Test timeout of 240000ms exceeded.
+
+      117 |   const turnResponse = await messageResponse;
+      118 |   expect([200, 201]).toContain(turnResponse.status());
+    > 119 |   await turnResponse.finished(); // the turn is committed once the body ends
+          |                      ^
+      120 |   await expect(frame.getByTestId("widget-ai-msg").last()).toBeVisible({
+      121 |     timeout: 45_000,
+      122 |   });
+        at visitAndLead (/mnt/d/Projects/Work Projects/The Osiris Labs/ManyOsirisChat/.closeout-worktrees/c4-c5/apps/web/tests/overview.spec.ts:119:22)
+        at /mnt/d/Projects/Work Projects/The Osiris Labs/ManyOsirisChat/.closeout-worktrees/c4-c5/apps/web/tests/overview.spec.ts:153:3
+
+    Error Context: test-results/overview-workspace-shell-m-699e6-ith-per-bot-scoping-and-CSV-chromium/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/overview-workspace-shell-m-699e6-ith-per-bot-scoping-and-CSV-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/overview-workspace-shell-m-699e6-ith-per-bot-scoping-and-CSV-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[4/15] [chromium] › tests/overview.spec.ts:220:5 › unanswered list shows the question the bot could not confirm
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:0 - "POST /api/v1/auth/register HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "POST /api/v1/provisioning/self-service HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/e48c5f49-0435-455b-906f-a683dfd583b9/inbox/counts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/e48c5f49-0435-455b-906f-a683dfd583b9/bots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/e48c5f49-0435-455b-906f-a683dfd583b9/inbox?limit=5 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/e48c5f49-0435-455b-906f-a683dfd583b9/quota HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/e48c5f49-0435-455b-906f-a683dfd583b9/analytics/timeseries?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/e48c5f49-0435-455b-906f-a683dfd583b9/channels HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/e48c5f49-0435-455b-906f-a683dfd583b9/analytics?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/platform/tenants?limit=200&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/e48c5f49-0435-455b-906f-a683dfd583b9/bots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/e48c5f49-0435-455b-906f-a683dfd583b9/quota HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/e48c5f49-0435-455b-906f-a683dfd583b9/bots/0d937b4f-18eb-4a94-8e93-e9f4fc07f2fc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "PATCH /api/v1/tenants/e48c5f49-0435-455b-906f-a683dfd583b9/bots/0d937b4f-18eb-4a94-8e93-e9f4fc07f2fc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/e48c5f49-0435-455b-906f-a683dfd583b9/bots/0d937b4f-18eb-4a94-8e93-e9f4fc07f2fc/readiness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/e48c5f49-0435-455b-906f-a683dfd583b9/bots/0d937b4f-18eb-4a94-8e93-e9f4fc07f2fc/sources/files HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/e48c5f49-0435-455b-906f-a683dfd583b9/bots/0d937b4f-18eb-4a94-8e93-e9f4fc07f2fc/rag HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/e48c5f49-0435-455b-906f-a683dfd583b9/bots/0d937b4f-18eb-4a94-8e93-e9f4fc07f2fc/ingestion HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/e48c5f49-0435-455b-906f-a683dfd583b9/bots/0d937b4f-18eb-4a94-8e93-e9f4fc07f2fc/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/e48c5f49-0435-455b-906f-a683dfd583b9/bots/0d937b4f-18eb-4a94-8e93-e9f4fc07f2fc/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/e48c5f49-0435-455b-906f-a683dfd583b9/bots/0d937b4f-18eb-4a94-8e93-e9f4fc07f2fc/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/e48c5f49-0435-455b-906f-a683dfd583b9/bots/0d937b4f-18eb-4a94-8e93-e9f4fc07f2fc/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/e48c5f49-0435-455b-906f-a683dfd583b9/bots/0d937b4f-18eb-4a94-8e93-e9f4fc07f2fc/revisions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/e48c5f49-0435-455b-906f-a683dfd583b9/bots/0d937b4f-18eb-4a94-8e93-e9f4fc07f2fc/revisions/2acf7850-df31-4867-982c-51a58c841556/publish HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/e48c5f49-0435-455b-906f-a683dfd583b9/bots/0d937b4f-18eb-4a94-8e93-e9f4fc07f2fc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41732 - "GET /api/v1/platform/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/platform/tenants?limit=200&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41732 - "GET /api/public/v1/widgets/wf5eb4e17e5817fffd3a282f6acdf9512/frame-ancestors HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/public/v1/widgets/wf5eb4e17e5817fffd3a282f6acdf9512/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/platform/tenants?limit=200&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/public/v1/widgets/wf5eb4e17e5817fffd3a282f6acdf9512/sessions HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "POST /api/public/v1/sessions/a22e067b-ec04-489c-bafe-99e2b703a179/messages/stream HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/public/v1/sessions/a22e067b-ec04-489c-bafe-99e2b703a179/messages?since=2026-10-28T08%3A47%3A45.453Z HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/platform/tenants?limit=200&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/e48c5f49-0435-455b-906f-a683dfd583b9/bots/0d937b4f-18eb-4a94-8e93-e9f4fc07f2fc/analytics/unanswered?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/e48c5f49-0435-455b-906f-a683dfd583b9/bots/0d937b4f-18eb-4a94-8e93-e9f4fc07f2fc/analytics/volume?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/e48c5f49-0435-455b-906f-a683dfd583b9/bots/0d937b4f-18eb-4a94-8e93-e9f4fc07f2fc/analytics/top-questions?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/e48c5f49-0435-455b-906f-a683dfd583b9/bots/0d937b4f-18eb-4a94-8e93-e9f4fc07f2fc/analytics/leads?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/e48c5f49-0435-455b-906f-a683dfd583b9/bots/0d937b4f-18eb-4a94-8e93-e9f4fc07f2fc/analytics/summary?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/e48c5f49-0435-455b-906f-a683dfd583b9/bots/0d937b4f-18eb-4a94-8e93-e9f4fc07f2fc/analytics/unanswered?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/e48c5f49-0435-455b-906f-a683dfd583b9/bots/0d937b4f-18eb-4a94-8e93-e9f4fc07f2fc/analytics/volume?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/e48c5f49-0435-455b-906f-a683dfd583b9/bots/0d937b4f-18eb-4a94-8e93-e9f4fc07f2fc/analytics/top-questions?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/e48c5f49-0435-455b-906f-a683dfd583b9/bots/0d937b4f-18eb-4a94-8e93-e9f4fc07f2fc/analytics/leads?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/e48c5f49-0435-455b-906f-a683dfd583b9/bots/0d937b4f-18eb-4a94-8e93-e9f4fc07f2fc/analytics/summary?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+[5/15] [chromium] › tests/widget-streaming.spec.ts:191:5 › text appears progressively, announces once at done, and persists the final id
+INFO:     127.0.0.1:41732 - "GET /api/public/v1/widgets/stream/frame-ancestors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:0 - "GET /api/public/v1/sessions/11111111-1111-4111-8111-111111111111/messages?since=2026-10-22T10%3A00%3A00.999Z HTTP/1.1" 401 Unauthorized
+[6/15] [chromium] › tests/widget-streaming.spec.ts:242:5 › done is authoritative: a replaced answer overwrites what streamed
+INFO:     127.0.0.1:41732 - "GET /api/public/v1/widgets/stream/frame-ancestors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:0 - "GET /api/public/v1/sessions/11111111-1111-4111-8111-111111111111/messages?since=2026-10-22T10%3A00%3A00.999Z HTTP/1.1" 401 Unauthorized
+[7/15] [chromium] › tests/widget-streaming.spec.ts:260:5 › a single cannot-confirm event shows at once with no typing text before it
+INFO:     127.0.0.1:41732 - "GET /api/public/v1/widgets/stream/frame-ancestors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:0 - "GET /api/public/v1/sessions/11111111-1111-4111-8111-111111111111/messages?since=2026-10-22T10%3A00%3A00.999Z HTTP/1.1" 401 Unauthorized
+[8/15] [chromium] › tests/widget-streaming.spec.ts:278:5 › Arabic text streams intact and keeps automatic direction
+INFO:     127.0.0.1:41732 - "GET /api/public/v1/widgets/stream/frame-ancestors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+[9/15] [chromium] › tests/widget-streaming.spec.ts:291:5 › Stop aborts the stream, removes the partial bubble and returns the text to the input
+INFO:     127.0.0.1:41732 - "GET /api/public/v1/widgets/stream/frame-ancestors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+[10/15] [chromium] › tests/widget-streaming.spec.ts:316:7 › stream failure (network-error) before any text falls back to the buffered endpoint once
+INFO:     127.0.0.1:41732 - "GET /api/public/v1/widgets/stream/frame-ancestors HTTP/1.1" 404 Not Found
+[11/15] [chromium] › tests/widget-streaming.spec.ts:316:7 › stream failure (http-502) before any text falls back to the buffered endpoint once
+INFO:     127.0.0.1:41732 - "GET /api/public/v1/widgets/stream/frame-ancestors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:0 - "GET /api/public/v1/sessions/11111111-1111-4111-8111-111111111111/messages?since=2026-10-22T10%3A00%3A00.999Z HTTP/1.1" 401 Unauthorized
+[12/15] [chromium] › tests/widget-streaming.spec.ts:331:5 › an in-stream error before any text also falls back once
+INFO:     127.0.0.1:41732 - "GET /api/public/v1/widgets/stream/frame-ancestors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:0 - "GET /api/public/v1/sessions/11111111-1111-4111-8111-111111111111/messages?since=2026-10-22T10%3A00%3A00.999Z HTTP/1.1" 401 Unauthorized
+[13/15] [chromium] › tests/widget-streaming.spec.ts:343:5 › a stream that dies after text drops the partial and does not replay it
+INFO:     127.0.0.1:41732 - "GET /api/public/v1/widgets/stream/frame-ancestors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+[14/15] [chromium] › tests/widget-streaming.spec.ts:358:5 › an application refusal (429) is shown as in the buffered path, with no fallback
+INFO:     127.0.0.1:41732 - "GET /api/public/v1/widgets/stream/frame-ancestors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+[15/15] [chromium] › tests/widget-streaming.spec.ts:369:5 › real stack on the stub model streams through the proxy and persists at done
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:0 - "POST /api/v1/auth/register HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "POST /api/v1/provisioning/self-service HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/66aec873-9c5c-4572-be74-7ecec8831886/inbox/counts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/66aec873-9c5c-4572-be74-7ecec8831886/bots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/66aec873-9c5c-4572-be74-7ecec8831886/inbox?limit=5 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/66aec873-9c5c-4572-be74-7ecec8831886/quota HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/66aec873-9c5c-4572-be74-7ecec8831886/analytics/timeseries?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/66aec873-9c5c-4572-be74-7ecec8831886/channels HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/66aec873-9c5c-4572-be74-7ecec8831886/analytics?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/platform/tenants?limit=200&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/66aec873-9c5c-4572-be74-7ecec8831886/bots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/66aec873-9c5c-4572-be74-7ecec8831886/quota HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/66aec873-9c5c-4572-be74-7ecec8831886/bots/d5607c21-81f5-4b2f-a24b-bcaaff85d84e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/66aec873-9c5c-4572-be74-7ecec8831886/bots/d5607c21-81f5-4b2f-a24b-bcaaff85d84e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/66aec873-9c5c-4572-be74-7ecec8831886/bots/d5607c21-81f5-4b2f-a24b-bcaaff85d84e/readiness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "PATCH /api/v1/tenants/66aec873-9c5c-4572-be74-7ecec8831886/bots/d5607c21-81f5-4b2f-a24b-bcaaff85d84e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/66aec873-9c5c-4572-be74-7ecec8831886/bots/d5607c21-81f5-4b2f-a24b-bcaaff85d84e/rag HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/66aec873-9c5c-4572-be74-7ecec8831886/bots/d5607c21-81f5-4b2f-a24b-bcaaff85d84e/sources/files HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/66aec873-9c5c-4572-be74-7ecec8831886/bots/d5607c21-81f5-4b2f-a24b-bcaaff85d84e/ingestion HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/66aec873-9c5c-4572-be74-7ecec8831886/bots/d5607c21-81f5-4b2f-a24b-bcaaff85d84e/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/66aec873-9c5c-4572-be74-7ecec8831886/bots/d5607c21-81f5-4b2f-a24b-bcaaff85d84e/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/66aec873-9c5c-4572-be74-7ecec8831886/bots/d5607c21-81f5-4b2f-a24b-bcaaff85d84e/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/66aec873-9c5c-4572-be74-7ecec8831886/bots/d5607c21-81f5-4b2f-a24b-bcaaff85d84e/revisions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/66aec873-9c5c-4572-be74-7ecec8831886/bots/d5607c21-81f5-4b2f-a24b-bcaaff85d84e/revisions/8b69b084-715a-4894-823a-8f9b4ed1aefb/publish HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41732 - "GET /api/public/v1/widgets/w9f1d5d155ef7092a0a9f046223046121/frame-ancestors HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/public/v1/widgets/w9f1d5d155ef7092a0a9f046223046121/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/platform/tenants?limit=200&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/public/v1/widgets/w9f1d5d155ef7092a0a9f046223046121/sessions HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "POST /api/public/v1/sessions/832caa98-e3e4-42c9-b67b-d550357bc624/messages/stream HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/public/v1/sessions/832caa98-e3e4-42c9-b67b-d550357bc624/messages?since=2026-10-28T08%3A47%3A50.977Z HTTP/1.1" 200 OK
+[e2e] Stopped the E2E API server.
+[e2e] Stopped the E2E worker.
+  2 failed
+    [chromium] › tests/knowledge.spec.ts:204:5 › duplicate upload is skipped; always-include, replace and remove work with confirmations 
+    [chromium] › tests/overview.spec.ts:136:5 › workspace shell + measured overview with per-bot scoping and CSV 
+  13 passed (5.8m)
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [39158]
+worker: LAPTOP-SU9MG22P:39165:2639ab7f stopped
+Traceback (most recent call last):
+  File "/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1130, in _rollback_impl
+    self.engine.dialect.do_rollback(self.connection)
+  File "/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 712, in do_rollback
+    dbapi_connection.rollback()
+  File "/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/psycopg/connection.py", line 314, in rollback
+    self.wait(self._rollback_gen())
+  File "/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/psycopg/connection.py", line 495, in wait
+    return waiting.wait(
+           ^^^^^^^^^^^^^
+  File "psycopg_binary/_psycopg/waiting.pyx", line 255, in psycopg_binary._psycopg.wait_c
+  File "/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/psycopg/_connection_base.py", line 617, in _rollback_gen
+    yield from self._exec_command(b"ROLLBACK")
+  File "/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/psycopg/_connection_base.py", line 487, in _exec_command
+    raise e.error_from_result(result, encoding=self.pgconn._encoding)
+psycopg.errors.AdminShutdown: terminating connection due to administrator command
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):

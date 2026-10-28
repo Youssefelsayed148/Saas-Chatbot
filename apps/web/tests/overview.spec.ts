@@ -116,7 +116,22 @@ async function visitAndLead(
   // The widget streams the turn (200, SSE); the buffered fallback answers 201.
   const turnResponse = await messageResponse;
   expect([200, 201]).toContain(turnResponse.status());
-  await turnResponse.finished(); // the turn is committed once the body ends
+  // The widget consumes `done` and cancels the SSE reader; waiting for the
+  // browser's transport EOF can hang after the reply is already committed.
+  // Wait for this turn's completed UI, not an old restored answer bubble.
+  await expect(frame.getByTestId("widget-visitor-msg").last()).toHaveText(
+    question,
+  );
+  await expect(input).toBeEnabled();
+  await expect(frame.getByTestId("widget-stop")).toHaveCount(0);
+  // Canned done-only replies do not use the progressive-stream announcer.
+  // Feedback is attached only to the persisted final message, never a partial.
+  await expect(
+    frame
+      .getByTestId("widget-ai-msg")
+      .last()
+      .getByRole("button", { name: "Thumbs up" }),
+  ).toBeVisible();
   await expect(frame.getByTestId("widget-ai-msg").last()).toBeVisible({
     timeout: 45_000,
   });

@@ -7,6 +7,8 @@ const ROUTES: [RegExp, string][] = [
   [/^\/platform\/members$/, "Members"],
   [/^\/$/, "Welcome"],
   [/^\/login$/, "Sign in"],
+  [/^\/privacy$/, "Privacy"],
+  [/^\/terms$/, "Terms of use"],
   [/^\/register$/, "Create account"],
   [/^\/accept-invite$/, "Accept invitation"],
   [/^\/widget\/sample$/, "Widget sample"],

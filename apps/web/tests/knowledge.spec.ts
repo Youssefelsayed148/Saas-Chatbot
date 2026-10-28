@@ -215,6 +215,12 @@ test("duplicate upload is skipped; always-include, replace and remove work with 
 
   await page.locator("#knowledge-file-input").setInputFiles(fixture);
   await page.getByRole("button", { name: "Ingest files" }).click();
+  // onIngest selects Jobs only after its asynchronous upload/start calls.
+  // Wait for that transition before selecting Files so the late update
+  // cannot replace the tab selected by this test.
+  await expect(
+    page.getByRole("tab", { name: "Jobs", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
   await openTab(page, "Files");
   await expect(sources.locator("li")).toHaveCount(1);
 

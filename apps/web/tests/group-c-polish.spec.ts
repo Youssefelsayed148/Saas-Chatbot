@@ -132,6 +132,11 @@ test("both job lists show Retry only for failed and Cancel only for queued/runni
   const state = await safetyFixture(page, true);
   for (const path of [`${botBase}/knowledge`, "/platform/operations"]) {
     await page.goto(path);
+    // Knowledge now renders only the selected tab; status/action assertions
+    // belong to the Jobs tab rather than the default Upload tab.
+    if (path.includes("knowledge")) {
+      await page.getByRole("tab", { name: "Jobs", exact: true }).click();
+    }
     for (const status of statuses) {
       const row = path.includes("knowledge")
         ? page.locator(`[data-job-status="${status}"]`)

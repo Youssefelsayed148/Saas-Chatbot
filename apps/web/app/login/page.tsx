@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 
 import { PasswordField } from "@/lib/password-field";
@@ -106,6 +107,10 @@ function LoginForm() {
         </form>
         <p className="auth-footer">
           Forgot your password? Contact your administrator.
+        </p>
+        <p className="auth-footer">
+          <Link href="/privacy">Privacy</Link> |{" "}
+          <Link href="/terms">Terms of use</Link>
         </p>
       </div>
     </main>

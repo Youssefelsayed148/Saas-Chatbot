@@ -10,7 +10,16 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Text, text
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -142,7 +151,7 @@ class Bot(Base):
     # Opaque public widget locator (P4-01, docs/04/05): NOT a secret — the
     # public widget endpoints resolve the bot ONLY through it and never accept
     # a caller-supplied tenant_id (docs/06). Assigned at creation.
-    widget_locator: Mapped[str | None] = mapped_column(Text, unique=True)
+    widget_locator: Mapped[str | None] = mapped_column(Text)
     # Set on knowledge publish (P2-03); NULL until the bot has published knowledge.
     published_revision_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("knowledge_revisions.id", ondelete="SET NULL")
@@ -184,6 +193,7 @@ class Bot(Base):
         # unique(tenant_id, id): anchor for later composite FKs (docs/03, ADR-010).
         Index("uq_bots_tenant_id_id", "tenant_id", "id", unique=True),
         Index("ix_bots_tenant_id", "tenant_id"),
+        Index("uq_bots_widget_locator", "widget_locator", unique=True),
     )
 
 
@@ -254,7 +264,8 @@ class ProvisioningRequest(Base):
             "status IN ('requested', 'provisioning', 'ready', 'failed')",
             name="ck_provisioning_requests_status",
         ),
-        Index("uq_provisioning_scope_key", "mode", "idempotency_key", unique=True),
+        UniqueConstraint("mode", "idempotency_key", name="uq_provisioning_scope_key"),
+        Index("ix_provisioning_requests_created", "created_at"),
     )
 
 

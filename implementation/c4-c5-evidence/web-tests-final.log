@@ -1,0 +1,300 @@
+[e2e] Starting API on http://127.0.0.1:8115/health with disposable database /many_test_c4_c5_e2e_test.
+e2e-db-ready
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO:     Started server process [41611]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8115 (Press CTRL+C to quit)
+INFO:     127.0.0.1:55208 - "GET /health HTTP/1.1" 200 OK
+[e2e] Started the DB worker (python -m app.worker).
+
+Running 5 tests using 1 worker
+
+[1/5] [chromium] › tests/knowledge.spec.ts:204:5 › duplicate upload is skipped; always-include, replace and remove work with confirmations
+worker: LAPTOP-SU9MG22P:41619:62ad1dfc started
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:0 - "POST /api/v1/auth/register HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "POST /api/v1/provisioning/self-service HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/551572fb-3dd4-45a9-8111-1651442ce31a/inbox/counts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/551572fb-3dd4-45a9-8111-1651442ce31a/bots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/551572fb-3dd4-45a9-8111-1651442ce31a/inbox?limit=5 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/551572fb-3dd4-45a9-8111-1651442ce31a/quota HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/551572fb-3dd4-45a9-8111-1651442ce31a/analytics/timeseries?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/551572fb-3dd4-45a9-8111-1651442ce31a/analytics?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/551572fb-3dd4-45a9-8111-1651442ce31a/channels HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/platform/tenants?limit=200&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/551572fb-3dd4-45a9-8111-1651442ce31a/bots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/551572fb-3dd4-45a9-8111-1651442ce31a/quota HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/551572fb-3dd4-45a9-8111-1651442ce31a/bots/bc090e42-c08c-40ed-97a7-6671dc4d70b1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/551572fb-3dd4-45a9-8111-1651442ce31a/bots/bc090e42-c08c-40ed-97a7-6671dc4d70b1/readiness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/551572fb-3dd4-45a9-8111-1651442ce31a/bots/bc090e42-c08c-40ed-97a7-6671dc4d70b1/rag HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/551572fb-3dd4-45a9-8111-1651442ce31a/bots/bc090e42-c08c-40ed-97a7-6671dc4d70b1/revisions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/551572fb-3dd4-45a9-8111-1651442ce31a/bots/bc090e42-c08c-40ed-97a7-6671dc4d70b1/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/551572fb-3dd4-45a9-8111-1651442ce31a/bots/bc090e42-c08c-40ed-97a7-6671dc4d70b1/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/551572fb-3dd4-45a9-8111-1651442ce31a/bots/bc090e42-c08c-40ed-97a7-6671dc4d70b1/documents?revision=published HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/551572fb-3dd4-45a9-8111-1651442ce31a/bots/bc090e42-c08c-40ed-97a7-6671dc4d70b1/sources/files HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/551572fb-3dd4-45a9-8111-1651442ce31a/bots/bc090e42-c08c-40ed-97a7-6671dc4d70b1/ingestion HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/551572fb-3dd4-45a9-8111-1651442ce31a/bots/bc090e42-c08c-40ed-97a7-6671dc4d70b1/revisions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/551572fb-3dd4-45a9-8111-1651442ce31a/bots/bc090e42-c08c-40ed-97a7-6671dc4d70b1/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/551572fb-3dd4-45a9-8111-1651442ce31a/bots/bc090e42-c08c-40ed-97a7-6671dc4d70b1/documents?revision=published HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/551572fb-3dd4-45a9-8111-1651442ce31a/bots/bc090e42-c08c-40ed-97a7-6671dc4d70b1/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/551572fb-3dd4-45a9-8111-1651442ce31a/bots/bc090e42-c08c-40ed-97a7-6671dc4d70b1/sources/files HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/551572fb-3dd4-45a9-8111-1651442ce31a/bots/bc090e42-c08c-40ed-97a7-6671dc4d70b1/ingestion HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/551572fb-3dd4-45a9-8111-1651442ce31a/bots/bc090e42-c08c-40ed-97a7-6671dc4d70b1/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/551572fb-3dd4-45a9-8111-1651442ce31a/bots/bc090e42-c08c-40ed-97a7-6671dc4d70b1/documents?revision=published HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/551572fb-3dd4-45a9-8111-1651442ce31a/bots/bc090e42-c08c-40ed-97a7-6671dc4d70b1/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/551572fb-3dd4-45a9-8111-1651442ce31a/bots/bc090e42-c08c-40ed-97a7-6671dc4d70b1/revisions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/551572fb-3dd4-45a9-8111-1651442ce31a/bots/bc090e42-c08c-40ed-97a7-6671dc4d70b1/documents?revision=published HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/551572fb-3dd4-45a9-8111-1651442ce31a/bots/bc090e42-c08c-40ed-97a7-6671dc4d70b1/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/551572fb-3dd4-45a9-8111-1651442ce31a/bots/bc090e42-c08c-40ed-97a7-6671dc4d70b1/revisions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/551572fb-3dd4-45a9-8111-1651442ce31a/bots/bc090e42-c08c-40ed-97a7-6671dc4d70b1/jobs HTTP/1.1" 200 OK
+  1) [chromium] › tests/knowledge.spec.ts:204:5 › duplicate upload is skipped; always-include, replace and remove work with confirmations 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByText(/already uploaded/)
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByText(/already uploaded/) with timeout 5000ms
+      - waiting for getByText(/already uploaded/)
+
+
+      231 |     .setInputFiles({ ...fixture, name: "copy-of-brochure.md" });
+      232 |   await page.getByRole("button", { name: "Ingest files" }).click();
+    > 233 |   await expect(page.getByText(/already uploaded/)).toBeVisible();
+          |                                                    ^
+      234 |   await openTab(page, "Files");
+      235 |   await expect(sources.locator("li")).toHaveCount(1);
+      236 |
+        at /mnt/d/Projects/Work Projects/The Osiris Labs/ManyOsirisChat/.closeout-worktrees/c4-c5/apps/web/tests/knowledge.spec.ts:233:52
+
+    Error Context: test-results/knowledge-duplicate-upload-5d863-ove-work-with-confirmations-chromium/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/knowledge-duplicate-upload-5d863-ove-work-with-confirmations-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/knowledge-duplicate-upload-5d863-ove-work-with-confirmations-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[2/5] [chromium] › tests/overview.spec.ts:144:5 › workspace shell + measured overview with per-bot scoping and CSV
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:0 - "POST /api/v1/auth/register HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "POST /api/v1/provisioning/self-service HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a9badcb9-568b-4cf1-b5c2-ceee9a984fdb/bots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a9badcb9-568b-4cf1-b5c2-ceee9a984fdb/inbox/counts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a9badcb9-568b-4cf1-b5c2-ceee9a984fdb/inbox?limit=5 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a9badcb9-568b-4cf1-b5c2-ceee9a984fdb/quota HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a9badcb9-568b-4cf1-b5c2-ceee9a984fdb/analytics/timeseries?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a9badcb9-568b-4cf1-b5c2-ceee9a984fdb/channels HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a9badcb9-568b-4cf1-b5c2-ceee9a984fdb/analytics?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/platform/tenants?limit=200&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a9badcb9-568b-4cf1-b5c2-ceee9a984fdb/bots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a9badcb9-568b-4cf1-b5c2-ceee9a984fdb/quota HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a9badcb9-568b-4cf1-b5c2-ceee9a984fdb/bots/402a5d05-c6fa-415d-9512-d19847c8a2b4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "PATCH /api/v1/tenants/a9badcb9-568b-4cf1-b5c2-ceee9a984fdb/bots/402a5d05-c6fa-415d-9512-d19847c8a2b4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a9badcb9-568b-4cf1-b5c2-ceee9a984fdb/bots/402a5d05-c6fa-415d-9512-d19847c8a2b4/readiness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/a9badcb9-568b-4cf1-b5c2-ceee9a984fdb/bots/402a5d05-c6fa-415d-9512-d19847c8a2b4/sources/files HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a9badcb9-568b-4cf1-b5c2-ceee9a984fdb/bots/402a5d05-c6fa-415d-9512-d19847c8a2b4/rag HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/a9badcb9-568b-4cf1-b5c2-ceee9a984fdb/bots/402a5d05-c6fa-415d-9512-d19847c8a2b4/ingestion HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a9badcb9-568b-4cf1-b5c2-ceee9a984fdb/bots/402a5d05-c6fa-415d-9512-d19847c8a2b4/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a9badcb9-568b-4cf1-b5c2-ceee9a984fdb/bots/402a5d05-c6fa-415d-9512-d19847c8a2b4/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a9badcb9-568b-4cf1-b5c2-ceee9a984fdb/bots/402a5d05-c6fa-415d-9512-d19847c8a2b4/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a9badcb9-568b-4cf1-b5c2-ceee9a984fdb/bots/402a5d05-c6fa-415d-9512-d19847c8a2b4/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a9badcb9-568b-4cf1-b5c2-ceee9a984fdb/bots/402a5d05-c6fa-415d-9512-d19847c8a2b4/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a9badcb9-568b-4cf1-b5c2-ceee9a984fdb/bots/402a5d05-c6fa-415d-9512-d19847c8a2b4/revisions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/a9badcb9-568b-4cf1-b5c2-ceee9a984fdb/bots/402a5d05-c6fa-415d-9512-d19847c8a2b4/revisions/45437447-e8f9-4bea-a895-df3b48e9d6dd/publish HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a9badcb9-568b-4cf1-b5c2-ceee9a984fdb/bots/402a5d05-c6fa-415d-9512-d19847c8a2b4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:0 - "POST /api/v1/auth/register HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "POST /api/v1/provisioning/self-service HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/7e7b8df4-d148-4efc-9d24-cf05ec6fe066/bots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/7e7b8df4-d148-4efc-9d24-cf05ec6fe066/inbox/counts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/7e7b8df4-d148-4efc-9d24-cf05ec6fe066/inbox?limit=5 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/7e7b8df4-d148-4efc-9d24-cf05ec6fe066/quota HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/7e7b8df4-d148-4efc-9d24-cf05ec6fe066/analytics/timeseries?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/7e7b8df4-d148-4efc-9d24-cf05ec6fe066/channels HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/7e7b8df4-d148-4efc-9d24-cf05ec6fe066/analytics?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/platform/tenants?limit=200&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/7e7b8df4-d148-4efc-9d24-cf05ec6fe066/bots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/7e7b8df4-d148-4efc-9d24-cf05ec6fe066/quota HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/7e7b8df4-d148-4efc-9d24-cf05ec6fe066/bots/ac3ddd39-949e-484e-ba7f-aad224abacc8 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "PATCH /api/v1/tenants/7e7b8df4-d148-4efc-9d24-cf05ec6fe066/bots/ac3ddd39-949e-484e-ba7f-aad224abacc8 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/7e7b8df4-d148-4efc-9d24-cf05ec6fe066/bots/ac3ddd39-949e-484e-ba7f-aad224abacc8/readiness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/7e7b8df4-d148-4efc-9d24-cf05ec6fe066/bots/ac3ddd39-949e-484e-ba7f-aad224abacc8/rag HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/7e7b8df4-d148-4efc-9d24-cf05ec6fe066/bots/ac3ddd39-949e-484e-ba7f-aad224abacc8/sources/files HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/7e7b8df4-d148-4efc-9d24-cf05ec6fe066/bots/ac3ddd39-949e-484e-ba7f-aad224abacc8/ingestion HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/7e7b8df4-d148-4efc-9d24-cf05ec6fe066/bots/ac3ddd39-949e-484e-ba7f-aad224abacc8/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/7e7b8df4-d148-4efc-9d24-cf05ec6fe066/bots/ac3ddd39-949e-484e-ba7f-aad224abacc8/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/7e7b8df4-d148-4efc-9d24-cf05ec6fe066/bots/ac3ddd39-949e-484e-ba7f-aad224abacc8/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/7e7b8df4-d148-4efc-9d24-cf05ec6fe066/bots/ac3ddd39-949e-484e-ba7f-aad224abacc8/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/7e7b8df4-d148-4efc-9d24-cf05ec6fe066/bots/ac3ddd39-949e-484e-ba7f-aad224abacc8/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/7e7b8df4-d148-4efc-9d24-cf05ec6fe066/bots/ac3ddd39-949e-484e-ba7f-aad224abacc8/revisions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/7e7b8df4-d148-4efc-9d24-cf05ec6fe066/bots/ac3ddd39-949e-484e-ba7f-aad224abacc8/revisions/f5fa948b-2740-486e-ab35-584276eaac3f/publish HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/7e7b8df4-d148-4efc-9d24-cf05ec6fe066/bots/ac3ddd39-949e-484e-ba7f-aad224abacc8 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54988 - "GET /api/v1/platform/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/platform/tenants?limit=200&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54988 - "GET /api/public/v1/widgets/w8a2d37cfc60b2bff26f5437e5c897604/frame-ancestors HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/public/v1/widgets/w8a2d37cfc60b2bff26f5437e5c897604/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/platform/tenants?limit=200&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/public/v1/widgets/w8a2d37cfc60b2bff26f5437e5c897604/sessions HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "POST /api/public/v1/sessions/e63f4998-88d9-4d7e-9c99-c90ac4fa92d8/messages/stream HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/public/v1/sessions/e63f4998-88d9-4d7e-9c99-c90ac4fa92d8/messages?since=2026-10-28T08%3A52%3A29.849Z HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/public/v1/sessions/e63f4998-88d9-4d7e-9c99-c90ac4fa92d8/lead HTTP/1.1" 201 Created
+INFO:     127.0.0.1:54988 - "GET /api/v1/platform/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/platform/tenants?limit=200&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54988 - "GET /api/public/v1/widgets/w8a2d37cfc60b2bff26f5437e5c897604/frame-ancestors HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/public/v1/widgets/w8a2d37cfc60b2bff26f5437e5c897604/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/public/v1/sessions/e63f4998-88d9-4d7e-9c99-c90ac4fa92d8/messages HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/platform/tenants?limit=200&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/public/v1/sessions/e63f4998-88d9-4d7e-9c99-c90ac4fa92d8/messages/stream HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/public/v1/sessions/e63f4998-88d9-4d7e-9c99-c90ac4fa92d8/messages?since=2026-10-28T08%3A52%3A30.631Z HTTP/1.1" 200 OK
+  2) [chromium] › tests/overview.spec.ts:144:5 › workspace shell + measured overview with per-bot scoping and CSV 
+
+    Error: expect(locator).not.toHaveText(expected) failed
+
+    Locator:  locator('[data-testid=\'widget-frame\']').contentFrame().locator('[data-testid=\'widget-frame-body\']').getByTestId('widget-announce')
+    Expected: not ""
+    Received: ""
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "not toHaveText" locator('[data-testid=\'widget-frame\']').contentFrame().locator('[data-testid=\'widget-frame-body\']').getByTestId('widget-announce') with timeout 5000ms
+      - waiting for locator('[data-testid=\'widget-frame\']').contentFrame().locator('[data-testid=\'widget-frame-body\']').getByTestId('widget-announce')
+        14 × locator resolved to <p role="status" class="sr-only" aria-live="polite" data-testid="widget-announce"></p>
+           - unexpected value ""
+
+
+      125 |   await expect(input).toBeEnabled();
+      126 |   await expect(frame.getByTestId("widget-stop")).toHaveCount(0);
+    > 127 |   await expect(frame.getByTestId("widget-announce")).not.toHaveText("");
+          |                                                          ^
+      128 |   await expect(frame.getByTestId("widget-ai-msg").last()).toBeVisible({
+      129 |     timeout: 45_000,
+      130 |   });
+        at visitAndLead (/mnt/d/Projects/Work Projects/The Osiris Labs/ManyOsirisChat/.closeout-worktrees/c4-c5/apps/web/tests/overview.spec.ts:127:58)
+        at /mnt/d/Projects/Work Projects/The Osiris Labs/ManyOsirisChat/.closeout-worktrees/c4-c5/apps/web/tests/overview.spec.ts:161:3
+
+    Error Context: test-results/overview-workspace-shell-m-699e6-ith-per-bot-scoping-and-CSV-chromium/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/overview-workspace-shell-m-699e6-ith-per-bot-scoping-and-CSV-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/overview-workspace-shell-m-699e6-ith-per-bot-scoping-and-CSV-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[3/5] [chromium] › tests/overview.spec.ts:228:5 › unanswered list shows the question the bot could not confirm
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:0 - "POST /api/v1/auth/register HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "POST /api/v1/provisioning/self-service HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/5f411c68-a634-42ef-8677-ae6d8f6f838d/bots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/5f411c68-a634-42ef-8677-ae6d8f6f838d/inbox/counts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/5f411c68-a634-42ef-8677-ae6d8f6f838d/inbox?limit=5 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/5f411c68-a634-42ef-8677-ae6d8f6f838d/quota HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/5f411c68-a634-42ef-8677-ae6d8f6f838d/analytics/timeseries?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/5f411c68-a634-42ef-8677-ae6d8f6f838d/channels HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/5f411c68-a634-42ef-8677-ae6d8f6f838d/analytics?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/platform/tenants?limit=200&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/5f411c68-a634-42ef-8677-ae6d8f6f838d/bots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/5f411c68-a634-42ef-8677-ae6d8f6f838d/quota HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/5f411c68-a634-42ef-8677-ae6d8f6f838d/bots/c56497d4-ba27-4f4b-ab63-b12e9e433f92 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "PATCH /api/v1/tenants/5f411c68-a634-42ef-8677-ae6d8f6f838d/bots/c56497d4-ba27-4f4b-ab63-b12e9e433f92 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/5f411c68-a634-42ef-8677-ae6d8f6f838d/bots/c56497d4-ba27-4f4b-ab63-b12e9e433f92/readiness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/5f411c68-a634-42ef-8677-ae6d8f6f838d/bots/c56497d4-ba27-4f4b-ab63-b12e9e433f92/sources/files HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/5f411c68-a634-42ef-8677-ae6d8f6f838d/bots/c56497d4-ba27-4f4b-ab63-b12e9e433f92/rag HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/5f411c68-a634-42ef-8677-ae6d8f6f838d/bots/c56497d4-ba27-4f4b-ab63-b12e9e433f92/ingestion HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/5f411c68-a634-42ef-8677-ae6d8f6f838d/bots/c56497d4-ba27-4f4b-ab63-b12e9e433f92/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/5f411c68-a634-42ef-8677-ae6d8f6f838d/bots/c56497d4-ba27-4f4b-ab63-b12e9e433f92/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/5f411c68-a634-42ef-8677-ae6d8f6f838d/bots/c56497d4-ba27-4f4b-ab63-b12e9e433f92/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/5f411c68-a634-42ef-8677-ae6d8f6f838d/bots/c56497d4-ba27-4f4b-ab63-b12e9e433f92/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/5f411c68-a634-42ef-8677-ae6d8f6f838d/bots/c56497d4-ba27-4f4b-ab63-b12e9e433f92/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/5f411c68-a634-42ef-8677-ae6d8f6f838d/bots/c56497d4-ba27-4f4b-ab63-b12e9e433f92/revisions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/5f411c68-a634-42ef-8677-ae6d8f6f838d/bots/c56497d4-ba27-4f4b-ab63-b12e9e433f92/revisions/e8a00bc2-fc64-43ce-97cc-2d9c51bdfae6/publish HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/5f411c68-a634-42ef-8677-ae6d8f6f838d/bots/c56497d4-ba27-4f4b-ab63-b12e9e433f92 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35276 - "GET /api/v1/platform/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/platform/tenants?limit=200&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35276 - "GET /api/public/v1/widgets/w08b4d4ca58a4115baeddb67e3297ad35/frame-ancestors HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/public/v1/widgets/w08b4d4ca58a4115baeddb67e3297ad35/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/platform/tenants?limit=200&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/public/v1/widgets/w08b4d4ca58a4115baeddb67e3297ad35/sessions HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "POST /api/public/v1/sessions/f4182c43-7ba9-4fb1-b900-00a485b3caa9/messages/stream HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/public/v1/sessions/f4182c43-7ba9-4fb1-b900-00a485b3caa9/messages?since=2026-10-28T08%3A52%3A43.923Z HTTP/1.1" 200 OK
+  3) [chromium] › tests/overview.spec.ts:228:5 › unanswered list shows the question the bot could not confirm 
+
+    Error: expect(locator).not.toHaveText(expected) failed
+
+    Locator:  locator('[data-testid=\'widget-frame\']').contentFrame().locator('[data-testid=\'widget-frame-body\']').getByTestId('widget-announce')
+    Expected: not ""
+    Received: ""
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "not toHaveText" locator('[data-testid=\'widget-frame\']').contentFrame().locator('[data-testid=\'widget-frame-body\']').getByTestId('widget-announce') with timeout 5000ms
+      - waiting for locator('[data-testid=\'widget-frame\']').contentFrame().locator('[data-testid=\'widget-frame-body\']').getByTestId('widget-announce')
+        14 × locator resolved to <p role="status" class="sr-only" aria-live="polite" data-testid="widget-announce"></p>
+           - unexpected value ""
+
+
+      125 |   await expect(input).toBeEnabled();
+      126 |   await expect(frame.getByTestId("widget-stop")).toHaveCount(0);
+    > 127 |   await expect(frame.getByTestId("widget-announce")).not.toHaveText("");
+          |                                                          ^
+      128 |   await expect(frame.getByTestId("widget-ai-msg").last()).toBeVisible({
+      129 |     timeout: 45_000,
+      130 |   });
+        at visitAndLead (/mnt/d/Projects/Work Projects/The Osiris Labs/ManyOsirisChat/.closeout-worktrees/c4-c5/apps/web/tests/overview.spec.ts:127:58)
+        at /mnt/d/Projects/Work Projects/The Osiris Labs/ManyOsirisChat/.closeout-worktrees/c4-c5/apps/web/tests/overview.spec.ts:233:3
+
+    Error Context: test-results/overview-unanswered-list-s-ebe0f-n-the-bot-could-not-confirm-chromium/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/overview-unanswered-list-s-ebe0f-n-the-bot-could-not-confirm-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/overview-unanswered-list-s-ebe0f-n-the-bot-could-not-confirm-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[4/5] [chromium] › tests/privacy-terms.spec.ts:7:7 › /privacy is publicly readable without a staff session
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+[5/5] [chromium] › tests/privacy-terms.spec.ts:7:7 › /terms is publicly readable without a staff session
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+[e2e] Stopped the E2E API server.
+[e2e] Stopped the E2E worker.
+  3 failed
+    [chromium] › tests/knowledge.spec.ts:204:5 › duplicate upload is skipped; always-include, replace and remove work with confirmations 
+    [chromium] › tests/overview.spec.ts:144:5 › workspace shell + measured overview with per-bot scoping and CSV 
+    [chromium] › tests/overview.spec.ts:228:5 › unanswered list shows the question the bot could not confirm 
+  2 passed (2.3m)
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [41611]
