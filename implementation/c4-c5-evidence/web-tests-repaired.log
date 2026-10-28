@@ -1,0 +1,224 @@
+[e2e] Starting API on http://127.0.0.1:8115/health with disposable database /many_test_c4_c5_e2e_test.
+e2e-db-ready
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO:     Started server process [43333]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8115 (Press CTRL+C to quit)
+INFO:     127.0.0.1:59608 - "GET /health HTTP/1.1" 200 OK
+[e2e] Started the DB worker (python -m app.worker).
+
+Running 3 tests using 1 worker
+
+[1/3] [chromium] › tests/knowledge.spec.ts:204:5 › duplicate upload is skipped; always-include, replace and remove work with confirmations
+worker: LAPTOP-SU9MG22P:43336:63a94e6c started
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:0 - "POST /api/v1/auth/register HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "POST /api/v1/provisioning/self-service HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/inbox/counts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/inbox?limit=5 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/quota HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/analytics/timeseries?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/channels HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/analytics?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/platform/tenants?limit=200&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/quota HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/readiness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/rag HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/revisions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/documents?revision=published HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/sources/files HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/ingestion HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/documents?revision=published HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/revisions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/sources/files HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/ingestion HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/documents?revision=published HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/revisions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/documents?revision=published HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/revisions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "PUT /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/sources/a273f8bf-580e-45ed-b070-b39a075b37b3/always-include HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/documents?revision=published HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/revisions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/sources/a273f8bf-580e-45ed-b070-b39a075b37b3/replace HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/documents?revision=published HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/revisions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "DELETE /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/sources/a273f8bf-580e-45ed-b070-b39a075b37b3 HTTP/1.1" 204 No Content
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/documents?revision=published HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/3a2ccd80-b00d-422b-8925-355665484edb/bots/b264294e-f543-40a5-9aef-74c8d6bb0899/revisions HTTP/1.1" 200 OK
+[2/3] [chromium] › tests/overview.spec.ts:151:5 › workspace shell + measured overview with per-bot scoping and CSV
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:0 - "POST /api/v1/auth/register HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "POST /api/v1/provisioning/self-service HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/297ce83f-846f-421c-bc0c-8bf3f6b58f5c/bots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/297ce83f-846f-421c-bc0c-8bf3f6b58f5c/inbox/counts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/297ce83f-846f-421c-bc0c-8bf3f6b58f5c/inbox?limit=5 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/297ce83f-846f-421c-bc0c-8bf3f6b58f5c/quota HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/297ce83f-846f-421c-bc0c-8bf3f6b58f5c/analytics/timeseries?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/297ce83f-846f-421c-bc0c-8bf3f6b58f5c/channels HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/297ce83f-846f-421c-bc0c-8bf3f6b58f5c/analytics?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/platform/tenants?limit=200&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/297ce83f-846f-421c-bc0c-8bf3f6b58f5c/bots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/297ce83f-846f-421c-bc0c-8bf3f6b58f5c/quota HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/297ce83f-846f-421c-bc0c-8bf3f6b58f5c/bots/cb211be3-0f1f-41cf-9abc-6a15dfa1e08b HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "PATCH /api/v1/tenants/297ce83f-846f-421c-bc0c-8bf3f6b58f5c/bots/cb211be3-0f1f-41cf-9abc-6a15dfa1e08b HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/297ce83f-846f-421c-bc0c-8bf3f6b58f5c/bots/cb211be3-0f1f-41cf-9abc-6a15dfa1e08b/readiness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/297ce83f-846f-421c-bc0c-8bf3f6b58f5c/bots/cb211be3-0f1f-41cf-9abc-6a15dfa1e08b/sources/files HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/297ce83f-846f-421c-bc0c-8bf3f6b58f5c/bots/cb211be3-0f1f-41cf-9abc-6a15dfa1e08b/rag HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/297ce83f-846f-421c-bc0c-8bf3f6b58f5c/bots/cb211be3-0f1f-41cf-9abc-6a15dfa1e08b/ingestion HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/297ce83f-846f-421c-bc0c-8bf3f6b58f5c/bots/cb211be3-0f1f-41cf-9abc-6a15dfa1e08b/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/297ce83f-846f-421c-bc0c-8bf3f6b58f5c/bots/cb211be3-0f1f-41cf-9abc-6a15dfa1e08b/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/297ce83f-846f-421c-bc0c-8bf3f6b58f5c/bots/cb211be3-0f1f-41cf-9abc-6a15dfa1e08b/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/297ce83f-846f-421c-bc0c-8bf3f6b58f5c/bots/cb211be3-0f1f-41cf-9abc-6a15dfa1e08b/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/297ce83f-846f-421c-bc0c-8bf3f6b58f5c/bots/cb211be3-0f1f-41cf-9abc-6a15dfa1e08b/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/297ce83f-846f-421c-bc0c-8bf3f6b58f5c/bots/cb211be3-0f1f-41cf-9abc-6a15dfa1e08b/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/297ce83f-846f-421c-bc0c-8bf3f6b58f5c/bots/cb211be3-0f1f-41cf-9abc-6a15dfa1e08b/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/297ce83f-846f-421c-bc0c-8bf3f6b58f5c/bots/cb211be3-0f1f-41cf-9abc-6a15dfa1e08b/revisions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/297ce83f-846f-421c-bc0c-8bf3f6b58f5c/bots/cb211be3-0f1f-41cf-9abc-6a15dfa1e08b/revisions/96053237-c2ca-47b2-bd58-395db86003d9/publish HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/297ce83f-846f-421c-bc0c-8bf3f6b58f5c/bots/cb211be3-0f1f-41cf-9abc-6a15dfa1e08b HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:0 - "POST /api/v1/auth/register HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "POST /api/v1/provisioning/self-service HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a2b05edc-d471-4cbd-a683-07dc40554348/inbox/counts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a2b05edc-d471-4cbd-a683-07dc40554348/inbox?limit=5 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a2b05edc-d471-4cbd-a683-07dc40554348/bots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a2b05edc-d471-4cbd-a683-07dc40554348/quota HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a2b05edc-d471-4cbd-a683-07dc40554348/channels HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a2b05edc-d471-4cbd-a683-07dc40554348/analytics/timeseries?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a2b05edc-d471-4cbd-a683-07dc40554348/analytics?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/platform/tenants?limit=200&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a2b05edc-d471-4cbd-a683-07dc40554348/bots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a2b05edc-d471-4cbd-a683-07dc40554348/quota HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a2b05edc-d471-4cbd-a683-07dc40554348/bots/1f2b7546-ea7c-401a-9242-c46e7c997605 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "PATCH /api/v1/tenants/a2b05edc-d471-4cbd-a683-07dc40554348/bots/1f2b7546-ea7c-401a-9242-c46e7c997605 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a2b05edc-d471-4cbd-a683-07dc40554348/bots/1f2b7546-ea7c-401a-9242-c46e7c997605/readiness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/a2b05edc-d471-4cbd-a683-07dc40554348/bots/1f2b7546-ea7c-401a-9242-c46e7c997605/sources/files HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a2b05edc-d471-4cbd-a683-07dc40554348/bots/1f2b7546-ea7c-401a-9242-c46e7c997605/rag HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/a2b05edc-d471-4cbd-a683-07dc40554348/bots/1f2b7546-ea7c-401a-9242-c46e7c997605/ingestion HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a2b05edc-d471-4cbd-a683-07dc40554348/bots/1f2b7546-ea7c-401a-9242-c46e7c997605/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a2b05edc-d471-4cbd-a683-07dc40554348/bots/1f2b7546-ea7c-401a-9242-c46e7c997605/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a2b05edc-d471-4cbd-a683-07dc40554348/bots/1f2b7546-ea7c-401a-9242-c46e7c997605/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a2b05edc-d471-4cbd-a683-07dc40554348/bots/1f2b7546-ea7c-401a-9242-c46e7c997605/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a2b05edc-d471-4cbd-a683-07dc40554348/bots/1f2b7546-ea7c-401a-9242-c46e7c997605/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a2b05edc-d471-4cbd-a683-07dc40554348/bots/1f2b7546-ea7c-401a-9242-c46e7c997605/revisions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/a2b05edc-d471-4cbd-a683-07dc40554348/bots/1f2b7546-ea7c-401a-9242-c46e7c997605/revisions/090966de-eebd-474c-9e25-e7c4d20719b1/publish HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a2b05edc-d471-4cbd-a683-07dc40554348/bots/1f2b7546-ea7c-401a-9242-c46e7c997605 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48588 - "GET /api/v1/platform/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/platform/tenants?limit=200&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48588 - "GET /api/public/v1/widgets/wde273198f39282fceffe46f2a6ba7d50/frame-ancestors HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/public/v1/widgets/wde273198f39282fceffe46f2a6ba7d50/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/platform/tenants?limit=200&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/public/v1/widgets/wde273198f39282fceffe46f2a6ba7d50/sessions HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "POST /api/public/v1/sessions/99343808-1ac8-4f5f-b214-da2cdf872644/messages/stream HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/public/v1/sessions/99343808-1ac8-4f5f-b214-da2cdf872644/messages?since=2026-10-28T08%3A56%3A19.644Z HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/public/v1/sessions/99343808-1ac8-4f5f-b214-da2cdf872644/lead HTTP/1.1" 201 Created
+INFO:     127.0.0.1:48588 - "GET /api/v1/platform/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/platform/tenants?limit=200&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48588 - "GET /api/public/v1/widgets/wde273198f39282fceffe46f2a6ba7d50/frame-ancestors HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/public/v1/widgets/wde273198f39282fceffe46f2a6ba7d50/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/public/v1/sessions/99343808-1ac8-4f5f-b214-da2cdf872644/messages HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/platform/tenants?limit=200&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/public/v1/sessions/99343808-1ac8-4f5f-b214-da2cdf872644/messages/stream HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/public/v1/sessions/99343808-1ac8-4f5f-b214-da2cdf872644/messages?since=2026-10-28T08%3A56%3A20.483Z HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/platform/tenants?limit=200&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/297ce83f-846f-421c-bc0c-8bf3f6b58f5c/bots/cb211be3-0f1f-41cf-9abc-6a15dfa1e08b/analytics/unanswered?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/297ce83f-846f-421c-bc0c-8bf3f6b58f5c/bots/cb211be3-0f1f-41cf-9abc-6a15dfa1e08b/analytics/volume?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/297ce83f-846f-421c-bc0c-8bf3f6b58f5c/bots/cb211be3-0f1f-41cf-9abc-6a15dfa1e08b/analytics/top-questions?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/297ce83f-846f-421c-bc0c-8bf3f6b58f5c/bots/cb211be3-0f1f-41cf-9abc-6a15dfa1e08b/analytics/summary?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/297ce83f-846f-421c-bc0c-8bf3f6b58f5c/bots/cb211be3-0f1f-41cf-9abc-6a15dfa1e08b/analytics/leads?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a2b05edc-d471-4cbd-a683-07dc40554348/bots/1f2b7546-ea7c-401a-9242-c46e7c997605/analytics/summary HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/a2b05edc-d471-4cbd-a683-07dc40554348/bots/1f2b7546-ea7c-401a-9242-c46e7c997605/analytics/summary HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/297ce83f-846f-421c-bc0c-8bf3f6b58f5c/bots/cb211be3-0f1f-41cf-9abc-6a15dfa1e08b/analytics/leads.csv HTTP/1.1" 200 OK
+[3/3] [chromium] › tests/overview.spec.ts:235:5 › unanswered list shows the question the bot could not confirm
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:0 - "POST /api/v1/auth/register HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "POST /api/v1/provisioning/self-service HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/9dcffb7a-d9c2-4254-8cf5-10f166faf908/bots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/9dcffb7a-d9c2-4254-8cf5-10f166faf908/inbox/counts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/9dcffb7a-d9c2-4254-8cf5-10f166faf908/inbox?limit=5 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/9dcffb7a-d9c2-4254-8cf5-10f166faf908/quota HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/9dcffb7a-d9c2-4254-8cf5-10f166faf908/analytics/timeseries?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/9dcffb7a-d9c2-4254-8cf5-10f166faf908/channels HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/9dcffb7a-d9c2-4254-8cf5-10f166faf908/analytics?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/platform/tenants?limit=200&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/9dcffb7a-d9c2-4254-8cf5-10f166faf908/bots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/9dcffb7a-d9c2-4254-8cf5-10f166faf908/quota HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/9dcffb7a-d9c2-4254-8cf5-10f166faf908/bots/08f235b9-e692-4ffb-8d89-fa87420a4390 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "PATCH /api/v1/tenants/9dcffb7a-d9c2-4254-8cf5-10f166faf908/bots/08f235b9-e692-4ffb-8d89-fa87420a4390 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/9dcffb7a-d9c2-4254-8cf5-10f166faf908/bots/08f235b9-e692-4ffb-8d89-fa87420a4390/sources/files HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/9dcffb7a-d9c2-4254-8cf5-10f166faf908/bots/08f235b9-e692-4ffb-8d89-fa87420a4390/readiness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/9dcffb7a-d9c2-4254-8cf5-10f166faf908/bots/08f235b9-e692-4ffb-8d89-fa87420a4390/rag HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/9dcffb7a-d9c2-4254-8cf5-10f166faf908/bots/08f235b9-e692-4ffb-8d89-fa87420a4390/ingestion HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/9dcffb7a-d9c2-4254-8cf5-10f166faf908/bots/08f235b9-e692-4ffb-8d89-fa87420a4390/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/9dcffb7a-d9c2-4254-8cf5-10f166faf908/bots/08f235b9-e692-4ffb-8d89-fa87420a4390/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/9dcffb7a-d9c2-4254-8cf5-10f166faf908/bots/08f235b9-e692-4ffb-8d89-fa87420a4390/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/9dcffb7a-d9c2-4254-8cf5-10f166faf908/bots/08f235b9-e692-4ffb-8d89-fa87420a4390/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/9dcffb7a-d9c2-4254-8cf5-10f166faf908/bots/08f235b9-e692-4ffb-8d89-fa87420a4390/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/9dcffb7a-d9c2-4254-8cf5-10f166faf908/bots/08f235b9-e692-4ffb-8d89-fa87420a4390/revisions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/v1/tenants/9dcffb7a-d9c2-4254-8cf5-10f166faf908/bots/08f235b9-e692-4ffb-8d89-fa87420a4390/revisions/480c527a-ecff-49ea-ad17-56e9f859c3a7/publish HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/9dcffb7a-d9c2-4254-8cf5-10f166faf908/bots/08f235b9-e692-4ffb-8d89-fa87420a4390 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59242 - "GET /api/v1/platform/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/platform/tenants?limit=200&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59242 - "GET /api/public/v1/widgets/w37fc835039a5bc5128e1da5035eaf9d7/frame-ancestors HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/public/v1/widgets/w37fc835039a5bc5128e1da5035eaf9d7/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/platform/tenants?limit=200&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "POST /api/public/v1/widgets/w37fc835039a5bc5128e1da5035eaf9d7/sessions HTTP/1.1" 201 Created
+INFO:     127.0.0.1:0 - "POST /api/public/v1/sessions/dc11627c-dc82-4b51-b12c-93bd8e34d825/messages/stream HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/public/v1/sessions/dc11627c-dc82-4b51-b12c-93bd8e34d825/messages?since=2026-10-28T08%3A56%3A25.409Z HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/platform/tenants?limit=200&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/9dcffb7a-d9c2-4254-8cf5-10f166faf908/bots/08f235b9-e692-4ffb-8d89-fa87420a4390/analytics/volume?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/9dcffb7a-d9c2-4254-8cf5-10f166faf908/bots/08f235b9-e692-4ffb-8d89-fa87420a4390/analytics/summary?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/9dcffb7a-d9c2-4254-8cf5-10f166faf908/bots/08f235b9-e692-4ffb-8d89-fa87420a4390/analytics/top-questions?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/9dcffb7a-d9c2-4254-8cf5-10f166faf908/bots/08f235b9-e692-4ffb-8d89-fa87420a4390/analytics/unanswered?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/9dcffb7a-d9c2-4254-8cf5-10f166faf908/bots/08f235b9-e692-4ffb-8d89-fa87420a4390/analytics/leads?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/9dcffb7a-d9c2-4254-8cf5-10f166faf908/bots/08f235b9-e692-4ffb-8d89-fa87420a4390/analytics/summary?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/9dcffb7a-d9c2-4254-8cf5-10f166faf908/bots/08f235b9-e692-4ffb-8d89-fa87420a4390/analytics/top-questions?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/9dcffb7a-d9c2-4254-8cf5-10f166faf908/bots/08f235b9-e692-4ffb-8d89-fa87420a4390/analytics/unanswered?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/9dcffb7a-d9c2-4254-8cf5-10f166faf908/bots/08f235b9-e692-4ffb-8d89-fa87420a4390/analytics/volume?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/v1/tenants/9dcffb7a-d9c2-4254-8cf5-10f166faf908/bots/08f235b9-e692-4ffb-8d89-fa87420a4390/analytics/leads?from=2026-09-29&to=2026-10-28 HTTP/1.1" 200 OK
+[e2e] Stopped the E2E API server.
+[e2e] Stopped the E2E worker.
+  3 passed (1.9m)
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [43333]

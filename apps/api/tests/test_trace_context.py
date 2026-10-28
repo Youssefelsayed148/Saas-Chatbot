@@ -71,7 +71,10 @@ def test_translated_query_is_traced(app: Any, db: OrmSession, corpus: dict[str, 
 def test_zero_evidence_lists_the_top_rejected_candidates(
     app: Any, db: OrmSession, corpus: dict[str, Any]
 ) -> None:
-    strict = settings_of(corpus, retrieval_min_fts_match=1000.0)  # nothing can pass
+    # The gate accepts cosine OR keywords. Disable the vector leg as well
+    # as raising the keyword floor so pgvector-version differences cannot
+    # turn this refusal fixture into an accepted hybrid candidate.
+    strict = settings_of(corpus, retrieval_min_fts_match=1000.0, retrieval_vector_floors={})
     model = EchoFirstEvidenceId("never called", True)
     reply = turn(db, corpus, model, HOURS_Q, strict)
     assert reply.kind == "cannot_confirm" and reply.trace["gate"] == "refused"

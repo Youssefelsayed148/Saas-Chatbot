@@ -1,0 +1,15 @@
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.plugins] setting up autogenerate plugin alembic.autogenerate.schemas
+INFO  [alembic.runtime.plugins] setting up autogenerate plugin alembic.autogenerate.tables
+INFO  [alembic.runtime.plugins] setting up autogenerate plugin alembic.autogenerate.types
+INFO  [alembic.runtime.plugins] setting up autogenerate plugin alembic.autogenerate.constraints
+INFO  [alembic.runtime.plugins] setting up autogenerate plugin alembic.autogenerate.defaults
+INFO  [alembic.runtime.plugins] setting up autogenerate plugin alembic.autogenerate.comments
+/mnt/d/Projects/Work Projects/The Osiris Labs/ManyOsirisChat/.closeout-worktrees/c4-c5/apps/api/alembic/env.py:50: SAWarning: Did not recognize type 'vector' of column 'embedding'
+  context.run_migrations()
+/mnt/d/Projects/Work Projects/The Osiris Labs/ManyOsirisChat/.closeout-worktrees/c4-c5/apps/api/alembic/env.py:50: SAWarning: Cannot correctly sort tables; there are unresolvable cycles between tables "bots, knowledge_revisions", which is usually caused by mutually dependent foreign key constraints.  Foreign key constraints involving these tables will not be considered; this warning may raise an error in a future release.
+  context.run_migrations()
+INFO  [alembic.autogenerate.compare.types] Couldn't determine database type for column 'chunks.embedding'
+INFO  [alembic.autogenerate.compare.types] Couldn't determine database type for column 'chunks.embedding'
+No new upgrade operations detected.

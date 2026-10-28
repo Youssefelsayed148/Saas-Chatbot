@@ -170,7 +170,7 @@ const DONE = (text: string) =>
 
 /** The text of the newest assistant bubble (without the feedback buttons). */
 const lastReply = (page: Page) =>
-  page.getByTestId("widget-ai-msg").last().locator("div[dir=auto]");
+  page.getByTestId("widget-ai-msg").last().locator(".md-body");
 
 async function openFrame(page: Page) {
   await page.goto(`/widget/frame?locator=${LOCATOR}`);
@@ -285,7 +285,7 @@ test("Arabic text streams intact and keeps automatic direction", async ({
   await push(page, sse("delta", { text: "التاسعة." }));
   const bubble = page.getByTestId("widget-ai-msg").last();
   await expect(bubble).toHaveText("نفتح من التاسعة.");
-  await expect(bubble.locator("div[dir=auto]")).toHaveCount(1);
+  await expect(bubble.locator(".md-body [dir=auto]")).toHaveCount(1);
 });
 
 test("Stop aborts the stream, removes the partial bubble and returns the text to the input", async ({

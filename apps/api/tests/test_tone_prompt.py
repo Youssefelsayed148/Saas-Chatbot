@@ -1,6 +1,6 @@
 """#15: staff tone section in the system prompt (no database needed)."""
 
-import hashlib
+from pathlib import Path
 
 from app.chat import prompts
 from app.chat.streaming import evidence_ids
@@ -15,18 +15,21 @@ KWARGS = dict(
     language="en",
     evidence_block=f"[{CHUNK}] Policy p1\nReturns within 30 days.",
 )
-# SHA-256 of the prompt rendered by the template as it was BEFORE the tone
-# section existed (version 2026-10-22.1) for KWARGS, with the one H3 change
-# (2026-10-25.1): the language line carries the name "English", not the code "en".
-BASELINE_SHA256 = "2cd35a176580ccec0f5d7a5a2a4c4595c559079675f48d227007cbea8928cebe"
+# Golden website prompt from main commit d189893, which introduced the
+# approved list/bold formatting rules after the old 2cd35a17 hash was pinned.
+# Preserve these independently captured bytes when empty optional sections
+# (tone, channel style and campaign context) are rendered.
+BASELINE = (Path(__file__).parent / "fixtures/prompts/website-system-d189893.txt").read_text(
+    encoding="utf-8"
+)
 
 
 def test_empty_tone_leaves_prompt_body_byte_identical() -> None:
     for empty in ("", "   \n ", None):
         body = prompts.system_prompt(**KWARGS, tone_and_rules=empty or "")
-        assert hashlib.sha256(body.encode()).hexdigest() == BASELINE_SHA256
+        assert body == BASELINE
     default = prompts.system_prompt(**KWARGS)
-    assert hashlib.sha256(default.encode()).hexdigest() == BASELINE_SHA256
+    assert default == BASELINE
     assert prompts.PROMPT_TEMPLATE_VERSION == "2026-10-25.1"
 
 
