@@ -22,14 +22,30 @@ export RELEASE
 DC=(docker compose -f compose.prod.yaml --env-file "$ENV_FILE")
 echo "Deploying release $RELEASE"
 
+umask 077
 mkdir -p backups
 "${DC[@]}" config --quiet
-"${DC[@]}" build
-# Back up before migrating an existing database.
-if "${DC[@]}" ps --status running db 2>/dev/null | grep -q db; then
-  "${DC[@]}" exec -T backup sh -c 'pg_dump --format=custom --no-owner -f /backups/pre-deploy-'"$RELEASE"'.dump' \
-    || echo "WARNING: pre-deploy backup failed" >&2
+# A failed status query must stop the script, not look like a first deploy.
+database_container="$("${DC[@]}" ps --status running --quiet db)"
+if [ -n "$database_container" ]; then
+  # Use the database container directly; the scheduled backup service may be down.
+  # A failed dump/archive check aborts before build or migration (set -e).
+  backup_path="backups/pre-deploy-${RELEASE}-$(date -u +%Y%m%dT%H%M%SZ).dump"
+  (
+    set -o noclobber
+    "${DC[@]}" exec -T db sh -c 'exec pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom --no-owner' >"${backup_path}.partial"
+  )
+  test -s "${backup_path}.partial"
+  "${DC[@]}" exec -T db pg_restore --list <"${backup_path}.partial" >/dev/null
+  mv -- "${backup_path}.partial" "$backup_path"
+  echo "Verified pre-deploy archive: $backup_path"
+else
+  echo "No running database to back up. For an existing deployment, stop and start its database before rebuilding." >&2
+  # First installs require a separate explicit path; a stopped existing database
+  # must never be mistaken for an empty installation and migrated without a dump.
+  exit 1
 fi
+"${DC[@]}" build
 "${DC[@]}" up -d --wait --remove-orphans
 
 DOMAIN="$(grep -E '^DOMAIN=' "$ENV_FILE" | cut -d= -f2-)"

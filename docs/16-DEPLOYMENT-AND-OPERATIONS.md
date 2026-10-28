@@ -2,7 +2,9 @@
 
 Local Compose: PostgreSQL pgvector, FastAPI, Next.js, worker. `.env.example`
 placeholder-only; no live secrets in Git. Staging uses separate database and
-keys; production provider undecided. Apply Alembic migrations as release step;
+keys. ADR-007 hosting is decided (owner 2026-10-28): the existing VPS runs
+Docker Compose with Caddy; close-out rebuilds it without provisioning a new
+provider. Apply Alembic migrations as release step;
 backups and restore drill before production; health/readiness checks,
 structured logs with request/tenant correlation but no sensitive payloads,
 error tracking, resource/cost alerts, rate limits, retention/delete process.
@@ -13,7 +15,8 @@ resources or enable public crawling without explicit approval.
 
 ### Environment variables (names only; values go in the process env / .env.example, never in Git)
 
-- `CHANNEL_SECRET_ENCRYPTION_KEYS` — required in production startup (Fernet keys, newest first, comma separated).
+- `CHANNEL_SECRET_ENCRYPTION_KEYS` - required in production startup and passed to API and worker by the shared Compose environment (Fernet keys, newest first, comma separated). Preserve deployed keys on rebuild; see `DEPLOY.md` for secure generation without terminal output.
+- `DOMAIN` - the public Caddy host name; Many uses `https://<DOMAIN>` as the SaaS base URL. No SaaS `APP_BASE_URL` setting exists. Internal `API_PROXY_TARGET` / `PLATFORM_GUARD_ORIGIN` stay on the Compose network.
 - `DATABASE_URL` — API and worker.
 - `ENVIRONMENT` — startup guard refuses stub models and tests out of production.
 - `CHAT_STUB_MODEL` / `EMBEDDING_TEST_STUB` — test-only; production startup refuses both.
@@ -33,10 +36,28 @@ Text to UUID, playground key moved to `external_conversation_id`) ·
 (unique live `(channel, many_channel_ref)`; refuses to run if duplicates exist,
 fix them first) · `0028_channel_unconfirmed` (`messages.accepted_at`,
 `unconfirmed` delivery state) · `0029_channel_event_payload_purge` (`channel_events.payload` nullable for retention) · `0030_channel_health_poll_index` (partial index for the health scheduler's last-poll lookup; no behaviour change). All are reversible and were round-trip tested on
-the disposable database. Apply them before booting the API and worker.
+the disposable database in the historical build report; that is not a fresh
+close-out rehearsal. The supported pre-P6 starting revision is
+`0022_knowledge_hygiene`, with one head `0030_channel_health_poll_index` at
+this source. Before any approved migration: record current/head, confirm the
+existing database/project/volumes, obtain the script's nonempty custom-format
+pre-deploy dump, check its archive listing, and rehearse restoration and
+0022 to 0030 migration on a disposable database. Stop for unexpected revisions or
+drift; do not stamp or use `create_all`. Apply migrations before booting the
+new API/worker. `scripts/deploy.sh` aborts before build or migration if the
+existing database is not running, the dump fails or the archive is invalid.
+No production migration, rebuild or fresh rehearsal is asserted by this text;
+these remain **UNVERIFIED** pending recorded operator evidence.
 
 ### Health model (contract v1.1 A9) and what to watch
 
+- `compose.prod.yaml` runs the same API image with `python -m app.worker`.
+  Source dispatch in `app/jobs/runner.py` registers `channel_inbound`,
+  `channel_send` and `channel_health_poll`; `app/worker/__main__.py` schedules
+  health polls plus `sweep_unconfirmed` on the configured interval (300 s by
+  default). No separate channel daemon/Redis is required. Runtime liveness,
+  job completion and real Many connectivity remain **UNVERIFIED** until checked
+  after an approved rebuild; a heartbeat alone proves neither jobs nor sends.
 - Health comes from three signals: pushed `channel.status` events, the signed
   5-minute pull (worker job `channel_health_poll`, active connections only) and
   staff "Check now". Many's signed health endpoint is mandatory.
@@ -89,8 +110,11 @@ the disposable database. Apply them before booting the API and worker.
   secret/clock mismatch.
 - Messages that failed because the connection was paused can be sent again by
   an agent with the inbox "Send again" action (never automatic).
-- Rollback = pause first (loses nothing). Last resort: revoke, deploy the
-  previous image, then downgrade one step at a time (0030 → 0029 → ...). The
+- Rollback = pause first. Already accepted/in-flight messages cannot be
+  recalled; verify outstanding jobs separately. Keep the migrated schema while
+  assessing a compatible image/forward fix. `deploy.sh --rollback` runs
+  `alembic upgrade head` from the older checkout, so it is not an automatic
+  schema rollback and can fail on an unrecognized newer revision. The
   downgrade of 0024 FAILS once channel contacts without email or phone exist
   (it restores the "reachable" check), and the downgrade of 0023 drops the
   connections, events and per-conversation channel ids and can fail on

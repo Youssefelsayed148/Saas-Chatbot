@@ -24,6 +24,7 @@ x-app-environment: &app-environment
   <<: *database-environment
   STORAGE_ROOT: /data/storage
   COOKIE_SECURE: "true"
+  CHANNEL_SECRET_ENCRYPTION_KEYS: ${CHANNEL_SECRET_ENCRYPTION_KEYS:?Set CHANNEL_SECRET_ENCRYPTION_KEYS in .env.production}
   EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-openai}
   EMBEDDING_MODEL: ${EMBEDDING_MODEL:-}
   CHAT_OPENAI_API_KEY: ${CHAT_OPENAI_API_KEY:?Set CHAT_OPENAI_API_KEY in .env.production}
