@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="16" time="7.436" timestamp="2026-10-28T11:38:53.853945+03:00" hostname="LAPTOP-SU9MG22P"><testcase classname="tests.test_channel_erasure" name="test_erasure_rejects_malformed_identity_without_effects[None]" time="0.854" /><testcase classname="tests.test_channel_erasure" name="test_erasure_rejects_malformed_identity_without_effects[]" time="0.548" /><testcase classname="tests.test_channel_erasure" name="test_erasure_rejects_malformed_identity_without_effects[   ]" time="0.441" /><testcase classname="tests.test_channel_erasure" name="test_erasure_rejects_malformed_identity_without_effects[123]" time="0.357" /><testcase classname="tests.test_channel_erasure" name="test_erasure_rejects_malformed_identity_without_effects[person\x00x]" time="0.330" /><testcase classname="tests.test_channel_erasure" name="test_erasure_auth_header_match_paused_acceptance_and_revocation" time="0.628" /><testcase classname="tests.test_channel_erasure" name="test_erasure_is_tenant_and_connection_scoped_and_cancels_pending_content" time="0.691" /><testcase classname="tests.test_channel_erasure" name="test_missing_identity_is_success_and_delayed_input_is_fenced_but_new_recontact_allowed" time="0.394" /><testcase classname="tests.test_channel_erasure" name="test_same_tenant_same_external_id_on_other_connection_is_preserved" time="0.482" /><testcase classname="tests.test_channel_erasure" name="test_explicitly_merged_contact_erases_linked_connection_payloads" time="0.425" /><testcase classname="tests.test_channel_erasure" name="test_worker_refreshes_after_waiting_for_erasure_lock" time="0.389" /><testcase classname="tests.test_channel_erasure" name="test_erasure_failure_rolls_back_and_can_retry" time="0.462" /><testcase classname="tests.test_channel_erasure" name="test_claimed_send_revalidates_after_erasure_before_http" time="0.505"><failure message="NameError: name 'build_test_settings' is not defined">client = &lt;starlette.testclient.TestClient object at 0x7445ed86c6b0&gt;
+app = &lt;fastapi.applications.FastAPI object at 0x7445ee01b560&gt;
+db = &lt;sqlalchemy.orm.session.Session object at 0x7445edee61e0&gt;
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7445edee41a0&gt;
+
+    def test_claimed_send_revalidates_after_erasure_before_http(
+        client: Any,
+        app: Any,
+        db: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -&gt; None:
+        conn, secret, _contact = _seed(client, app, db)
+        conversation = db.scalar(select(Conversation).where(Conversation.connection_id == conn))
+        assert conversation is not None
+        message = Message(
+            tenant_id=conversation.tenant_id,
+            bot_id=conversation.bot_id,
+            conversation_id=conversation.id,
+            sender_type="agent",
+            text="erase before send",
+            delivery_status="pending",
+        )
+        db.add(message)
+        db.flush()
+        job = Job(
+            tenant_id=conversation.tenant_id,
+            bot_id=conversation.bot_id,
+            type="channel_send",
+            status="running",
+            payload={"message_id": str(message.id)},
+            attempts=1,
+            max_attempts=6,
+        )
+        db.add(job)
+        db.commit()
+        assert (
+            _send(client, conn, secret, _erase_payload(conn, event_id="erase-before-http")).status_code
+            == 202
+        )
+        original_lock = erasure.channel_work_lock
+        triggered = False
+    
+        @contextmanager
+        def erase_before_sender_takes_lock(*args: Any, **kwargs: Any) -&gt; Any:
+            nonlocal triggered
+            if not triggered:
+                triggered = True
+                _run_event(db, "erase-before-http")
+            with original_lock(*args, **kwargs):
+                yield
+    
+        monkeypatch.setattr(erasure, "channel_work_lock", erase_before_sender_takes_lock)
+        monkeypatch.setattr(outbound, "post_message", lambda *a, **k: pytest.fail("HTTP after erase"))
+&gt;       assert outbound.run_channel_send(db, job, build_test_settings()) is None
+                                                  ^^^^^^^^^^^^^^^^^^^
+E       NameError: name 'build_test_settings' is not defined
+
+tests/test_channel_erasure.py:408: NameError</failure></testcase><testcase classname="tests.test_channel_erasure" name="test_identity_lock_and_digest_are_scoped_and_release" time="0.024" /><testcase classname="tests.test_channel_migrations" name="test_channel_migration_up_down_up_preserves_website_rows" time="0.137" /><testcase classname="tests.test_channel_outbound" name="test_send_migration_round_trip_and_unique_message_key" time="0.074" /></testsuite></testsuites>

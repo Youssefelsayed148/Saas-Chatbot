@@ -351,9 +351,11 @@ def test_schedule_health_polls_orders_never_polled_then_least_recent(app: Any, d
 
 
 def test_poll_migration_round_trip_and_unique_live_job(db: Any, engine: Any) -> None:
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
     from sqlalchemy import text
 
-    from tests.conftest import run_migrations
+    from tests.conftest import API_DIR, run_migrations
 
     url = engine.url.render_as_string(hide_password=False)
     db.close()
@@ -361,7 +363,9 @@ def test_poll_migration_round_trip_and_unique_live_job(db: Any, engine: Any) -> 
     run_migrations(url)
     with engine.connect() as conn:
         version = conn.scalar(text("SELECT version_num FROM alembic_version"))
-        assert version == "0030_channel_health_poll_index"
+        heads = ScriptDirectory.from_config(Config(API_DIR / "alembic.ini")).get_heads()
+        assert len(heads) == 1
+        assert version == heads[0]
         assert (
             conn.scalar(
                 text(

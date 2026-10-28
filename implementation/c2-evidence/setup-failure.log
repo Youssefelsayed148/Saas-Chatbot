@@ -1,0 +1,2848 @@
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE       [100%]
+==================================== ERRORS ====================================
+_ ERROR at setup of test_erasure_rejects_malformed_identity_without_effects[None] _
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_ ERROR at setup of test_erasure_rejects_malformed_identity_without_effects[] __
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_ ERROR at setup of test_erasure_rejects_malformed_identity_without_effects[   ] _
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_ ERROR at setup of test_erasure_rejects_malformed_identity_without_effects[123] _
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_ ERROR at setup of test_erasure_rejects_malformed_identity_without_effects[person\x00x] _
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_ ERROR at setup of test_erasure_auth_header_match_paused_acceptance_and_revocation _
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_ ERROR at setup of test_erasure_is_tenant_and_connection_scoped_and_cancels_pending_content _
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_ ERROR at setup of test_missing_identity_is_success_and_delayed_input_is_fenced_but_new_recontact_allowed _
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_ ERROR at setup of test_explicitly_merged_contact_erases_linked_connection_payloads _
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+____ ERROR at setup of test_worker_refreshes_after_waiting_for_erasure_lock ____
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_______ ERROR at setup of test_erasure_failure_rolls_back_and_can_retry ________
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+____ ERROR at setup of test_identity_lock_and_digest_are_scoped_and_release ____
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+___ ERROR at setup of test_event_hmac_auth_matrix_and_signed_malformed_body ____
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_ ERROR at setup of test_revoked_and_wrong_valid_connection_have_same_generic_401 _
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_ ERROR at setup of test_event_duplicate_replay_paused_acceptance_and_atomic_enqueue _
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_ ERROR at setup of test_unknown_type_is_stored_ignored_and_oversized_is_generic_401 _
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_______ ERROR at setup of test_connection_rate_limit_returns_retry_after _______
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_ ERROR at setup of test_tenant_scoping_and_processed_job_rerun_are_idempotent _
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_ ERROR at setup of test_inbound_dedupe_sanitization_and_origin_is_written_once _
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_ ERROR at setup of test_message_status_is_monotonic_and_health_ignores_old_events _
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_ ERROR at setup of test_channel_pipeline_truncates_only_model_input_and_stores_pending_reply _
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_ ERROR at setup of test_human_mode_is_silent_and_resolved_conversation_reopens_in_ai_mode _
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+____ ERROR at setup of test_ai_disabled_and_unsupported_hourly_reply_rules _____
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_ ERROR at setup of test_quota_and_provider_failures_store_handoff_replies_without_logging_text _
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_ ERROR at setup of test_success_duplicate_current_secret_rotation_and_no_text_logs _
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_________ ERROR at setup of test_retry_then_success_with_same_id[500] __________
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_______ ERROR at setup of test_retry_then_success_with_same_id[outcome1] _______
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_______ ERROR at setup of test_retry_then_success_with_same_id[outcome2] _______
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_______ ERROR at setup of test_retry_then_success_with_same_id[outcome3] _______
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_____ ERROR at setup of test_permanent_4xx_and_callback_reason_not_retried _____
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+___________________ ERROR at setup of test_retry_exhaustion ____________________
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_____________ ERROR at setup of test_401_is_retried_then_succeeds ______________
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_______ ERROR at setup of test_401_until_budget_gives_many_auth_rejected _______
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_ ERROR at setup of test_401_then_timeouts_until_budget_still_gives_many_auth_rejected _
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_ ERROR at setup of test_timeouts_then_401_at_budget_gives_many_auth_rejected __
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_ ERROR at setup of test_transient_failures_without_any_401_stay_many_unreachable _
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+___________ ERROR at setup of test_requeue_clears_the_remembered_401 ___________
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_____ ERROR at setup of test_paused_at_job_time[paused-connection_paused] ______
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+____ ERROR at setup of test_paused_at_job_time[revoked-connection_revoked] _____
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_ ERROR at setup of test_resume_does_not_resend_messages_failed_with_connection_paused _
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_____ ERROR at setup of test_send_time_target_rejection[http://127.0.0.1] ______
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+__ ERROR at setup of test_send_time_target_rejection[ftp://many.example.test] __
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_____ ERROR at setup of test_send_time_target_rejection[http://localhost] ______
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_ ERROR at setup of test_send_time_target_rejection[https://many.example.test] _
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_______ ERROR at setup of test_long_reply_order_and_enqueue_idempotency ________
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+___ ERROR at setup of test_status_callbacks_and_out_of_order[window_closed] ____
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_ ERROR at setup of test_status_callbacks_and_out_of_order[template_required] __
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_ ERROR at setup of test_status_callbacks_and_out_of_order[recipient_unreachable] _
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_ ERROR at setup of test_agent_reply_pause_atomic_enqueue_notes_and_tenant_isolation _
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_ ERROR at setup of test_website_agent_reply_keeps_response_and_has_no_outbox __
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+________ ERROR at setup of test_channel_pipeline_enqueues_final_replies ________
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+____ ERROR at setup of test_redirect_response_cap_and_invalid_ack[redirect] ____
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_ ERROR at setup of test_redirect_response_cap_and_invalid_ack[permanent_403] __
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_ ERROR at setup of test_redirect_response_cap_and_invalid_ack[permanent_404] __
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_ ERROR at setup of test_redirect_response_cap_and_invalid_ack[permanent_422] __
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+__ ERROR at setup of test_redirect_response_cap_and_invalid_ack[invalid_ack] ___
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_ ERROR at setup of test_redirect_response_cap_and_invalid_ack[oversized_response] _
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+___ ERROR at setup of test_send_migration_round_trip_and_unique_message_key ____
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+______ ERROR at setup of test_job_unique_key_and_foreign_job_cannot_send _______
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+___ ERROR at setup of test_job_queued_before_rotation_signs_with_new_secret ____
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_ ERROR at setup of test_gzipped_202_is_readable_and_identity_encoding_is_requested _
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+____________ ERROR at setup of test_retry_after_from_many_is_capped ____________
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_ ERROR at setup of test_undecryptable_secret_is_its_own_error_not_many_unreachable _
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_ ERROR at setup of test_aborted_turn_is_redriven_on_retry_with_exactly_one_reply _
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+_ ERROR at setup of test_aborted_website_turn_discards_the_unanswered_visitor_message _
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+__ ERROR at setup of test_channel_migration_up_down_up_preserves_website_rows __
+
+    @pytest.fixture(scope="session")
+    def engine() -> Iterator[Engine]:
+        base_url = _base_database_url()
+        main_url = disposable_url(base_url, str(make_url(base_url).database) + "_test")
+        create_database(base_url, str(make_url(main_url).database))
+        os.environ["DATABASE_URL"] = main_url
+        os.environ["ENVIRONMENT"] = "test"
+        get_settings.cache_clear()
+        engine = create_db_engine(build_test_settings(main_url))
+        set_engine(engine)
+>       run_migrations(main_url)
+
+tests/conftest.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:87: in run_migrations
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url(database_url))
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:354: in set_main_option
+    self.set_section_option(self.config_ini_section, name, value)
+/var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/alembic/config.py:387: in set_section_option
+    self.file_config.set(section, name, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:1192: in set
+    super().set(section, option, value)
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:878: in set
+    value = self._interpolation.before_set(self, section, option,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <configparser.BasicInterpolation object at 0x71c526fb7ad0>
+parser = <configparser.ConfigParser object at 0x71c523dccd40>
+section = 'alembic', option = 'sqlalchemy.url'
+value = 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443'
+
+    def before_set(self, parser, section, option, value):
+        tmp_value = value.replace('%%', '') # escaped percent signs
+        tmp_value = self._KEYCRE.sub('', tmp_value) # valid syntax
+        if '%' in tmp_value:
+>           raise ValueError("invalid interpolation syntax in %r at "
+                             "position %d" % (value, tmp_value.find('%')))
+E           ValueError: invalid interpolation syntax in 'postgresql+psycopg://postgres@/many_test_c2_test?host=%2Fvar%2Ftmp%2Fsaas-c2-20261028%2Fsocket&port=55443' at position 54
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/configparser.py:374: ValueError
+=============================== warnings summary ===============================
+../../../../saas-closeout-tools/venv/lib/python3.12/site-packages/fastapi/testclient.py:1
+  /var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+ERROR tests/test_channel_erasure.py::test_erasure_rejects_malformed_identity_without_effects[None]
+ERROR tests/test_channel_erasure.py::test_erasure_rejects_malformed_identity_without_effects[]
+ERROR tests/test_channel_erasure.py::test_erasure_rejects_malformed_identity_without_effects[   ]
+ERROR tests/test_channel_erasure.py::test_erasure_rejects_malformed_identity_without_effects[123]
+ERROR tests/test_channel_erasure.py::test_erasure_rejects_malformed_identity_without_effects[person\x00x]
+ERROR tests/test_channel_erasure.py::test_erasure_auth_header_match_paused_acceptance_and_revocation
+ERROR tests/test_channel_erasure.py::test_erasure_is_tenant_and_connection_scoped_and_cancels_pending_content
+ERROR tests/test_channel_erasure.py::test_missing_identity_is_success_and_delayed_input_is_fenced_but_new_recontact_allowed
+ERROR tests/test_channel_erasure.py::test_explicitly_merged_contact_erases_linked_connection_payloads
+ERROR tests/test_channel_erasure.py::test_worker_refreshes_after_waiting_for_erasure_lock
+ERROR tests/test_channel_erasure.py::test_erasure_failure_rolls_back_and_can_retry
+ERROR tests/test_channel_erasure.py::test_identity_lock_and_digest_are_scoped_and_release
+ERROR tests/test_channel_events.py::test_event_hmac_auth_matrix_and_signed_malformed_body
+ERROR tests/test_channel_events.py::test_revoked_and_wrong_valid_connection_have_same_generic_401
+ERROR tests/test_channel_events.py::test_event_duplicate_replay_paused_acceptance_and_atomic_enqueue
+ERROR tests/test_channel_events.py::test_unknown_type_is_stored_ignored_and_oversized_is_generic_401
+ERROR tests/test_channel_events.py::test_connection_rate_limit_returns_retry_after
+ERROR tests/test_channel_events.py::test_tenant_scoping_and_processed_job_rerun_are_idempotent
+ERROR tests/test_channel_events.py::test_inbound_dedupe_sanitization_and_origin_is_written_once
+ERROR tests/test_channel_events.py::test_message_status_is_monotonic_and_health_ignores_old_events
+ERROR tests/test_channel_events.py::test_channel_pipeline_truncates_only_model_input_and_stores_pending_reply
+ERROR tests/test_channel_events.py::test_human_mode_is_silent_and_resolved_conversation_reopens_in_ai_mode
+ERROR tests/test_channel_events.py::test_ai_disabled_and_unsupported_hourly_reply_rules
+ERROR tests/test_channel_events.py::test_quota_and_provider_failures_store_handoff_replies_without_logging_text
+ERROR tests/test_channel_outbound.py::test_success_duplicate_current_secret_rotation_and_no_text_logs
+ERROR tests/test_channel_outbound.py::test_retry_then_success_with_same_id[500]
+ERROR tests/test_channel_outbound.py::test_retry_then_success_with_same_id[outcome1]
+ERROR tests/test_channel_outbound.py::test_retry_then_success_with_same_id[outcome2]
+ERROR tests/test_channel_outbound.py::test_retry_then_success_with_same_id[outcome3]
+ERROR tests/test_channel_outbound.py::test_permanent_4xx_and_callback_reason_not_retried
+ERROR tests/test_channel_outbound.py::test_retry_exhaustion - ValueError: inv...
+ERROR tests/test_channel_outbound.py::test_401_is_retried_then_succeeds - Val...
+ERROR tests/test_channel_outbound.py::test_401_until_budget_gives_many_auth_rejected
+ERROR tests/test_channel_outbound.py::test_401_then_timeouts_until_budget_still_gives_many_auth_rejected
+ERROR tests/test_channel_outbound.py::test_timeouts_then_401_at_budget_gives_many_auth_rejected
+ERROR tests/test_channel_outbound.py::test_transient_failures_without_any_401_stay_many_unreachable
+ERROR tests/test_channel_outbound.py::test_requeue_clears_the_remembered_401
+ERROR tests/test_channel_outbound.py::test_paused_at_job_time[paused-connection_paused]
+ERROR tests/test_channel_outbound.py::test_paused_at_job_time[revoked-connection_revoked]
+ERROR tests/test_channel_outbound.py::test_resume_does_not_resend_messages_failed_with_connection_paused
+ERROR tests/test_channel_outbound.py::test_send_time_target_rejection[http://127.0.0.1]
+ERROR tests/test_channel_outbound.py::test_send_time_target_rejection[ftp://many.example.test]
+ERROR tests/test_channel_outbound.py::test_send_time_target_rejection[http://localhost]
+ERROR tests/test_channel_outbound.py::test_send_time_target_rejection[https://many.example.test]
+ERROR tests/test_channel_outbound.py::test_long_reply_order_and_enqueue_idempotency
+ERROR tests/test_channel_outbound.py::test_status_callbacks_and_out_of_order[window_closed]
+ERROR tests/test_channel_outbound.py::test_status_callbacks_and_out_of_order[template_required]
+ERROR tests/test_channel_outbound.py::test_status_callbacks_and_out_of_order[recipient_unreachable]
+ERROR tests/test_channel_outbound.py::test_agent_reply_pause_atomic_enqueue_notes_and_tenant_isolation
+ERROR tests/test_channel_outbound.py::test_website_agent_reply_keeps_response_and_has_no_outbox
+ERROR tests/test_channel_outbound.py::test_channel_pipeline_enqueues_final_replies
+ERROR tests/test_channel_outbound.py::test_redirect_response_cap_and_invalid_ack[redirect]
+ERROR tests/test_channel_outbound.py::test_redirect_response_cap_and_invalid_ack[permanent_403]
+ERROR tests/test_channel_outbound.py::test_redirect_response_cap_and_invalid_ack[permanent_404]
+ERROR tests/test_channel_outbound.py::test_redirect_response_cap_and_invalid_ack[permanent_422]
+ERROR tests/test_channel_outbound.py::test_redirect_response_cap_and_invalid_ack[invalid_ack]
+ERROR tests/test_channel_outbound.py::test_redirect_response_cap_and_invalid_ack[oversized_response]
+ERROR tests/test_channel_outbound.py::test_send_migration_round_trip_and_unique_message_key
+ERROR tests/test_channel_outbound.py::test_job_unique_key_and_foreign_job_cannot_send
+ERROR tests/test_channel_outbound.py::test_job_queued_before_rotation_signs_with_new_secret
+ERROR tests/test_channel_outbound.py::test_gzipped_202_is_readable_and_identity_encoding_is_requested
+ERROR tests/test_channel_outbound.py::test_retry_after_from_many_is_capped - ...
+ERROR tests/test_channel_outbound.py::test_undecryptable_secret_is_its_own_error_not_many_unreachable
+ERROR tests/test_channel_redrive.py::test_aborted_turn_is_redriven_on_retry_with_exactly_one_reply
+ERROR tests/test_channel_redrive.py::test_aborted_website_turn_discards_the_unanswered_visitor_message
+ERROR tests/test_channel_migrations.py::test_channel_migration_up_down_up_preserves_website_rows
+1 warning, 66 errors in 3.01s

@@ -1,0 +1,383 @@
+{
+  "note": "Latest outcome per test across attempts; NOT a single green 78-test run.",
+  "attempts": {
+    "setup-failure": {
+      "tests": 66,
+      "passed": 0,
+      "failed": 0,
+      "errors": 66,
+      "skipped": 0
+    },
+    "attempt-1": {
+      "tests": 66,
+      "passed": 64,
+      "failed": 2,
+      "errors": 0,
+      "skipped": 0
+    },
+    "attempt-2": {
+      "tests": 16,
+      "passed": 15,
+      "failed": 1,
+      "errors": 0,
+      "skipped": 0
+    },
+    "attempt-3": {
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "attempt-4": {
+      "tests": 15,
+      "passed": 15,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "attempt-5": {
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "attempt-6": {
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "attempt-7": {
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "tests": {
+      "tests": 32,
+      "passed": 32,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "latest_unique_tests": 78,
+  "latest": {
+    "tests.test_channel_erasure::test_erasure_rejects_malformed_identity_without_effects[None]": {
+      "status": "passed",
+      "evidence": "tests"
+    },
+    "tests.test_channel_erasure::test_erasure_rejects_malformed_identity_without_effects[]": {
+      "status": "passed",
+      "evidence": "tests"
+    },
+    "tests.test_channel_erasure::test_erasure_rejects_malformed_identity_without_effects[   ]": {
+      "status": "passed",
+      "evidence": "tests"
+    },
+    "tests.test_channel_erasure::test_erasure_rejects_malformed_identity_without_effects[123]": {
+      "status": "passed",
+      "evidence": "tests"
+    },
+    "tests.test_channel_erasure::test_erasure_rejects_malformed_identity_without_effects[person\\x00x]": {
+      "status": "passed",
+      "evidence": "tests"
+    },
+    "tests.test_channel_erasure::test_erasure_auth_header_match_paused_acceptance_and_revocation": {
+      "status": "passed",
+      "evidence": "tests"
+    },
+    "tests.test_channel_erasure::test_erasure_is_tenant_and_connection_scoped_and_cancels_pending_content": {
+      "status": "passed",
+      "evidence": "tests"
+    },
+    "tests.test_channel_erasure::test_missing_identity_is_success_and_delayed_input_is_fenced_but_new_recontact_allowed": {
+      "status": "passed",
+      "evidence": "tests"
+    },
+    "tests.test_channel_erasure::test_explicitly_merged_contact_erases_linked_connection_payloads": {
+      "status": "passed",
+      "evidence": "tests"
+    },
+    "tests.test_channel_erasure::test_worker_refreshes_after_waiting_for_erasure_lock": {
+      "status": "passed",
+      "evidence": "tests"
+    },
+    "tests.test_channel_erasure::test_erasure_failure_rolls_back_and_can_retry": {
+      "status": "passed",
+      "evidence": "tests"
+    },
+    "tests.test_channel_erasure::test_identity_lock_and_digest_are_scoped_and_release": {
+      "status": "passed",
+      "evidence": "tests"
+    },
+    "tests.test_channel_events::test_event_hmac_auth_matrix_and_signed_malformed_body": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_events::test_revoked_and_wrong_valid_connection_have_same_generic_401": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_events::test_event_duplicate_replay_paused_acceptance_and_atomic_enqueue": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_events::test_unknown_type_is_stored_ignored_and_oversized_is_generic_401": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_events::test_connection_rate_limit_returns_retry_after": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_events::test_tenant_scoping_and_processed_job_rerun_are_idempotent": {
+      "status": "passed",
+      "evidence": "tests"
+    },
+    "tests.test_channel_events::test_inbound_dedupe_sanitization_and_origin_is_written_once": {
+      "status": "passed",
+      "evidence": "tests"
+    },
+    "tests.test_channel_events::test_message_status_is_monotonic_and_health_ignores_old_events": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_events::test_channel_pipeline_truncates_only_model_input_and_stores_pending_reply": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_events::test_human_mode_is_silent_and_resolved_conversation_reopens_in_ai_mode": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_events::test_ai_disabled_and_unsupported_hourly_reply_rules": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_events::test_quota_and_provider_failures_store_handoff_replies_without_logging_text": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_outbound::test_success_duplicate_current_secret_rotation_and_no_text_logs": {
+      "status": "passed",
+      "evidence": "tests"
+    },
+    "tests.test_channel_outbound::test_retry_then_success_with_same_id[500]": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_outbound::test_retry_then_success_with_same_id[outcome1]": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_outbound::test_retry_then_success_with_same_id[outcome2]": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_outbound::test_retry_then_success_with_same_id[outcome3]": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_outbound::test_permanent_4xx_and_callback_reason_not_retried": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_outbound::test_retry_exhaustion": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_outbound::test_401_is_retried_then_succeeds": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_outbound::test_401_until_budget_gives_many_auth_rejected": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_outbound::test_401_then_timeouts_until_budget_still_gives_many_auth_rejected": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_outbound::test_timeouts_then_401_at_budget_gives_many_auth_rejected": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_outbound::test_transient_failures_without_any_401_stay_many_unreachable": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_outbound::test_requeue_clears_the_remembered_401": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_outbound::test_paused_at_job_time[paused-connection_paused]": {
+      "status": "passed",
+      "evidence": "tests"
+    },
+    "tests.test_channel_outbound::test_paused_at_job_time[revoked-connection_revoked]": {
+      "status": "passed",
+      "evidence": "tests"
+    },
+    "tests.test_channel_outbound::test_resume_does_not_resend_messages_failed_with_connection_paused": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_outbound::test_send_time_target_rejection[http://127.0.0.1]": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_outbound::test_send_time_target_rejection[ftp://many.example.test]": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_outbound::test_send_time_target_rejection[http://localhost]": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_outbound::test_send_time_target_rejection[https://many.example.test]": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_outbound::test_long_reply_order_and_enqueue_idempotency": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_outbound::test_status_callbacks_and_out_of_order[window_closed]": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_outbound::test_status_callbacks_and_out_of_order[template_required]": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_outbound::test_status_callbacks_and_out_of_order[recipient_unreachable]": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_outbound::test_agent_reply_pause_atomic_enqueue_notes_and_tenant_isolation": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_outbound::test_website_agent_reply_keeps_response_and_has_no_outbox": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_outbound::test_channel_pipeline_enqueues_final_replies": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_outbound::test_redirect_response_cap_and_invalid_ack[redirect]": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_outbound::test_redirect_response_cap_and_invalid_ack[permanent_403]": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_outbound::test_redirect_response_cap_and_invalid_ack[permanent_404]": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_outbound::test_redirect_response_cap_and_invalid_ack[permanent_422]": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_outbound::test_redirect_response_cap_and_invalid_ack[invalid_ack]": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_outbound::test_redirect_response_cap_and_invalid_ack[oversized_response]": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_outbound::test_send_migration_round_trip_and_unique_message_key": {
+      "status": "passed",
+      "evidence": "tests"
+    },
+    "tests.test_channel_outbound::test_job_unique_key_and_foreign_job_cannot_send": {
+      "status": "passed",
+      "evidence": "tests"
+    },
+    "tests.test_channel_outbound::test_job_queued_before_rotation_signs_with_new_secret": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_outbound::test_gzipped_202_is_readable_and_identity_encoding_is_requested": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_outbound::test_retry_after_from_many_is_capped": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_outbound::test_undecryptable_secret_is_its_own_error_not_many_unreachable": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_redrive::test_aborted_turn_is_redriven_on_retry_with_exactly_one_reply": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_redrive::test_aborted_website_turn_discards_the_unanswered_visitor_message": {
+      "status": "passed",
+      "evidence": "attempt-1"
+    },
+    "tests.test_channel_migrations::test_channel_migration_up_down_up_preserves_website_rows": {
+      "status": "passed",
+      "evidence": "tests"
+    },
+    "tests.test_channel_erasure::test_same_tenant_same_external_id_on_other_connection_is_preserved": {
+      "status": "passed",
+      "evidence": "tests"
+    },
+    "tests.test_channel_erasure::test_claimed_send_revalidates_after_erasure_before_http": {
+      "status": "passed",
+      "evidence": "tests"
+    },
+    "tests.test_channel_erasure::test_erasure_scrubs_usage_trace_without_refunding_consumed_quota": {
+      "status": "passed",
+      "evidence": "tests"
+    },
+    "tests.test_channel_erasure::test_missing_erasure_payload_remains_visible_for_operator_action": {
+      "status": "passed",
+      "evidence": "tests"
+    },
+    "tests.test_channel_health::test_poll_migration_round_trip_and_unique_live_job": {
+      "status": "passed",
+      "evidence": "tests"
+    },
+    "tests.test_channel_erasure::test_staff_merge_between_identity_read_and_contact_lock_requires_retry[True]": {
+      "status": "passed",
+      "evidence": "tests"
+    },
+    "tests.test_channel_erasure::test_staff_merge_between_identity_read_and_contact_lock_requires_retry[False]": {
+      "status": "passed",
+      "evidence": "tests"
+    },
+    "tests.test_channel_erasure::test_same_connection_merged_identities_keep_each_conversation_recipient[bound]": {
+      "status": "passed",
+      "evidence": "tests"
+    },
+    "tests.test_channel_erasure::test_same_connection_merged_identities_keep_each_conversation_recipient[historical]": {
+      "status": "passed",
+      "evidence": "tests"
+    },
+    "tests.test_channel_erasure::test_same_connection_merged_identities_keep_each_conversation_recipient[ambiguous]": {
+      "status": "passed",
+      "evidence": "tests"
+    },
+    "tests.test_channel_erasure::test_mismatched_conversation_identity_is_rejected_or_quarantined_without_processing_other_identity": {
+      "status": "passed",
+      "evidence": "tests"
+    },
+    "tests.test_channel_erasure::test_erasure_schema_recipient_column_and_fence_round_trip": {
+      "status": "passed",
+      "evidence": "tests"
+    }
+  }
+}

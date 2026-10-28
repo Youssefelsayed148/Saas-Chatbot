@@ -19,7 +19,7 @@ from app.channels.signing import verify
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
 from app.core.ratelimit import rate_limit
-from app.db.models import ChannelConnection, ChannelEvent
+from app.db.models import ChannelConnection, ChannelEvent, Conversation
 from app.db.session import get_session
 from app.jobs.queue import enqueue_job
 
@@ -128,6 +128,29 @@ def _validate_payload(
                 value = origin.get(key)
                 if value is not None and (not isinstance(value, str) or len(value) > maximum):
                     raise ValueError("origin")
+    elif event_type == "contact.erasure":
+        external_id = payload.get("external_contact_id")
+        if (
+            not event_id.strip()
+            or "\x00" in event_id
+            or not isinstance(external_id, str)
+            or not external_id.strip()
+            or "\x00" in external_id
+        ):
+            raise ValueError("external_contact_id")
+        # Unknown fields remain forward-compatible, but aren't retained as an
+        # accidental second copy of customer content in this erasure request.
+        payload = {
+            key: payload[key]
+            for key in (
+                "version",
+                "event_id",
+                "event_type",
+                "connection_id",
+                "occurred_at",
+                "external_contact_id",
+            )
+        }
     elif event_type == "message.status":
         if not isinstance(payload.get("status"), str) or payload["status"] not in {
             "sent",
@@ -208,6 +231,20 @@ def _ingest(
         raise ApiError(422, "VALIDATION_ERROR", "Signed event body failed validation.") from None
     if content_type.split(";")[0].strip().lower() != "application/json":
         raise ApiError(422, "VALIDATION_ERROR", "Signed event body failed validation.")
+    if payload["event_type"] == "message.received":
+        conversation = db.scalar(
+            select(Conversation).where(
+                Conversation.tenant_id == connection.tenant_id,
+                Conversation.connection_id == connection.id,
+                Conversation.external_conversation_id == payload["external_conversation_id"],
+            )
+        )
+        if (
+            conversation is not None
+            and conversation.external_contact_id is not None
+            and conversation.external_contact_id != payload["external_contact_id"]
+        ):
+            raise ApiError(422, "VALIDATION_ERROR", "Signed event body failed validation.")
 
     now = datetime.now(UTC)
     count, _remaining = rate_limit(
@@ -228,6 +265,7 @@ def _ingest(
 
     existing = db.scalar(
         select(ChannelEvent).where(
+            ChannelEvent.tenant_id == connection.tenant_id,
             ChannelEvent.connection_id == connection_id,
             ChannelEvent.event_id == payload["event_id"],
         )
@@ -260,6 +298,7 @@ def _ingest(
     except IntegrityError:
         existing = db.scalar(
             select(ChannelEvent).where(
+                ChannelEvent.tenant_id == connection.tenant_id,
                 ChannelEvent.connection_id == connection_id,
                 ChannelEvent.event_id == payload["event_id"],
             )

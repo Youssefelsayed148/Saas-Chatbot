@@ -1,0 +1,217 @@
+.........................................................F.......F       [100%]
+=================================== FAILURES ===================================
+____________ test_send_migration_round_trip_and_unique_message_key _____________
+
+db = <sqlalchemy.orm.session.Session object at 0x77f8002c2510>
+engine = Engine(postgresql+psycopg://postgres@/many_test_c2_test)
+
+    def test_send_migration_round_trip_and_unique_message_key(db: Session, engine: Engine) -> None:
+        url = engine.url.render_as_string(hide_password=False)
+        db.close()
+        run_migrations(url, upgrade_to="", downgrade_to="0024_channel_inbound")
+        run_migrations(url)
+        with engine.connect() as conn:
+            version = conn.scalar(text("SELECT version_num FROM alembic_version"))
+>           assert version == "0030_channel_health_poll_index"
+E           AssertionError: assert '0031_contact_erasure' == '0030_channel...th_poll_index'
+E             
+E             - 0030_channel_health_poll_index
+E             + 0031_contact_erasure
+
+tests/test_channel_outbound.py:564: AssertionError
+----------------------------- Captured stderr call -----------------------------
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running downgrade 0031_contact_erasure -> 0030_channel_health_poll_index, Durable pseudonymous cutoffs for A16 contact erasure.
+INFO  [alembic.runtime.migration] Running downgrade 0030_channel_health_poll_index -> 0029_channel_event_payload_purge, Index the last-poll lookup used by the channel health scheduler.
+INFO  [alembic.runtime.migration] Running downgrade 0029_channel_event_payload_purge -> 0028_channel_unconfirmed, ``channel_events.payload`` becomes nullable so retention can purge it (B3).
+INFO  [alembic.runtime.migration] Running downgrade 0028_channel_unconfirmed -> 0027_channel_ref_unique, Delivery state ``unconfirmed`` and ``messages.accepted_at`` (A2, D8).
+INFO  [alembic.runtime.migration] Running downgrade 0027_channel_ref_unique -> 0026_channel_health_poll, One live connection per (channel, many_channel_ref) (D11, contract v1.1).
+INFO  [alembic.runtime.migration] Running downgrade 0026_channel_health_poll -> 0025_channel_send, Register the periodic channel health poll job (PLAN D10, docs/17 §5.2).
+INFO  [alembic.runtime.migration] Running downgrade 0025_channel_send -> 0024_channel_inbound, Register the durable channel send job and enforce one job per message.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade 0024_channel_inbound -> 0025_channel_send, Register the durable channel send job and enforce one job per message.
+INFO  [alembic.runtime.migration] Running upgrade 0025_channel_send -> 0026_channel_health_poll, Register the periodic channel health poll job (PLAN D10, docs/17 §5.2).
+INFO  [alembic.runtime.migration] Running upgrade 0026_channel_health_poll -> 0027_channel_ref_unique, One live connection per (channel, many_channel_ref) (D11, contract v1.1).
+INFO  [alembic.runtime.migration] Running upgrade 0027_channel_ref_unique -> 0028_channel_unconfirmed, Delivery state ``unconfirmed`` and ``messages.accepted_at`` (A2, D8).
+INFO  [alembic.runtime.migration] Running upgrade 0028_channel_unconfirmed -> 0029_channel_event_payload_purge, ``channel_events.payload`` becomes nullable so retention can purge it (B3).
+INFO  [alembic.runtime.migration] Running upgrade 0029_channel_event_payload_purge -> 0030_channel_health_poll_index, Index the last-poll lookup used by the channel health scheduler.
+INFO  [alembic.runtime.migration] Running upgrade 0030_channel_health_poll_index -> 0031_contact_erasure, Durable pseudonymous cutoffs for A16 contact erasure.
+___________ test_channel_migration_up_down_up_preserves_website_rows ___________
+
+db = <sqlalchemy.orm.session.Session object at 0x77f80176de20>
+engine = Engine(postgresql+psycopg://postgres@/many_test_c2_test)
+
+    def test_channel_migration_up_down_up_preserves_website_rows(db: Session, engine: Engine) -> None:
+        tenant_id, bot_id, contact_id, conversation_id = uuid4(), uuid4(), uuid4(), uuid4()
+        identity_id = uuid4()
+        tenant = Tenant(id=tenant_id, name="P6 Migration", slug=f"p6-migration-{tenant_id.hex[:12]}")
+        db.add(tenant)
+        db.flush()
+        bot = Bot(
+            id=bot_id,
+            tenant_id=tenant_id,
+            name="Website bot",
+            status="active",
+            config={},
+            widget_locator=f"w{uuid4().hex}",
+        )
+        db.add(bot)
+        db.flush()
+        contact = Contact(
+            id=contact_id,
+            tenant_id=tenant_id,
+            display_name="Website visitor",
+            email=f"visitor-{tenant_id.hex[:12]}@example.test",
+        )
+        conversation = Conversation(
+            id=conversation_id,
+            tenant_id=tenant_id,
+            bot_id=bot_id,
+            contact_id=contact_id,
+            channel="website",
+            connection_id=None,
+            mode="ai",
+            status="open",
+            source="website",
+        )
+        identity = ContactIdentity(
+            id=identity_id,
+            tenant_id=tenant_id,
+            contact_id=contact_id,
+            channel="website",
+            external_id=f"visitor-{tenant_id.hex}",
+            connection_id=None,
+        )
+        db.add_all([contact, conversation, identity])
+        db.commit()
+        before = (tenant_id, bot_id, contact_id, conversation_id, identity_id)
+        database_url = engine.url.render_as_string(hide_password=False)
+        db.close()
+    
+        run_migrations(database_url, upgrade_to="", downgrade_to="0022_knowledge_hygiene")
+        with engine.connect() as connection:
+            version = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
+            column_type = connection.execute(
+                text(
+                    "SELECT data_type FROM information_schema.columns "
+                    "WHERE table_schema='public' AND table_name='conversations' "
+                    "AND column_name='connection_id'"
+                )
+            ).scalar_one()
+            website_row = connection.execute(
+                text(
+                    "SELECT tenant_id, bot_id, contact_id, id, connection_id "
+                    "FROM conversations WHERE id = :id"
+                ),
+                {"id": conversation_id},
+            ).one()
+            identity_row = connection.execute(
+                text(
+                    "SELECT id, tenant_id, contact_id, channel, external_id "
+                    "FROM contact_identities WHERE id=:id"
+                ),
+                {"id": identity_id},
+            ).one()
+        assert version == "0022_knowledge_hygiene"
+        assert column_type == "text"
+        assert tuple(website_row[:4]) == before[:4] and website_row.connection_id is None
+        assert tuple(identity_row[:3]) == (identity_id, tenant_id, contact_id)
+        assert identity_row.channel == "website"
+        assert identity_row.external_id == f"visitor-{tenant_id.hex}"
+        print("migration 0023 downgrade: at 0022, connection_id is text, website rows preserved")
+    
+        # main keeps the per-user playground key in the old text connection_id.
+        playground_id = uuid4()
+        playground_key = f"playground:{uuid4()}"
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "INSERT INTO conversations (id, tenant_id, bot_id, channel, connection_id, "
+                    "mode, status, source, created_at, updated_at) SELECT :pid, tenant_id, bot_id, "
+                    "'website', :key, "
+                    "'ai', 'open', 'playground', now(), now() FROM conversations WHERE id = :id"
+                ),
+                {"pid": playground_id, "key": playground_key, "id": conversation_id},
+            )
+    
+        run_migrations(database_url)
+        with engine.connect() as connection:
+            playground_row = connection.execute(
+                text("SELECT connection_id, external_conversation_id FROM conversations WHERE id=:id"),
+                {"id": playground_id},
+            ).one()
+        assert playground_row.connection_id is None
+        assert playground_row.external_conversation_id == playground_key
+        with engine.connect() as connection:
+            version = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
+            column_type = connection.execute(
+                text(
+                    "SELECT data_type FROM information_schema.columns "
+                    "WHERE table_schema='public' AND table_name='conversations' "
+                    "AND column_name='connection_id'"
+                )
+            ).scalar_one()
+            website_row = connection.execute(
+                text(
+                    "SELECT tenant_id, bot_id, contact_id, id, channel, source, connection_id "
+                    "FROM conversations WHERE id = :id"
+                ),
+                {"id": conversation_id},
+            ).one()
+            identity_row = connection.execute(
+                text(
+                    "SELECT id, tenant_id, contact_id, channel, external_id, connection_id "
+                    "FROM contact_identities WHERE id=:id"
+                ),
+                {"id": identity_id},
+            ).one()
+            channel_tables = connection.execute(
+                text(
+                    "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' "
+                    "AND table_name IN ('channel_connections', 'channel_events')"
+                )
+            ).scalar_one()
+>       assert version == "0030_channel_health_poll_index"
+E       AssertionError: assert '0031_contact_erasure' == '0030_channel...th_poll_index'
+E         
+E         - 0030_channel_health_poll_index
+E         + 0031_contact_erasure
+
+tests/test_channel_migrations.py:143: AssertionError
+----------------------------- Captured stdout call -----------------------------
+migration 0023 downgrade: at 0022, connection_id is text, website rows preserved
+----------------------------- Captured stderr call -----------------------------
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running downgrade 0031_contact_erasure -> 0030_channel_health_poll_index, Durable pseudonymous cutoffs for A16 contact erasure.
+INFO  [alembic.runtime.migration] Running downgrade 0030_channel_health_poll_index -> 0029_channel_event_payload_purge, Index the last-poll lookup used by the channel health scheduler.
+INFO  [alembic.runtime.migration] Running downgrade 0029_channel_event_payload_purge -> 0028_channel_unconfirmed, ``channel_events.payload`` becomes nullable so retention can purge it (B3).
+INFO  [alembic.runtime.migration] Running downgrade 0028_channel_unconfirmed -> 0027_channel_ref_unique, Delivery state ``unconfirmed`` and ``messages.accepted_at`` (A2, D8).
+INFO  [alembic.runtime.migration] Running downgrade 0027_channel_ref_unique -> 0026_channel_health_poll, One live connection per (channel, many_channel_ref) (D11, contract v1.1).
+INFO  [alembic.runtime.migration] Running downgrade 0026_channel_health_poll -> 0025_channel_send, Register the periodic channel health poll job (PLAN D10, docs/17 §5.2).
+INFO  [alembic.runtime.migration] Running downgrade 0025_channel_send -> 0024_channel_inbound, Register the durable channel send job and enforce one job per message.
+INFO  [alembic.runtime.migration] Running downgrade 0024_channel_inbound -> 0023_manyosiris_channels, Allow channel contacts without website contact fields and inbound jobs.
+INFO  [alembic.runtime.migration] Running downgrade 0023_manyosiris_channels -> 0022_knowledge_hygiene, Add ManyOsirisChat delegated channel connections and event storage.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade 0022_knowledge_hygiene -> 0023_manyosiris_channels, Add ManyOsirisChat delegated channel connections and event storage.
+INFO  [alembic.runtime.migration] Running upgrade 0023_manyosiris_channels -> 0024_channel_inbound, Allow channel contacts without website contact fields and inbound jobs.
+INFO  [alembic.runtime.migration] Running upgrade 0024_channel_inbound -> 0025_channel_send, Register the durable channel send job and enforce one job per message.
+INFO  [alembic.runtime.migration] Running upgrade 0025_channel_send -> 0026_channel_health_poll, Register the periodic channel health poll job (PLAN D10, docs/17 §5.2).
+INFO  [alembic.runtime.migration] Running upgrade 0026_channel_health_poll -> 0027_channel_ref_unique, One live connection per (channel, many_channel_ref) (D11, contract v1.1).
+INFO  [alembic.runtime.migration] Running upgrade 0027_channel_ref_unique -> 0028_channel_unconfirmed, Delivery state ``unconfirmed`` and ``messages.accepted_at`` (A2, D8).
+INFO  [alembic.runtime.migration] Running upgrade 0028_channel_unconfirmed -> 0029_channel_event_payload_purge, ``channel_events.payload`` becomes nullable so retention can purge it (B3).
+INFO  [alembic.runtime.migration] Running upgrade 0029_channel_event_payload_purge -> 0030_channel_health_poll_index, Index the last-poll lookup used by the channel health scheduler.
+INFO  [alembic.runtime.migration] Running upgrade 0030_channel_health_poll_index -> 0031_contact_erasure, Durable pseudonymous cutoffs for A16 contact erasure.
+=============================== warnings summary ===============================
+../../../../saas-closeout-tools/venv/lib/python3.12/site-packages/fastapi/testclient.py:1
+  /var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_channel_outbound.py::test_send_migration_round_trip_and_unique_message_key
+FAILED tests/test_channel_migrations.py::test_channel_migration_up_down_up_preserves_website_rows
+2 failed, 64 passed, 1 warning in 31.85s

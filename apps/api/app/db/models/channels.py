@@ -124,4 +124,26 @@ class ChannelEvent(Base):
     )
 
 
-__all__ = ["ChannelConnection", "ChannelEvent"]
+class ChannelErasureFence(Base):
+    """Pseudonymous cutoff preventing delayed pre-erasure work from recreating data."""
+
+    __tablename__ = "channel_erasure_fences"
+
+    tenant_id: Mapped[UUID] = mapped_column(primary_key=True)
+    connection_id: Mapped[UUID] = mapped_column(primary_key=True)
+    identity_digest: Mapped[str] = mapped_column(Text, primary_key=True)
+    occurred_through: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    received_through: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "connection_id"],
+            ["channel_connections.tenant_id", "channel_connections.id"],
+            name="fk_channel_erasure_fences_connection",
+            ondelete="CASCADE",
+        ),
+        CheckConstraint("length(identity_digest) = 64", name="ck_channel_erasure_digest"),
+    )
+
+
+__all__ = ["ChannelConnection", "ChannelEvent", "ChannelErasureFence"]
