@@ -3842,3 +3842,22 @@ clusters, and their processes were stopped. Tooling/worktrees/evidence remain.
 **Next-session prompt: implementation/TESTING-HANDOFF.md**, also in Many at
 `docs/saas-delegation/TESTING-HANDOFF.md`. Use the integrated worktrees and fresh
 source snapshots/databases, not old worker snapshots. Full suites UNVERIFIED.
+
+
+## R19 verification on integrated batch-c - 2026-10-28
+
+The requested phone export guard, health-poll expression index (existing 0030),
+and bots/provisioning model alignment already exist. No current rebuild-prompt
+S10 reference was found; no invented finding or prompt behavior change. Added
+an actual 0030 downgrade/reupgrade/index/drift regression. Related contacts,
+A/B isolation, health, schema and prompt tests: 41 passed, 54.07 s, on a new
+private cluster and loopback-only namespace. Initial fixture URL setup failed
+and was corrected; exact commands/outcomes/warnings: implementation/R19-VERIFICATION.md.
+Both manual CI definitions parsed and 4 Many / 14 SaaS run blocks passed static
+shell/reference checks, without running workflows. C3 head source test: 1 passed
+(0.017 s); head remains 0031, no new migration. Ruff lint/format pass. No full
+suite/hosted CI/live/deploy claim. Provider-global webhook_unhealthy unchanged.
+Earlier undefined-S10 and D5-open handoff notes are historical; current prompt
+has no S10, and the owner confirmed D5 (keep 59d3442). No push/merge/deploy/paid
+or authenticated external call. Only the separately authorized external plan
+file may be synchronized; no other original checkout was changed.
