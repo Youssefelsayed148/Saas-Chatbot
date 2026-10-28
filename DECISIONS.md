@@ -9,7 +9,7 @@ Change a decision only by adding a dated entry below with rationale, alternative
 | ADR-004 | Auth: built-in server-side cookie sessions, Argon2id hashing, CSRF protection. No email provider or password reset in MVP (reset deferred) | Approved 2026-10-12 |
 | ADR-005 | Retrieval/embeddings | RESOLVED 2026-10-12: keyword-first (Postgres full-text), no embeddings or vector column in MVP; optional hybrid/semantic upgrade later, gated by eval results (see docs/14) |
 | ADR-006 | Website ingestion | RESOLVED 2026-10-12: no in-app crawler in the MVP. Website content is collected by a staff-run AI skill that outputs Markdown pages (with source URLs) and a Q&A CSV, uploaded as files (docs/14 §13). An isolated in-app importer may be proposed later |
-| ADR-007 | Hosting, object storage, retention, data residency | OPEN (before staging, P5-05) |
+| ADR-007 | Hosting, object storage, retention, data residency | Hosting decided 2026-10-28: existing VPS / Docker Compose / Caddy; close-out rebuilds the existing deployment. See dated entry for scope |
 | ADR-008 | Paid plans, payment provider, currencies | OPEN (not in this roadmap; after P5) |
 | ADR-009 | Client roles: admin / editor / viewer; independent `users.is_platform_staff` controls bots and operator actions | Revised 2026-10-16 (explicit owner change note; dated entry below) |
 | ADR-010 | Tenant isolation: app-layer tenant checks in every service + composite FKs `(tenant_id, id)`; no Postgres RLS in MVP | Approved 2026-10-12 |
@@ -126,3 +126,23 @@ Alternatives: hand-rolled SVG charts (rejected by owner: slower, less accessible
 
 ## 2026-10-27 - ADR-024: contract A15, retryable 401
 Approver: product owner (owner-assumed default stated in the Phase 6 close-out prompt). Decision: SaaS to Many treats HTTP 401 as a retryable failure inside the existing 6-attempt budget, then fails with the SaaS-local code `many_auth_rejected` and marks the connection degraded with that reason; all other 4xx stay permanent. Many to SaaS retries a 401 inside its 24 h budget. Rationale: during secret rotation the two sides briefly hold different secrets, and failing the message at the first 401 loses customer replies. Alternatives: 401 permanent (rejected: loses messages during rotation); an unbounded retry (rejected: a wrong secret must surface). Impact: apps/api/app/channels/outbound.py, delivery-error labels in apps/web, docs/16, docs/17 section 11 (A15 and the rotation runbook), both CONTRACT-V1.1-DELTA.md copies and many-pack/CONTRACT-V1.md.
+
+
+## 2026-10-28 - ADR-007: existing VPS deployment; rebuild only
+
+Approver: product owner, close-out decision D2. The SaaS is already deployed
+on a VPS with Docker Compose, Caddy HTTPS and `scripts/deploy.sh`. Close-out
+prepares a rebuild of that existing deployment, rather than choosing or
+provisioning a new hosting platform. Actual rebuild/deployment still needs
+separate owner approval; this decision does not authorize one.
+
+Rationale: the existing deployment is the operational baseline. Alternatives:
+a new host or cloud service is outside this close-out. Impact: `DEPLOY.md` and
+`docs/16-DEPLOYMENT-AND-OPERATIONS.md` describe rebuild prerequisites, existing
+volume preservation, verified backups and the Phase 6 migration/rollback path.
+The current implementation uses the Compose `app_data` volume for uploaded
+files, and the configured tenant retention policy remains in force. This
+hosting decision does not select a new object-storage provider, change retention
+periods, assert a VPS region, or decide data residency; those facts require
+separate operator evidence/owner decisions. Historical entries above describing
+ADR-007 as OPEN predate and are superseded by this hosting decision only.

@@ -1,0 +1,13 @@
+test_backup_is_checked_before_build_or_restart (test_closeout_deploy_readiness.DeployReadinessSourceTests.test_backup_is_checked_before_build_or_restart) ... ok
+test_documented_events_path_matches_router (test_closeout_deploy_readiness.DeployReadinessSourceTests.test_documented_events_path_matches_router) ... ok
+test_key_reaches_both_service_environments_and_is_required (test_closeout_deploy_readiness.DeployReadinessSourceTests.test_key_reaches_both_service_environments_and_is_required) ... ok
+test_release_chain_has_one_head_with_0022_ancestor (test_closeout_deploy_readiness.DeployReadinessSourceTests.test_release_chain_has_one_head_with_0022_ancestor) ... ok
+test_template_has_one_blank_channel_key_entry (test_closeout_deploy_readiness.DeployReadinessSourceTests.test_template_has_one_blank_channel_key_entry) ... ok
+test_worker_dispatches_channels_and_schedules_health_maintenance (test_closeout_deploy_readiness.DeployReadinessSourceTests.test_worker_dispatches_channels_and_schedules_health_maintenance) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.015s
+
+OK
+
+UNITTEST_EXIT=0
