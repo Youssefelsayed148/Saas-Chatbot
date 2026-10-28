@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="66" time="31.846" timestamp="2026-10-28T11:36:04.167030+03:00" hostname="LAPTOP-SU9MG22P"><testcase classname="tests.test_channel_erasure" name="test_erasure_rejects_malformed_identity_without_effects[None]" time="1.117" /><testcase classname="tests.test_channel_erasure" name="test_erasure_rejects_malformed_identity_without_effects[]" time="0.402" /><testcase classname="tests.test_channel_erasure" name="test_erasure_rejects_malformed_identity_without_effects[   ]" time="0.335" /><testcase classname="tests.test_channel_erasure" name="test_erasure_rejects_malformed_identity_without_effects[123]" time="0.332" /><testcase classname="tests.test_channel_erasure" name="test_erasure_rejects_malformed_identity_without_effects[person\x00x]" time="0.334" /><testcase classname="tests.test_channel_erasure" name="test_erasure_auth_header_match_paused_acceptance_and_revocation" time="0.659" /><testcase classname="tests.test_channel_erasure" name="test_erasure_is_tenant_and_connection_scoped_and_cancels_pending_content" time="0.670" /><testcase classname="tests.test_channel_erasure" name="test_missing_identity_is_success_and_delayed_input_is_fenced_but_new_recontact_allowed" time="0.457" /><testcase classname="tests.test_channel_erasure" name="test_explicitly_merged_contact_erases_linked_connection_payloads" time="0.443" /><testcase classname="tests.test_channel_erasure" name="test_worker_refreshes_after_waiting_for_erasure_lock" time="0.402" /><testcase classname="tests.test_channel_erasure" name="test_erasure_failure_rolls_back_and_can_retry" time="0.398" /><testcase classname="tests.test_channel_erasure" name="test_identity_lock_and_digest_are_scoped_and_release" time="0.026" /><testcase classname="tests.test_channel_events" name="test_event_hmac_auth_matrix_and_signed_malformed_body" time="0.418" /><testcase classname="tests.test_channel_events" name="test_revoked_and_wrong_valid_connection_have_same_generic_401" time="0.797" /><testcase classname="tests.test_channel_events" name="test_event_duplicate_replay_paused_acceptance_and_atomic_enqueue" time="0.371" /><testcase classname="tests.test_channel_events" name="test_unknown_type_is_stored_ignored_and_oversized_is_generic_401" time="0.442" /><testcase classname="tests.test_channel_events" name="test_connection_rate_limit_returns_retry_after" time="0.342" /><testcase classname="tests.test_channel_events" name="test_tenant_scoping_and_processed_job_rerun_are_idempotent" time="0.629" /><testcase classname="tests.test_channel_events" name="test_inbound_dedupe_sanitization_and_origin_is_written_once" time="0.418" /><testcase classname="tests.test_channel_events" name="test_message_status_is_monotonic_and_health_ignores_old_events" time="0.507" /><testcase classname="tests.test_channel_events" name="test_channel_pipeline_truncates_only_model_input_and_stores_pending_reply" time="0.372" /><testcase classname="tests.test_channel_events" name="test_human_mode_is_silent_and_resolved_conversation_reopens_in_ai_mode" time="0.419" /><testcase classname="tests.test_channel_events" name="test_ai_disabled_and_unsupported_hourly_reply_rules" time="0.742" /><testcase classname="tests.test_channel_events" name="test_quota_and_provider_failures_store_handoff_replies_without_logging_text" time="0.703" /><testcase classname="tests.test_channel_outbound" name="test_success_duplicate_current_secret_rotation_and_no_text_logs" time="0.392" /><testcase classname="tests.test_channel_outbound" name="test_retry_then_success_with_same_id[500]" time="0.388" /><testcase classname="tests.test_channel_outbound" name="test_retry_then_success_with_same_id[outcome1]" time="0.459" /><testcase classname="tests.test_channel_outbound" name="test_retry_then_success_with_same_id[outcome2]" time="0.390" /><testcase classname="tests.test_channel_outbound" name="test_retry_then_success_with_same_id[outcome3]" time="0.395" /><testcase classname="tests.test_channel_outbound" name="test_permanent_4xx_and_callback_reason_not_retried" time="0.387" /><testcase classname="tests.test_channel_outbound" name="test_retry_exhaustion" time="0.479" /><testcase classname="tests.test_channel_outbound" name="test_401_is_retried_then_succeeds" time="0.387" /><testcase classname="tests.test_channel_outbound" name="test_401_until_budget_gives_many_auth_rejected" time="0.427" /><testcase classname="tests.test_channel_outbound" name="test_401_then_timeouts_until_budget_still_gives_many_auth_rejected" time="0.501" /><testcase classname="tests.test_channel_outbound" name="test_timeouts_then_401_at_budget_gives_many_auth_rejected" time="0.418" /><testcase classname="tests.test_channel_outbound" name="test_transient_failures_without_any_401_stay_many_unreachable" time="0.421" /><testcase classname="tests.test_channel_outbound" name="test_requeue_clears_the_remembered_401" time="0.587" /><testcase classname="tests.test_channel_outbound" name="test_paused_at_job_time[paused-connection_paused]" time="0.522" /><testcase classname="tests.test_channel_outbound" name="test_paused_at_job_time[revoked-connection_revoked]" time="0.408" /><testcase classname="tests.test_channel_outbound" name="test_resume_does_not_resend_messages_failed_with_connection_paused" time="0.486" /><testcase classname="tests.test_channel_outbound" name="test_send_time_target_rejection[http://127.0.0.1]" time="0.431" /><testcase classname="tests.test_channel_outbound" name="test_send_time_target_rejection[ftp://many.example.test]" time="0.518" /><testcase classname="tests.test_channel_outbound" name="test_send_time_target_rejection[http://localhost]" time="0.385" /><testcase classname="tests.test_channel_outbound" name="test_send_time_target_rejection[https://many.example.test]" time="0.366" /><testcase classname="tests.test_channel_outbound" name="test_long_reply_order_and_enqueue_idempotency" time="0.555" /><testcase classname="tests.test_channel_outbound" name="test_status_callbacks_and_out_of_order[window_closed]" time="0.572" /><testcase classname="tests.test_channel_outbound" name="test_status_callbacks_and_out_of_order[template_required]" time="0.514" /><testcase classname="tests.test_channel_outbound" name="test_status_callbacks_and_out_of_order[recipient_unreachable]" time="0.482" /><testcase classname="tests.test_channel_outbound" name="test_agent_reply_pause_atomic_enqueue_notes_and_tenant_isolation" time="0.801" /><testcase classname="tests.test_channel_outbound" name="test_website_agent_reply_keeps_response_and_has_no_outbox" time="0.595" /><testcase classname="tests.test_channel_outbound" name="test_channel_pipeline_enqueues_final_replies" time="0.372" /><testcase classname="tests.test_channel_outbound" name="test_redirect_response_cap_and_invalid_ack[redirect]" time="0.398" /><testcase classname="tests.test_channel_outbound" name="test_redirect_response_cap_and_invalid_ack[permanent_403]" time="0.498" /><testcase classname="tests.test_channel_outbound" name="test_redirect_response_cap_and_invalid_ack[permanent_404]" time="0.411" /><testcase classname="tests.test_channel_outbound" name="test_redirect_response_cap_and_invalid_ack[permanent_422]" time="0.544" /><testcase classname="tests.test_channel_outbound" name="test_redirect_response_cap_and_invalid_ack[invalid_ack]" time="0.644" /><testcase classname="tests.test_channel_outbound" name="test_redirect_response_cap_and_invalid_ack[oversized_response]" time="0.590" /><testcase classname="tests.test_channel_outbound" name="test_send_migration_round_trip_and_unique_message_key" time="0.083"><failure message="AssertionError: assert '0031_contact_erasure' == '0030_channel...th_poll_index'&#10;  &#10;  - 0030_channel_health_poll_index&#10;  + 0031_contact_erasure">db = &lt;sqlalchemy.orm.session.Session object at 0x77f8002c2510&gt;
+engine = Engine(postgresql+psycopg://postgres@/many_test_c2_test)
+
+    def test_send_migration_round_trip_and_unique_message_key(db: Session, engine: Engine) -&gt; None:
+        url = engine.url.render_as_string(hide_password=False)
+        db.close()
+        run_migrations(url, upgrade_to="", downgrade_to="0024_channel_inbound")
+        run_migrations(url)
+        with engine.connect() as conn:
+            version = conn.scalar(text("SELECT version_num FROM alembic_version"))
+&gt;           assert version == "0030_channel_health_poll_index"
+E           AssertionError: assert '0031_contact_erasure' == '0030_channel...th_poll_index'
+E             
+E             - 0030_channel_health_poll_index
+E             + 0031_contact_erasure
+
+tests/test_channel_outbound.py:564: AssertionError</failure></testcase><testcase classname="tests.test_channel_outbound" name="test_job_unique_key_and_foreign_job_cannot_send" time="0.755" /><testcase classname="tests.test_channel_outbound" name="test_job_queued_before_rotation_signs_with_new_secret" time="0.422" /><testcase classname="tests.test_channel_outbound" name="test_gzipped_202_is_readable_and_identity_encoding_is_requested" time="0.511" /><testcase classname="tests.test_channel_outbound" name="test_retry_after_from_many_is_capped" time="0.388" /><testcase classname="tests.test_channel_outbound" name="test_undecryptable_secret_is_its_own_error_not_many_unreachable" time="0.392" /><testcase classname="tests.test_channel_redrive" name="test_aborted_turn_is_redriven_on_retry_with_exactly_one_reply" time="0.435" /><testcase classname="tests.test_channel_redrive" name="test_aborted_website_turn_discards_the_unanswered_visitor_message" time="0.532" /><testcase classname="tests.test_channel_migrations" name="test_channel_migration_up_down_up_preserves_website_rows" time="0.132"><failure message="AssertionError: assert '0031_contact_erasure' == '0030_channel...th_poll_index'&#10;  &#10;  - 0030_channel_health_poll_index&#10;  + 0031_contact_erasure">db = &lt;sqlalchemy.orm.session.Session object at 0x77f80176de20&gt;
+engine = Engine(postgresql+psycopg://postgres@/many_test_c2_test)
+
+    def test_channel_migration_up_down_up_preserves_website_rows(db: Session, engine: Engine) -&gt; None:
+        tenant_id, bot_id, contact_id, conversation_id = uuid4(), uuid4(), uuid4(), uuid4()
+        identity_id = uuid4()
+        tenant = Tenant(id=tenant_id, name="P6 Migration", slug=f"p6-migration-{tenant_id.hex[:12]}")
+        db.add(tenant)
+        db.flush()
+        bot = Bot(
+            id=bot_id,
+            tenant_id=tenant_id,
+            name="Website bot",
+            status="active",
+            config={},
+            widget_locator=f"w{uuid4().hex}",
+        )
+        db.add(bot)
+        db.flush()
+        contact = Contact(
+            id=contact_id,
+            tenant_id=tenant_id,
+            display_name="Website visitor",
+            email=f"visitor-{tenant_id.hex[:12]}@example.test",
+        )
+        conversation = Conversation(
+            id=conversation_id,
+            tenant_id=tenant_id,
+            bot_id=bot_id,
+            contact_id=contact_id,
+            channel="website",
+            connection_id=None,
+            mode="ai",
+            status="open",
+            source="website",
+        )
+        identity = ContactIdentity(
+            id=identity_id,
+            tenant_id=tenant_id,
+            contact_id=contact_id,
+            channel="website",
+            external_id=f"visitor-{tenant_id.hex}",
+            connection_id=None,
+        )
+        db.add_all([contact, conversation, identity])
+        db.commit()
+        before = (tenant_id, bot_id, contact_id, conversation_id, identity_id)
+        database_url = engine.url.render_as_string(hide_password=False)
+        db.close()
+    
+        run_migrations(database_url, upgrade_to="", downgrade_to="0022_knowledge_hygiene")
+        with engine.connect() as connection:
+            version = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
+            column_type = connection.execute(
+                text(
+                    "SELECT data_type FROM information_schema.columns "
+                    "WHERE table_schema='public' AND table_name='conversations' "
+                    "AND column_name='connection_id'"
+                )
+            ).scalar_one()
+            website_row = connection.execute(
+                text(
+                    "SELECT tenant_id, bot_id, contact_id, id, connection_id "
+                    "FROM conversations WHERE id = :id"
+                ),
+                {"id": conversation_id},
+            ).one()
+            identity_row = connection.execute(
+                text(
+                    "SELECT id, tenant_id, contact_id, channel, external_id "
+                    "FROM contact_identities WHERE id=:id"
+                ),
+                {"id": identity_id},
+            ).one()
+        assert version == "0022_knowledge_hygiene"
+        assert column_type == "text"
+        assert tuple(website_row[:4]) == before[:4] and website_row.connection_id is None
+        assert tuple(identity_row[:3]) == (identity_id, tenant_id, contact_id)
+        assert identity_row.channel == "website"
+        assert identity_row.external_id == f"visitor-{tenant_id.hex}"
+        print("migration 0023 downgrade: at 0022, connection_id is text, website rows preserved")
+    
+        # main keeps the per-user playground key in the old text connection_id.
+        playground_id = uuid4()
+        playground_key = f"playground:{uuid4()}"
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "INSERT INTO conversations (id, tenant_id, bot_id, channel, connection_id, "
+                    "mode, status, source, created_at, updated_at) SELECT :pid, tenant_id, bot_id, "
+                    "'website', :key, "
+                    "'ai', 'open', 'playground', now(), now() FROM conversations WHERE id = :id"
+                ),
+                {"pid": playground_id, "key": playground_key, "id": conversation_id},
+            )
+    
+        run_migrations(database_url)
+        with engine.connect() as connection:
+            playground_row = connection.execute(
+                text("SELECT connection_id, external_conversation_id FROM conversations WHERE id=:id"),
+                {"id": playground_id},
+            ).one()
+        assert playground_row.connection_id is None
+        assert playground_row.external_conversation_id == playground_key
+        with engine.connect() as connection:
+            version = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
+            column_type = connection.execute(
+                text(
+                    "SELECT data_type FROM information_schema.columns "
+                    "WHERE table_schema='public' AND table_name='conversations' "
+                    "AND column_name='connection_id'"
+                )
+            ).scalar_one()
+            website_row = connection.execute(
+                text(
+                    "SELECT tenant_id, bot_id, contact_id, id, channel, source, connection_id "
+                    "FROM conversations WHERE id = :id"
+                ),
+                {"id": conversation_id},
+            ).one()
+            identity_row = connection.execute(
+                text(
+                    "SELECT id, tenant_id, contact_id, channel, external_id, connection_id "
+                    "FROM contact_identities WHERE id=:id"
+                ),
+                {"id": identity_id},
+            ).one()
+            channel_tables = connection.execute(
+                text(
+                    "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' "
+                    "AND table_name IN ('channel_connections', 'channel_events')"
+                )
+            ).scalar_one()
+&gt;       assert version == "0030_channel_health_poll_index"
+E       AssertionError: assert '0031_contact_erasure' == '0030_channel...th_poll_index'
+E         
+E         - 0030_channel_health_poll_index
+E         + 0031_contact_erasure
+
+tests/test_channel_migrations.py:143: AssertionError</failure></testcase></testsuite></testsuites>

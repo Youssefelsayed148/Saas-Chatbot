@@ -2,12 +2,14 @@
 
 from uuid import uuid4
 
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from app.db.models import Bot, Contact, ContactIdentity, Conversation, Tenant
-from tests.conftest import run_migrations
+from tests.conftest import API_DIR, run_migrations
 
 
 def test_channel_migration_up_down_up_preserves_website_rows(db: Session, engine: Engine) -> None:
@@ -140,7 +142,9 @@ def test_channel_migration_up_down_up_preserves_website_rows(db: Session, engine
                 "AND table_name IN ('channel_connections', 'channel_events')"
             )
         ).scalar_one()
-    assert version == "0030_channel_health_poll_index"
+    heads = ScriptDirectory.from_config(Config(API_DIR / "alembic.ini")).get_heads()
+    assert len(heads) == 1
+    assert version == heads[0]
     assert column_type == "uuid"
     assert tuple(website_row[:4]) == before[:4]
     assert tuple(website_row[4:6]) == ("website", "website")

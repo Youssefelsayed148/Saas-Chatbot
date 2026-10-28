@@ -32,7 +32,7 @@ from app.channels.secrets import decrypt_secret
 from app.channels.signing import sign
 from app.core.config import Settings
 from app.core.errors import ApiError
-from app.db.models import ChannelConnection, ContactIdentity, Conversation, Job, Message
+from app.db.models import ChannelConnection, Conversation, Job, Message
 from app.inbox.events import add_inbox_event
 from app.jobs.queue import enqueue_job
 
@@ -255,6 +255,68 @@ def _fail(db: Session, message: Message, code: str) -> None:
 
 
 def run_channel_send(db: Session, job: Job, settings: Settings) -> str | None:
+    # Take the erasure lock before any message/connection row lock. The HTTP
+    # sender is unchanged; already in-flight sends finish before erasure.
+    from app.channels.erasure import channel_work_lock, conversation_recipient
+
+    try:
+        message_id = UUID(str(job.payload.get("message_id")))
+    except (ValueError, TypeError):
+        return None
+    conversation = db.scalar(
+        select(Conversation)
+        .join(
+            Message,
+            (Message.tenant_id == Conversation.tenant_id)
+            & (Message.conversation_id == Conversation.id),
+        )
+        .where(
+            Conversation.tenant_id == job.tenant_id,
+            Message.tenant_id == job.tenant_id,
+            Message.bot_id == job.bot_id,
+            Message.id == message_id,
+        )
+        .execution_options(populate_existing=True)
+    )
+    recipient = conversation_recipient(db, conversation) if conversation is not None else None
+    if conversation is not None and recipient is None:
+        message = db.scalar(
+            select(Message)
+            .where(
+                Message.tenant_id == job.tenant_id,
+                Message.bot_id == job.bot_id,
+                Message.id == message_id,
+            )
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        if (
+            message is not None
+            and message.sender_type in {"ai", "agent"}
+            and not message.channel_message_id
+            and message.delivery_status not in {"failed", "sent", "delivered", "read"}
+        ):
+            _fail(db, message, "channel_recipient_ambiguous")
+        return None
+    if conversation is None or conversation.connection_id is None:
+        # Preserve the existing missing-recipient/error handling; no identity
+        # exists for an erasure lock and this path cannot deliver a message.
+        return _run_channel_send_locked(db, job, settings)
+    assert recipient is not None
+    with channel_work_lock(db, job.tenant_id, [(conversation.connection_id, recipient)]):
+        current = db.scalar(
+            select(Job)
+            .where(Job.tenant_id == job.tenant_id, Job.id == job.id)
+            .execution_options(populate_existing=True)
+        )
+        if current is None or current.cancel_requested or current.status == "cancelled":
+            return None
+        return _run_channel_send_locked(db, current, settings)
+
+
+def _run_channel_send_locked(db: Session, job: Job, settings: Settings) -> str | None:
+    from app.channels.erasure import conversation_recipient
+
     try:
         message_id = UUID(str(job.payload.get("message_id")))
     except ValueError:
@@ -277,12 +339,14 @@ def run_channel_send(db: Session, job: Job, settings: Settings) -> str | None:
     ):
         return None
     conversation = db.scalar(
-        select(Conversation).where(
+        select(Conversation)
+        .where(
             Conversation.tenant_id == job.tenant_id,
             Conversation.bot_id == job.bot_id,
             Conversation.id == message.conversation_id,
             Conversation.source == "channel",
         )
+        .execution_options(populate_existing=True)
     )
     if conversation is None:
         return None
@@ -322,16 +386,11 @@ def run_channel_send(db: Session, job: Job, settings: Settings) -> str | None:
             # Ordering wait is not a delivery attempt and consumes no retry budget.
             job.attempts = max(0, job.attempts - 1)
             raise SendRetry(5)
-    identity = db.scalar(
-        select(ContactIdentity).where(
-            ContactIdentity.tenant_id == job.tenant_id,
-            ContactIdentity.connection_id == connection.id,
-            ContactIdentity.contact_id == conversation.contact_id,
-        )
-    )
-    if identity is None or not conversation.external_conversation_id:
-        _fail(db, message, "channel_recipient_missing")
+    recipient = conversation_recipient(db, conversation)
+    if recipient is None or not conversation.external_conversation_id:
+        _fail(db, message, "channel_recipient_ambiguous")
         return None
+    conversation.external_contact_id = recipient
     retry_after = None
     # A15: a 401 seen by any attempt in the budget outlives later transient failures.
     auth_rejected = bool(job.payload.get(AUTH_REJECTED_KEY))
@@ -341,7 +400,7 @@ def run_channel_send(db: Session, job: Job, settings: Settings) -> str | None:
             OutboundPayload(
                 message_id=message.id,
                 connection_id=connection.id,
-                external_contact_id=identity.external_id,
+                external_contact_id=recipient,
                 external_conversation_id=conversation.external_conversation_id,
                 text=message.text,
                 kind="agent"

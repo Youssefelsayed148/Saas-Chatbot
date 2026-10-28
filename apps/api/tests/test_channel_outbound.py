@@ -8,6 +8,8 @@ from uuid import UUID
 
 import httpx
 import pytest
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 from pydantic import SecretStr
 from sqlalchemy import func, select, text
 from sqlalchemy.engine import Engine
@@ -29,7 +31,7 @@ from app.db.models import (
 )
 from app.jobs.runner import execute_claimed_job
 from app.knowledge.storage import LocalStorage
-from tests.conftest import build_test_settings, run_migrations
+from tests.conftest import API_DIR, build_test_settings, run_migrations
 from tests.fakes.fake_many import FakeMany
 from tests.helpers import seeded_tenant
 from tests.test_channel_events import (
@@ -561,7 +563,9 @@ def test_send_migration_round_trip_and_unique_message_key(db: Session, engine: E
     run_migrations(url)
     with engine.connect() as conn:
         version = conn.scalar(text("SELECT version_num FROM alembic_version"))
-        assert version == "0030_channel_health_poll_index"
+        heads = ScriptDirectory.from_config(Config(API_DIR / "alembic.ini")).get_heads()
+        assert len(heads) == 1
+        assert version == heads[0]
         assert (
             conn.scalar(
                 text("SELECT count(*) FROM pg_indexes WHERE indexname = 'uq_channel_send_message'")

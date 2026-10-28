@@ -208,6 +208,8 @@ class Conversation(Base):
     channel: Mapped[str] = mapped_column(Text, nullable=False, default="website")
     connection_id: Mapped[UUID | None] = mapped_column()
     external_conversation_id: Mapped[str | None] = mapped_column(Text)
+    # Stable channel recipient survives explicit CRM merges of several identities.
+    external_contact_id: Mapped[str | None] = mapped_column(Text)
     origin: Mapped[dict[str, object] | None] = mapped_column(JSONB)
     mode: Mapped[str] = mapped_column(Text, nullable=False, default="ai")
     status: Mapped[str] = mapped_column(Text, nullable=False, default="open")

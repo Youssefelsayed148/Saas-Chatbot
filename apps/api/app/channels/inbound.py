@@ -9,6 +9,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as OrmSession
 
 from app.channels.config import CHANNEL_ERROR_CODES
+from app.channels.erasure import (
+    channel_work_lock,
+    conversation_recipient,
+    erase_channel_contact,
+    event_is_erased,
+)
 from app.channels.guard import conversation_turn_lock
 from app.channels.health import apply_health, clean_text
 from app.chat.conversations import channel_chat_turn
@@ -166,6 +172,7 @@ def _conversation(
             channel=payload["channel"],
             connection_id=connection.id,
             external_conversation_id=external_id,
+            external_contact_id=payload["external_contact_id"],
             origin=_clean_origin(origin),
             mode="ai",
             status="open",
@@ -327,6 +334,8 @@ def _earlier_pending(db: OrmSession, event: ChannelEvent) -> list[ChannelEvent]:
                 ChannelEvent.id != event.id,
                 ChannelEvent.payload["external_conversation_id"].as_string()
                 == str((event.payload or {}).get("external_conversation_id")),
+                ChannelEvent.payload["external_contact_id"].as_string()
+                == str((event.payload or {}).get("external_contact_id")),
                 (ChannelEvent.received_at < event.received_at)
                 | ((ChannelEvent.received_at == event.received_at) & (ChannelEvent.id < event.id)),
             )
@@ -364,6 +373,33 @@ def _handle_received(
         event.error_code = "payload_purged"
         event.processed_at = datetime.now(UTC)
         return
+    if event_is_erased(db, event):
+        event.payload = None
+        event.status = "ignored"
+        event.error_code = "contact_erased"
+        event.processed_at = datetime.now(UTC)
+        db.commit()
+        return
+    existing = db.scalar(
+        select(Conversation)
+        .where(
+            Conversation.tenant_id == connection.tenant_id,
+            Conversation.connection_id == connection.id,
+            Conversation.external_conversation_id == payload["external_conversation_id"],
+        )
+        .execution_options(populate_existing=True)
+    )
+    if existing is not None:
+        recipient = conversation_recipient(db, existing)
+        if recipient is None or recipient != payload["external_contact_id"]:
+            event.status = "failed"
+            event.error_code = (
+                "conversation_recipient_mismatch" if recipient else "channel_recipient_ambiguous"
+            )
+            event.processed_at = datetime.now(UTC)
+            db.commit()
+            return
+        existing.external_contact_id = recipient
     bot_language = (
         str(bot.config.get("default_language", "en")) if isinstance(bot.config, dict) else "en"
     )
@@ -413,6 +449,15 @@ def run_channel_inbound(db: OrmSession, job: Job, settings: Settings | None = No
             ChannelConnection.tenant_id == event.tenant_id,
         )
     )
+    if connection is not None and event.event_type == "contact.erasure":
+        # Revocation rejects new requests at authentication, but cannot abandon
+        # an erasure already durably accepted while the connection was valid.
+        if event.payload is None:
+            event.status = "failed"
+            event.error_code = "erasure_payload_unavailable"
+            return "Erasure payload unavailable; operator action required."
+        erase_channel_contact(db, event, job.id)
+        return None
     if connection is None or connection.status == "revoked":
         event.status = "ignored"
         event.error_code = "connection_unavailable"
@@ -436,12 +481,17 @@ def run_channel_inbound(db: OrmSession, job: Job, settings: Settings | None = No
     if event.event_type == "message.received":
         # One event at a time per conversation, held for the whole turn (several
         # workers, commits inside the turn): see conversation_turn_lock.
-        with conversation_turn_lock(db, connection.id, str(payload["external_conversation_id"])):
-            # Order of receipt (A7): events of this conversation that arrived earlier
-            # and are still unprocessed (their job lost the race for the lock, or is
-            # waiting for a retry) run first. Their own jobs then find them processed.
+        with channel_work_lock(
+            db, connection.tenant_id, [(connection.id, str(payload["external_contact_id"]))]
+        ):
+            # A claimed job may have waited while erasure purged its payload.
             db.refresh(event)
-            if event.status not in {"processed", "ignored"}:
+            if event.payload is None or event.status in {"processed", "ignored"}:
+                return None
+            with conversation_turn_lock(
+                db, connection.id, str(payload["external_conversation_id"])
+            ):
+                # Order of receipt (A7); earlier jobs subsequently find processed events.
                 for earlier in _earlier_pending(db, event):
                     _handle_received(db, earlier, connection, bot, settings)
                 _handle_received(db, event, connection, bot, settings)
