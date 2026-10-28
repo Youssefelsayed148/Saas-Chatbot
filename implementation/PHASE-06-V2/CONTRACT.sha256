@@ -1,0 +1,4 @@
+# LF-normalized SHA256; owner-approved A16, 2026-10-28; base 5fa72f7
+e37532287e0dd2b9fd3387d52175e9f35705a217e41092f6aebab1565c9d884d  implementation/PHASE-06-V2/many-pack/CONTRACT-V1.md
+f6f246f1df4a2abc348a147d8caf6fc43a98e52f1bde0a2fd610a462af734186  implementation/PHASE-06-V2/CONTRACT-V1.1-DELTA.md
+9eee61ada41d580b6a1022dcc20f3e5b86abde7310876f60fc7f6ad4c0a73b10  apps/api/tests/fixtures/contract/signing_vectors.json
