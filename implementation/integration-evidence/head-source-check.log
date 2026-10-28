@@ -1,0 +1,8 @@
+test_release_chain_has_one_head_with_0022_ancestor (test_closeout_deploy_readiness.DeployReadinessSourceTests.test_release_chain_has_one_head_with_0022_ancestor) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.020s
+
+OK
+
+EXIT=0

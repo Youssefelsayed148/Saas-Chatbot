@@ -56,7 +56,7 @@ Before an approved rebuild:
    dumps remain `.partial` files and are not success evidence. Archive listing
    checks structure, **not restorability**: rehearse restoration on a separate
    disposable database and retain a separate off-VPS copy before release.
-6. Follow the 0022 to 0030 migration and pause-first rollback notes below and in
+6. Follow the 0022 to 0031 migration and pause-first rollback notes below and in
    `docs/16-DEPLOYMENT-AND-OPERATIONS.md`. Only after prerequisites and release
    approval run `./scripts/deploy.sh` from the approved checkout. It rebuilds
    the current checkout; `--pull` additionally contacts Git and is not implied
@@ -65,10 +65,10 @@ Before an approved rebuild:
 ### Channel migration and worker readiness
 
 The expected pre-P6 SaaS revision is `0022_knowledge_hygiene`; the release head
-at this source is `0030_channel_health_poll_index`. Before migration record
+at this source is `0031_contact_erasure`. Before migration record
 `alembic current` and `alembic heads` using the approved deployment environment.
 An unexpected revision, multiple heads or schema drift blocks release. Apply
-0023-0030 using Alembic only, after a verified pre-deploy dump and disposable
+0023-0031 using Alembic only, after a verified pre-deploy dump and disposable
 restore/migration rehearsal. Never stamp a revision or use `create_all` as a
 substitute. Production commands and rehearsal outcomes remain **UNVERIFIED**
 until an operator records them.
@@ -154,3 +154,19 @@ Meta tokens and webhooks remain in ManyOsirisChat. Linking/resuming a connection
 real provider calls and live canary sends require separate owner approval.
 A rebuild does not authorize a merge to `main`; the owner still requires a
 green full Playwright run and merge sign-off.
+
+
+### A16 migration 0031
+
+The close-out release additionally includes `0031_contact_erasure`: scoped
+pseudonymous erasure replay fences and a nullable per-conversation recipient
+identity. New conversations bind their recipient; ambiguous legacy merged
+recipients fail closed until verified operator repair. Focused migration
+up/down tests passed; a full integrated 0022-to-0031 restore/migration rehearsal
+is still UNVERIFIED and belongs to the next testing session.
+
+Do not downgrade 0031 on a live channel as a routine rollback: dropping replay
+fences removes protection against historical pre-erasure input. Pause processing
+and choose a compatible forward fix. Restoring an old backup can restore erased
+content; reconcile completed privacy cases before traffic resumes. No production
+backup, restoration, migration or deployment was performed in close-out.

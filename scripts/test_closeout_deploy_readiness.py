@@ -49,7 +49,7 @@ class DeployReadinessSourceTests(unittest.TestCase):
             if "revision" in values:
                 revisions[values["revision"]] = values["down_revision"]
         heads = set(revisions) - set(revisions.values())
-        self.assertEqual(heads, {"0030_channel_health_poll_index"})
+        self.assertEqual(len(heads), 1)
         current = heads.pop()
         ancestors = []
         while current is not None:
@@ -57,7 +57,9 @@ class DeployReadinessSourceTests(unittest.TestCase):
             ancestors.append(current)
             current = revisions[current]
         self.assertIn("0022_knowledge_hygiene", ancestors)
-        self.assertEqual(len(ancestors[:ancestors.index("0022_knowledge_hygiene")]), 8)
+        self.assertIn("0030_channel_health_poll_index", ancestors)
+        self.assertIn("0031_contact_erasure", ancestors)
+        self.assertLess(ancestors.index("0031_contact_erasure"), ancestors.index("0030_channel_health_poll_index"))
 
     def test_backup_is_checked_before_build_or_restart(self) -> None:
         script = (ROOT / "scripts/deploy.sh").read_text(encoding="utf-8")

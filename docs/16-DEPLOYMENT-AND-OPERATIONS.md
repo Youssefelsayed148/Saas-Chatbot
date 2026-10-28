@@ -38,11 +38,11 @@ fix them first) · `0028_channel_unconfirmed` (`messages.accepted_at`,
 `unconfirmed` delivery state) · `0029_channel_event_payload_purge` (`channel_events.payload` nullable for retention) · `0030_channel_health_poll_index` (partial index for the health scheduler's last-poll lookup; no behaviour change). All are reversible and were round-trip tested on
 the disposable database in the historical build report; that is not a fresh
 close-out rehearsal. The supported pre-P6 starting revision is
-`0022_knowledge_hygiene`, with one head `0030_channel_health_poll_index` at
+`0022_knowledge_hygiene`, with one head `0031_contact_erasure` at
 this source. Before any approved migration: record current/head, confirm the
 existing database/project/volumes, obtain the script's nonempty custom-format
 pre-deploy dump, check its archive listing, and rehearse restoration and
-0022 to 0030 migration on a disposable database. Stop for unexpected revisions or
+0022 to 0031 migration on a disposable database. Stop for unexpected revisions or
 drift; do not stamp or use `create_all`. Apply migrations before booting the
 new API/worker. `scripts/deploy.sh` aborts before build or migration if the
 existing database is not running, the dump fails or the archive is invalid.
@@ -127,3 +127,20 @@ these remain **UNVERIFIED** pending recorded operator evidence.
   the signature check); `received_at` may be up to 5 minutes in the future
   (contract A10).
 
+
+
+### Close-out A16 revision 0031
+
+`0031_contact_erasure` follows 0030 and adds tenant/connection-scoped hashed
+identity cutoffs plus a nullable conversation recipient field. It prevents
+pre-erasure queued work from resurrecting content, preserves numeric accounting
+usage without customer traces, and binds replies to the conversation recipient.
+Legacy ambiguous merged identities require verified operator repair; no guessed
+backfill is performed. Replay fences are pseudonymous security records retained
+until connection/tenant deletion, not anonymous analytics.
+
+Focused up/down and interleaving regressions passed in disposable tests. Full
+integrated suites and the complete 0022-to-0031 rehearsal remain UNVERIFIED for
+the new session. Dropping 0031 removes replay protection; pause/forward-fix is
+the live rollback approach. After any separately approved restoration, reapply
+completed erasures before accepting channel traffic.

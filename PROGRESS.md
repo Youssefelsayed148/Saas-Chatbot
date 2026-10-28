@@ -3797,3 +3797,48 @@ Environment: Ubuntu 24.04, Python 3.12.3, PostgreSQL 16.15 with pgvector 0.8.0 b
 - Rotation twice within 24 h: allowed and documented (emergency use), not refused.
 - `S10` appears in the task text's finding range (S1-S10) but no S10 item is defined in the prompt; nothing was done for it. `alembic check` drift in main-owned files left as is.
 - B1 (P7 / green Playwright gate): OPEN for the owner; nothing merged to main.
+
+
+## Close-out implementation handoff ? 2026-10-28
+
+The owner deferred full testing to a NEW SESSION after the three remaining
+implementations. Local integrated branch: `closeout/batch-c`, application base
+`1ee703e`; Many uses `closeout/batch-b`, application base `33bde97`. Only lead
+documentation and source-check updates follow these application bases.
+No main merge, push, deployment or live call occurred.
+
+Reviewed worker commits were integrated with no-ff merges, exit 0: C1/C3
+`3347a02`, C2 `23fb2e8`, C4/C5 `f9aeba6`. New source head:
+`0031_contact_erasure`. C2's final 32 focused tests passed in 14.53 seconds;
+78 distinct related cases pass in their latest recorded executions. C4/C5:
+31 API passes and 17 distinct latest targeted Playwright passes. All 12
+historical failures have passing focused evidence. These are iterative targeted
+results, not full API/Playwright passes.
+
+The independent read-only reviewer resolved the staff-merge erasure race,
+ambiguous merged-recipient lookup and identity-lock boundary findings. See
+implementation/FINAL-IMPLEMENTATION-REVIEW.md and the reports under
+implementation/c1-c3-evidence, c2-evidence and c4-c5-evidence. Changed-service
+Ruff/strict mypy and Next builds passed; full integrated checks remain UNVERIFIED.
+
+Lead updated C3 documentation for 0031 replay fences/nullable recipients,
+backup-restoration privacy reconciliation and pause/forward-fix rollback. The
+full 0022-to-0031 rehearsal remains UNVERIFIED. The obsolete 0030 head source
+check now requires one head with 0031/0030/0022 ancestry. Exact command:
+`python -m unittest discover -s scripts -p test_closeout_deploy_readiness.py -k release_chain -v`
+through a captured stdlib subprocess: 1 passed in 0.020 seconds, exit 0; no DB
+or app imports. Evidence: implementation/integration-evidence/head-source-check.log.
+`python scripts/check_contract_copies.py` exited 0 on integrated source; Many
+copies/hashes match after LF normalization. Full regression suites were NOT RUN
+after integration, per the owner's new-session instruction.
+
+Open release items: D1 full green Playwright and owner main-merge approval;
+staging rebuild/canary; automatic Meta admin mapping and full Facebook/WhatsApp
+admin erasure in Many; owner-deferred D5; official Graph-version evidence
+(returned 429); Meta verification/dashboard actions; hosted CI; undefined S10.
+No actual env/token/secret files were read. All tests used private disposable
+clusters, and their processes were stopped. Tooling/worktrees/evidence remain.
+
+**Next-session prompt: implementation/TESTING-HANDOFF.md**, also in Many at
+`docs/saas-delegation/TESTING-HANDOFF.md`. Use the integrated worktrees and fresh
+source snapshots/databases, not old worker snapshots. Full suites UNVERIFIED.
