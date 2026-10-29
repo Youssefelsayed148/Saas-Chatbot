@@ -16,7 +16,7 @@ import { promoteToStaff } from "./staff-helpers";
  * production).
  */
 
-const PORT = 3100;
+const PORT = process.env.E2E_WEB_PORT ?? "3100";
 const DENIED_HOST = "127.0.0.1";
 const ALLOWED_HOST = "localhost";
 const PASSWORD = "Str0ngPass!";
