@@ -1,0 +1,5 @@
+
+> @chatbot/web@0.1.0 check:public-asset
+> node scripts/check-public-asset.mjs
+
+check:public-asset OK

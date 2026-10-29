@@ -1,0 +1,32 @@
+✔ channel delivery renders pending (4.566853ms)
+✔ channel delivery renders sent (0.337914ms)
+✔ channel delivery renders delivered (0.241964ms)
+✔ channel delivery renders read (0.251615ms)
+✔ channel delivery renders failed (0.254083ms)
+✔ channel delivery renders unconfirmed (0.197723ms)
+✔ visitor has no delivery state (0.226868ms)
+✔ system has no delivery state (0.155248ms)
+✔ website and unstated deliveries are hidden (0.317972ms)
+✔ readable reason for window_closed (0.327434ms)
+✔ readable reason for template_required (0.193088ms)
+✔ readable reason for recipient_unreachable (0.119704ms)
+✔ many_auth_rejected has a readable secret-mismatch reason (0.151604ms)
+✔ paused disables composer and explains why (0.545299ms)
+✔ revoked disables composer and explains why (0.175551ms)
+✔ active channel and website composer stay enabled (0.347531ms)
+✔ channel options cover the four channel values plus All (1.076871ms)
+✔ website can be omitted from the filter (single-channel tenants) (0.170291ms)
+✔ human channel labels are spelled out safely (0.073772ms)
+✔ connection suffix is only shown for channel rows with a name (0.123573ms)
+✔ rates render as percentages or a dash when not measured (0.1028ms)
+✔ median response renders in human units (0.085351ms)
+✔ campaign rows sort by conversations then name (4.417519ms)
+✔ sorting an empty campaign map is an empty list (0.081733ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 24
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 274.397106

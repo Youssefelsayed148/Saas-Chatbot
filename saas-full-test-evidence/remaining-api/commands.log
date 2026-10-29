@@ -1,0 +1,6 @@
+cwd=/var/tmp/saas-full-18Awhswq/source/apps/api APP_ENV=test ENVIRONMENT=test TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55591/saas_affected_test python -m pytest tests/test_channel_ingest_hardening.py tests/test_startup_guard.py tests/test_tenant_data.py -q --junitxml=/mnt/d/Projects/Work\ Projects/The\ Osiris\ Labs/ManyOsirisChat/.closeout-worktrees/batch-c/saas-full-test-evidence/remaining-api/saas-api.xml 
+cwd=/var/tmp/saas-full-18Awhswq/source/apps/api APP_ENV=test ENVIRONMENT=test TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55591/saas_affected_test python -m ruff check . 
+cwd=/var/tmp/saas-full-18Awhswq/source/apps/api APP_ENV=test ENVIRONMENT=test TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55591/saas_affected_test python -m ruff format --check . 
+cwd=/var/tmp/saas-full-18Awhswq/source/apps/api APP_ENV=test ENVIRONMENT=test TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55591/saas_affected_test python -m mypy app 
+cwd=/var/tmp/saas-full-18Awhswq/source/apps/api APP_ENV=test ENVIRONMENT=test TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55591/saas_affected_test python -m mypy 
+cwd=/var/tmp/saas-full-18Awhswq/source APP_ENV=test ENVIRONMENT=test TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55591/saas_affected_test python -m unittest discover -s scripts -p test_\*.py -v 

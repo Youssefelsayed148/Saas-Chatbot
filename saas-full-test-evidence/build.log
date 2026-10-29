@@ -1,0 +1,66 @@
+
+> @chatbot/web@0.1.0 build
+> next build
+
+▲ Next.js 16.4.3 (Turbopack)
+✓ Running next.config.ts took 17ms
+- Experiments (use with caution):
+  · proxyClientMaxBodySize: "520mb"
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 3.0s
+  Running TypeScript ...
+  Finished TypeScript in 5.5s ...
+  Collecting page data using 23 workers ...
+  Generating static pages using 23 workers (0/19) ...
+  Generating static pages using 23 workers (4/19) 
+  Generating static pages using 23 workers (9/19) 
+  Generating static pages using 23 workers (14/19) 
+✓ Generating static pages using 23 workers (19/19) in 287ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ○ /accept-invite
+├ ○ /account
+├ ○ /app
+├ ƒ /app/[tenant]
+├ ƒ /app/[tenant]/analytics
+├ ƒ /app/[tenant]/bots
+├ ƒ /app/[tenant]/bots/[botId]/conversations
+├ ƒ /app/[tenant]/bots/[botId]/conversations/[conversationId]
+├ ƒ /app/[tenant]/bots/[botId]/install
+├ ƒ /app/[tenant]/bots/[botId]/knowledge
+├ ƒ /app/[tenant]/bots/[botId]/overview
+├ ƒ /app/[tenant]/bots/[botId]/playground
+├ ƒ /app/[tenant]/bots/[botId]/settings
+├ ƒ /app/[tenant]/contacts
+├ ƒ /app/[tenant]/contacts/[contactId]
+├ ƒ /app/[tenant]/conversations
+├ ƒ /app/[tenant]/inbox
+├ ƒ /app/[tenant]/inbox/[conversation]
+├ ƒ /app/[tenant]/settings/data
+├ ƒ /app/[tenant]/settings/members
+├ ƒ /app/[tenant]/settings/requests
+├ ○ /login
+├ ƒ /platform
+├ ƒ /platform/bots
+├ ƒ /platform/change-requests
+├ ƒ /platform/channels
+├ ƒ /platform/clients/[clientId]
+├ ƒ /platform/members
+├ ƒ /platform/members/[userId]
+├ ƒ /platform/operations
+├ ○ /privacy
+├ ƒ /register
+├ ○ /terms
+├ ○ /widget/frame
+└ ƒ /widget/sample
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

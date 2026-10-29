@@ -1,0 +1,16 @@
+Verified preflight: closeout/batch-c; HEAD 86c992dafee0caf36f4b26e861e6a89bf1de17f1; tracked clean; ?? .r19-validation/ preserved.
+git branch --show-current
+git rev-parse HEAD
+git status --short
+wsl -d Ubuntu -u root -- env -i HOME=/root LANG=C.UTF-8 PATH=/usr/sbin:/usr/bin:/sbin:/bin unshare --net bash '/mnt/d/Projects/Work Projects/The Osiris Labs/ManyOsirisChat/.closeout-worktrees/batch-c/saas-full-test-evidence/run.sh'
+wsl -d Ubuntu -u root -- env -i HOME=/root LANG=C.UTF-8 PATH=/usr/sbin:/usr/bin:/sbin:/bin unshare --net bash '/mnt/d/Projects/Work Projects/The Osiris Labs/ManyOsirisChat/.closeout-worktrees/batch-c/saas-full-test-evidence/affected/run.sh'
+wsl -d Ubuntu -u root -- env -i HOME=/root LANG=C.UTF-8 PATH=/usr/sbin:/usr/bin:/sbin:/bin unshare --net bash '/mnt/d/Projects/Work Projects/The Osiris Labs/ManyOsirisChat/.closeout-worktrees/batch-c/saas-full-test-evidence/affected-final/run.sh'
+wsl -d Ubuntu -u root -- env -i HOME=/root LANG=C.UTF-8 PATH=/usr/sbin:/usr/bin:/sbin:/bin unshare --net bash '/mnt/d/Projects/Work Projects/The Osiris Labs/ManyOsirisChat/.closeout-worktrees/batch-c/saas-full-test-evidence/typing-final/run.sh'
+wsl -d Ubuntu -u root -- env -i HOME=/root LANG=C.UTF-8 PATH=/usr/sbin:/usr/bin:/sbin:/bin unshare --net bash '/mnt/d/Projects/Work Projects/The Osiris Labs/ManyOsirisChat/.closeout-worktrees/batch-c/saas-full-test-evidence/remaining-api/run.sh'
+wsl -d Ubuntu -u root -- env -i HOME=/root LANG=C.UTF-8 PATH=/usr/sbin:/usr/bin:/sbin:/bin unshare --net bash '/mnt/d/Projects/Work Projects/The Osiris Labs/ManyOsirisChat/.closeout-worktrees/batch-c/saas-full-test-evidence/final-checks/run.sh'
+wsl -d Ubuntu -u root -- env -i HOME=/root LANG=C.UTF-8 PATH=/usr/sbin:/usr/bin:/sbin:/bin unshare --net bash '/mnt/d/Projects/Work Projects/The Osiris Labs/ManyOsirisChat/.closeout-worktrees/batch-c/saas-full-test-evidence/playwright-targeted/run.sh'
+wsl -d Ubuntu -u root -- env -i HOME=/root LANG=C.UTF-8 PATH=/usr/sbin:/usr/bin:/sbin:/bin unshare --net bash '/mnt/d/Projects/Work Projects/The Osiris Labs/ManyOsirisChat/.closeout-worktrees/batch-c/saas-full-test-evidence/playwright-full-final/run.sh'
+Recovery during dependency copy: wsl -d Ubuntu -u root -- kill -STOP 4654
+wsl -d Ubuntu -u root -- /var/tmp/saas-closeout-tools/venv/bin/python '/mnt/d/Projects/Work Projects/The Osiris Labs/ManyOsirisChat/.closeout-worktrees/batch-c/saas-full-test-evidence/fix-cache-path.py'
+wsl -d Ubuntu -u root -- kill -CONT 4654
+wsl -d Ubuntu -u root -- nsenter -t 4654 -n env -i HOME=/root LANG=C.UTF-8 PATH=/usr/sbin:/usr/bin:/sbin:/bin bash '/mnt/d/Projects/Work Projects/The Osiris Labs/ManyOsirisChat/.closeout-worktrees/batch-c/saas-full-test-evidence/supplement.sh'

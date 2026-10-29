@@ -1,0 +1,28 @@
+test_all_crlf_checkout_passes (test_check_contract_copies.ContractCopiesGuard.test_all_crlf_checkout_passes) ... ok
+test_crlf_copies_pass (test_check_contract_copies.ContractCopiesGuard.test_crlf_copies_pass) ... ok
+test_crlf_does_not_hide_real_drift (test_check_contract_copies.ContractCopiesGuard.test_crlf_does_not_hide_real_drift) ... ok
+test_delta_copy_mismatch_fails (test_check_contract_copies.ContractCopiesGuard.test_delta_copy_mismatch_fails) ... ok
+test_matching_copy_passes (test_check_contract_copies.ContractCopiesGuard.test_matching_copy_passes) ... ok
+test_missing_file_fails (test_check_contract_copies.ContractCopiesGuard.test_missing_file_fails) ... ok
+test_real_files_agree (test_check_contract_copies.ContractCopiesGuard.test_real_files_agree) ... ok
+test_section_11_drift_fails (test_check_contract_copies.ContractCopiesGuard.test_section_11_drift_fails) ... ok
+test_v1_copy_mismatch_fails (test_check_contract_copies.ContractCopiesGuard.test_v1_copy_mismatch_fails) ... ok
+test_backup_is_checked_before_build_or_restart (test_closeout_deploy_readiness.DeployReadinessSourceTests.test_backup_is_checked_before_build_or_restart) ... ok
+test_documented_events_path_matches_router (test_closeout_deploy_readiness.DeployReadinessSourceTests.test_documented_events_path_matches_router) ... ok
+test_key_reaches_both_service_environments_and_is_required (test_closeout_deploy_readiness.DeployReadinessSourceTests.test_key_reaches_both_service_environments_and_is_required) ... ok
+test_release_chain_has_one_head_with_0022_ancestor (test_closeout_deploy_readiness.DeployReadinessSourceTests.test_release_chain_has_one_head_with_0022_ancestor) ... ok
+test_template_has_one_blank_channel_key_entry (test_closeout_deploy_readiness.DeployReadinessSourceTests.test_template_has_one_blank_channel_key_entry) ... ok
+test_worker_dispatches_channels_and_schedules_health_maintenance (test_closeout_deploy_readiness.DeployReadinessSourceTests.test_worker_dispatches_channels_and_schedules_health_maintenance) ... ok
+test_build_inputs_seed_module_and_dependency_graph (test_dev_compose.DevComposeContract.test_build_inputs_seed_module_and_dependency_graph) ... ok
+test_database_is_healthy_persistent_and_internal (test_dev_compose.DevComposeContract.test_database_is_healthy_persistent_and_internal) ... ok
+test_migrations_gate_both_processes (test_dev_compose.DevComposeContract.test_migrations_gate_both_processes) ... ok
+test_provider_credentials_are_required_interpolation_only (test_dev_compose.DevComposeContract.test_provider_credentials_are_required_interpolation_only) ... ok
+test_shared_storage_and_explicit_dev_settings (test_dev_compose.DevComposeContract.test_shared_storage_and_explicit_dev_settings) ... ok
+test_single_root_stack_and_opt_in_seed (test_dev_compose.DevComposeContract.test_single_root_stack_and_opt_in_seed) ... ok
+test_staff_bootstrap_is_optional_and_migration_gated (test_dev_compose.DevComposeContract.test_staff_bootstrap_is_optional_and_migration_gated) ... ok
+test_web_proxy_and_loopback_ports (test_dev_compose.DevComposeContract.test_web_proxy_and_loopback_ports) ... ok
+
+----------------------------------------------------------------------
+Ran 23 tests in 0.226s
+
+OK

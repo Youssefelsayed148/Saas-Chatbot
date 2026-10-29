@@ -1,0 +1,9 @@
+hash OK: implementation/PHASE-06-V2/many-pack/CONTRACT-V1.md
+hash OK: implementation/PHASE-06-V2/CONTRACT-V1.1-DELTA.md
+hash OK: apps/api/tests/fixtures/contract/signing_vectors.json
+hash OK: docs/saas-delegation/CONTRACT-V1.md
+hash OK: docs/saas-delegation/CONTRACT-V1.1-DELTA.md
+hash OK: backend/tests/fixtures/contract/signing_vectors.json
+cross-repository copy OK: implementation/PHASE-06-V2/many-pack/CONTRACT-V1.md
+cross-repository copy OK: implementation/PHASE-06-V2/CONTRACT-V1.1-DELTA.md
+cross-repository copy OK: apps/api/tests/fixtures/contract/signing_vectors.json

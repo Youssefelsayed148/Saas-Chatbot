@@ -1,0 +1,12 @@
+unformatted: File would be reformatted
+  --> tests/test_closeout_schema_drift.py:13:22
+   |
+12 |     assert indexes["uq_bots_widget_locator"]["column_names"] == ["widget_locator"]
+   -     model_indexes = {str(index.name): index for index in Bot.metadata.tables[Bot.__tablename__].indexes}
+13 +     model_indexes = {
+14 +         str(index.name): index for index in Bot.metadata.tables[Bot.__tablename__].indexes
+15 +     }
+16 |     assert model_indexes["uq_bots_widget_locator"].unique
+   |
+
+1 file would be reformatted

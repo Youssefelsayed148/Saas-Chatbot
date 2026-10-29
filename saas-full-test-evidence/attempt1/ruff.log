@@ -1,0 +1,307 @@
+I001 [*] Import block is un-sorted or un-formatted
+  --> tests/test_channel_contract.py:20:1
+   |
+18 |   """
+19 |
+20 | / import hashlib
+21 | | import hmac as hmac_module
+22 | | import json
+23 | | import socket
+24 | | import time
+25 | | from datetime import UTC, datetime, timedelta
+26 | | from typing import Any
+27 | | from uuid import UUID, uuid4
+28 | |
+29 | | import httpx
+30 | | import pytest
+31 | | from cryptography.fernet import Fernet
+32 | | from pydantic import SecretStr
+33 | | from sqlalchemy import func, select
+34 | | from sqlalchemy.orm import Session as OrmSession
+35 | |
+36 | | import app.channels.outbound as outbound_module
+37 | | from app.channels.outbound import enqueue_message
+38 | | from app.channels.secrets import encrypt_secret
+39 | | from app.channels.signing import sign, verify
+40 | | from app.chat.conversations import append_message
+41 | | from app.db.models import (
+42 | |     ChannelConnection,
+43 | |     ChannelEvent,
+44 | |     Contact,
+45 | |     ContactIdentity,
+46 | |     Conversation,
+47 | |     Job,
+48 | |     Message,
+49 | | )
+50 | | from app.jobs.runner import execute_claimed_job
+51 | | from app.knowledge.storage import LocalStorage
+52 | | from tests.conftest import build_test_settings
+53 | | from tests.fakes.fake_many import FakeMany
+54 | | from tests.helpers import make_bot, seeded_tenant
+55 | | from tests.test_channel_events import (
+56 | |     _connection,
+57 | |     _patch_success_pipeline,
+58 | |     _payload,
+59 | |     _post,
+60 | |     _run_event,
+61 | | )
+   | |_^
+62 |
+63 |   SKEW_SECONDS = 300
+   |
+help: Organize imports
+   |
+30 | import pytest
+31 + from app.channels.secrets import encrypt_secret
+32 | from cryptography.fernet import Fernet
+--------------------------------------------------------------------------------
+38 | from app.channels.outbound import enqueue_message
+   - from app.channels.secrets import encrypt_secret
+39 | from app.channels.signing import sign, verify
+   |
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> tests/test_channel_events.py:3:1
+   |
+ 1 |   """P6-02 authenticated Many event transport and idempotent storage handlers."""
+ 2 |
+ 3 | / import json
+ 4 | | import time
+ 5 | | from datetime import UTC, datetime, timedelta
+ 6 | | from typing import Any
+ 7 | | from uuid import UUID, uuid4
+ 8 | |
+ 9 | | import pytest
+10 | | from cryptography.fernet import Fernet
+11 | | from pydantic import SecretStr
+12 | | from sqlalchemy import select
+13 | | from sqlalchemy.orm import Session
+14 | |
+15 | | import app.channels.events as event_module
+16 | | import app.chat.conversations as chat_conversations
+17 | | from app.channels.inbound import run_channel_inbound
+18 | | from app.channels.secrets import encrypt_secret
+19 | | from app.channels.signing import sign
+20 | | from app.chat.providers import ChatModel, ProviderError
+21 | | from app.chat.service import ChatReply
+22 | | from app.core.config import get_settings
+23 | | from app.core.errors import ApiError
+24 | | from app.db.models import (
+25 | |     ChannelConnection,
+26 | |     ChannelEvent,
+27 | |     Contact,
+28 | |     ContactIdentity,
+29 | |     Conversation,
+30 | |     Job,
+31 | |     Message,
+32 | |     UsageEvent,
+33 | | )
+34 | | from tests.conftest import build_test_settings
+35 | | from tests.helpers import make_bot, seeded_tenant
+   | |_________________________________________________^
+help: Organize imports
+   |
+9  | import pytest
+10 + from app.channels.secrets import encrypt_secret
+11 | from cryptography.fernet import Fernet
+--------------------------------------------------------------------------------
+18 | from app.channels.inbound import run_channel_inbound
+   - from app.channels.secrets import encrypt_secret
+19 | from app.channels.signing import sign
+   |
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> tests/test_channel_health.py:3:1
+   |
+ 1 |   """P6-05 health pull, poll job, scheduling, staleness and transition audit."""
+ 2 |
+ 3 | / import json
+ 4 | | import socket
+ 5 | | from datetime import UTC, datetime, timedelta
+ 6 | | from typing import Any
+ 7 | | from uuid import UUID, uuid4
+ 8 | |
+ 9 | | import httpx
+10 | | import pytest
+11 | | from cryptography.fernet import Fernet
+12 | | from pydantic import SecretStr
+13 | | from sqlalchemy import select
+14 | | from sqlalchemy.orm import Session
+15 | |
+16 | | import app.channels.health as health
+17 | | from app.channels.health import run_channel_health_poll, schedule_health_polls
+18 | | from app.channels.outbound import SendRetry
+19 | | from app.channels.secrets import encrypt_secret
+20 | | from app.db.models import AuditEvent, ChannelConnection, Job
+21 | | from tests.conftest import build_test_settings
+22 | | from tests.fakes.fake_many import FakeMany
+23 | | from tests.helpers import make_bot, seeded_tenant
+24 | | from tests.test_channels import _configure_channel_key, _create_payload, _platform_call
+   | |_______________________________________________________________________________________^
+help: Organize imports
+   |
+10 | import pytest
+11 + from app.channels.secrets import encrypt_secret
+12 | from cryptography.fernet import Fernet
+--------------------------------------------------------------------------------
+19 | from app.channels.outbound import SendRetry
+   - from app.channels.secrets import encrypt_secret
+20 | from app.db.models import AuditEvent, ChannelConnection, Job
+   |
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> tests/test_channel_inbox_insights.py:8:1
+   |
+ 6 |   """
+ 7 |
+ 8 | / from datetime import UTC, datetime, timedelta
+ 9 | | from typing import Any
+10 | | from uuid import UUID, uuid4
+11 | |
+12 | | import pytest
+13 | | from fastapi import FastAPI
+14 | | from sqlalchemy.orm import Session as OrmSession
+15 | |
+16 | | from app.channels.secrets import encrypt_secret
+17 | | from app.db.models import (
+18 | |     ChannelConnection,
+19 | |     ContactIdentity,
+20 | |     Conversation,
+21 | |     Message,
+22 | | )
+23 | | from tests.helpers import make_bot, seeded_tenant
+   | |_________________________________________________^
+help: Organize imports
+   |
+12 | import pytest
+13 + from app.channels.secrets import encrypt_secret
+14 | from fastapi import FastAPI
+15 | from sqlalchemy.orm import Session as OrmSession
+16 |
+   - from app.channels.secrets import encrypt_secret
+17 | from app.db.models import (
+   |
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> tests/test_channel_outbound.py:3:1
+   |
+ 1 |   """P6-03 outbound contract, security, retry and website isolation checks."""
+ 2 |
+ 3 | / import json
+ 4 | | import socket
+ 5 | | from datetime import UTC, datetime, timedelta
+ 6 | | from typing import Any
+ 7 | | from uuid import UUID
+ 8 | |
+ 9 | | import httpx
+10 | | import pytest
+11 | | from alembic.config import Config
+12 | | from alembic.script import ScriptDirectory
+13 | | from pydantic import SecretStr
+14 | | from sqlalchemy import func, select, text
+15 | | from sqlalchemy.engine import Engine
+16 | | from sqlalchemy.exc import IntegrityError
+17 | | from sqlalchemy.orm import Session
+18 | |
+19 | | import app.channels.outbound as outbound
+20 | | from app.channels.inbound import run_channel_inbound
+21 | | from app.channels.outbound import enqueue_message, requeue_message
+22 | | from app.channels.secrets import encrypt_secret
+23 | | from app.chat.conversations import append_message
+24 | | from app.core.config import Settings
+25 | | from app.db.models import (
+26 | |     ChannelConnection,
+27 | |     ChannelEvent,
+28 | |     Conversation,
+29 | |     Job,
+30 | |     Message,
+31 | | )
+32 | | from app.jobs.runner import execute_claimed_job
+33 | | from app.knowledge.storage import LocalStorage
+34 | | from tests.conftest import API_DIR, build_test_settings, run_migrations
+35 | | from tests.fakes.fake_many import FakeMany
+36 | | from tests.helpers import seeded_tenant
+37 | | from tests.test_channel_events import (
+38 | |     _connection,
+39 | |     _patch_success_pipeline,
+40 | |     _payload,
+41 | |     _post,
+42 | |     _run_event,
+43 | | )
+   | |_^
+help: Organize imports
+   |
+12 | from alembic.script import ScriptDirectory
+13 + from app.channels.secrets import encrypt_secret
+14 | from pydantic import SecretStr
+--------------------------------------------------------------------------------
+22 | from app.channels.outbound import enqueue_message, requeue_message
+   - from app.channels.secrets import encrypt_secret
+23 | from app.chat.conversations import append_message
+   |
+
+I001 [*] Import block is un-sorted or un-formatted
+   --> tests/test_channel_review_fixes.py:339:5
+    |
+337 |       """Documented behaviour: only the current and the immediately previous secret
+338 |       verify, so an emergency second rotation cuts off the original at once."""
+339 | /     from app.channels.secrets import signing_secrets
+340 | |     from app.core.config import get_settings
+341 | |     from tests.test_channel_health import _staff_connection
+342 | |     from tests.test_channels import _platform_call
+    | |__________________________________________________^
+343 |
+344 |       users, connection, first = _staff_connection(app, db)
+    |
+help: Organize imports
+    |
+339 |     from app.channels.secrets import signing_secrets
+340 +
+341 |     from app.core.config import get_settings
+    |
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> tests/test_channels.py:3:1
+   |
+ 1 |   """P6-01 channel connection, signing, secret, isolation, and quota contracts."""
+ 2 |
+ 3 | / import json
+ 4 | | from datetime import UTC, datetime, timedelta
+ 5 | | from types import SimpleNamespace
+ 6 | | from typing import Any
+ 7 | | from uuid import UUID, uuid4
+ 8 | |
+ 9 | | import pytest
+10 | | from cryptography.fernet import Fernet
+11 | | from pydantic import SecretStr
+12 | | from sqlalchemy import select
+13 | | from sqlalchemy.exc import IntegrityError
+14 | | from sqlalchemy.orm import Session
+15 | |
+16 | | from app.channels.secrets import decrypt_secret, encrypt_secret, signing_secrets
+17 | | from app.channels.signing import sign, verify
+18 | | from app.core.config import get_settings
+19 | | from app.db.models import (
+20 | |     AuditEvent,
+21 | |     ChannelConnection,
+22 | |     Contact,
+23 | |     ContactIdentity,
+24 | |     Conversation,
+25 | |     Message,
+26 | | )
+27 | | from tests.conftest import build_test_settings, csrf_headers
+28 | | from tests.helpers import make_bot, seeded_tenant
+   | |_________________________________________________^
+help: Organize imports
+   |
+9  | import pytest
+10 + from app.channels.secrets import decrypt_secret, encrypt_secret, signing_secrets
+11 | from cryptography.fernet import Fernet
+--------------------------------------------------------------------------------
+16 |
+   - from app.channels.secrets import decrypt_secret, encrypt_secret, signing_secrets
+17 | from app.channels.signing import sign, verify
+   |
+
+Found 7 errors.
+[*] 7 fixable with `--fix`.

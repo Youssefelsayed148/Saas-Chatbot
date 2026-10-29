@@ -1,0 +1,510 @@
+<testsuites id="" name="" tests="176" failures="0" skipped="0" errors="0" time="224.45107">
+<testsuite name="account.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="5" failures="0" skipped="0" time="3.683" errors="0">
+<testcase name="Account page (S4) › anonymous visitors are redirected to /login" classname="account.spec.ts" time="0.181">
+</testcase>
+<testcase name="Account page (S4) › client user changes password; other session is signed out; new password works" classname="account.spec.ts" time="1.673">
+</testcase>
+<testcase name="Account page (S4) › wrong current password shows the safe error and keeps the session" classname="account.spec.ts" time="0.474">
+</testcase>
+<testcase name="Account page (S4) › platform staff see the account page in the platform shell and can change their password" classname="account.spec.ts" time="0.919">
+</testcase>
+<testcase name="Account page (S4) › client-side checks block mismatched confirmation" classname="account.spec.ts" time="0.436">
+</testcase>
+</testsuite>
+<testsuite name="b4-dashboards.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="6" failures="0" skipped="0" time="1.922" errors="0">
+<testcase name="Overview: trend chart with a text alternative, donut, formatted recents, wording" classname="b4-dashboards.spec.ts" time="0.435">
+</testcase>
+<testcase name="Overview: no data hides chart cards; staff see health alert and unfinished checklist only" classname="b4-dashboards.spec.ts" time="0.279">
+</testcase>
+<testcase name="Overview: finished checklist and healthy model are not shown" classname="b4-dashboards.spec.ts" time="0.299">
+</testcase>
+<testcase name="Insights: period selector refetches, deltas and chart alternatives show" classname="b4-dashboards.spec.ts" time="0.39">
+</testcase>
+<testcase name="Insights: an empty period shows one message and no empty cards" classname="b4-dashboards.spec.ts" time="0.2">
+</testcase>
+<testcase name="Bot overview: percentages, seconds, volume chart, hidden thumbs tile" classname="b4-dashboards.spec.ts" time="0.319">
+</testcase>
+</testsuite>
+<testsuite name="b5-conversations.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="18" failures="0" skipped="0" time="8.53" errors="0">
+<testcase name="shell: inbox renders the Conversations shell with the inbox tab and one active sidebar item" classname="b5-conversations.spec.ts" time="0.238">
+</testcase>
+<testcase name="shell: inbox thread renders the Conversations shell with the inbox tab and one active sidebar item" classname="b5-conversations.spec.ts" time="0.232">
+</testcase>
+<testcase name="shell: tenant history renders the Conversations shell with the history tab and one active sidebar item" classname="b5-conversations.spec.ts" time="0.237">
+</testcase>
+<testcase name="shell: per-bot history renders the Conversations shell with the history tab and one active sidebar item" classname="b5-conversations.spec.ts" time="0.197">
+</testcase>
+<testcase name="shell: saved thread renders the Conversations shell with the history tab and one active sidebar item" classname="b5-conversations.spec.ts" time="0.203">
+</testcase>
+<testcase name="shell: staff sidebar marks the single Conversations item on a per-bot history route" classname="b5-conversations.spec.ts" time="0.195">
+</testcase>
+<testcase name="tabs: Inbox and History tabs navigate to /inbox and /conversations" classname="b5-conversations.spec.ts" time="0.49">
+</testcase>
+<testcase name="layout: first inbox row is visible without scrolling at 1920x1140" classname="b5-conversations.spec.ts" time="0.227">
+</testcase>
+<testcase name="layout: first inbox row is visible without scrolling at 1280x800" classname="b5-conversations.spec.ts" time="0.238">
+</testcase>
+<testcase name="inbox: the list scrolls independently of the page" classname="b5-conversations.spec.ts" time="0.216">
+</testcase>
+<testcase name="inbox: filter chips update the URL, the request and aria-pressed; counts come from /inbox/counts" classname="b5-conversations.spec.ts" time="0.764">
+</testcase>
+<testcase name="inbox: More filters popover holds mode and closes with Escape; search is sent as q" classname="b5-conversations.spec.ts" time="1.294">
+</testcase>
+<testcase name="history: search, status, channel and date range send q, status, channel, created_from, created_to" classname="b5-conversations.spec.ts" time="1.82">
+</testcase>
+<testcase name="history: 25 rows per page, total text, Previous disabled on page 1, offset 25 on page 2" classname="b5-conversations.spec.ts" time="0.322">
+</testcase>
+<testcase name="history: a row opens the read-only saved thread under its bot" classname="b5-conversations.spec.ts" time="0.304">
+</testcase>
+<testcase name="delete: row menu, Cancel leaves the row, Confirm sends DELETE and reloads the list" classname="b5-conversations.spec.ts" time="0.536">
+</testcase>
+<testcase name="viewer: no row menu, delete or retention controls in the DOM; thread is read-only" classname="b5-conversations.spec.ts" time="0.36">
+</testcase>
+<testcase name="retention: summary shows the saved value, panel opens prefilled, invalid values send nothing, valid value PATCHes" classname="b5-conversations.spec.ts" time="0.657">
+</testcase>
+</testsuite>
+<testsuite name="b6-limits.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="3" failures="0" skipped="0" time="2.785" errors="0">
+<testcase name="editing a limit shows the sticky bar; saving clears it" classname="b6-limits.spec.ts" time="1.269">
+</testcase>
+<testcase name="reset to plan defaults confirms, then saves" classname="b6-limits.spec.ts" time="1.28">
+</testcase>
+<testcase name="unreported cost is never shown as a measured $0" classname="b6-limits.spec.ts" time="0.236">
+</testcase>
+</testsuite>
+<testsuite name="b6-settings.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="8" failures="0" skipped="0" time="3.565" errors="0">
+<testcase name="editing shows the sticky save bar; Save settings persists and clears it" classname="b6-settings.spec.ts" time="0.727">
+</testcase>
+<testcase name="section nav lists the six sections and jumps to them" classname="b6-settings.spec.ts" time="1.206">
+</testcase>
+<testcase name="Human handoff is a switch that toggles and saves" classname="b6-settings.spec.ts" time="0.32">
+</testcase>
+<testcase name="widget colour shows a contrast result and flags a bad hex" classname="b6-settings.spec.ts" time="0.301">
+</testcase>
+<testcase name="the AI tier saves immediately with inline feedback inside the AI section" classname="b6-settings.spec.ts" time="0.283">
+</testcase>
+<testcase name="staff see a collapsible Diagnostics block with retrieval details" classname="b6-settings.spec.ts" time="0.265">
+</testcase>
+<testcase name="readiness shows progress, failing items first and the model banner" classname="b6-settings.spec.ts" time="0.241">
+</testcase>
+<testcase name="settings fit a phone width without horizontal page scroll" classname="b6-settings.spec.ts" time="0.222">
+</testcase>
+</testsuite>
+<testsuite name="c-bot-settings.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="12" failures="0" skipped="0" time="6.43" errors="0">
+<testcase name="one Assistant name field; business name defaults to the organization" classname="c-bot-settings.spec.ts" time="1.17">
+</testcase>
+<testcase name="an existing assistant name wins over the legacy bot name" classname="c-bot-settings.spec.ts" time="0.211">
+</testcase>
+<testcase name="staff tone and rules: textarea, counter, guidance, saved in the one request" classname="c-bot-settings.spec.ts" time="1.709">
+</testcase>
+<testcase name="theme preset drives the preview and is saved with the form" classname="c-bot-settings.spec.ts" time="0.356">
+</testcase>
+<testcase name="an untouched bot sends no theme and the default preview keeps today&apos;s look" classname="c-bot-settings.spec.ts" time="0.253">
+</testcase>
+<testcase name="per-slot palette and picker; low contrast warns and can be fixed" classname="c-bot-settings.spec.ts" time="1.342">
+</testcase>
+<testcase name="a 422 on the theme shows inline and saves nothing else" classname="c-bot-settings.spec.ts" time="0.348">
+</testcase>
+<testcase name="readiness checklist reflects the API state with links to the section" classname="c-bot-settings.spec.ts" time="0.247">
+</testcase>
+<testcase name="backfill action is hidden when embeddings are up to date" classname="c-bot-settings.spec.ts" time="0.229">
+</testcase>
+<testcase name="backfill action shows in normal style when needed and keeps its confirmation" classname="c-bot-settings.spec.ts" time="0.302">
+</testcase>
+<testcase name="widget frame applies the saved theme through CSS variables" classname="c-bot-settings.spec.ts" time="0.141">
+</testcase>
+<testcase name="widget frame without a theme keeps today&apos;s look" classname="c-bot-settings.spec.ts" time="0.122">
+</testcase>
+</testsuite>
+<testsuite name="channel-delivery.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="2" failures="0" skipped="0" time="0.607" errors="0">
+<testcase name="channel delivery and paused composer fit Arabic RTL at 360px" classname="channel-delivery.spec.ts" time="0.368">
+</testcase>
+<testcase name="a message that failed while paused can be sent again" classname="channel-delivery.spec.ts" time="0.239">
+</testcase>
+</testsuite>
+<testsuite name="channel-insights.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="1" failures="0" skipped="0" time="6.189" errors="0">
+<testcase name="mixed channel inbox, insights and contacts at 360px with RTL" classname="channel-insights.spec.ts" time="6.189">
+</testcase>
+</testsuite>
+<testsuite name="channels.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="2" failures="0" skipped="0" time="8.094" errors="0">
+<testcase name="staff manage a connection end to end at 360px with RTL" classname="channels.spec.ts" time="3.495">
+</testcase>
+<testcase name="fake Many event drives the shared inbox and the overview card" classname="channels.spec.ts" time="4.599">
+</testcase>
+</testsuite>
+<testsuite name="contacts.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="1" failures="0" skipped="0" time="0.772" errors="0">
+<testcase name="admin creates, edits, and reviews a contact profile" classname="contacts.spec.ts" time="0.772">
+</testcase>
+</testsuite>
+<testsuite name="conversations.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="2" failures="0" skipped="0" time="7.499" errors="0">
+<testcase name="visitor chat + consent lead appear in the conversations view with citations" classname="conversations.spec.ts" time="3.478">
+</testcase>
+<testcase name="inbox agent takes over an unanswered widget thread, replies, then returns it to AI" classname="conversations.spec.ts" time="4.021">
+</testcase>
+</testsuite>
+<testsuite name="dashboard.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="5" failures="0" skipped="0" time="3.42" errors="0">
+<testcase name="self-service disabled hides public registration and organization creation" classname="dashboard.spec.ts" time="0.4">
+</testcase>
+<testcase name="admin signup provisions first bot and bot lifecycle stays with platform staff" classname="dashboard.spec.ts" time="0.486">
+</testcase>
+<testcase name="a second user cannot reach the first user&apos;s organization" classname="dashboard.spec.ts" time="0.639">
+</testcase>
+<testcase name="team management: admin invites, invitee accepts, viewer sees read-only bots" classname="dashboard.spec.ts" time="1.431">
+</testcase>
+<testcase name="expired session sends the user back to login" classname="dashboard.spec.ts" time="0.464">
+</testcase>
+</testsuite>
+<testsuite name="followups.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="1" failures="0" skipped="0" time="3.661" errors="0">
+<testcase name="editor schedules a website follow-up from a contact profile and views measured analytics" classname="followups.spec.ts" time="3.661">
+</testcase>
+</testsuite>
+<testsuite name="foundation.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="1" failures="0" skipped="0" time="0.113" errors="0">
+<testcase name="foundation renders with no browser errors" classname="foundation.spec.ts" time="0.113">
+</testcase>
+</testsuite>
+<testsuite name="group-a-members.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="1" failures="0" skipped="0" time="1.077" errors="0">
+<testcase name="revoked members are absent from client Team and platform detail; pending invites remain" classname="group-a-members.spec.ts" time="1.077">
+</testcase>
+</testsuite>
+<testsuite name="group-a-operator.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="4" failures="0" skipped="0" time="1.071" errors="0">
+<testcase name="staff /app and switcher load every org without memberships" classname="group-a-operator.spec.ts" time="0.468">
+</testcase>
+<testcase name="non-staff /app keeps invitation empty state and membership switcher" classname="group-a-operator.spec.ts" time="0.202">
+</testcase>
+<testcase name="staff inbox is read-only (membership: false)" classname="group-a-operator.spec.ts" time="0.198">
+</testcase>
+<testcase name="staff inbox is read-only (membership: true)" classname="group-a-operator.spec.ts" time="0.203">
+</testcase>
+</testsuite>
+<testsuite name="group-b-client-visibility.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="6" failures="0" skipped="0" time="7.129" errors="0">
+<testcase name="admin: navigation, client DOM, exports and action controls match API roles" classname="group-b-client-visibility.spec.ts" time="2.014">
+</testcase>
+<testcase name="editor: navigation, client DOM, exports and action controls match API roles" classname="group-b-client-visibility.spec.ts" time="1.709">
+</testcase>
+<testcase name="viewer: navigation, client DOM, exports and action controls match API roles" classname="group-b-client-visibility.spec.ts" time="1.732">
+</testcase>
+<testcase name="staff: navigation, client DOM, exports and action controls match API roles" classname="group-b-client-visibility.spec.ts" time="1.246">
+</testcase>
+<testcase name="client with no current assistant has a Conversations empty state" classname="group-b-client-visibility.spec.ts" time="0.175">
+</testcase>
+<testcase name="restricted URL renders no shell while the client session is unresolved" classname="group-b-client-visibility.spec.ts" time="0.253">
+</testcase>
+</testsuite>
+<testsuite name="group-c-polish.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="11" failures="0" skipped="0" time="8.148" errors="0">
+<testcase name="member removal: Cancel and Escape do not write; Confirm writes once" classname="group-c-polish.spec.ts" time="0.398">
+</testcase>
+<testcase name="conversation deletion: Cancel and Escape do not write; Confirm writes once" classname="group-c-polish.spec.ts" time="0.525">
+</testcase>
+<testcase name="bot settings pause: Cancel and Escape do not write; Confirm writes once" classname="group-c-polish.spec.ts" time="0.469">
+</testcase>
+<testcase name="platform pause: Cancel and Escape do not write; Confirm writes once" classname="group-c-polish.spec.ts" time="0.707">
+</testcase>
+<testcase name="embedding backfill: Cancel and Escape do not write; Confirm writes once" classname="group-c-polish.spec.ts" time="0.482">
+</testcase>
+<testcase name="plan default reset: Cancel and Escape do not write; Confirm writes once" classname="group-c-polish.spec.ts" time="0.455">
+</testcase>
+<testcase name="both job lists show Retry only for failed and Cancel only for queued/running" classname="group-c-polish.spec.ts" time="0.65">
+</testcase>
+<testcase name="all audit views render historical owner and current admin actions" classname="group-c-polish.spec.ts" time="1.008">
+</testcase>
+<testcase name="titles update on navigation; change requests use an SVG; contact dropdown has real middle dots" classname="group-c-polish.spec.ts" time="1.364">
+</testcase>
+<testcase name="Save settings applies appearance live with no publication control" classname="group-c-polish.spec.ts" time="1.205">
+</testcase>
+<testcase name="favicon is a served ICO and sample page is protected by server staff access" classname="group-c-polish.spec.ts" time="0.885">
+</testcase>
+</testsuite>
+<testsuite name="install.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="1" failures="0" skipped="0" time="3.237" errors="0">
+<testcase name="activate a draft bot on Settings, then Install shows snippet + sample helper" classname="install.spec.ts" time="3.237">
+</testcase>
+</testsuite>
+<testsuite name="knowledge.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="6" failures="0" skipped="0" time="18.842" errors="0">
+<testcase name="fresh signup shows the knowledge upload controls without a reload" classname="knowledge.spec.ts" time="0.833">
+</testcase>
+<testcase name="upload, ingest through the worker, preview, publish" classname="knowledge.spec.ts" time="4.421">
+</testcase>
+<testcase name="oversize uploads are rejected through the same-origin proxy with 413" classname="knowledge.spec.ts" time="3.474">
+</testcase>
+<testcase name="viewer cannot access knowledge" classname="knowledge.spec.ts" time="2.018">
+</testcase>
+<testcase name="duplicate upload is skipped; always-include, replace and remove work with confirmations" classname="knowledge.spec.ts" time="3.827">
+</testcase>
+<testcase name="files can be multi-selected and removed together; tabs show one section" classname="knowledge.spec.ts" time="4.269">
+</testcase>
+</testsuite>
+<testsuite name="login-register.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="7" failures="0" skipped="0" time="1.335" errors="0">
+<testcase name="Landing, login and register redirect › landing shows the product and a Sign in button, no Register" classname="login-register.spec.ts" time="0.151">
+</testcase>
+<testcase name="Landing, login and register redirect › login page has no Register link and shows the admin hint" classname="login-register.spec.ts" time="0.164">
+</testcase>
+<testcase name="Landing, login and register redirect › login shows inline field errors for an empty submit" classname="login-register.spec.ts" time="0.26">
+</testcase>
+<testcase name="Landing, login and register redirect › password field toggles visibility" classname="login-register.spec.ts" time="0.263">
+</testcase>
+<testcase name="Landing, login and register redirect › /register redirects to /login" classname="login-register.spec.ts" time="0.143">
+</testcase>
+<testcase name="Landing, login and register redirect › /register keeps a safe next parameter" classname="login-register.spec.ts" time="0.14">
+</testcase>
+<testcase name="Landing, login and register redirect › /register drops an unsafe next parameter" classname="login-register.spec.ts" time="0.214">
+</testcase>
+</testsuite>
+<testsuite name="message-body.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="5" failures="0" skipped="0" time="0.002" errors="0">
+<testcase name="a procedure becomes an intro, a numbered list and a labelled notes list" classname="message-body.spec.ts" time="0.001">
+</testcase>
+<testcase name="bold text is split out and everything else stays plain" classname="message-body.spec.ts" time="0">
+</testcase>
+<testcase name="a bullet and a numbered list in a row are two lists" classname="message-body.spec.ts" time="0">
+</testcase>
+<testcase name="plain lines stay one paragraph with line breaks and html is never interpreted" classname="message-body.spec.ts" time="0.001">
+</testcase>
+<testcase name="Arabic text and empty input are handled" classname="message-body.spec.ts" time="0">
+</testcase>
+</testsuite>
+<testsuite name="organizations.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="2" failures="0" skipped="0" time="3.417" errors="0">
+<testcase name="staff create and manage an organization across its four tabs" classname="organizations.spec.ts" time="2.876">
+</testcase>
+<testcase name="non-staff cannot reach /platform" classname="organizations.spec.ts" time="0.541">
+</testcase>
+</testsuite>
+<testsuite name="overview.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="2" failures="0" skipped="0" time="9.783" errors="0">
+<testcase name="workspace shell + measured overview with per-bot scoping and CSV" classname="overview.spec.ts" time="7.149">
+</testcase>
+<testcase name="unanswered list shows the question the bot could not confirm" classname="overview.spec.ts" time="2.634">
+</testcase>
+</testsuite>
+<testsuite name="platform.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="2" failures="0" skipped="0" time="3.123" errors="0">
+<testcase name="non-staff cannot reach /platform (server-side redirect)" classname="platform.spec.ts" time="0.128">
+</testcase>
+<testcase name="staff create an organization, user and bot, and open the client detail" classname="platform.spec.ts" time="2.995">
+</testcase>
+</testsuite>
+<testsuite name="playground.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="4" failures="0" skipped="0" time="7.491" errors="0">
+<testcase name="playground chat: grounded answer, citation, thumbs, thread persists" classname="playground.spec.ts" time="2.879">
+<system-out>
+<![CDATA[TURN RESPONSE: [33m200[39m : stream
+
+event: verdict
+data: {"can_answer": true, "released": true}
+
+event: delta
+data: {"text": "Openin"}
+
+event: delta
+data: {"text": "g hours"}
+
+event: delta
+data: {"text": " —"}
+
+event: delta
+data: {"text": " Openin"}
+
+event: delta
+data: {"text": "g hours"}
+
+event: delta
+data: {"text": " (https"}
+
+event: delta
+data: {"text": "://pg-c"}
+
+event: delta
+data: {"text": "ited.ex"}
+
+event: delta
+data: {"text": "ample.c"}
+
+event: delta
+data: {"text": "om/hour"}
+
+event: delta
+data: {"text": "s) We a"}
+
+event: delta
+data: {"text": "re open"}
+
+event: delta
+data: {"text": " Monday"}
+
+event: delta
+data: {"text": " to Fri"}
+
+event: delta
+data: {"text": "day fro"}
+
+event: delta
+data: {"text": "m 9:00 "}
+
+event: delta
+data: {"text": "to 17:0"}
+
+event: delta
+data: {"text": "0 and a"}
+
+event: delta
+data: {"text": "nswer c"}
+
+event: delta
+data: {"text": "hats in"}
+
+event: delta
+data: {"text": "stantly"}
+
+event: delta
+data: {"text": "."}
+
+event: done
+data: {"conversation_id": "dc2c767f-e2c4-4bc9-96c3-6655524deaaf", "mode": "ai", "status": "open", "visitor_message": {"id": "6273dc7e-0596-4898-9261-aec37b9c3890", "text": "open weekday hours", "created_at": "2026-10-29T20:10:05.886491+00:00"}, "ai_message": {"id": "6444c57f-b2c3-4cea-a091-ca413ec14c80", "text": "Opening hours — Opening hours (https://pg-cited.example.com/hours) We are open Monday to Friday from 9:00 to 17:00 and answer chats instantly.", "citations": [{"chunk_id": "1c030721-1104-45bf-bec2-85249274bf85", "title": "Opening hours", "heading": "Opening hours", "source_url": "https://pg-cited.example.com/hours", "page_ref": "Section 1"}], "can_answer": true, "needs_human": false, "response_ms": 24, "created_at": "2026-10-29T20:10:05.918421+00:00"}, "kind": "answer", "language": "en"}
+
+
+]]>
+</system-out>
+</testcase>
+<testcase name="playground streams the turn, New session starts an empty thread" classname="playground.spec.ts" time="2.112">
+</testcase>
+<testcase name="an expired session pushes the playground back to login" classname="playground.spec.ts" time="0.744">
+</testcase>
+<testcase name="viewer is read-only in the playground" classname="playground.spec.ts" time="1.756">
+</testcase>
+</testsuite>
+<testsuite name="privacy-terms.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="2" failures="0" skipped="0" time="0.216" errors="0">
+<testcase name="/privacy is publicly readable without a staff session" classname="privacy-terms.spec.ts" time="0.106">
+</testcase>
+<testcase name="/terms is publicly readable without a staff session" classname="privacy-terms.spec.ts" time="0.11">
+</testcase>
+</testsuite>
+<testsuite name="roles-control.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="2" failures="0" skipped="0" time="7.672" errors="0">
+<testcase name="client admin requests a change and a separate operator triages it" classname="roles-control.spec.ts" time="2.771">
+</testcase>
+<testcase name="all client roles cannot obtain snippets or enter bot-control surfaces" classname="roles-control.spec.ts" time="4.901">
+</testcase>
+</testsuite>
+<testsuite name="security-headers.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="2" failures="0" skipped="0" time="0.047" errors="0">
+<testcase name="dashboard responses carry Referrer-Policy, nosniff and frame-ancestors &apos;none&apos;" classname="security-headers.spec.ts" time="0.035">
+</testcase>
+<testcase name="widget frame page relaxes frame-ancestors only under /widget" classname="security-headers.spec.ts" time="0.012">
+</testcase>
+</testsuite>
+<testsuite name="staff-bots.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="3" failures="0" skipped="0" time="8.2" errors="0">
+<testcase name="staff creates bots from the directory and locked organization form" classname="staff-bots.spec.ts" time="3.684">
+</testcase>
+<testcase name="authenticated non-staff cannot reach the Bots section" classname="staff-bots.spec.ts" time="0.316">
+</testcase>
+<testcase name="settings normalizes allowed domains and shows inline field errors" classname="staff-bots.spec.ts" time="4.2">
+</testcase>
+</testsuite>
+<testsuite name="staff-members.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="4" failures="0" skipped="0" time="5.887" errors="0">
+<testcase name="staff creates, resets, deactivates and manages existing-user invitations" classname="staff-members.spec.ts" time="3.512">
+</testcase>
+<testcase name="invalid phone shows an inline error without echoing the value" classname="staff-members.spec.ts" time="0.947">
+</testcase>
+<testcase name="phone joins the country code and strips a pasted leading 0" classname="staff-members.spec.ts" time="1.257">
+</testcase>
+<testcase name="non-staff cannot access the Members list or details" classname="staff-members.spec.ts" time="0.171">
+</testcase>
+</testsuite>
+<testsuite name="ui-characterization.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="6" failures="0" skipped="0" time="8.555" errors="0">
+<testcase name="tenant data: operator deletion requires exact name and a meaningful reason" classname="ui-characterization.spec.ts" time="1.25">
+</testcase>
+<testcase name="tenant data: admin can review but only staff sees deletion; viewer is denied" classname="ui-characterization.spec.ts" time="0.436">
+</testcase>
+<testcase name="platform operations: reason gates retry and cancel, audit search keeps its query" classname="ui-characterization.spec.ts" time="2.255">
+</testcase>
+<testcase name="platform client mutations preserve plan, quota and pause reason payloads" classname="ui-characterization.spec.ts" time="2.04">
+</testcase>
+<testcase name="inbox viewer cannot mutate AI, human or resolved conversations" classname="ui-characterization.spec.ts" time="0.684">
+</testcase>
+<testcase name="widget 429 displays the server message verbatim" classname="ui-characterization.spec.ts" time="1.89">
+</testcase>
+</testsuite>
+<testsuite name="ui-redesign.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="4" failures="0" skipped="0" time="1.883" errors="0">
+<testcase name="Arabic inbox rows preserve unread markers and filter chips drive the request" classname="ui-redesign.spec.ts" time="0.641">
+</testcase>
+<testcase name="tenant Overview reads existing data and is the client signup destination" classname="ui-redesign.spec.ts" time="0.422">
+</testcase>
+<testcase name="workspace theme persists and keyboard palette only navigates" classname="ui-redesign.spec.ts" time="0.499">
+</testcase>
+<testcase name="mobile navigation opens and dismisses with Escape" classname="ui-redesign.spec.ts" time="0.321">
+</testcase>
+</testsuite>
+<testsuite name="widget-domain.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="2" failures="0" skipped="0" time="9.093" errors="0">
+<testcase name="an allowed-domains bot answers on the listed host and cannot appear on another" classname="widget-domain.spec.ts" time="5.768">
+</testcase>
+<testcase name="an empty allowed-domains list keeps the check off for every site" classname="widget-domain.spec.ts" time="3.325">
+</testcase>
+</testsuite>
+<testsuite name="widget-layout.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="3" failures="0" skipped="0" time="4.341" errors="0">
+<testcase name="widget panel layout holds up: desktop 1920x1140" classname="widget-layout.spec.ts" time="1.43">
+</testcase>
+<testcase name="widget panel layout holds up: phone 375x667" classname="widget-layout.spec.ts" time="1.475">
+</testcase>
+<testcase name="widget panel layout holds up: desktop RTL (Arabic)" classname="widget-layout.spec.ts" time="1.436">
+</testcase>
+</testsuite>
+<testsuite name="widget-panel.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="9" failures="0" skipped="0" time="13.33" errors="0">
+<testcase name="widget panel is bounded and readable (source loader, 1920x1140)" classname="widget-panel.spec.ts" time="1.628">
+</testcase>
+<testcase name="widget panel is bounded and readable (source loader, 1280x800)" classname="widget-panel.spec.ts" time="1.685">
+</testcase>
+<testcase name="widget panel is bounded and readable (source loader, 375x667)" classname="widget-panel.spec.ts" time="1.687">
+</testcase>
+<testcase name="widget panel is bounded and readable (source loader, RTL 1280x800)" classname="widget-panel.spec.ts" time="1.713">
+</testcase>
+<testcase name="widget panel is bounded and readable (served loader, 1920x1140)" classname="widget-panel.spec.ts" time="1.645">
+</testcase>
+<testcase name="widget panel is bounded and readable (served loader, 1280x800)" classname="widget-panel.spec.ts" time="1.655">
+</testcase>
+<testcase name="widget panel is bounded and readable (served loader, 375x667)" classname="widget-panel.spec.ts" time="1.638">
+</testcase>
+<testcase name="widget panel is bounded and readable (served loader, RTL 1280x800)" classname="widget-panel.spec.ts" time="1.679">
+</testcase>
+<testcase name="the served loader.js is the source loader.js (sync-loader keeps them identical)" classname="widget-panel.spec.ts" time="0">
+</testcase>
+</testsuite>
+<testsuite name="widget-polling.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="6" failures="0" skipped="0" time="15.299" errors="0">
+<testcase name="polling rules › the server hint wins; a handoff only counts until a hint arrives" classname="widget-polling.spec.ts" time="0">
+</testcase>
+<testcase name="polling rules › a hidden tab never polls" classname="widget-polling.spec.ts" time="0">
+</testcase>
+<testcase name="polling rules › hint parsing and handoff detection" classname="widget-polling.spec.ts" time="0.001">
+</testcase>
+<testcase name="polling rules › errors back off exponentially up to a cap and success resets" classname="widget-polling.spec.ts" time="0">
+</testcase>
+<testcase name="an answered conversation is looked at once and then not polled" classname="widget-polling.spec.ts" time="5.546">
+</testcase>
+<testcase name="a handoff starts polling, shows the agent reply and stops when idle" classname="widget-polling.spec.ts" time="9.752">
+</testcase>
+</testsuite>
+<testsuite name="widget-streaming.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="11" failures="0" skipped="0" time="4.25" errors="0">
+<testcase name="text appears progressively, announces once at done, and persists the final id" classname="widget-streaming.spec.ts" time="0.277">
+</testcase>
+<testcase name="done is authoritative: a replaced answer overwrites what streamed" classname="widget-streaming.spec.ts" time="0.211">
+</testcase>
+<testcase name="a single cannot-confirm event shows at once with no typing text before it" classname="widget-streaming.spec.ts" time="0.207">
+</testcase>
+<testcase name="Arabic text streams intact and keeps automatic direction" classname="widget-streaming.spec.ts" time="0.208">
+</testcase>
+<testcase name="Stop aborts the stream, removes the partial bubble and returns the text to the input" classname="widget-streaming.spec.ts" time="0.249">
+</testcase>
+<testcase name="stream failure (network-error) before any text falls back to the buffered endpoint once" classname="widget-streaming.spec.ts" time="0.194">
+</testcase>
+<testcase name="stream failure (http-502) before any text falls back to the buffered endpoint once" classname="widget-streaming.spec.ts" time="0.207">
+</testcase>
+<testcase name="an in-stream error before any text also falls back once" classname="widget-streaming.spec.ts" time="0.187">
+</testcase>
+<testcase name="a stream that dies after text drops the partial and does not replay it" classname="widget-streaming.spec.ts" time="0.2">
+</testcase>
+<testcase name="an application refusal (429) is shown as in the buffered path, with no fallback" classname="widget-streaming.spec.ts" time="0.196">
+</testcase>
+<testcase name="real stack on the stub model streams through the proxy and persists at done" classname="widget-streaming.spec.ts" time="2.114">
+</testcase>
+</testsuite>
+<testsuite name="widget.spec.ts" timestamp="2026-10-29T20:08:08.782Z" hostname="chromium" tests="4" failures="0" skipped="0" time="6.864" errors="0">
+<testcase name="mobile embedded widget stays within the viewport for both configured placements" classname="widget.spec.ts" time="0.754">
+</testcase>
+<testcase name="configured widget brand keeps header text contrast AA in both themes" classname="widget.spec.ts" time="0.509">
+</testcase>
+<testcase name="two static sites, two tenants: each widget answers only from its own knowledge" classname="widget.spec.ts" time="5.383">
+</testcase>
+<testcase name="visitor never renders sources even when a response contains citations" classname="widget.spec.ts" time="0.218">
+</testcase>
+</testsuite>
+</testsuites>

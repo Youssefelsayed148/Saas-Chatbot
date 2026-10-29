@@ -1,0 +1,137 @@
+﻿diff --git a/apps/api/tests/eval/offline/test_gate_trace.py b/apps/api/tests/eval/offline/test_gate_trace.py
+index 67bbc71..77b4396 100644
+--- a/apps/api/tests/eval/offline/test_gate_trace.py
++++ b/apps/api/tests/eval/offline/test_gate_trace.py
+@@ -99,7 +99,7 @@ def test_verdict_names_the_rule_that_decided() -> None:
+         evidence=[by_cosine, by_keyword, one_term],
+         embedding_model="openai:text-embedding-3-large",
+     )
+-    decision = relevance_gate(result, settings())
++    decision = relevance_gate(result, settings(retrieval_vector_floors={"openai:text-embedding-3-large": 0.50}))
+     first, second, third = decision.verdicts
+     assert (first.accepted_by, second.accepted_by, third.accepted_by) == ("cosine", "keyword", None)
+     assert "cosine 0.620 >= floor 0.50" in first.reason
+@@ -166,7 +166,7 @@ def test_candidate_trace_rows_carry_terms_and_gate_rule() -> None:
+     result = RetrievalResult(
+         "en", "en", False, evidence=[chunk], embedding_model="openai:text-embedding-3-large"
+     )
+-    decision = relevance_gate(result, settings())
++    decision = relevance_gate(result, settings(retrieval_vector_floors={"openai:text-embedding-3-large": 0.50}))
+     rows = candidate_trace(result, decision, decision.passed)
+     row = rows[0]
+     assert row["query_terms"] == ["card", "refund", "days"]
+diff --git a/apps/api/tests/eval/offline/test_h4_terms_and_diagnosis.py b/apps/api/tests/eval/offline/test_h4_terms_and_diagnosis.py
+index 96a96dd..7116873 100644
+--- a/apps/api/tests/eval/offline/test_h4_terms_and_diagnosis.py
++++ b/apps/api/tests/eval/offline/test_h4_terms_and_diagnosis.py
+@@ -99,7 +99,7 @@ def test_zero_countable_terms_cannot_pass_on_keywords() -> None:
+ 
+ 
+ def test_rejected_verdicts_name_the_failed_rules() -> None:
+-    cfg = settings()
++    cfg = settings(retrieval_vector_floors={"openai:text-embedding-3-large": 0.50})
+     chunk = make_chunk(vector_similarity=0.31, fts_match=0.0, matched_terms=0, query_terms=3)
+     result = RetrievalResult("en", "en", False, evidence=[chunk], embedding_model=MODEL)
+     assert relevance_gate(result, cfg).verdicts[0].failed_rules == ("cosine", "terms", "fts")
+@@ -112,7 +112,7 @@ def test_rejected_verdicts_name_the_failed_rules() -> None:
+ 
+ 
+ def test_refusal_diagnosis_reports_nearest_candidate_and_shortfalls() -> None:
+-    cfg = settings()
++    cfg = settings(retrieval_vector_floors={"openai:text-embedding-3-large": 0.50})
+     near = make_chunk(
+         vector_similarity=0.44, fts_match=0.3, matched_terms=1, query_terms=3, rrf_score=0.03
+     )
+diff --git a/apps/api/tests/test_channel_erasure.py b/apps/api/tests/test_channel_erasure.py
+index 6f6c12f..9a6e576 100644
+--- a/apps/api/tests/test_channel_erasure.py
++++ b/apps/api/tests/test_channel_erasure.py
+@@ -14,6 +14,7 @@ import app.channels.erasure as erasure
+ import app.channels.inbound as inbound
+ import app.channels.outbound as outbound
+ from app.contacts.router import merge_contact
++from app.core.audit import record_audit
+ from app.core.tenancy import TenantContext
+ from app.db.models import (
+     AuditEvent,
+@@ -339,7 +340,7 @@ def test_worker_refreshes_after_waiting_for_erasure_lock(
+         _send(client, conn, secret, _erase_payload(conn, event_id="erase-interleave")).status_code
+         == 202
+     )
+-    original_lock = inbound.channel_work_lock
++    original_lock = erasure.channel_work_lock
+ 
+     @contextmanager
+     def finish_erasure_while_waiting(*args: Any, **kwargs: Any) -> Any:
+@@ -364,7 +365,7 @@ def test_erasure_failure_rolls_back_and_can_retry(
+     assert (
+         _send(client, conn, secret, _erase_payload(conn, event_id="retry-erase")).status_code == 202
+     )
+-    original_audit = erasure.record_audit
++    original_audit = record_audit
+     monkeypatch.setattr(
+         erasure, "record_audit", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("injected"))
+     )
+diff --git a/apps/api/tests/test_r19_index_migration.py b/apps/api/tests/test_r19_index_migration.py
+index 9e9330a..1dc04e2 100644
+--- a/apps/api/tests/test_r19_index_migration.py
++++ b/apps/api/tests/test_r19_index_migration.py
+@@ -1,10 +1,11 @@
+ """Verify the existing 0030 expression index through actual Alembic transitions."""
+ 
+ import os
++from pathlib import Path
+ from uuid import uuid4
+ 
+ from alembic.config import Config
+-from sqlalchemy import create_engine, text
++from sqlalchemy import create_engine, make_url, text
+ 
+ from alembic import command
+ from app.db.session import sqlalchemy_url
+@@ -14,7 +15,15 @@ from tests.conftest import API_DIR, create_database, disposable_url, run_migrati
+ def test_health_lookup_index_roundtrip_and_head_drift(base_url: str) -> None:
+     name = "many_test_r19_index_" + uuid4().hex[:8] + "_test"
+     url = disposable_url(base_url, name)
+-    assert os.environ["APP_ENV"] == "test" and os.environ["PGHOST"].startswith("/var/tmp/saas-r19-")
++    assert os.environ["APP_ENV"] == "test" and os.environ["ENVIRONMENT"] == "test"
++    socket = Path(os.environ["PGHOST"]).resolve()
++    assert socket.parent.parent == Path("/var/tmp") and socket.parent.name.startswith("saas-")
++    port = int(os.environ["PGPORT"])
++    assert (socket / f".s.PGSQL.{port}").is_socket()
++    target = make_url(base_url)
++    assert target.host in (None, "127.0.0.1", "localhost")
++    assert target.port in (None, port)
++    assert target.database is not None and target.database.endswith("_test")
+     create_database(base_url, name)
+     run_migrations(url, upgrade_to="0029_channel_event_payload_purge")
+     engine = create_engine(sqlalchemy_url(url))
+diff --git a/scripts/test_dev_compose.py b/scripts/test_dev_compose.py
+index 1c507bc..f283f7d 100644
+--- a/scripts/test_dev_compose.py
++++ b/scripts/test_dev_compose.py
+@@ -18,7 +18,7 @@ class DevComposeContract(unittest.TestCase):
+ 
+     def test_single_root_stack_and_opt_in_seed(self) -> None:
+         self.assertNotIn("include", self.compose)
+-        self.assertEqual(set(self.services), {"db", "migrate", "api", "worker", "web", "seed"})
++        self.assertEqual(set(self.services), {"db", "migrate", "staff", "api", "worker", "web", "seed"})
+         self.assertFalse((ROOT / "infra/compose.yaml").exists())
+         for name, service in self.services.items():
+             self.assertEqual(service.get("profiles", []), ["seed"] if name == "seed" else [])
+@@ -31,6 +31,15 @@ class DevComposeContract(unittest.TestCase):
+         self.assertNotIn("ports", db)
+         self.assertEqual(set(self.compose["volumes"]), {"postgres_data", "app_data"})
+ 
++    def test_staff_bootstrap_is_optional_and_migration_gated(self) -> None:
++        staff = self.services["staff"]
++        self.assertEqual(staff["restart"], "no")
++        self.assertEqual(staff["depends_on"]["migrate"]["condition"], "service_completed_successfully")
++        self.assertEqual(staff["environment"]["PLATFORM_STAFF_PASSWORD"], "${PLATFORM_STAFF_PASSWORD:-}")
++        self.assertIn('if [ -n "$$PLATFORM_STAFF_PASSWORD" ]', staff["command"][-1])
++        self.assertIn("python -m scripts.create_platform_staff", staff["command"][-1])
++        self.assertEqual(self.services["web"]["depends_on"]["staff"]["condition"], "service_completed_successfully")
++
+     def test_migrations_gate_both_processes(self) -> None:
+         migrate = self.services["migrate"]
+         self.assertEqual(migrate["command"], ["alembic", "upgrade", "head"])

@@ -1,0 +1,1 @@
+Reviewed 197 text evidence files. No dependency/build/storage/trace/source-snapshot/database artifacts. No real credential identified. Private/provider-key and JWT patterns: 0. Password-URL pattern: 9 matches, all restricted to synthetic rejected-URL parameter names in tests.test_seed_demo/test_guard_rejects_unsafe_targets_without_credentials (saas-api.xml). Raw JUnit preserved.

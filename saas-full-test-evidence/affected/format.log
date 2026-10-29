@@ -1,0 +1,28 @@
+unformatted: File would be reformatted
+   --> tests/eval/offline/test_gate_trace.py:102:31
+    |
+101 |     )
+    -     decision = relevance_gate(result, settings(retrieval_vector_floors={"openai:text-embedding-3-large": 0.50}))
+102 +     decision = relevance_gate(
+103 +         result, settings(retrieval_vector_floors={"openai:text-embedding-3-large": 0.50})
+104 +     )
+105 |     first, second, third = decision.verdicts
+--------------------------------------------------------------------------------
+170 |     )
+    -     decision = relevance_gate(result, settings(retrieval_vector_floors={"openai:text-embedding-3-large": 0.50}))
+171 +     decision = relevance_gate(
+172 +         result, settings(retrieval_vector_floors={"openai:text-embedding-3-large": 0.50})
+173 +     )
+174 |     rows = candidate_trace(result, decision, decision.passed)
+    |
+
+unformatted: File would be reformatted
+ --> tests/test_r19_index_migration.py:3:10
+  |
+2 |
+  - import os
+3 + import os
+4 | from pathlib import Path
+  |
+
+2 files would be reformatted, 302 files already formatted

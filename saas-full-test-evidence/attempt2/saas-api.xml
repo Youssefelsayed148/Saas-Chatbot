@@ -1,0 +1,630 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="21" skipped="0" tests="61" time="35.328" timestamp="2026-10-29T22:30:35.932502+03:00" hostname="LAPTOP-SU9MG22P"><testcase classname="tests.eval.offline.test_gate_compare" name="test_defaults_candidate_leaves_settings_identical" time="0.001" /><testcase classname="tests.eval.offline.test_gate_compare" name="test_candidate_file_validation" time="0.003" /><testcase classname="tests.eval.offline.test_gate_compare" name="test_report_marks_dropped_pages_and_leaks" time="0.002" /><testcase classname="tests.eval.offline.test_gate_compare" name="test_the_real_cases_feed_the_report_shape" time="0.000"><failure message="FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_eval.jsonl'">def test_the_real_cases_feed_the_report_shape() -&gt; None:
+&gt;       cases = nile_metrics.load_cases()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/eval/offline/test_gate_compare.py:89: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/eval/nile_metrics.py:40: in load_cases
+    for line in path.read_text(encoding="utf-8").splitlines()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_eval.jsonl')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+&gt;       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_eval.jsonl'
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: FileNotFoundError</failure></testcase><testcase classname="tests.eval.offline.test_gate_trace" name="test_defaults_are_unchanged" time="0.001" /><testcase classname="tests.eval.offline.test_gate_trace" name="test_gate_matches_legacy_over_a_grid_at_defaults" time="0.215" /><testcase classname="tests.eval.offline.test_gate_trace" name="test_verdict_names_the_rule_that_decided" time="0.001"><failure message="AssertionError: assert 'cosine 0.620 &gt;= floor 0.50' in 'passed: cosine 0.620 &gt;= floor 0.30'&#10; +  where 'passed: cosine 0.620 &gt;= floor 0.30' = ChunkVerdict(chunk_id='e0cefdcf-8039-4d5e-876f-6a87e8a17564', accepted=True, accepted_by='cosine', reason='passed: cos...ired_terms=2, terms_pass=False, fts_match=0.0, fts_minimum=0.01, fts_pass=False, top_result_pass=None, failed_rules=()).reason">def test_verdict_names_the_rule_that_decided() -&gt; None:
+        by_cosine = make_chunk(vector_similarity=0.62, fts_match=0.0, matched_terms=0, query_terms=3)
+        by_keyword = make_chunk(vector_similarity=0.2, fts_match=0.3, matched_terms=2, query_terms=3)
+        one_term = make_chunk(vector_similarity=0.2, fts_match=0.3, matched_terms=1, query_terms=3)
+        result = RetrievalResult(
+            "en",
+            "en",
+            False,
+            evidence=[by_cosine, by_keyword, one_term],
+            embedding_model="openai:text-embedding-3-large",
+        )
+        decision = relevance_gate(result, settings())
+        first, second, third = decision.verdicts
+        assert (first.accepted_by, second.accepted_by, third.accepted_by) == ("cosine", "keyword", None)
+&gt;       assert "cosine 0.620 &gt;= floor 0.50" in first.reason
+E       AssertionError: assert 'cosine 0.620 &gt;= floor 0.50' in 'passed: cosine 0.620 &gt;= floor 0.30'
+E        +  where 'passed: cosine 0.620 &gt;= floor 0.30' = ChunkVerdict(chunk_id='e0cefdcf-8039-4d5e-876f-6a87e8a17564', accepted=True, accepted_by='cosine', reason='passed: cos...ired_terms=2, terms_pass=False, fts_match=0.0, fts_minimum=0.01, fts_pass=False, top_result_pass=None, failed_rules=()).reason
+
+tests/eval/offline/test_gate_trace.py:105: AssertionError</failure></testcase><testcase classname="tests.eval.offline.test_gate_trace" name="test_uncalibrated_model_reports_disabled_cosine" time="0.001" /><testcase classname="tests.eval.offline.test_gate_trace" name="test_top_result_rule_is_off_by_default_and_gated_by_margin" time="0.002" /><testcase classname="tests.eval.offline.test_gate_trace" name="test_ignore_terms_drop_store_names_from_the_term_count_only" time="0.001" /><testcase classname="tests.eval.offline.test_gate_trace" name="test_candidate_trace_rows_carry_terms_and_gate_rule" time="0.002"><failure message="AssertionError: assert ('2' == '2'&#10;  &#10;    2 and True is False)">def test_candidate_trace_rows_carry_terms_and_gate_rule() -&gt; None:
+        chunk = make_chunk(
+            vector_similarity=0.31,
+            fts_match=0.2,
+            matched_terms=1,
+            query_terms=3,
+            rrf_score=0.03,
+            query_term_labels=["card", "refund", "days"],
+            matched_term_labels=["refund"],
+        )
+        result = RetrievalResult(
+            "en", "en", False, evidence=[chunk], embedding_model="openai:text-embedding-3-large"
+        )
+        decision = relevance_gate(result, settings())
+        rows = candidate_trace(result, decision, decision.passed)
+        row = rows[0]
+        assert row["query_terms"] == ["card", "refund", "days"]
+        assert row["matched_terms"] == ["refund"]
+&gt;       assert row["locator"] == "2" and row["accepted"] is False
+E       AssertionError: assert ('2' == '2'
+E         
+E           2 and True is False)
+
+tests/eval/offline/test_gate_trace.py:174: AssertionError</failure></testcase><testcase classname="tests.eval.offline.test_h4_terms_and_diagnosis" name="test_filler_lists_never_overlap_the_stop_lists_or_topic_words" time="0.001" /><testcase classname="tests.eval.offline.test_h4_terms_and_diagnosis" name="test_fillers_leave_the_term_count[Could you please tell me the opening hours?-en-labels0]" time="0.001" /><testcase classname="tests.eval.offline.test_h4_terms_and_diagnosis" name="test_fillers_leave_the_term_count[I want to know the return window-en-labels1]" time="0.001" /><testcase classname="tests.eval.offline.test_h4_terms_and_diagnosis" name="test_fillers_leave_the_term_count[\u0627\u064a\u0647 \u0645\u0648\u0627\u0639\u064a\u062f \u0627\u0644\u0634\u063a\u0644 \u0639\u0646\u062f\u0643\u0645\u061f-ar-labels2]" time="0.001" /><testcase classname="tests.eval.offline.test_h4_terms_and_diagnosis" name="test_fillers_leave_the_term_count[\u0639\u0627\u064a\u0632 \u0627\u0639\u0631\u0641 \u0633\u064a\u0627\u0633\u0629 \u0627\u0644\u0627\u0633\u062a\u0631\u062c\u0627\u0639 \u0645\u0645\u0643\u0646-ar-labels3]" time="0.001" /><testcase classname="tests.eval.offline.test_h4_terms_and_diagnosis" name="test_fillers_leave_the_term_count[\u0628\u062f\u064a \u0627\u0639\u0631\u0641 \u0634\u0648 \u0633\u0639\u0631 \u0627\u0644\u0634\u062d\u0646-ar-labels4]" time="0.001" /><testcase classname="tests.eval.offline.test_h4_terms_and_diagnosis" name="test_fillers_leave_the_term_count[\u0645\u0645\u0643\u0646 \u062a\u0642\u0648\u0644\u064a \u0648\u0634 \u0645\u062f\u0629 \u0627\u0644\u0636\u0645\u0627\u0646 \u0639\u0644\u0649 \u0627\u0644\u062c\u0648\u0627\u0644\u0627\u062a\u061f-ar-labels5]" time="0.001" /><testcase classname="tests.eval.offline.test_h4_terms_and_diagnosis" name="test_fillers_leave_the_term_count[\u0627\u0632\u0627\u064a \u0627\u062a\u0627\u0628\u0639 \u0634\u062d\u0646\u062a\u064a \u0641\u064a\u0646 \u0631\u0642\u0645 \u0627\u0644\u062a\u062a\u0628\u0639-ar-labels6]" time="0.001" /><testcase classname="tests.eval.offline.test_h4_terms_and_diagnosis" name="test_fillers_stay_in_the_ranking_query" time="0.001" /><testcase classname="tests.eval.offline.test_h4_terms_and_diagnosis" name="test_a_filler_only_question_has_no_countable_terms" time="0.000" /><testcase classname="tests.eval.offline.test_h4_terms_and_diagnosis" name="test_configured_ignore_terms_still_apply_on_top_of_the_fillers" time="0.001" /><testcase classname="tests.eval.offline.test_h4_terms_and_diagnosis" name="test_zero_countable_terms_cannot_pass_on_keywords" time="0.002" /><testcase classname="tests.eval.offline.test_h4_terms_and_diagnosis" name="test_rejected_verdicts_name_the_failed_rules" time="0.002"><failure message="AssertionError: assert () == ('cosine', 'terms', 'fts')&#10;  &#10;  Right contains 3 more items, first extra item: 'cosine'&#10;  Use -v to get more diff">def test_rejected_verdicts_name_the_failed_rules() -&gt; None:
+        cfg = settings()
+        chunk = make_chunk(vector_similarity=0.31, fts_match=0.0, matched_terms=0, query_terms=3)
+        result = RetrievalResult("en", "en", False, evidence=[chunk], embedding_model=MODEL)
+&gt;       assert relevance_gate(result, cfg).verdicts[0].failed_rules == ("cosine", "terms", "fts")
+E       AssertionError: assert () == ('cosine', 'terms', 'fts')
+E         
+E         Right contains 3 more items, first extra item: 'cosine'
+E         Use -v to get more diff
+
+tests/eval/offline/test_h4_terms_and_diagnosis.py:105: AssertionError</failure></testcase><testcase classname="tests.eval.offline.test_h4_terms_and_diagnosis" name="test_refusal_diagnosis_reports_nearest_candidate_and_shortfalls" time="0.002"><failure message="AssertionError: assert [RetrievedChu...rm_labels=[])] == []&#10;  &#10;  Left contains one more item: RetrievedChunk(chunk_id=UUID('2637c314-f586-432a-bb82-92de526dcd6a'), document_id=UUID('a4988204-542b-4faa-9c46-df10b6...rity=0.44, fts_match=0.3, rrf_score=0.03, matched_terms=1, query_terms=3, query_term_labels=[], matched_term_labels=[])&#10;  Use -v to get more diff">def test_refusal_diagnosis_reports_nearest_candidate_and_shortfalls() -&gt; None:
+        cfg = settings()
+        near = make_chunk(
+            vector_similarity=0.44, fts_match=0.3, matched_terms=1, query_terms=3, rrf_score=0.03
+        )
+        far = make_chunk(vector_similarity=0.10, fts_match=0.0, matched_terms=0, query_terms=3)
+        result = RetrievalResult("en", "en", False, evidence=[far, near], embedding_model=MODEL)
+        decision = relevance_gate(result, cfg)
+&gt;       assert decision.passed == []
+E       AssertionError: assert [RetrievedChu...rm_labels=[])] == []
+E         
+E         Left contains one more item: RetrievedChunk(chunk_id=UUID('2637c314-f586-432a-bb82-92de526dcd6a'), document_id=UUID('a4988204-542b-4faa-9c46-df10b6...rity=0.44, fts_match=0.3, rrf_score=0.03, matched_terms=1, query_terms=3, query_term_labels=[], matched_term_labels=[])
+E         Use -v to get more diff
+
+tests/eval/offline/test_h4_terms_and_diagnosis.py:122: AssertionError</failure></testcase><testcase classname="tests.eval.offline.test_h4_terms_and_diagnosis" name="test_refusal_diagnosis_without_candidates" time="0.002" /><testcase classname="tests.eval.offline.test_h4_terms_and_diagnosis" name="test_page_sweep_counts_leaks_and_wrong_refusals_without_applying_anything" time="0.001" /><testcase classname="tests.eval.offline.test_h4_terms_and_diagnosis" name="test_threshold_sweep_script_prints_a_table_and_applies_nothing" time="0.006" /><testcase classname="tests.eval.offline.test_nile_eval_cases" name="test_corpus_hashes_match_the_frozen_list" time="0.003" /><testcase classname="tests.eval.offline.test_nile_eval_cases" name="test_corpus_has_forty_text_pages" time="0.794" /><testcase classname="tests.eval.offline.test_nile_eval_cases" name="test_case_file_shape_and_mix" time="0.000"><failure message="FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_eval.jsonl'">def test_case_file_shape_and_mix() -&gt; None:
+&gt;       cases = load_nile_cases()
+                ^^^^^^^^^^^^^^^^^
+
+tests/eval/offline/test_nile_eval_cases.py:60: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/eval/offline/test_nile_eval_cases.py:28: in load_nile_cases
+    for line in CASES_PATH.read_text(encoding="utf-8").splitlines()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_eval.jsonl')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+&gt;       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_eval.jsonl'
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: FileNotFoundError</failure></testcase><testcase classname="tests.eval.offline.test_nile_eval_cases" name="test_every_english_case_has_an_arabic_twin_with_the_same_expectations" time="0.000"><failure message="FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_eval.jsonl'">def test_every_english_case_has_an_arabic_twin_with_the_same_expectations() -&gt; None:
+&gt;       cases = load_nile_cases()
+                ^^^^^^^^^^^^^^^^^
+
+tests/eval/offline/test_nile_eval_cases.py:81: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/eval/offline/test_nile_eval_cases.py:28: in load_nile_cases
+    for line in CASES_PATH.read_text(encoding="utf-8").splitlines()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_eval.jsonl')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+&gt;       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_eval.jsonl'
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: FileNotFoundError</failure></testcase><testcase classname="tests.eval.offline.test_nile_eval_cases" name="test_expected_pages_contain_the_expected_text" time="0.000"><failure message="FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_eval.jsonl'">def test_expected_pages_contain_the_expected_text() -&gt; None:
+        checked = 0
+&gt;       for case in load_nile_cases():
+                    ^^^^^^^^^^^^^^^^^
+
+tests/eval/offline/test_nile_eval_cases.py:99: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/eval/offline/test_nile_eval_cases.py:28: in load_nile_cases
+    for line in CASES_PATH.read_text(encoding="utf-8").splitlines()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_eval.jsonl')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+&gt;       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_eval.jsonl'
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: FileNotFoundError</failure></testcase><testcase classname="tests.eval.offline.test_nile_eval_cases" name="test_the_store_name_is_on_every_policy_so_it_is_a_real_trap[nilecart]" time="0.000" /><testcase classname="tests.eval.offline.test_nile_eval_cases" name="test_the_store_name_is_on_every_policy_so_it_is_a_real_trap[\u0646\u0627\u064a\u0644 \u0643\u0627\u0631\u062a]" time="0.000" /><testcase classname="tests.eval.offline.test_nile_metrics" name="test_locate_source_reads_the_ingestion_title" time="0.000" /><testcase classname="tests.eval.offline.test_nile_metrics" name="test_grounded_case_needs_the_expected_citation" time="0.000" /><testcase classname="tests.eval.offline.test_nile_metrics" name="test_abstain_and_injection_rules" time="0.000" /><testcase classname="tests.eval.offline.test_nile_metrics" name="test_summary_numbers" time="0.000" /><testcase classname="tests.eval.offline.test_nile_metrics" name="test_table_and_dated_result_files" time="0.002" /><testcase classname="tests.eval.offline.test_recall_cases" name="test_shape_mix_and_unique_ids" time="0.000"><failure message="FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_recall_eval.jsonl'">def test_shape_mix_and_unique_ids() -&gt; None:
+&gt;       rows = cases()
+               ^^^^^^^
+
+tests/eval/offline/test_recall_cases.py:50: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/eval/offline/test_recall_cases.py:41: in cases
+    return recall_metrics.load_cases()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/eval/recall_metrics.py:24: in load_cases
+    for line in path.read_text(encoding="utf-8").splitlines()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_recall_eval.jsonl')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+&gt;       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_recall_eval.jsonl'
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: FileNotFoundError</failure></testcase><testcase classname="tests.eval.offline.test_recall_cases" name="test_dialect_cases_name_their_dialect" time="0.000"><failure message="FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_recall_eval.jsonl'">def test_dialect_cases_name_their_dialect() -&gt; None:
+&gt;       notes = {row["note"] for row in cases() if row["category"] == "dialect"}
+                                        ^^^^^^^
+
+tests/eval/offline/test_recall_cases.py:73: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/eval/offline/test_recall_cases.py:41: in cases
+    return recall_metrics.load_cases()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/eval/recall_metrics.py:24: in load_cases
+    for line in path.read_text(encoding="utf-8").splitlines()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_recall_eval.jsonl')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+&gt;       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_recall_eval.jsonl'
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: FileNotFoundError</failure></testcase><testcase classname="tests.eval.offline.test_recall_cases" name="test_expected_sources_exist_and_hold_the_expected_text" time="0.000"><failure message="FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_recall_eval.jsonl'">def test_expected_sources_exist_and_hold_the_expected_text() -&gt; None:
+&gt;       for row in cases():
+                   ^^^^^^^
+
+tests/eval/offline/test_recall_cases.py:78: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/eval/offline/test_recall_cases.py:41: in cases
+    return recall_metrics.load_cases()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/eval/recall_metrics.py:24: in load_cases
+    for line in path.read_text(encoding="utf-8").splitlines()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_recall_eval.jsonl')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+&gt;       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_recall_eval.jsonl'
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: FileNotFoundError</failure></testcase><testcase classname="tests.eval.offline.test_recall_cases" name="test_every_case_has_a_fair_expected_source_set" time="0.000"><failure message="FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_recall_eval.jsonl'">def test_every_case_has_a_fair_expected_source_set() -&gt; None:
+        """Answerable cases name only pages that carry an expected fact, never the whole corpus."""
+&gt;       for row in cases():
+                   ^^^^^^^
+
+tests/eval/offline/test_recall_cases.py:94: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/eval/offline/test_recall_cases.py:41: in cases
+    return recall_metrics.load_cases()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/eval/recall_metrics.py:24: in load_cases
+    for line in path.read_text(encoding="utf-8").splitlines()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_recall_eval.jsonl')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+&gt;       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_recall_eval.jsonl'
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: FileNotFoundError</failure></testcase><testcase classname="tests.eval.offline.test_recall_cases" name="test_no_answer_leaks_into_the_question" time="0.000"><failure message="FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_recall_eval.jsonl'">def test_no_answer_leaks_into_the_question() -&gt; None:
+&gt;       for row in cases():
+                   ^^^^^^^
+
+tests/eval/offline/test_recall_cases.py:105: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/eval/offline/test_recall_cases.py:41: in cases
+    return recall_metrics.load_cases()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/eval/recall_metrics.py:24: in load_cases
+    for line in path.read_text(encoding="utf-8").splitlines()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_recall_eval.jsonl')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+&gt;       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_recall_eval.jsonl'
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: FileNotFoundError</failure></testcase><testcase classname="tests.eval.offline.test_recall_cases" name="test_english_paraphrases_do_not_quote_the_page[en]" time="0.000"><failure message="FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_recall_eval.jsonl'">language = 'en'
+
+    @pytest.mark.parametrize("language", ["en"])
+    def test_english_paraphrases_do_not_quote_the_page(language: str) -&gt; None:
+&gt;       for row in cases():
+                   ^^^^^^^
+
+tests/eval/offline/test_recall_cases.py:113: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/eval/offline/test_recall_cases.py:41: in cases
+    return recall_metrics.load_cases()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/eval/recall_metrics.py:24: in load_cases
+    for line in path.read_text(encoding="utf-8").splitlines()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_recall_eval.jsonl')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+&gt;       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_recall_eval.jsonl'
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: FileNotFoundError</failure></testcase><testcase classname="tests.eval.offline.test_recall_cases" name="test_typo_cases_actually_contain_a_non_word" time="0.888"><failure message="FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_recall_eval.jsonl'">def test_typo_cases_actually_contain_a_non_word() -&gt; None:
+        corpus_words = set(WORD.findall(corpus_text()))
+&gt;       for row in cases():
+                   ^^^^^^^
+
+tests/eval/offline/test_recall_cases.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/eval/offline/test_recall_cases.py:41: in cases
+    return recall_metrics.load_cases()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/eval/recall_metrics.py:24: in load_cases
+    for line in path.read_text(encoding="utf-8").splitlines()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_recall_eval.jsonl')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+&gt;       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_recall_eval.jsonl'
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: FileNotFoundError</failure></testcase><testcase classname="tests.eval.offline.test_recall_cases" name="test_unanswerable_cases_are_really_absent_from_the_corpus" time="0.000"><failure message="FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_recall_eval.jsonl'">def test_unanswerable_cases_are_really_absent_from_the_corpus() -&gt; None:
+        text = corpus_text()
+&gt;       for row in cases():
+                   ^^^^^^^
+
+tests/eval/offline/test_recall_cases.py:134: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/eval/offline/test_recall_cases.py:41: in cases
+    return recall_metrics.load_cases()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/eval/recall_metrics.py:24: in load_cases
+    for line in path.read_text(encoding="utf-8").splitlines()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_recall_eval.jsonl')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+&gt;       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_recall_eval.jsonl'
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: FileNotFoundError</failure></testcase><testcase classname="tests.eval.offline.test_recall_metrics" name="test_rank_is_over_unique_pages_and_cutoffs_apply" time="0.000" /><testcase classname="tests.eval.offline.test_recall_metrics" name="test_wrong_refusal_and_wrong_evidence_are_distinct" time="0.000" /><testcase classname="tests.eval.offline.test_recall_metrics" name="test_abstain_cases_only_count_leaks" time="0.000" /><testcase classname="tests.eval.offline.test_recall_metrics" name="test_summary_excludes_inapplicable_cases_from_each_rate" time="0.000" /><testcase classname="tests.eval.test_eval" name="test_eval_report_meets_targets" time="4.331"><failure message="FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/eval.jsonl'">app = &lt;fastapi.applications.FastAPI object at 0x713a481c1b50&gt;
+db = &lt;sqlalchemy.orm.session.Session object at 0x713a481be000&gt;
+tmp_path = PosixPath('/var/tmp/saas-full-3p9GZAu5/tmp/pytest-of-root/pytest-0/test_eval_report_meets_targets0')
+
+    def test_eval_report_meets_targets(app: FastAPI, db: OrmSession, tmp_path: Any) -&gt; None:
+        _rerun = os.environ.get("EVAL_REAL_RERUN") == "1"
+&gt;       run_output = runner.run_all(app, db, tmp_path, rerun_with_owner_key=_rerun)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/eval/test_eval.py:29: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/eval/runner.py:313: in run_all
+    for case in load_cases():
+                ^^^^^^^^^^^^
+tests/eval/runner.py:99: in load_cases
+    for line in (EVAL_DIR / "eval.jsonl").read_text(encoding="utf-8").splitlines():
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/eval.jsonl')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+&gt;       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/eval.jsonl'
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: FileNotFoundError</failure></testcase><testcase classname="tests.eval.test_eval" name="test_eval_jsonl_cases_are_valid" time="0.034"><failure message="FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/eval.jsonl'">def test_eval_jsonl_cases_are_valid() -&gt; None:
+&gt;       cases = runner.load_cases()
+                ^^^^^^^^^^^^^^^^^^^
+
+tests/eval/test_eval.py:80: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/eval/runner.py:99: in load_cases
+    for line in (EVAL_DIR / "eval.jsonl").read_text(encoding="utf-8").splitlines():
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/eval.jsonl')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+&gt;       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/eval.jsonl'
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: FileNotFoundError</failure></testcase><testcase classname="tests.eval.test_gate_compare" name="test_gate_candidates_report" time="0.023"><failure message="FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_eval.jsonl'">app = &lt;fastapi.applications.FastAPI object at 0x713a48441e50&gt;
+db = &lt;sqlalchemy.orm.session.Session object at 0x713a48429880&gt;
+
+    def test_gate_candidates_report(app: FastAPI, db: OrmSession) -&gt; None:
+        raw = os.environ.get("GATE_CANDIDATES")
+        candidates = gate_compare.load_candidates(Path(raw) if raw else None)
+        mode = os.environ.get("GATE_COMPARE_MODE", "fts_only")
+        assert mode in nile_runner.MODES
+&gt;       cases = nile_metrics.load_cases()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/eval/test_gate_compare.py:27: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/eval/nile_metrics.py:40: in load_cases
+    for line in path.read_text(encoding="utf-8").splitlines()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_eval.jsonl')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+&gt;       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_eval.jsonl'
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: FileNotFoundError</failure></testcase><testcase classname="tests.eval.test_nile_eval" name="test_nile_eval_both_modes" time="5.342"><failure message="FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_eval.jsonl'">app = &lt;fastapi.applications.FastAPI object at 0x713a481bec30&gt;
+db = &lt;sqlalchemy.orm.session.Session object at 0x713a481c0d40&gt;
+
+    def test_nile_eval_both_modes(app: FastAPI, db: OrmSession) -&gt; None:
+        modes = tuple(
+            item.strip()
+            for item in os.environ.get("NILE_EVAL_MODES", ",".join(nile_runner.MODES)).split(",")
+            if item.strip()
+        )
+        model, label, note = _model()
+        with tempfile.TemporaryDirectory() as tmp:
+&gt;           verdicts = nile_runner.run_nile(app, db, Path(tmp), modes=modes, model=model)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/eval/test_nile_eval.py:52: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/eval/nile_runner.py:178: in run_nile
+    cases = nile_metrics.load_cases()
+            ^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/eval/nile_metrics.py:40: in load_cases
+    for line in path.read_text(encoding="utf-8").splitlines()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_eval.jsonl')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+&gt;       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_eval.jsonl'
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: FileNotFoundError</failure></testcase><testcase classname="tests.eval.test_recall_eval" name="test_recall_eval_both_modes" time="5.694"><failure message="FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_recall_eval.jsonl'">app = &lt;fastapi.applications.FastAPI object at 0x713a45e9fd10&gt;
+db = &lt;sqlalchemy.orm.session.Session object at 0x713a45dc51f0&gt;
+
+    def test_recall_eval_both_modes(app: FastAPI, db: OrmSession) -&gt; None:
+        modes = tuple(
+            item.strip()
+            for item in os.environ.get("RECALL_EVAL_MODES", ",".join(nile_runner.MODES)).split(",")
+            if item.strip()
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+&gt;           result = recall_runner.collect(app, db, Path(tmp), modes=modes)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/eval/test_recall_eval.py:29: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/eval/recall_runner.py:122: in collect
+    recall_cases = recall_metrics.load_cases()
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/eval/recall_metrics.py:24: in load_cases
+    for line in path.read_text(encoding="utf-8").splitlines()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_recall_eval.jsonl')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+&gt;       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/saas-full-3p9GZAu5/source/apps/api/tests/eval/nile_recall_eval.jsonl'
+
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: FileNotFoundError</failure></testcase><testcase classname="tests.eval.test_term_labels_db" name="test_trace_labels_are_consistent_with_the_counts" time="4.630" /><testcase classname="tests.eval.test_term_labels_db" name="test_ignore_terms_change_the_count_but_not_the_ranking" time="4.784" /><testcase classname="tests.eval.test_term_labels_db" name="test_title_words_never_count_as_matched_terms_but_body_words_do" time="4.799" /><testcase classname="tests.eval.test_term_labels_db" name="test_english_stop_words_are_exactly_what_postgres_drops" time="0.043" /></testsuite></testsuites>

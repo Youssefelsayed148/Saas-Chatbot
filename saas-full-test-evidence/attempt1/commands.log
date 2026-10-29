@@ -1,0 +1,14 @@
+cwd=/var/tmp/saas-full-FY3gWT8k/source/apps/api APP_ENV=test ENVIRONMENT=test TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55587/saas_full_test python -m pytest tests -q --junitxml=/mnt/d/Projects/Work\ Projects/The\ Osiris\ Labs/ManyOsirisChat/.closeout-worktrees/batch-c/saas-full-test-evidence/saas-api.xml 
+cwd=/var/tmp/saas-full-FY3gWT8k/source/apps/api APP_ENV=test ENVIRONMENT=test TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55587/saas_full_test python -m ruff check . 
+cwd=/var/tmp/saas-full-FY3gWT8k/source/apps/api APP_ENV=test ENVIRONMENT=test TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55587/saas_full_test python -m ruff format --check . 
+cwd=/var/tmp/saas-full-FY3gWT8k/source/apps/api APP_ENV=test ENVIRONMENT=test TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55587/saas_full_test python -m mypy app 
+cwd=/var/tmp/saas-full-FY3gWT8k/source/apps/api APP_ENV=test ENVIRONMENT=test TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55587/saas_full_test python -m mypy 
+cwd=/var/tmp/saas-full-FY3gWT8k/source APP_ENV=test ENVIRONMENT=test TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55587/saas_full_test python -m unittest discover -s scripts -p test_\*.py -v 
+cwd=/var/tmp/saas-full-FY3gWT8k/source APP_ENV=test ENVIRONMENT=test TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55587/saas_full_test python scripts/check_contract_copies.py 
+cwd=/var/tmp/saas-full-FY3gWT8k/source APP_ENV=test ENVIRONMENT=test TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55587/saas_full_test python /mnt/d/Projects/Work\ Projects/The\ Osiris\ Labs/ManyOsirisChat/.closeout-worktrees/batch-c/saas-full-test-evidence/hash-check.py 
+cwd=/var/tmp/saas-full-FY3gWT8k/source/apps/api APP_ENV=test ENVIRONMENT=test TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55587/saas_full_test python /mnt/d/Projects/Work\ Projects/The\ Osiris\ Labs/ManyOsirisChat/.closeout-worktrees/batch-c/saas-full-test-evidence/migrations.py 
+cwd=/var/tmp/saas-full-FY3gWT8k/source/apps/web APP_ENV=test ENVIRONMENT=test TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55587/saas_full_test npm run typecheck 
+cwd=/var/tmp/saas-full-FY3gWT8k/source/apps/web APP_ENV=test ENVIRONMENT=test TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55587/saas_full_test npm run lint 
+cwd=/var/tmp/saas-full-FY3gWT8k/source/apps/web APP_ENV=test ENVIRONMENT=test TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55587/saas_full_test node --test tests/channel-delivery.unit.mjs tests/insights.unit.mjs 
+cwd=/var/tmp/saas-full-FY3gWT8k/source/apps/web APP_ENV=test ENVIRONMENT=test TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55587/saas_full_test npm run build 
+cwd=/var/tmp/saas-full-FY3gWT8k/source/apps/web APP_ENV=test ENVIRONMENT=test TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55587/saas_full_test npm test -- --reporter=line\,junit 

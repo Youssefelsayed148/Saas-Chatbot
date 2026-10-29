@@ -1,0 +1,3 @@
+cwd=/var/tmp/saas-full-lulUluRS/source/apps/web APP_ENV=test ENVIRONMENT=test TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55593/saas_full_test npm run typecheck 
+cwd=/var/tmp/saas-full-lulUluRS/source/apps/web APP_ENV=test ENVIRONMENT=test TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55593/saas_full_test npm run lint 
+cwd=/var/tmp/saas-full-lulUluRS/source/apps/web APP_ENV=test ENVIRONMENT=test TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55593/saas_full_test npm test -- tests/widget-domain.spec.ts --reporter=line\,junit 

@@ -1,0 +1,240 @@
+DB host=127.0.0.1:55587 database=saas_empty_test
+upgrade head
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 0001_initial, initial schema: users, sessions, tenants, memberships, bots, invitations, audit_events
+INFO  [alembic.runtime.migration] Running upgrade 0001_initial -> 0002_knowledge, knowledge schema: sources, source_pages, documents, knowledge_revisions,
+chunks, jobs; bots.published_revision_id
+INFO  [alembic.runtime.migration] Running upgrade 0002_knowledge -> 0003_conversation_core, conversation core: contacts, contact_identities, conversations, messages, usage_events
+INFO  [alembic.runtime.migration] Running upgrade 0003_conversation_core -> 0004_widget_public, widget public channel: bots.widget_locator, visitor_sessions,
+rate_limit_counters, conversations.session_id
+INFO  [alembic.runtime.migration] Running upgrade 0004_widget_public -> 0005_retention_leads, tenant retention setting, leads
+INFO  [alembic.runtime.migration] Running upgrade 0005_retention_leads -> 0006_provisioning, platform admin console: provisioning_requests
+INFO  [alembic.runtime.migration] Running upgrade 0006_provisioning -> 0007_inbox, inbox read state, tags, and durable live-update cursor
+INFO  [alembic.runtime.migration] Running upgrade 0007_inbox -> 0008_contacts, contact stage vocabulary for light CRM
+INFO  [alembic.runtime.migration] Running upgrade 0008_contacts -> 0009_follow_ups, website follow-up scheduling and queue type
+INFO  [alembic.runtime.migration] Running upgrade 0009_follow_ups -> 0010_platform_ops, platform operations plan labels
+INFO  [alembic.runtime.migration] Running upgrade 0010_platform_ops -> 0011_quota_overrides, placeholder quota overrides
+INFO  [alembic.runtime.migration] Running upgrade 0011_quota_overrides -> 0012_quota_jobs, placeholder quota usage events and sentiment queue
+INFO  [alembic.runtime.migration] Running upgrade 0012_quota_jobs -> 0013_roles_operator_control, Three client roles, change requests and durable soft-deletion ledger.
+INFO  [alembic.runtime.migration] Running upgrade 0013_roles_operator_control -> 0014_rag_embeddings, Additive 1024-dimensional RAG foundation; no existing rows rewritten.
+INFO  [alembic.runtime.migration] Running upgrade 0014_rag_embeddings -> 0015_rag_metering, Add optional bot caps and AI ledger events without rewriting existing rows.
+INFO  [alembic.runtime.migration] Running upgrade 0015_rag_metering -> 0016_arabic_fts, Index Arabic chunks with PostgreSQL's real ``arabic`` text-search configuration.
+INFO  [alembic.runtime.migration] Running upgrade 0016_arabic_fts -> 0017_staff_members, Staff member phone and account eligibility.
+INFO  [alembic.runtime.migration] Running upgrade 0017_staff_members -> 0018_bot_assistant_name, Merge bot names (#9): copy the legacy bots.name into config.assistant_name.
+INFO  [alembic.runtime.migration] Running upgrade 0018_bot_assistant_name -> 0019_bot_tone_and_rules, Per-bot staff tone and rules (#15): nullable text, capped at 2000 characters.
+INFO  [alembic.runtime.migration] Running upgrade 0019_bot_tone_and_rules -> 0020_usage_event_unavailable, A usage event kind for turns the assistant could not take (no model configured).
+INFO  [alembic.runtime.migration] Running upgrade 0020_usage_event_unavailable -> 0021_revision_embedding_state, Per-revision embedding completeness (H1).
+INFO  [alembic.runtime.migration] Running upgrade 0021_revision_embedding_state -> 0022_knowledge_hygiene, Knowledge hygiene (H2): removable sources and cross-source duplicate bookkeeping.
+INFO  [alembic.runtime.migration] Running upgrade 0022_knowledge_hygiene -> 0023_manyosiris_channels, Add ManyOsirisChat delegated channel connections and event storage.
+INFO  [alembic.runtime.migration] Running upgrade 0023_manyosiris_channels -> 0024_channel_inbound, Allow channel contacts without website contact fields and inbound jobs.
+INFO  [alembic.runtime.migration] Running upgrade 0024_channel_inbound -> 0025_channel_send, Register the durable channel send job and enforce one job per message.
+INFO  [alembic.runtime.migration] Running upgrade 0025_channel_send -> 0026_channel_health_poll, Register the periodic channel health poll job (PLAN D10, docs/17 §5.2).
+INFO  [alembic.runtime.migration] Running upgrade 0026_channel_health_poll -> 0027_channel_ref_unique, One live connection per (channel, many_channel_ref) (D11, contract v1.1).
+INFO  [alembic.runtime.migration] Running upgrade 0027_channel_ref_unique -> 0028_channel_unconfirmed, Delivery state ``unconfirmed`` and ``messages.accepted_at`` (A2, D8).
+INFO  [alembic.runtime.migration] Running upgrade 0028_channel_unconfirmed -> 0029_channel_event_payload_purge, ``channel_events.payload`` becomes nullable so retention can purge it (B3).
+INFO  [alembic.runtime.migration] Running upgrade 0029_channel_event_payload_purge -> 0030_channel_health_poll_index, Index the last-poll lookup used by the channel health scheduler.
+INFO  [alembic.runtime.migration] Running upgrade 0030_channel_health_poll_index -> 0031_contact_erasure, Durable pseudonymous cutoffs for A16 contact erasure.
+check None
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.plugins] setting up autogenerate plugin alembic.autogenerate.schemas
+INFO  [alembic.runtime.plugins] setting up autogenerate plugin alembic.autogenerate.tables
+INFO  [alembic.runtime.plugins] setting up autogenerate plugin alembic.autogenerate.types
+INFO  [alembic.runtime.plugins] setting up autogenerate plugin alembic.autogenerate.constraints
+INFO  [alembic.runtime.plugins] setting up autogenerate plugin alembic.autogenerate.defaults
+INFO  [alembic.runtime.plugins] setting up autogenerate plugin alembic.autogenerate.comments
+/var/tmp/saas-full-FdwKr60F/source/apps/api/alembic/env.py:50: SAWarning: Did not recognize type 'vector' of column 'embedding'
+  context.run_migrations()
+/var/tmp/saas-full-FdwKr60F/source/apps/api/alembic/env.py:50: SAWarning: Cannot correctly sort tables; there are unresolvable cycles between tables "bots, knowledge_revisions", which is usually caused by mutually dependent foreign key constraints.  Foreign key constraints involving these tables will not be considered; this warning may raise an error in a future release.
+  context.run_migrations()
+INFO  [alembic.autogenerate.compare.types] Couldn't determine database type for column 'chunks.embedding'
+INFO  [alembic.autogenerate.compare.types] Couldn't determine database type for column 'chunks.embedding'
+No new upgrade operations detected.
+saas_empty_test PASS
+DB host=127.0.0.1:55587 database=saas_0022_test
+upgrade 0022_knowledge_hygiene
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 0001_initial, initial schema: users, sessions, tenants, memberships, bots, invitations, audit_events
+INFO  [alembic.runtime.migration] Running upgrade 0001_initial -> 0002_knowledge, knowledge schema: sources, source_pages, documents, knowledge_revisions,
+chunks, jobs; bots.published_revision_id
+INFO  [alembic.runtime.migration] Running upgrade 0002_knowledge -> 0003_conversation_core, conversation core: contacts, contact_identities, conversations, messages, usage_events
+INFO  [alembic.runtime.migration] Running upgrade 0003_conversation_core -> 0004_widget_public, widget public channel: bots.widget_locator, visitor_sessions,
+rate_limit_counters, conversations.session_id
+INFO  [alembic.runtime.migration] Running upgrade 0004_widget_public -> 0005_retention_leads, tenant retention setting, leads
+INFO  [alembic.runtime.migration] Running upgrade 0005_retention_leads -> 0006_provisioning, platform admin console: provisioning_requests
+INFO  [alembic.runtime.migration] Running upgrade 0006_provisioning -> 0007_inbox, inbox read state, tags, and durable live-update cursor
+INFO  [alembic.runtime.migration] Running upgrade 0007_inbox -> 0008_contacts, contact stage vocabulary for light CRM
+INFO  [alembic.runtime.migration] Running upgrade 0008_contacts -> 0009_follow_ups, website follow-up scheduling and queue type
+INFO  [alembic.runtime.migration] Running upgrade 0009_follow_ups -> 0010_platform_ops, platform operations plan labels
+INFO  [alembic.runtime.migration] Running upgrade 0010_platform_ops -> 0011_quota_overrides, placeholder quota overrides
+INFO  [alembic.runtime.migration] Running upgrade 0011_quota_overrides -> 0012_quota_jobs, placeholder quota usage events and sentiment queue
+INFO  [alembic.runtime.migration] Running upgrade 0012_quota_jobs -> 0013_roles_operator_control, Three client roles, change requests and durable soft-deletion ledger.
+INFO  [alembic.runtime.migration] Running upgrade 0013_roles_operator_control -> 0014_rag_embeddings, Additive 1024-dimensional RAG foundation; no existing rows rewritten.
+INFO  [alembic.runtime.migration] Running upgrade 0014_rag_embeddings -> 0015_rag_metering, Add optional bot caps and AI ledger events without rewriting existing rows.
+INFO  [alembic.runtime.migration] Running upgrade 0015_rag_metering -> 0016_arabic_fts, Index Arabic chunks with PostgreSQL's real ``arabic`` text-search configuration.
+INFO  [alembic.runtime.migration] Running upgrade 0016_arabic_fts -> 0017_staff_members, Staff member phone and account eligibility.
+INFO  [alembic.runtime.migration] Running upgrade 0017_staff_members -> 0018_bot_assistant_name, Merge bot names (#9): copy the legacy bots.name into config.assistant_name.
+INFO  [alembic.runtime.migration] Running upgrade 0018_bot_assistant_name -> 0019_bot_tone_and_rules, Per-bot staff tone and rules (#15): nullable text, capped at 2000 characters.
+INFO  [alembic.runtime.migration] Running upgrade 0019_bot_tone_and_rules -> 0020_usage_event_unavailable, A usage event kind for turns the assistant could not take (no model configured).
+INFO  [alembic.runtime.migration] Running upgrade 0020_usage_event_unavailable -> 0021_revision_embedding_state, Per-revision embedding completeness (H1).
+INFO  [alembic.runtime.migration] Running upgrade 0021_revision_embedding_state -> 0022_knowledge_hygiene, Knowledge hygiene (H2): removable sources and cross-source duplicate bookkeeping.
+upgrade head
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade 0022_knowledge_hygiene -> 0023_manyosiris_channels, Add ManyOsirisChat delegated channel connections and event storage.
+INFO  [alembic.runtime.migration] Running upgrade 0023_manyosiris_channels -> 0024_channel_inbound, Allow channel contacts without website contact fields and inbound jobs.
+INFO  [alembic.runtime.migration] Running upgrade 0024_channel_inbound -> 0025_channel_send, Register the durable channel send job and enforce one job per message.
+INFO  [alembic.runtime.migration] Running upgrade 0025_channel_send -> 0026_channel_health_poll, Register the periodic channel health poll job (PLAN D10, docs/17 §5.2).
+INFO  [alembic.runtime.migration] Running upgrade 0026_channel_health_poll -> 0027_channel_ref_unique, One live connection per (channel, many_channel_ref) (D11, contract v1.1).
+INFO  [alembic.runtime.migration] Running upgrade 0027_channel_ref_unique -> 0028_channel_unconfirmed, Delivery state ``unconfirmed`` and ``messages.accepted_at`` (A2, D8).
+INFO  [alembic.runtime.migration] Running upgrade 0028_channel_unconfirmed -> 0029_channel_event_payload_purge, ``channel_events.payload`` becomes nullable so retention can purge it (B3).
+INFO  [alembic.runtime.migration] Running upgrade 0029_channel_event_payload_purge -> 0030_channel_health_poll_index, Index the last-poll lookup used by the channel health scheduler.
+INFO  [alembic.runtime.migration] Running upgrade 0030_channel_health_poll_index -> 0031_contact_erasure, Durable pseudonymous cutoffs for A16 contact erasure.
+check None
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.plugins] setting up autogenerate plugin alembic.autogenerate.schemas
+INFO  [alembic.runtime.plugins] setting up autogenerate plugin alembic.autogenerate.tables
+INFO  [alembic.runtime.plugins] setting up autogenerate plugin alembic.autogenerate.types
+INFO  [alembic.runtime.plugins] setting up autogenerate plugin alembic.autogenerate.constraints
+INFO  [alembic.runtime.plugins] setting up autogenerate plugin alembic.autogenerate.defaults
+INFO  [alembic.runtime.plugins] setting up autogenerate plugin alembic.autogenerate.comments
+/var/tmp/saas-full-FdwKr60F/source/apps/api/alembic/env.py:50: SAWarning: Did not recognize type 'vector' of column 'embedding'
+  context.run_migrations()
+/var/tmp/saas-full-FdwKr60F/source/apps/api/alembic/env.py:50: SAWarning: Cannot correctly sort tables; there are unresolvable cycles between tables "bots, knowledge_revisions", which is usually caused by mutually dependent foreign key constraints.  Foreign key constraints involving these tables will not be considered; this warning may raise an error in a future release.
+  context.run_migrations()
+INFO  [alembic.autogenerate.compare.types] Couldn't determine database type for column 'chunks.embedding'
+INFO  [alembic.autogenerate.compare.types] Couldn't determine database type for column 'chunks.embedding'
+No new upgrade operations detected.
+saas_0022_test PASS
+DB host=127.0.0.1:55587 database=saas_rehearsal_test
+upgrade head
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 0001_initial, initial schema: users, sessions, tenants, memberships, bots, invitations, audit_events
+INFO  [alembic.runtime.migration] Running upgrade 0001_initial -> 0002_knowledge, knowledge schema: sources, source_pages, documents, knowledge_revisions,
+chunks, jobs; bots.published_revision_id
+INFO  [alembic.runtime.migration] Running upgrade 0002_knowledge -> 0003_conversation_core, conversation core: contacts, contact_identities, conversations, messages, usage_events
+INFO  [alembic.runtime.migration] Running upgrade 0003_conversation_core -> 0004_widget_public, widget public channel: bots.widget_locator, visitor_sessions,
+rate_limit_counters, conversations.session_id
+INFO  [alembic.runtime.migration] Running upgrade 0004_widget_public -> 0005_retention_leads, tenant retention setting, leads
+INFO  [alembic.runtime.migration] Running upgrade 0005_retention_leads -> 0006_provisioning, platform admin console: provisioning_requests
+INFO  [alembic.runtime.migration] Running upgrade 0006_provisioning -> 0007_inbox, inbox read state, tags, and durable live-update cursor
+INFO  [alembic.runtime.migration] Running upgrade 0007_inbox -> 0008_contacts, contact stage vocabulary for light CRM
+INFO  [alembic.runtime.migration] Running upgrade 0008_contacts -> 0009_follow_ups, website follow-up scheduling and queue type
+INFO  [alembic.runtime.migration] Running upgrade 0009_follow_ups -> 0010_platform_ops, platform operations plan labels
+INFO  [alembic.runtime.migration] Running upgrade 0010_platform_ops -> 0011_quota_overrides, placeholder quota overrides
+INFO  [alembic.runtime.migration] Running upgrade 0011_quota_overrides -> 0012_quota_jobs, placeholder quota usage events and sentiment queue
+INFO  [alembic.runtime.migration] Running upgrade 0012_quota_jobs -> 0013_roles_operator_control, Three client roles, change requests and durable soft-deletion ledger.
+INFO  [alembic.runtime.migration] Running upgrade 0013_roles_operator_control -> 0014_rag_embeddings, Additive 1024-dimensional RAG foundation; no existing rows rewritten.
+INFO  [alembic.runtime.migration] Running upgrade 0014_rag_embeddings -> 0015_rag_metering, Add optional bot caps and AI ledger events without rewriting existing rows.
+INFO  [alembic.runtime.migration] Running upgrade 0015_rag_metering -> 0016_arabic_fts, Index Arabic chunks with PostgreSQL's real ``arabic`` text-search configuration.
+INFO  [alembic.runtime.migration] Running upgrade 0016_arabic_fts -> 0017_staff_members, Staff member phone and account eligibility.
+INFO  [alembic.runtime.migration] Running upgrade 0017_staff_members -> 0018_bot_assistant_name, Merge bot names (#9): copy the legacy bots.name into config.assistant_name.
+INFO  [alembic.runtime.migration] Running upgrade 0018_bot_assistant_name -> 0019_bot_tone_and_rules, Per-bot staff tone and rules (#15): nullable text, capped at 2000 characters.
+INFO  [alembic.runtime.migration] Running upgrade 0019_bot_tone_and_rules -> 0020_usage_event_unavailable, A usage event kind for turns the assistant could not take (no model configured).
+INFO  [alembic.runtime.migration] Running upgrade 0020_usage_event_unavailable -> 0021_revision_embedding_state, Per-revision embedding completeness (H1).
+INFO  [alembic.runtime.migration] Running upgrade 0021_revision_embedding_state -> 0022_knowledge_hygiene, Knowledge hygiene (H2): removable sources and cross-source duplicate bookkeeping.
+INFO  [alembic.runtime.migration] Running upgrade 0022_knowledge_hygiene -> 0023_manyosiris_channels, Add ManyOsirisChat delegated channel connections and event storage.
+INFO  [alembic.runtime.migration] Running upgrade 0023_manyosiris_channels -> 0024_channel_inbound, Allow channel contacts without website contact fields and inbound jobs.
+INFO  [alembic.runtime.migration] Running upgrade 0024_channel_inbound -> 0025_channel_send, Register the durable channel send job and enforce one job per message.
+INFO  [alembic.runtime.migration] Running upgrade 0025_channel_send -> 0026_channel_health_poll, Register the periodic channel health poll job (PLAN D10, docs/17 §5.2).
+INFO  [alembic.runtime.migration] Running upgrade 0026_channel_health_poll -> 0027_channel_ref_unique, One live connection per (channel, many_channel_ref) (D11, contract v1.1).
+INFO  [alembic.runtime.migration] Running upgrade 0027_channel_ref_unique -> 0028_channel_unconfirmed, Delivery state ``unconfirmed`` and ``messages.accepted_at`` (A2, D8).
+INFO  [alembic.runtime.migration] Running upgrade 0028_channel_unconfirmed -> 0029_channel_event_payload_purge, ``channel_events.payload`` becomes nullable so retention can purge it (B3).
+INFO  [alembic.runtime.migration] Running upgrade 0029_channel_event_payload_purge -> 0030_channel_health_poll_index, Index the last-poll lookup used by the channel health scheduler.
+INFO  [alembic.runtime.migration] Running upgrade 0030_channel_health_poll_index -> 0031_contact_erasure, Durable pseudonymous cutoffs for A16 contact erasure.
+downgrade 0022_knowledge_hygiene
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running downgrade 0031_contact_erasure -> 0030_channel_health_poll_index, Durable pseudonymous cutoffs for A16 contact erasure.
+INFO  [alembic.runtime.migration] Running downgrade 0030_channel_health_poll_index -> 0029_channel_event_payload_purge, Index the last-poll lookup used by the channel health scheduler.
+INFO  [alembic.runtime.migration] Running downgrade 0029_channel_event_payload_purge -> 0028_channel_unconfirmed, ``channel_events.payload`` becomes nullable so retention can purge it (B3).
+INFO  [alembic.runtime.migration] Running downgrade 0028_channel_unconfirmed -> 0027_channel_ref_unique, Delivery state ``unconfirmed`` and ``messages.accepted_at`` (A2, D8).
+INFO  [alembic.runtime.migration] Running downgrade 0027_channel_ref_unique -> 0026_channel_health_poll, One live connection per (channel, many_channel_ref) (D11, contract v1.1).
+INFO  [alembic.runtime.migration] Running downgrade 0026_channel_health_poll -> 0025_channel_send, Register the periodic channel health poll job (PLAN D10, docs/17 §5.2).
+INFO  [alembic.runtime.migration] Running downgrade 0025_channel_send -> 0024_channel_inbound, Register the durable channel send job and enforce one job per message.
+INFO  [alembic.runtime.migration] Running downgrade 0024_channel_inbound -> 0023_manyosiris_channels, Allow channel contacts without website contact fields and inbound jobs.
+INFO  [alembic.runtime.migration] Running downgrade 0023_manyosiris_channels -> 0022_knowledge_hygiene, Add ManyOsirisChat delegated channel connections and event storage.
+downgrade base
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running downgrade 0022_knowledge_hygiene -> 0021_revision_embedding_state, Knowledge hygiene (H2): removable sources and cross-source duplicate bookkeeping.
+INFO  [alembic.runtime.migration] Running downgrade 0021_revision_embedding_state -> 0020_usage_event_unavailable, Per-revision embedding completeness (H1).
+INFO  [alembic.runtime.migration] Running downgrade 0020_usage_event_unavailable -> 0019_bot_tone_and_rules, A usage event kind for turns the assistant could not take (no model configured).
+INFO  [alembic.runtime.migration] Running downgrade 0019_bot_tone_and_rules -> 0018_bot_assistant_name, Per-bot staff tone and rules (#15): nullable text, capped at 2000 characters.
+INFO  [alembic.runtime.migration] Running downgrade 0018_bot_assistant_name -> 0017_staff_members, Merge bot names (#9): copy the legacy bots.name into config.assistant_name.
+INFO  [alembic.runtime.migration] Running downgrade 0017_staff_members -> 0016_arabic_fts, Staff member phone and account eligibility.
+INFO  [alembic.runtime.migration] Running downgrade 0016_arabic_fts -> 0015_rag_metering, Index Arabic chunks with PostgreSQL's real ``arabic`` text-search configuration.
+INFO  [alembic.runtime.migration] Running downgrade 0015_rag_metering -> 0014_rag_embeddings, Add optional bot caps and AI ledger events without rewriting existing rows.
+INFO  [alembic.runtime.migration] Running downgrade 0014_rag_embeddings -> 0013_roles_operator_control, Additive 1024-dimensional RAG foundation; no existing rows rewritten.
+INFO  [alembic.runtime.migration] Running downgrade 0013_roles_operator_control -> 0012_quota_jobs, Three client roles, change requests and durable soft-deletion ledger.
+INFO  [alembic.runtime.migration] Running downgrade 0012_quota_jobs -> 0011_quota_overrides, placeholder quota usage events and sentiment queue
+INFO  [alembic.runtime.migration] Running downgrade 0011_quota_overrides -> 0010_platform_ops, placeholder quota overrides
+INFO  [alembic.runtime.migration] Running downgrade 0010_platform_ops -> 0009_follow_ups, platform operations plan labels
+INFO  [alembic.runtime.migration] Running downgrade 0009_follow_ups -> 0008_contacts, website follow-up scheduling and queue type
+INFO  [alembic.runtime.migration] Running downgrade 0008_contacts -> 0007_inbox, contact stage vocabulary for light CRM
+INFO  [alembic.runtime.migration] Running downgrade 0007_inbox -> 0006_provisioning, inbox read state, tags, and durable live-update cursor
+INFO  [alembic.runtime.migration] Running downgrade 0006_provisioning -> 0005_retention_leads, platform admin console: provisioning_requests
+INFO  [alembic.runtime.migration] Running downgrade 0005_retention_leads -> 0004_widget_public, tenant retention setting, leads
+INFO  [alembic.runtime.migration] Running downgrade 0004_widget_public -> 0003_conversation_core, widget public channel: bots.widget_locator, visitor_sessions,
+rate_limit_counters, conversations.session_id
+INFO  [alembic.runtime.migration] Running downgrade 0003_conversation_core -> 0002_knowledge, conversation core: contacts, contact_identities, conversations, messages, usage_events
+INFO  [alembic.runtime.migration] Running downgrade 0002_knowledge -> 0001_initial, knowledge schema: sources, source_pages, documents, knowledge_revisions,
+chunks, jobs; bots.published_revision_id
+INFO  [alembic.runtime.migration] Running downgrade 0001_initial -> , initial schema: users, sessions, tenants, memberships, bots, invitations, audit_events
+upgrade head
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 0001_initial, initial schema: users, sessions, tenants, memberships, bots, invitations, audit_events
+INFO  [alembic.runtime.migration] Running upgrade 0001_initial -> 0002_knowledge, knowledge schema: sources, source_pages, documents, knowledge_revisions,
+chunks, jobs; bots.published_revision_id
+INFO  [alembic.runtime.migration] Running upgrade 0002_knowledge -> 0003_conversation_core, conversation core: contacts, contact_identities, conversations, messages, usage_events
+INFO  [alembic.runtime.migration] Running upgrade 0003_conversation_core -> 0004_widget_public, widget public channel: bots.widget_locator, visitor_sessions,
+rate_limit_counters, conversations.session_id
+INFO  [alembic.runtime.migration] Running upgrade 0004_widget_public -> 0005_retention_leads, tenant retention setting, leads
+INFO  [alembic.runtime.migration] Running upgrade 0005_retention_leads -> 0006_provisioning, platform admin console: provisioning_requests
+INFO  [alembic.runtime.migration] Running upgrade 0006_provisioning -> 0007_inbox, inbox read state, tags, and durable live-update cursor
+INFO  [alembic.runtime.migration] Running upgrade 0007_inbox -> 0008_contacts, contact stage vocabulary for light CRM
+INFO  [alembic.runtime.migration] Running upgrade 0008_contacts -> 0009_follow_ups, website follow-up scheduling and queue type
+INFO  [alembic.runtime.migration] Running upgrade 0009_follow_ups -> 0010_platform_ops, platform operations plan labels
+INFO  [alembic.runtime.migration] Running upgrade 0010_platform_ops -> 0011_quota_overrides, placeholder quota overrides
+INFO  [alembic.runtime.migration] Running upgrade 0011_quota_overrides -> 0012_quota_jobs, placeholder quota usage events and sentiment queue
+INFO  [alembic.runtime.migration] Running upgrade 0012_quota_jobs -> 0013_roles_operator_control, Three client roles, change requests and durable soft-deletion ledger.
+INFO  [alembic.runtime.migration] Running upgrade 0013_roles_operator_control -> 0014_rag_embeddings, Additive 1024-dimensional RAG foundation; no existing rows rewritten.
+INFO  [alembic.runtime.migration] Running upgrade 0014_rag_embeddings -> 0015_rag_metering, Add optional bot caps and AI ledger events without rewriting existing rows.
+INFO  [alembic.runtime.migration] Running upgrade 0015_rag_metering -> 0016_arabic_fts, Index Arabic chunks with PostgreSQL's real ``arabic`` text-search configuration.
+INFO  [alembic.runtime.migration] Running upgrade 0016_arabic_fts -> 0017_staff_members, Staff member phone and account eligibility.
+INFO  [alembic.runtime.migration] Running upgrade 0017_staff_members -> 0018_bot_assistant_name, Merge bot names (#9): copy the legacy bots.name into config.assistant_name.
+INFO  [alembic.runtime.migration] Running upgrade 0018_bot_assistant_name -> 0019_bot_tone_and_rules, Per-bot staff tone and rules (#15): nullable text, capped at 2000 characters.
+INFO  [alembic.runtime.migration] Running upgrade 0019_bot_tone_and_rules -> 0020_usage_event_unavailable, A usage event kind for turns the assistant could not take (no model configured).
+INFO  [alembic.runtime.migration] Running upgrade 0020_usage_event_unavailable -> 0021_revision_embedding_state, Per-revision embedding completeness (H1).
+INFO  [alembic.runtime.migration] Running upgrade 0021_revision_embedding_state -> 0022_knowledge_hygiene, Knowledge hygiene (H2): removable sources and cross-source duplicate bookkeeping.
+INFO  [alembic.runtime.migration] Running upgrade 0022_knowledge_hygiene -> 0023_manyosiris_channels, Add ManyOsirisChat delegated channel connections and event storage.
+INFO  [alembic.runtime.migration] Running upgrade 0023_manyosiris_channels -> 0024_channel_inbound, Allow channel contacts without website contact fields and inbound jobs.
+INFO  [alembic.runtime.migration] Running upgrade 0024_channel_inbound -> 0025_channel_send, Register the durable channel send job and enforce one job per message.
+INFO  [alembic.runtime.migration] Running upgrade 0025_channel_send -> 0026_channel_health_poll, Register the periodic channel health poll job (PLAN D10, docs/17 §5.2).
+INFO  [alembic.runtime.migration] Running upgrade 0026_channel_health_poll -> 0027_channel_ref_unique, One live connection per (channel, many_channel_ref) (D11, contract v1.1).
+INFO  [alembic.runtime.migration] Running upgrade 0027_channel_ref_unique -> 0028_channel_unconfirmed, Delivery state ``unconfirmed`` and ``messages.accepted_at`` (A2, D8).
+INFO  [alembic.runtime.migration] Running upgrade 0028_channel_unconfirmed -> 0029_channel_event_payload_purge, ``channel_events.payload`` becomes nullable so retention can purge it (B3).
+INFO  [alembic.runtime.migration] Running upgrade 0029_channel_event_payload_purge -> 0030_channel_health_poll_index, Index the last-poll lookup used by the channel health scheduler.
+INFO  [alembic.runtime.migration] Running upgrade 0030_channel_health_poll_index -> 0031_contact_erasure, Durable pseudonymous cutoffs for A16 contact erasure.
+check None
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.plugins] setting up autogenerate plugin alembic.autogenerate.schemas
+INFO  [alembic.runtime.plugins] setting up autogenerate plugin alembic.autogenerate.tables
+INFO  [alembic.runtime.plugins] setting up autogenerate plugin alembic.autogenerate.types
+INFO  [alembic.runtime.plugins] setting up autogenerate plugin alembic.autogenerate.constraints
+INFO  [alembic.runtime.plugins] setting up autogenerate plugin alembic.autogenerate.defaults
+INFO  [alembic.runtime.plugins] setting up autogenerate plugin alembic.autogenerate.comments
+/var/tmp/saas-full-FdwKr60F/source/apps/api/alembic/env.py:50: SAWarning: Did not recognize type 'vector' of column 'embedding'
+  context.run_migrations()
+/var/tmp/saas-full-FdwKr60F/source/apps/api/alembic/env.py:50: SAWarning: Cannot correctly sort tables; there are unresolvable cycles between tables "bots, knowledge_revisions", which is usually caused by mutually dependent foreign key constraints.  Foreign key constraints involving these tables will not be considered; this warning may raise an error in a future release.
+  context.run_migrations()
+INFO  [alembic.autogenerate.compare.types] Couldn't determine database type for column 'chunks.embedding'
+INFO  [alembic.autogenerate.compare.types] Couldn't determine database type for column 'chunks.embedding'
+No new upgrade operations detected.
+saas_rehearsal_test PASS

@@ -1,0 +1,692 @@
+{
+  "affected/saas-api.xml": {
+    "tests": 48,
+    "passed": 48,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "suite_time_seconds": null,
+    "reported_suite_times": [
+      "10.846"
+    ],
+    "failed_cases": []
+  },
+  "affected-final/saas-api.xml": {
+    "tests": 78,
+    "passed": 78,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "suite_time_seconds": null,
+    "reported_suite_times": [
+      "32.079"
+    ],
+    "failed_cases": []
+  },
+  "attempt1/saas-api.xml": {
+    "tests": 67,
+    "passed": 0,
+    "failures": 0,
+    "errors": 67,
+    "skipped": 0,
+    "suite_time_seconds": null,
+    "reported_suite_times": [
+      "3.713"
+    ],
+    "failed_cases": [
+      {
+        "classname": "",
+        "name": "tests.eval.test_eval",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.eval.test_gate_compare",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.eval.test_nile_eval",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.eval.test_recall_eval",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.eval.test_term_labels_db",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_analytics",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_bot_status",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_change_password",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_channel_contract",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_channel_contract_fixtures",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_channel_delivery",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_channel_erasure",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_channel_events",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_channel_health",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_channel_inbox_insights",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_channel_ingest_hardening",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_channel_outbound",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_channel_outbound_unit",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_channel_redrive",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_channel_retention",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_channel_review_fixes",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_channel_turn",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_channels",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_chat",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_chat_streaming",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_contacts",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_contacts_export_safety",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_conversation_intelligence",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_conversations",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_conversations_view",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_cross_language_evidence",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_cross_script",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_embedding_foundation",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_embedding_readiness",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_followups_analytics",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_free_chain",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_group_c_polish",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_h5_staff_tooling",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_handoff",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_health",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_hybrid_retrieval",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_inbox_list",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_jobs",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_knowledge_hygiene",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_knowledge_language",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_knowledge_pipeline",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_knowledge_uploads",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_model_not_configured",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_platform",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_platform_ops",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_playground_parity",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_provider_attempts",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_quotas",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_rag_evaluation",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_rag_limits",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_retrieval",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_stable_tie_break",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_staff_bots",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_staff_member_errors",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_staff_member_revocation_race",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_staff_members",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_trace_context",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_turn_deadline",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_validation_details",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_widget_appearance",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_widget_leads",
+        "time": "0.000"
+      },
+      {
+        "classname": "",
+        "name": "tests.test_widget_public",
+        "time": "0.000"
+      }
+    ]
+  },
+  "attempt2/saas-api.xml": {
+    "tests": 61,
+    "passed": 40,
+    "failures": 21,
+    "errors": 0,
+    "skipped": 0,
+    "suite_time_seconds": null,
+    "reported_suite_times": [
+      "35.328"
+    ],
+    "failed_cases": [
+      {
+        "classname": "tests.eval.offline.test_gate_compare",
+        "name": "test_the_real_cases_feed_the_report_shape",
+        "time": "0.000"
+      },
+      {
+        "classname": "tests.eval.offline.test_gate_trace",
+        "name": "test_verdict_names_the_rule_that_decided",
+        "time": "0.001"
+      },
+      {
+        "classname": "tests.eval.offline.test_gate_trace",
+        "name": "test_candidate_trace_rows_carry_terms_and_gate_rule",
+        "time": "0.002"
+      },
+      {
+        "classname": "tests.eval.offline.test_h4_terms_and_diagnosis",
+        "name": "test_rejected_verdicts_name_the_failed_rules",
+        "time": "0.002"
+      },
+      {
+        "classname": "tests.eval.offline.test_h4_terms_and_diagnosis",
+        "name": "test_refusal_diagnosis_reports_nearest_candidate_and_shortfalls",
+        "time": "0.002"
+      },
+      {
+        "classname": "tests.eval.offline.test_nile_eval_cases",
+        "name": "test_case_file_shape_and_mix",
+        "time": "0.000"
+      },
+      {
+        "classname": "tests.eval.offline.test_nile_eval_cases",
+        "name": "test_every_english_case_has_an_arabic_twin_with_the_same_expectations",
+        "time": "0.000"
+      },
+      {
+        "classname": "tests.eval.offline.test_nile_eval_cases",
+        "name": "test_expected_pages_contain_the_expected_text",
+        "time": "0.000"
+      },
+      {
+        "classname": "tests.eval.offline.test_recall_cases",
+        "name": "test_shape_mix_and_unique_ids",
+        "time": "0.000"
+      },
+      {
+        "classname": "tests.eval.offline.test_recall_cases",
+        "name": "test_dialect_cases_name_their_dialect",
+        "time": "0.000"
+      },
+      {
+        "classname": "tests.eval.offline.test_recall_cases",
+        "name": "test_expected_sources_exist_and_hold_the_expected_text",
+        "time": "0.000"
+      },
+      {
+        "classname": "tests.eval.offline.test_recall_cases",
+        "name": "test_every_case_has_a_fair_expected_source_set",
+        "time": "0.000"
+      },
+      {
+        "classname": "tests.eval.offline.test_recall_cases",
+        "name": "test_no_answer_leaks_into_the_question",
+        "time": "0.000"
+      },
+      {
+        "classname": "tests.eval.offline.test_recall_cases",
+        "name": "test_english_paraphrases_do_not_quote_the_page[en]",
+        "time": "0.000"
+      },
+      {
+        "classname": "tests.eval.offline.test_recall_cases",
+        "name": "test_typo_cases_actually_contain_a_non_word",
+        "time": "0.888"
+      },
+      {
+        "classname": "tests.eval.offline.test_recall_cases",
+        "name": "test_unanswerable_cases_are_really_absent_from_the_corpus",
+        "time": "0.000"
+      },
+      {
+        "classname": "tests.eval.test_eval",
+        "name": "test_eval_report_meets_targets",
+        "time": "4.331"
+      },
+      {
+        "classname": "tests.eval.test_eval",
+        "name": "test_eval_jsonl_cases_are_valid",
+        "time": "0.034"
+      },
+      {
+        "classname": "tests.eval.test_gate_compare",
+        "name": "test_gate_candidates_report",
+        "time": "0.023"
+      },
+      {
+        "classname": "tests.eval.test_nile_eval",
+        "name": "test_nile_eval_both_modes",
+        "time": "5.342"
+      },
+      {
+        "classname": "tests.eval.test_recall_eval",
+        "name": "test_recall_eval_both_modes",
+        "time": "5.694"
+      }
+    ]
+  },
+  "playwright-full-final/playwright.xml": {
+    "tests": 176,
+    "passed": 176,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "suite_time_seconds": "224.45107",
+    "reported_suite_times": [
+      "3.683",
+      "1.922",
+      "8.53",
+      "2.785",
+      "3.565",
+      "6.43",
+      "0.607",
+      "6.189",
+      "8.094",
+      "0.772",
+      "7.499",
+      "3.42",
+      "3.661",
+      "0.113",
+      "1.077",
+      "1.071",
+      "7.129",
+      "8.148",
+      "3.237",
+      "18.842",
+      "1.335",
+      "0.002",
+      "3.417",
+      "9.783",
+      "3.123",
+      "7.491",
+      "0.216",
+      "7.672",
+      "0.047",
+      "8.2",
+      "5.887",
+      "8.555",
+      "1.883",
+      "9.093",
+      "4.341",
+      "13.33",
+      "15.299",
+      "4.25",
+      "6.864"
+    ],
+    "failed_cases": []
+  },
+  "playwright-targeted/playwright.xml": {
+    "tests": 2,
+    "passed": 2,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "suite_time_seconds": "23.249229",
+    "reported_suite_times": [
+      "8.338"
+    ],
+    "failed_cases": []
+  },
+  "playwright.xml": {
+    "tests": 176,
+    "passed": 174,
+    "failures": 0,
+    "errors": 2,
+    "skipped": 0,
+    "suite_time_seconds": "203.734884",
+    "reported_suite_times": [
+      "3.918",
+      "1.862",
+      "8.42",
+      "2.841",
+      "3.867",
+      "5.99",
+      "0.578",
+      "6.076",
+      "7.888",
+      "0.815",
+      "6.339",
+      "3.374",
+      "3.602",
+      "0.112",
+      "1.083",
+      "1.089",
+      "7.208",
+      "6.991",
+      "2.356",
+      "17.604",
+      "0.993",
+      "0.001",
+      "2.745",
+      "7.945",
+      "2.974",
+      "7.591",
+      "0.213",
+      "6.698",
+      "0.025",
+      "7.673",
+      "5.698",
+      "8.556",
+      "1.753",
+      "4.076",
+      "4.51",
+      "13.496",
+      "15.277",
+      "3.889",
+      "6.877"
+    ],
+    "failed_cases": [
+      {
+        "name": "an allowed-domains bot answers on the listed host and cannot appear on another",
+        "classname": "widget-domain.spec.ts",
+        "time": "2.519"
+      },
+      {
+        "name": "an empty allowed-domains list keeps the check off for every site",
+        "classname": "widget-domain.spec.ts",
+        "time": "1.557"
+      }
+    ]
+  },
+  "remaining-api/saas-api.xml": {
+    "tests": 16,
+    "passed": 16,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "suite_time_seconds": null,
+    "reported_suite_times": [
+      "5.081"
+    ],
+    "failed_cases": []
+  },
+  "saas-api.xml": {
+    "tests": 1216,
+    "passed": 1208,
+    "failures": 8,
+    "errors": 0,
+    "skipped": 0,
+    "suite_time_seconds": null,
+    "reported_suite_times": [
+      "1330.916"
+    ],
+    "failed_cases": [
+      {
+        "classname": "tests.eval.offline.test_gate_trace",
+        "name": "test_verdict_names_the_rule_that_decided",
+        "time": "0.001"
+      },
+      {
+        "classname": "tests.eval.offline.test_gate_trace",
+        "name": "test_candidate_trace_rows_carry_terms_and_gate_rule",
+        "time": "0.001"
+      },
+      {
+        "classname": "tests.eval.offline.test_h4_terms_and_diagnosis",
+        "name": "test_rejected_verdicts_name_the_failed_rules",
+        "time": "0.001"
+      },
+      {
+        "classname": "tests.eval.offline.test_h4_terms_and_diagnosis",
+        "name": "test_refusal_diagnosis_reports_nearest_candidate_and_shortfalls",
+        "time": "0.001"
+      },
+      {
+        "classname": "tests.test_channel_ingest_hardening",
+        "name": "test_an_earlier_unprocessed_event_runs_before_a_later_one",
+        "time": "0.383"
+      },
+      {
+        "classname": "tests.test_r19_index_migration",
+        "name": "test_health_lookup_index_roundtrip_and_head_drift",
+        "time": "0.016"
+      },
+      {
+        "classname": "tests.test_startup_guard",
+        "name": "test_real_settings_object_tracks_explicit_provider",
+        "time": "0.018"
+      },
+      {
+        "classname": "tests.test_tenant_data",
+        "name": "test_org_delete_name_mismatch_and_soft_delete",
+        "time": "0.563"
+      }
+    ]
+  },
+  "typing-final/saas-api.xml": {
+    "tests": 3,
+    "passed": 3,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "suite_time_seconds": null,
+    "reported_suite_times": [
+      "0.440"
+    ],
+    "failed_cases": []
+  }
+}

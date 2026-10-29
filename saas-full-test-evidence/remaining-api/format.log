@@ -1,0 +1,52 @@
+unformatted: File would be reformatted
+  --> tests/test_channel_ingest_hardening.py:7:23
+   |
+6  | from datetime import UTC, datetime, timedelta
+   - from typing import Any
+   -
+7  + from typing import Any
+8  +
+9  | import pytest
+--------------------------------------------------------------------------------
+86 | ) -> None:
+   -     monkeypatch.setattr("app.chat.conversations.default_model", lambda _bot=None: None)
+   -     no_model = build_test_settings(chat_stub_model=False)
+87 +     monkeypatch.setattr("app.chat.conversations.default_model", lambda _bot=None: None)
+88 +     no_model = build_test_settings(chat_stub_model=False)
+89 |     connection_id, secret = _connection(app, db)
+   |
+
+unformatted: File would be reformatted
+  --> tests/test_closeout_schema_drift.py:13:22
+   |
+12 |     assert indexes["uq_bots_widget_locator"]["column_names"] == ["widget_locator"]
+   -     model_indexes = {
+   -         str(index.name): index for index in Bot.metadata.tables[Bot.__tablename__].indexes
+13 +     model_indexes = {
+14 +         str(index.name): index for index in Bot.metadata.tables[Bot.__tablename__].indexes
+15 |     }
+   |
+
+unformatted: File would be reformatted
+  --> tests/test_startup_guard.py:61:47
+   |
+60 | def test_real_settings_object_tracks_explicit_provider(monkeypatch: pytest.MonkeyPatch) -> None:
+   -     monkeypatch.setenv("CHAT_STUB_MODEL", "0")
+   -     monkeypatch.setenv("EMBEDDING_TEST_STUB", "0")
+61 +     monkeypatch.setenv("CHAT_STUB_MODEL", "0")
+62 +     monkeypatch.setenv("EMBEDDING_TEST_STUB", "0")
+63 |     monkeypatch.delenv("EMBEDDING_PROVIDER", raising=False)
+   |
+
+unformatted: File would be reformatted
+   --> tests/test_tenant_data.py:211:98
+    |
+210 |     assert record is not None and record.purged_at is None
+    -     assert record.purge_after.astimezone(UTC) - record.requested_at.astimezone(UTC) == timedelta(days=2)
+211 +     assert record.purge_after.astimezone(UTC) - record.requested_at.astimezone(UTC) == timedelta(
+212 +         days=2
+213 +     )
+214 |     assert get_storage(settings).open(storage_key) == b"# Delete me"
+    |
+
+4 files would be reformatted, 300 files already formatted

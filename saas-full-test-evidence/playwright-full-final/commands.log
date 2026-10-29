@@ -1,0 +1,1 @@
+cwd=/var/tmp/saas-full-imUHZ5sv/source/apps/web APP_ENV=test ENVIRONMENT=test TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55594/saas_full_test npm test -- --reporter=line\,junit 

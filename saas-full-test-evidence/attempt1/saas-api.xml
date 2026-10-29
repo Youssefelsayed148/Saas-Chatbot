@@ -1,0 +1,1132 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="67" failures="0" skipped="0" tests="67" time="3.713" timestamp="2026-10-29T22:29:41.506340+03:00" hostname="LAPTOP-SU9MG22P"><testcase classname="" name="tests.eval.test_eval" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/eval/test_eval.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/eval/test_eval.py:15: in &lt;module&gt;
+    from tests.eval import runner
+tests/eval/runner.py:42: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.eval.test_gate_compare" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/eval/test_gate_compare.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/eval/test_gate_compare.py:18: in &lt;module&gt;
+    from tests.eval import gate_compare, nile_metrics, nile_runner
+tests/eval/nile_runner.py:32: in &lt;module&gt;
+    from tests.knowledge_helpers import publish_draft, start_ingestion, upload_sources
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.eval.test_nile_eval" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/eval/test_nile_eval.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/eval/test_nile_eval.py:27: in &lt;module&gt;
+    from tests.eval import nile_metrics, nile_runner
+tests/eval/nile_runner.py:32: in &lt;module&gt;
+    from tests.knowledge_helpers import publish_draft, start_ingestion, upload_sources
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.eval.test_recall_eval" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/eval/test_recall_eval.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/eval/test_recall_eval.py:19: in &lt;module&gt;
+    from tests.eval import nile_metrics, nile_runner, recall_metrics, recall_runner
+tests/eval/nile_runner.py:32: in &lt;module&gt;
+    from tests.knowledge_helpers import publish_draft, start_ingestion, upload_sources
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.eval.test_term_labels_db" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/eval/test_term_labels_db.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/eval/test_term_labels_db.py:12: in &lt;module&gt;
+    import tests.retrieval_helpers as helpers
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_analytics" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_analytics.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_analytics.py:9: in &lt;module&gt;
+    import tests.retrieval_helpers as _rh  # noqa: F401 — registers the corpus fixture
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_bot_status" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_bot_status.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_bot_status.py:9: in &lt;module&gt;
+    import tests.retrieval_helpers as _rh  # noqa: F401 — registers the corpus fixture
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_change_password" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_change_password.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_change_password.py:21: in &lt;module&gt;
+    from tests.test_platform import staff_login
+tests/test_platform.py:19: in &lt;module&gt;
+    import tests.retrieval_helpers as _rh  # noqa: F401 — registers the corpus fixture
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_channel_contract" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_channel_contract.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_channel_contract.py:36: in &lt;module&gt;
+    import app.channels.outbound as outbound_module
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_channel_contract_fixtures" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_channel_contract_fixtures.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_channel_contract_fixtures.py:12: in &lt;module&gt;
+    from app.channels.events import ORIGIN_FIELD_LIMITS, _validate_payload
+app/channels/events.py:17: in &lt;module&gt;
+    from app.channels.secrets import signing_secrets
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_channel_delivery" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_channel_delivery.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_channel_delivery.py:13: in &lt;module&gt;
+    from app.channels.outbound import split_reply, sweep_unconfirmed
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_channel_erasure" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_channel_erasure.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_channel_erasure.py:15: in &lt;module&gt;
+    import app.channels.outbound as outbound
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_channel_events" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_channel_events.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_channel_events.py:15: in &lt;module&gt;
+    import app.channels.events as event_module
+app/channels/events.py:17: in &lt;module&gt;
+    from app.channels.secrets import signing_secrets
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_channel_health" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_channel_health.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_channel_health.py:18: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_channel_inbox_insights" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_channel_inbox_insights.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_channel_inbox_insights.py:16: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_channel_ingest_hardening" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_channel_ingest_hardening.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_channel_ingest_hardening.py:16: in &lt;module&gt;
+    from tests.test_channel_events import _connection, _payload, _post, _post_received, _run_event
+tests/test_channel_events.py:15: in &lt;module&gt;
+    import app.channels.events as event_module
+app/channels/events.py:17: in &lt;module&gt;
+    from app.channels.secrets import signing_secrets
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_channel_outbound" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_channel_outbound.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_channel_outbound.py:19: in &lt;module&gt;
+    import app.channels.outbound as outbound
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_channel_outbound_unit" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_channel_outbound_unit.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_channel_outbound_unit.py:10: in &lt;module&gt;
+    import app.channels.outbound as outbound
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_channel_redrive" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_channel_redrive.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_channel_redrive.py:14: in &lt;module&gt;
+    from tests.test_channel_events import (
+tests/test_channel_events.py:15: in &lt;module&gt;
+    import app.channels.events as event_module
+app/channels/events.py:17: in &lt;module&gt;
+    from app.channels.secrets import signing_secrets
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_channel_retention" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_channel_retention.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_channel_retention.py:14: in &lt;module&gt;
+    from tests.test_channel_events import _connection, _payload, _post, _post_received
+tests/test_channel_events.py:15: in &lt;module&gt;
+    import app.channels.events as event_module
+app/channels/events.py:17: in &lt;module&gt;
+    from app.channels.secrets import signing_secrets
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_channel_review_fixes" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_channel_review_fixes.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_channel_review_fixes.py:19: in &lt;module&gt;
+    from tests.test_channel_events import (
+tests/test_channel_events.py:15: in &lt;module&gt;
+    import app.channels.events as event_module
+app/channels/events.py:17: in &lt;module&gt;
+    from app.channels.secrets import signing_secrets
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_channel_turn" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_channel_turn.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_channel_turn.py:23: in &lt;module&gt;
+    from tests.test_channel_events import (
+tests/test_channel_events.py:15: in &lt;module&gt;
+    import app.channels.events as event_module
+app/channels/events.py:17: in &lt;module&gt;
+    from app.channels.secrets import signing_secrets
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_channels" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_channels.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_channels.py:16: in &lt;module&gt;
+    from app.channels.secrets import decrypt_secret, encrypt_secret, signing_secrets
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_chat" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_chat.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_chat.py:16: in &lt;module&gt;
+    import tests.retrieval_helpers as _rh  # noqa: F401 — registers the corpus fixture
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_chat_streaming" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_chat_streaming.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_chat_streaming.py:23: in &lt;module&gt;
+    import tests.retrieval_helpers as _rh  # noqa: F401 - registers the corpus fixture
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_contacts" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_contacts.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_contacts.py:10: in &lt;module&gt;
+    import tests.retrieval_helpers as _rh  # noqa: F401
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_contacts_export_safety" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_contacts_export_safety.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_contacts_export_safety.py:11: in &lt;module&gt;
+    import tests.retrieval_helpers as _rh  # noqa: F401
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_conversation_intelligence" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_conversation_intelligence.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_conversation_intelligence.py:16: in &lt;module&gt;
+    import tests.retrieval_helpers as _rh  # noqa: F401 - registers the corpus fixture
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_conversations" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_conversations.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_conversations.py:18: in &lt;module&gt;
+    import tests.retrieval_helpers as _rh  # noqa: F401 — registers the corpus fixture
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_conversations_view" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_conversations_view.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_conversations_view.py:12: in &lt;module&gt;
+    import tests.retrieval_helpers as _rh  # noqa: F401 — registers the corpus fixture
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_cross_language_evidence" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_cross_language_evidence.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_cross_language_evidence.py:9: in &lt;module&gt;
+    import tests.retrieval_helpers as helpers
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_cross_script" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_cross_script.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_cross_script.py:15: in &lt;module&gt;
+    import tests.retrieval_helpers as _rh  # noqa: F401 — registers the corpus fixture
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_embedding_foundation" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_embedding_foundation.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_embedding_foundation.py:23: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_embedding_readiness" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_embedding_readiness.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_embedding_readiness.py:14: in &lt;module&gt;
+    import tests.knowledge_helpers as helpers
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_followups_analytics" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_followups_analytics.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_followups_analytics.py:11: in &lt;module&gt;
+    import tests.retrieval_helpers as _rh  # noqa: F401
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_free_chain" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_free_chain.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_free_chain.py:11: in &lt;module&gt;
+    import tests.retrieval_helpers as _rh  # noqa: F401 — registers the corpus fixture
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_group_c_polish" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_group_c_polish.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_group_c_polish.py:13: in &lt;module&gt;
+    from tests.test_platform import ONBOARD_FORM, legacy_onboard, staff_login
+tests/test_platform.py:19: in &lt;module&gt;
+    import tests.retrieval_helpers as _rh  # noqa: F401 — registers the corpus fixture
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_h5_staff_tooling" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_h5_staff_tooling.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_h5_staff_tooling.py:20: in &lt;module&gt;
+    import tests.retrieval_helpers as _rh  # noqa: F401 - registers the corpus fixture
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_handoff" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_handoff.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_handoff.py:13: in &lt;module&gt;
+    import tests.retrieval_helpers as _rh  # noqa: F401
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_health" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_health.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_health.py:11: in &lt;module&gt;
+    from app.main import create_app
+app/main.py:10: in &lt;module&gt;
+    from app.channels.events import router as channel_events_router
+app/channels/events.py:17: in &lt;module&gt;
+    from app.channels.secrets import signing_secrets
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_hybrid_retrieval" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_hybrid_retrieval.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_hybrid_retrieval.py:14: in &lt;module&gt;
+    import tests.retrieval_helpers as helpers
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_inbox_list" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_inbox_list.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_inbox_list.py:16: in &lt;module&gt;
+    from tests.test_conversations_view import seed_setup
+tests/test_conversations_view.py:12: in &lt;module&gt;
+    import tests.retrieval_helpers as _rh  # noqa: F401 — registers the corpus fixture
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_jobs" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_jobs.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_jobs.py:23: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_knowledge_hygiene" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_knowledge_hygiene.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_knowledge_hygiene.py:17: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_knowledge_language" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_knowledge_language.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_knowledge_language.py:13: in &lt;module&gt;
+    import tests.retrieval_helpers as _rh  # noqa: F401 — registers the corpus fixture
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_knowledge_pipeline" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_knowledge_pipeline.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_knowledge_pipeline.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_knowledge_uploads" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_knowledge_uploads.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_knowledge_uploads.py:21: in &lt;module&gt;
+    from tests.knowledge_helpers import MD_AR, MD_EN, upload_settings, upload_sources
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_model_not_configured" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_model_not_configured.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_model_not_configured.py:13: in &lt;module&gt;
+    import tests.retrieval_helpers as _rh  # noqa: F401 — registers the corpus fixture
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_platform" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_platform.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_platform.py:19: in &lt;module&gt;
+    import tests.retrieval_helpers as _rh  # noqa: F401 — registers the corpus fixture
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_platform_ops" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_platform_ops.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_platform_ops.py:10: in &lt;module&gt;
+    from tests.test_platform import platform_call, staff_login
+tests/test_platform.py:19: in &lt;module&gt;
+    import tests.retrieval_helpers as _rh  # noqa: F401 — registers the corpus fixture
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_playground_parity" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_playground_parity.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_playground_parity.py:21: in &lt;module&gt;
+    import tests.retrieval_helpers as _rh  # noqa: F401 - registers the corpus fixture
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_provider_attempts" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_provider_attempts.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_provider_attempts.py:15: in &lt;module&gt;
+    import tests.retrieval_helpers as _rh  # noqa: F401 — registers the corpus fixture
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_quotas" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_quotas.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_quotas.py:14: in &lt;module&gt;
+    from tests.test_platform import platform_call, staff_login
+tests/test_platform.py:19: in &lt;module&gt;
+    import tests.retrieval_helpers as _rh  # noqa: F401 — registers the corpus fixture
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_rag_evaluation" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_rag_evaluation.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_rag_evaluation.py:21: in &lt;module&gt;
+    from scripts.rag_phase2_eval import (
+scripts/rag_phase2_eval.py:22: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_rag_limits" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_rag_limits.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_rag_limits.py:27: in &lt;module&gt;
+    from tests.knowledge_helpers import run_one_ingest_job, start_ingestion, upload_sources
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_retrieval" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_retrieval.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_retrieval.py:16: in &lt;module&gt;
+    import tests.retrieval_helpers as _rh  # noqa: F401 — registers the corpus fixture
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_stable_tie_break" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_stable_tie_break.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_stable_tie_break.py:14: in &lt;module&gt;
+    from tests.knowledge_helpers import drain_jobs, publish_draft, start_ingestion, upload_sources
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_staff_bots" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_staff_bots.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_staff_bots.py:14: in &lt;module&gt;
+    from tests.test_platform import ONBOARD_FORM, legacy_onboard, platform_call, staff_login
+tests/test_platform.py:19: in &lt;module&gt;
+    import tests.retrieval_helpers as _rh  # noqa: F401 — registers the corpus fixture
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_staff_member_errors" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_staff_member_errors.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_staff_member_errors.py:8: in &lt;module&gt;
+    from tests.test_platform import platform_call, staff_login
+tests/test_platform.py:19: in &lt;module&gt;
+    import tests.retrieval_helpers as _rh  # noqa: F401 — registers the corpus fixture
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_staff_member_revocation_race" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_staff_member_revocation_race.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_staff_member_revocation_race.py:14: in &lt;module&gt;
+    from tests.test_platform import platform_call, staff_login
+tests/test_platform.py:19: in &lt;module&gt;
+    import tests.retrieval_helpers as _rh  # noqa: F401 — registers the corpus fixture
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_staff_members" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_staff_members.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_staff_members.py:12: in &lt;module&gt;
+    from tests.test_platform import platform_call, staff_login
+tests/test_platform.py:19: in &lt;module&gt;
+    import tests.retrieval_helpers as _rh  # noqa: F401 — registers the corpus fixture
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_trace_context" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_trace_context.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_trace_context.py:15: in &lt;module&gt;
+    import tests.retrieval_helpers as _rh  # noqa: F401 — registers the corpus fixture
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_turn_deadline" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_turn_deadline.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_turn_deadline.py:17: in &lt;module&gt;
+    import tests.retrieval_helpers as _rh  # noqa: F401 — registers the corpus fixture
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_validation_details" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_validation_details.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_validation_details.py:7: in &lt;module&gt;
+    from tests.test_platform import platform_call
+tests/test_platform.py:19: in &lt;module&gt;
+    import tests.retrieval_helpers as _rh  # noqa: F401 — registers the corpus fixture
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_widget_appearance" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_widget_appearance.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_widget_appearance.py:13: in &lt;module&gt;
+    import tests.retrieval_helpers as _rh  # noqa: F401 — registers the corpus fixture
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_widget_leads" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_widget_leads.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_widget_leads.py:14: in &lt;module&gt;
+    import tests.retrieval_helpers as _rh  # noqa: F401 — registers the corpus fixture
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase><testcase classname="" name="tests.test_widget_public" time="0.000"><error message="collection failure">ImportError while importing test module '/var/tmp/saas-full-FY3gWT8k/source/apps/api/tests/test_widget_public.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.local/share/uv/python/cpython-3.12.16-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_widget_public.py:25: in &lt;module&gt;
+    import tests.retrieval_helpers as _rh  # noqa: F401 — registers the corpus fixture
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/retrieval_helpers.py:20: in &lt;module&gt;
+    from tests.knowledge_helpers import (
+tests/knowledge_helpers.py:14: in &lt;module&gt;
+    from app.jobs.runner import execute_claimed_job
+app/jobs/runner.py:10: in &lt;module&gt;
+    from app.channels.outbound import SendRetry
+app/channels/outbound.py:30: in &lt;module&gt;
+    from app.channels.router import _validate_base_url
+app/channels/router.py:17: in &lt;module&gt;
+    from app.channels.secrets import encrypt_secret
+E   ModuleNotFoundError: No module named 'app.channels.secrets'</error></testcase></testsuite></testsuites>

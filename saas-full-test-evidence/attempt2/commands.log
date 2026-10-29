@@ -1,0 +1,1 @@
+cwd=/var/tmp/saas-full-3p9GZAu5/source/apps/api APP_ENV=test ENVIRONMENT=test TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55587/saas_full_test python -m pytest tests -q --junitxml=/mnt/d/Projects/Work\ Projects/The\ Osiris\ Labs/ManyOsirisChat/.closeout-worktrees/batch-c/saas-full-test-evidence/saas-api.xml 

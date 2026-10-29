@@ -1,0 +1,258 @@
+......F...F............FF............................................... [  5%]
+........................................................................ [ 11%]
+........................................................................ [ 17%]
+...................................F.................................... [ 23%]
+........................................................................ [ 29%]
+........................................................................ [ 35%]
+........................................................................ [ 41%]
+........................................................................ [ 47%]
+........................................................................ [ 53%]
+........................................................................ [ 59%]
+........................................................................ [ 65%]
+........................................................................ [ 71%]
+.............................F.......................................... [ 76%]
+........................................................................ [ 82%]
+........................................................................ [ 88%]
+...............................................F....F................... [ 94%]
+................................................................         [100%]
+=================================== FAILURES ===================================
+___________________ test_verdict_names_the_rule_that_decided ___________________
+
+    def test_verdict_names_the_rule_that_decided() -> None:
+        by_cosine = make_chunk(vector_similarity=0.62, fts_match=0.0, matched_terms=0, query_terms=3)
+        by_keyword = make_chunk(vector_similarity=0.2, fts_match=0.3, matched_terms=2, query_terms=3)
+        one_term = make_chunk(vector_similarity=0.2, fts_match=0.3, matched_terms=1, query_terms=3)
+        result = RetrievalResult(
+            "en",
+            "en",
+            False,
+            evidence=[by_cosine, by_keyword, one_term],
+            embedding_model="openai:text-embedding-3-large",
+        )
+        decision = relevance_gate(result, settings())
+        first, second, third = decision.verdicts
+        assert (first.accepted_by, second.accepted_by, third.accepted_by) == ("cosine", "keyword", None)
+>       assert "cosine 0.620 >= floor 0.50" in first.reason
+E       AssertionError: assert 'cosine 0.620 >= floor 0.50' in 'passed: cosine 0.620 >= floor 0.30'
+E        +  where 'passed: cosine 0.620 >= floor 0.30' = ChunkVerdict(chunk_id='33a198d0-c85d-4ff6-96d1-a9a8133d67f3', accepted=True, accepted_by='cosine', reason='passed: cos...ired_terms=2, terms_pass=False, fts_match=0.0, fts_minimum=0.01, fts_pass=False, top_result_pass=None, failed_rules=()).reason
+
+tests/eval/offline/test_gate_trace.py:105: AssertionError
+_____________ test_candidate_trace_rows_carry_terms_and_gate_rule ______________
+
+    def test_candidate_trace_rows_carry_terms_and_gate_rule() -> None:
+        chunk = make_chunk(
+            vector_similarity=0.31,
+            fts_match=0.2,
+            matched_terms=1,
+            query_terms=3,
+            rrf_score=0.03,
+            query_term_labels=["card", "refund", "days"],
+            matched_term_labels=["refund"],
+        )
+        result = RetrievalResult(
+            "en", "en", False, evidence=[chunk], embedding_model="openai:text-embedding-3-large"
+        )
+        decision = relevance_gate(result, settings())
+        rows = candidate_trace(result, decision, decision.passed)
+        row = rows[0]
+        assert row["query_terms"] == ["card", "refund", "days"]
+        assert row["matched_terms"] == ["refund"]
+>       assert row["locator"] == "2" and row["accepted"] is False
+E       AssertionError: assert ('2' == '2'
+E         
+E           2 and True is False)
+
+tests/eval/offline/test_gate_trace.py:174: AssertionError
+_________________ test_rejected_verdicts_name_the_failed_rules _________________
+
+    def test_rejected_verdicts_name_the_failed_rules() -> None:
+        cfg = settings()
+        chunk = make_chunk(vector_similarity=0.31, fts_match=0.0, matched_terms=0, query_terms=3)
+        result = RetrievalResult("en", "en", False, evidence=[chunk], embedding_model=MODEL)
+>       assert relevance_gate(result, cfg).verdicts[0].failed_rules == ("cosine", "terms", "fts")
+E       AssertionError: assert () == ('cosine', 'terms', 'fts')
+E         
+E         Right contains 3 more items, first extra item: 'cosine'
+E         Use -v to get more diff
+
+tests/eval/offline/test_h4_terms_and_diagnosis.py:105: AssertionError
+_______ test_refusal_diagnosis_reports_nearest_candidate_and_shortfalls ________
+
+    def test_refusal_diagnosis_reports_nearest_candidate_and_shortfalls() -> None:
+        cfg = settings()
+        near = make_chunk(
+            vector_similarity=0.44, fts_match=0.3, matched_terms=1, query_terms=3, rrf_score=0.03
+        )
+        far = make_chunk(vector_similarity=0.10, fts_match=0.0, matched_terms=0, query_terms=3)
+        result = RetrievalResult("en", "en", False, evidence=[far, near], embedding_model=MODEL)
+        decision = relevance_gate(result, cfg)
+>       assert decision.passed == []
+E       AssertionError: assert [RetrievedChu...rm_labels=[])] == []
+E         
+E         Left contains one more item: RetrievedChunk(chunk_id=UUID('d7af197e-09b0-4dad-a634-17be433ef24d'), document_id=UUID('5c9d9c1f-4c51-415a-93a9-8403c5...rity=0.44, fts_match=0.3, rrf_score=0.03, matched_terms=1, query_terms=3, query_term_labels=[], matched_term_labels=[])
+E         Use -v to get more diff
+
+tests/eval/offline/test_h4_terms_and_diagnosis.py:122: AssertionError
+__________ test_an_earlier_unprocessed_event_runs_before_a_later_one ___________
+
+client = <starlette.testclient.TestClient object at 0x7a36df5371a0>
+app = <fastapi.applications.FastAPI object at 0x7a36df535ee0>
+db = <sqlalchemy.orm.session.Session object at 0x7a36e4ad8950>
+
+    def test_an_earlier_unprocessed_event_runs_before_a_later_one(
+        client: Any, app: Any, db: Session
+    ) -> None:
+        connection_id, secret = _connection(app, db)
+        for name in ("first", "second"):
+            _post_received(
+                client, connection_id, secret, event_id=f"evt-{name}", external_message_id=name
+            )
+        _run_event(db, "evt-second", settings=STUB)  # the later job wins the race
+        first = db.scalar(select(ChannelEvent).where(ChannelEvent.event_id == "evt-first"))
+        second = db.scalar(select(ChannelEvent).where(ChannelEvent.event_id == "evt-second"))
+        assert first is not None and second is not None
+        assert first.status == second.status == "processed"
+        assert first.processed_at is not None and second.processed_at is not None
+        assert first.processed_at <= second.processed_at
+        answers = list(
+            db.scalars(select(Message).where(Message.sender_type == "ai").order_by(Message.created_at))
+        )
+        # No model is configured in this test, so both turns degrade to the busy reply,
+        # which is capped at one per conversation per window (A8).
+>       assert len(answers) == 1
+E       assert 2 == 1
+E        +  where 2 = len([<app.db.models.chat.Message object at 0x7a36e46305c0>, <app.db.models.chat.Message object at 0x7a36e4632660>])
+
+tests/test_channel_ingest_hardening.py:102: AssertionError
+______________ test_health_lookup_index_roundtrip_and_head_drift _______________
+
+base_url = 'postgresql://postgres@127.0.0.1:55587/saas_full_test'
+
+    def test_health_lookup_index_roundtrip_and_head_drift(base_url: str) -> None:
+        name = "many_test_r19_index_" + uuid4().hex[:8] + "_test"
+        url = disposable_url(base_url, name)
+>       assert os.environ["APP_ENV"] == "test" and os.environ["PGHOST"].startswith("/var/tmp/saas-r19-")
+E       AssertionError: assert ('test' == 'test'
+E         
+E           test and False)
+E        +  where False = <built-in method startswith of str object at 0x7a36e42661a0>('/var/tmp/saas-r19-')
+E        +    where <built-in method startswith of str object at 0x7a36e42661a0> = '/var/tmp/saas-full-FdwKr60F/socket'.startswith
+
+tests/test_r19_index_migration.py:17: AssertionError
+______________ test_real_settings_object_tracks_explicit_provider ______________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7a36e6c643b0>
+
+    def test_real_settings_object_tracks_explicit_provider(monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("EMBEDDING_PROVIDER", raising=False)
+        unset = Settings(_env_file=None, environment="production")  # type: ignore[call-arg]
+>       with pytest.raises(RuntimeError, match="EMBEDDING_PROVIDER"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'EMBEDDING_PROVIDER'
+E         Actual message: 'Embedding test vectors are allowed only in the test environment.'
+
+tests/test_startup_guard.py:63: AssertionError
+________________ test_org_delete_name_mismatch_and_soft_delete _________________
+
+app = <fastapi.applications.FastAPI object at 0x7a36e4240a70>
+db = <sqlalchemy.orm.session.Session object at 0x7a36deb47380>
+tmp_path = PosixPath('/var/tmp/saas-full-FdwKr60F/tmp/pytest-of-root/pytest-0/test_org_delete_name_mismatch_0')
+
+    def test_org_delete_name_mismatch_and_soft_delete(app: Any, db: Any, tmp_path: Any) -> None:
+        from datetime import UTC, datetime, timedelta
+    
+        from app.core.config import get_settings
+        from app.db.models import Bot, OrganizationDeletion, RateLimitCounter, Source, VisitorSession
+        from app.knowledge.storage import get_storage
+        from app.tenants.deletion import purge_deleted_organizations
+        from tests.conftest import build_test_settings
+        from tests.knowledge_helpers import upload_sources
+    
+        settings = build_test_settings(storage_root=str(tmp_path), org_deletion_grace_days=2)
+        app.dependency_overrides[get_settings] = lambda: settings
+        a, b = seeded_tenant(app, db, prefix="delete-a"), seeded_tenant(app, db, prefix="delete-b")
+        bot = make_bot(a)
+        visitor = VisitorSession(
+            tenant_id=a.tenant_id,
+            bot_id=UUID(bot["id"]),
+            token_hash="delete-test-visitor",
+            expires_at=datetime.now(UTC) + timedelta(hours=1),
+        )
+        db.add(visitor)
+        db.flush()
+        counter_key = f"widget:msg:127.0.0.1:{visitor.id}"
+        unrelated_counter = "widget:msg:127.0.0.1:unrelated-session"
+        db.add_all(
+            [
+                RateLimitCounter(bucket_key=counter_key, count=1),
+                RateLimitCounter(bucket_key=unrelated_counter, count=1),
+            ]
+        )
+        db.commit()
+        path = f"/api/v1/tenants/{a.tenant_id}/data"
+        body = {"confirm_name": "Org delete-a", "reason": "Requested full data removal"}
+        uploaded = upload_sources(a, bot["id"], [("test.md", b"# Delete me")], tmp_path)
+        assert uploaded.status_code == 201, uploaded.text
+        orphan_key = get_storage(settings).save(a.tenant_id, UUID(bot["id"]), "txt", b"orphaned upload")
+        storage_key = db.scalar(select(Source.storage_key).where(Source.tenant_id == a.tenant_id))
+        change = a.call(
+            "admin",
+            "POST",
+            f"/api/v1/tenants/{a.tenant_id}/change-requests",
+            data={"type": "delete_org", "text": "Please remove this organization"},
+            files=[("files", ("evidence.txt", b"deletion evidence", "text/plain"))],
+        )
+        assert change.status_code == 201
+        from app.db.models import ChangeRequest
+    
+        attachment_key = db.scalar(
+            select(ChangeRequest).where(ChangeRequest.tenant_id == a.tenant_id)
+        ).attachments[0]["storage_key"]
+        for role in ("viewer", "editor", "admin"):
+            assert a.call(role, "DELETE", path, json=body).status_code == 403
+            assert a.call(role, "GET", f"{path}/deletion-preview").status_code == 403
+        assert b.call("admin", "DELETE", path, json=body).status_code == 404
+        assert a.call("staff", "DELETE", path, json={"reason": body["reason"]}).status_code == 422
+        assert a.call("staff", "DELETE", path).status_code == 422
+        assert build_test_settings().org_deletion_grace_days == 30
+        for name in ["wrong", " Org delete-a", "Org delete-a ", "org delete-a"]:
+            mismatch = a.call("staff", "DELETE", path, json={**body, "confirm_name": name})
+            assert mismatch.status_code == 422
+        assert a.call("staff", "GET", f"{path}/deletion-preview").json()["counts"]["bots"] == 1
+        assert a.call("staff", "DELETE", path, json=body).status_code == 204
+        db.expire_all()
+        tenant = db.get(Tenant, a.tenant_id)
+        assert tenant is not None and tenant.status == "archived"
+        assert db.get(Bot, UUID(bot["id"])).status == "archived"
+        record = db.scalar(
+            select(OrganizationDeletion).where(OrganizationDeletion.tenant_id == a.tenant_id)
+        )
+        assert record is not None and record.purged_at is None
+>       assert record.purge_after - record.requested_at == timedelta(days=2)
+E       AssertionError: assert (datetime.datetime(2026, 10, 31, 21, 50, 47, 348251, tzinfo=zoneinfo.ZoneInfo(key='Africa/Cairo')) - datetime.datetime(2026, 10, 29, 22, 50, 47, 348251, tzinfo=zoneinfo.ZoneInfo(key='Africa/Cairo'))) == datetime.timedelta(days=2)
+E        +  where datetime.datetime(2026, 10, 31, 21, 50, 47, 348251, tzinfo=zoneinfo.ZoneInfo(key='Africa/Cairo')) = <app.db.models.operations.OrganizationDeletion object at 0x7a36e5b13ef0>.purge_after
+E        +  and   datetime.datetime(2026, 10, 29, 22, 50, 47, 348251, tzinfo=zoneinfo.ZoneInfo(key='Africa/Cairo')) = <app.db.models.operations.OrganizationDeletion object at 0x7a36e5b13ef0>.requested_at
+E        +  and   datetime.timedelta(days=2) = <class 'datetime.timedelta'>(days=2)
+
+tests/test_tenant_data.py:211: AssertionError
+=============================== warnings summary ===============================
+../../../../saas-closeout-tools/venv/lib/python3.12/site-packages/fastapi/testclient.py:1
+  /var/tmp/saas-closeout-tools/venv/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+app/embeddings/providers.py:172
+  /var/tmp/saas-full-FdwKr60F/source/apps/api/app/embeddings/providers.py:172: PytestCollectionWarning: cannot collect test class 'TestHashEmbedder' because it has a __init__ constructor (from: tests/test_embedding_readiness.py)
+    class TestHashEmbedder:
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/eval/offline/test_gate_trace.py::test_verdict_names_the_rule_that_decided
+FAILED tests/eval/offline/test_gate_trace.py::test_candidate_trace_rows_carry_terms_and_gate_rule
+FAILED tests/eval/offline/test_h4_terms_and_diagnosis.py::test_rejected_verdicts_name_the_failed_rules
+FAILED tests/eval/offline/test_h4_terms_and_diagnosis.py::test_refusal_diagnosis_reports_nearest_candidate_and_shortfalls
+FAILED tests/test_channel_ingest_hardening.py::test_an_earlier_unprocessed_event_runs_before_a_later_one
+FAILED tests/test_r19_index_migration.py::test_health_lookup_index_roundtrip_and_head_drift
+FAILED tests/test_startup_guard.py::test_real_settings_object_tracks_explicit_provider
+FAILED tests/test_tenant_data.py::test_org_delete_name_mismatch_and_soft_delete
+8 failed, 1208 passed, 2 warnings in 1330.93s (0:22:10)

@@ -94,3 +94,21 @@ deploy, live/authenticated/paid service call or production database operation.
 The external plan copy was updated only under the owner's explicit one-file
 exception; its bytes match Many's canonical plan. It is outside batch-c and is
 not committed by modifying another checkout's branch.
+
+## Full-testing follow-up — 2026-10-29
+
+Full API baseline 86c992d includes 18 contacts-export safety passes, contact
+tenant-isolation pass and channel/health/schema passes. Its migration-index
+test failed solely on the old saas-r19 directory prefix. New explicit test-mode,
+private-socket, matching port, loopback host and disposable-name guards remove
+that session dependency; actual 0029/0030 roundtrip and head drift pass.
+Final strict typing also passes (app 128 / configured full 289 files).
+Sole head remains 0031; three fresh migration rehearsals and checks pass.
+Current rebuild prompt has no S10 reference (new source assertion passes).
+
+Final complete normal Playwright: 176/176 at 88599d7, D1 MET. This does not
+verify hosted CI, runtime deployed rebuild, live Meta or real Many round trip.
+Full API 1208-pass/8-failure baseline and all passing affected fixes are reported
+separately, with no second complete green API claim. See
+../saas-full-test-evidence/README.md, logs/JUnit and source manifests.
+No production code/migration change, skip/xfail, push, merge, deploy or live call.

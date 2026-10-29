@@ -1,0 +1,7 @@
+app/core/config.py:210: error: Cannot find implementation or library stub for module named "app.channels.secrets"  [import-not-found]
+app/channels/events.py:17: error: Cannot find implementation or library stub for module named "app.channels.secrets"  [import-not-found]
+app/channels/events.py:17: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+app/channels/health.py:201: error: Cannot find implementation or library stub for module named "app.channels.secrets"  [import-not-found]
+app/channels/router.py:17: error: Cannot find implementation or library stub for module named "app.channels.secrets"  [import-not-found]
+app/channels/outbound.py:31: error: Cannot find implementation or library stub for module named "app.channels.secrets"  [import-not-found]
+Found 5 errors in 5 files (checked 127 source files)

@@ -1,0 +1,5 @@
+cwd=/var/tmp/saas-full-cQMabcSS/source/apps/api APP_ENV=test ENVIRONMENT=test TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55592/saas_affected_test python -m ruff check . 
+cwd=/var/tmp/saas-full-cQMabcSS/source/apps/api APP_ENV=test ENVIRONMENT=test TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55592/saas_affected_test python -m ruff format --check . 
+cwd=/var/tmp/saas-full-cQMabcSS/source/apps/api APP_ENV=test ENVIRONMENT=test TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55592/saas_affected_test python -m mypy app 
+cwd=/var/tmp/saas-full-cQMabcSS/source/apps/api APP_ENV=test ENVIRONMENT=test TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55592/saas_affected_test python -m mypy 
+cwd=/var/tmp/saas-full-cQMabcSS/source APP_ENV=test ENVIRONMENT=test TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55592/saas_affected_test python -m unittest discover -s scripts -p test_\*.py -v 

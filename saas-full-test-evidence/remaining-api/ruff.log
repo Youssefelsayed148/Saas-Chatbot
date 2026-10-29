@@ -1,0 +1,39 @@
+I001 [*] Import block is un-sorted or un-formatted
+  --> tests/test_channel_ingest_hardening.py:4:1
+   |
+ 2 |   receipt ordering, contact refresh and one live connection per Many channel."""
+ 3 |
+ 4 | / import json
+ 5 | | import time
+ 6 | | from datetime import UTC, datetime, timedelta
+ 7 | | from typing import Any
+ 8 | |
+ 9 | | import pytest
+10 | |
+11 | | from sqlalchemy import select
+12 | | from sqlalchemy.orm import Session
+13 | |
+14 | | from app.channels.signing import sign, verify
+15 | | from app.db.models import ChannelConnection, ChannelEvent, Contact, Job, Message
+16 | | from tests.conftest import build_test_settings
+17 | | from tests.helpers import make_bot, seeded_tenant
+18 | | from tests.test_channel_events import _connection, _payload, _post, _post_received, _run_event
+19 | | from tests.test_channels import _configure_channel_key, _create_payload, _platform_call
+   | |_______________________________________________________________________________________^
+20 |
+21 |   STUB = build_test_settings(chat_stub_model=True)
+   |
+help: Organize imports
+   |
+6  | from datetime import UTC, datetime, timedelta
+   - from typing import Any
+   -
+   - import pytest
+7  + from typing import Any
+8  |
+9  + import pytest
+10 | from sqlalchemy import select
+   |
+
+Found 1 error.
+[*] 1 fixable with `--fix`.

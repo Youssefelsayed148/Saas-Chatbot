@@ -1,0 +1,14 @@
+api	2	5
+ruff	1	0
+format	0	0
+mypy-app	1	7
+mypy-full	1	2
+scripts	1	0
+contracts	0	0
+hashes	0	0
+migrations	1	1
+typecheck	127	0
+lint	2	0
+node-unit	1	0
+build	127	1
+playwright	127	0

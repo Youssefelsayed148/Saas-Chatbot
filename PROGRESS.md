@@ -3861,3 +3861,45 @@ Earlier undefined-S10 and D5-open handoff notes are historical; current prompt
 has no S10, and the owner confirmed D5 (keep 59d3442). No push/merge/deploy/paid
 or authenticated external call. Only the separately authorized external plan
 file may be synchronized; no other original checkout was changed.
+
+## SaaS full testing close-out — 2026-10-29
+
+Worktree batch-c / closeout/batch-c. Full API baseline 86c992d: 1,208 passed,
+8 failed, 0 errors/skips, 1330.93s; no second full API green-run claim. Every
+failure is explained and fixed in test fixtures; 94 distinct affected cases
+have latest passing results (78 in 32.08s; 16 in 5.08s). Earlier 48 and schema
+3-case runs overlap these and are not added. Test-only commits: ce1532a
+(explicit 12-file list) and 88599d7 (widget-domain port fixture only).
+Production source unchanged, no assertion removal or new skip/xfail.
+
+Full mypy initially found 13 pre-existing test-typing errors in 6 files,
+separate from runtime failures. Final mypy app/full clean: 128/289 files.
+Ruff and format check pass (304 files), script unittest 23 pass (0.218s),
+contract copies + both manifests/cross-repo hashes pass. Three new disposable
+Alembic DB rehearsals (empty-to-head, 0022-to-head, empty downgrade/upgrade)
+and all alembic checks pass; sole head 0031_contact_erasure. Data-sensitive
+0023/0024 and 0031 rollback limits were not bypassed.
+
+Frontend typecheck/lint, 24 Node unit tests and production build pass.
+Initial full Playwright 174 pass / 2 errors: widget-domain used hard-coded 3100.
+Affected normal-build/setup spec passes 2/2 after E2E_WEB_PORT fix. Final full
+normal npm test at 88599d7a9034f670dc0ee0fead89fa828feb69cc: 176 passed,
+0 failures/errors/skips, 224.45107s JUnit / 225s wall. D1 is MET.
+Normal global setup/teardown, fresh servers, unique ports, no temp config.
+
+Confirmed: A16 receiver 23 passing cases, tenant A/B matrix and channel cases,
+18 CSV export safety cases, health-poll index roundtrip and drift clean,
+current prompt S10 absence. Exact commands, exits, durations, counts, every
+failure/resolution, harness setup mistakes, source SHA/file manifests, raw logs
+and JUnit: saas-full-test-evidence/README.md in batch-c. Each command uses
+explicit test mode/DB, dummy secrets/stubs, fresh source-only snapshot,
+new private Postgres and loopback-only namespace. All owned clusters/processes
+stopped. No real env/token/credential/backup read; no generated dependency,
+build, storage, trace, snapshot or DB artifact committed.
+
+Plan updates R4/R18/R19 local evidence; R5 merge stays OPEN. Batch-c plan is
+byte-identical to Many canonical plan; prohibited original SaaS checkouts
+untouched. Many-side docs are synchronized only; no Many full suite is claimed.
+Deployed rebuild, hosted CI, live Meta, real Many-to-SaaS round trip, staging
+canary and owner merge/release approvals remain UNVERIFIED/unperformed.
+No push, merge, deploy, live send, paid or authenticated external call.

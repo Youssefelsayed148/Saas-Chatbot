@@ -1,0 +1,12 @@
+
+> @chatbot/web@0.1.0 test
+> playwright test --reporter=line,junit
+
+sh: 1: playwright: not found
+npm error Lifecycle script `test` failed with error:
+npm error code 127
+npm error path /var/tmp/saas-full-FY3gWT8k/source/apps/web
+npm error workspace @chatbot/web@0.1.0
+npm error location /var/tmp/saas-full-FY3gWT8k/source/apps/web
+npm error command failed
+npm error command sh -c playwright test --reporter=line,junit

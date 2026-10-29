@@ -1,0 +1,383 @@
+﻿diff --git a/apps/api/tests/eval/offline/test_gate_trace.py b/apps/api/tests/eval/offline/test_gate_trace.py
+index 67bbc71..9a6230a 100644
+--- a/apps/api/tests/eval/offline/test_gate_trace.py
++++ b/apps/api/tests/eval/offline/test_gate_trace.py
+@@ -99,7 +99,9 @@ def test_verdict_names_the_rule_that_decided() -> None:
+         evidence=[by_cosine, by_keyword, one_term],
+         embedding_model="openai:text-embedding-3-large",
+     )
+-    decision = relevance_gate(result, settings())
++    decision = relevance_gate(
++        result, settings(retrieval_vector_floors={"openai:text-embedding-3-large": 0.50})
++    )
+     first, second, third = decision.verdicts
+     assert (first.accepted_by, second.accepted_by, third.accepted_by) == ("cosine", "keyword", None)
+     assert "cosine 0.620 >= floor 0.50" in first.reason
+@@ -166,7 +168,9 @@ def test_candidate_trace_rows_carry_terms_and_gate_rule() -> None:
+     result = RetrievalResult(
+         "en", "en", False, evidence=[chunk], embedding_model="openai:text-embedding-3-large"
+     )
+-    decision = relevance_gate(result, settings())
++    decision = relevance_gate(
++        result, settings(retrieval_vector_floors={"openai:text-embedding-3-large": 0.50})
++    )
+     rows = candidate_trace(result, decision, decision.passed)
+     row = rows[0]
+     assert row["query_terms"] == ["card", "refund", "days"]
+diff --git a/apps/api/tests/eval/offline/test_h4_terms_and_diagnosis.py b/apps/api/tests/eval/offline/test_h4_terms_and_diagnosis.py
+index 96a96dd..7116873 100644
+--- a/apps/api/tests/eval/offline/test_h4_terms_and_diagnosis.py
++++ b/apps/api/tests/eval/offline/test_h4_terms_and_diagnosis.py
+@@ -99,7 +99,7 @@ def test_zero_countable_terms_cannot_pass_on_keywords() -> None:
+ 
+ 
+ def test_rejected_verdicts_name_the_failed_rules() -> None:
+-    cfg = settings()
++    cfg = settings(retrieval_vector_floors={"openai:text-embedding-3-large": 0.50})
+     chunk = make_chunk(vector_similarity=0.31, fts_match=0.0, matched_terms=0, query_terms=3)
+     result = RetrievalResult("en", "en", False, evidence=[chunk], embedding_model=MODEL)
+     assert relevance_gate(result, cfg).verdicts[0].failed_rules == ("cosine", "terms", "fts")
+@@ -112,7 +112,7 @@ def test_rejected_verdicts_name_the_failed_rules() -> None:
+ 
+ 
+ def test_refusal_diagnosis_reports_nearest_candidate_and_shortfalls() -> None:
+-    cfg = settings()
++    cfg = settings(retrieval_vector_floors={"openai:text-embedding-3-large": 0.50})
+     near = make_chunk(
+         vector_similarity=0.44, fts_match=0.3, matched_terms=1, query_terms=3, rrf_score=0.03
+     )
+diff --git a/apps/api/tests/test_channel_erasure.py b/apps/api/tests/test_channel_erasure.py
+index 6f6c12f..9a6e576 100644
+--- a/apps/api/tests/test_channel_erasure.py
++++ b/apps/api/tests/test_channel_erasure.py
+@@ -14,6 +14,7 @@ import app.channels.erasure as erasure
+ import app.channels.inbound as inbound
+ import app.channels.outbound as outbound
+ from app.contacts.router import merge_contact
++from app.core.audit import record_audit
+ from app.core.tenancy import TenantContext
+ from app.db.models import (
+     AuditEvent,
+@@ -339,7 +340,7 @@ def test_worker_refreshes_after_waiting_for_erasure_lock(
+         _send(client, conn, secret, _erase_payload(conn, event_id="erase-interleave")).status_code
+         == 202
+     )
+-    original_lock = inbound.channel_work_lock
++    original_lock = erasure.channel_work_lock
+ 
+     @contextmanager
+     def finish_erasure_while_waiting(*args: Any, **kwargs: Any) -> Any:
+@@ -364,7 +365,7 @@ def test_erasure_failure_rolls_back_and_can_retry(
+     assert (
+         _send(client, conn, secret, _erase_payload(conn, event_id="retry-erase")).status_code == 202
+     )
+-    original_audit = erasure.record_audit
++    original_audit = record_audit
+     monkeypatch.setattr(
+         erasure, "record_audit", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("injected"))
+     )
+diff --git a/apps/api/tests/test_channel_health.py b/apps/api/tests/test_channel_health.py
+index cf60c6c..141ff88 100644
+--- a/apps/api/tests/test_channel_health.py
++++ b/apps/api/tests/test_channel_health.py
+@@ -344,7 +344,9 @@ def test_schedule_health_polls_orders_never_polled_then_least_recent(app: Any, d
+             select(Job).where(Job.type == "channel_health_poll", Job.status == "pending")
+         )
+         assert live is not None
+-        order.append(live.payload["connection_id"])
++        connection_id = live.payload["connection_id"]
++        assert isinstance(connection_id, str)
++        order.append(connection_id)
+         live.status = "succeeded"
+         db.commit()
+     assert order == [str(never.id), str(old.id), str(recent.id)]
+diff --git a/apps/api/tests/test_channel_ingest_hardening.py b/apps/api/tests/test_channel_ingest_hardening.py
+index 983e01b..4580f7c 100644
+--- a/apps/api/tests/test_channel_ingest_hardening.py
++++ b/apps/api/tests/test_channel_ingest_hardening.py
+@@ -6,6 +6,7 @@ import time
+ from datetime import UTC, datetime, timedelta
+ from typing import Any
+ 
++import pytest
+ from sqlalchemy import select
+ from sqlalchemy.orm import Session
+ 
+@@ -80,14 +81,16 @@ def test_received_at_is_clamped_to_a_sane_window(client: Any, app: Any, db: Sess
+ 
+ 
+ def test_an_earlier_unprocessed_event_runs_before_a_later_one(
+-    client: Any, app: Any, db: Session
++    client: Any, app: Any, db: Session, monkeypatch: pytest.MonkeyPatch
+ ) -> None:
++    monkeypatch.setattr("app.chat.conversations.default_model", lambda _bot=None: None)
++    no_model = build_test_settings(chat_stub_model=False)
+     connection_id, secret = _connection(app, db)
+     for name in ("first", "second"):
+         _post_received(
+             client, connection_id, secret, event_id=f"evt-{name}", external_message_id=name
+         )
+-    _run_event(db, "evt-second", settings=STUB)  # the later job wins the race
++    _run_event(db, "evt-second", settings=no_model)  # the later job wins the race
+     first = db.scalar(select(ChannelEvent).where(ChannelEvent.event_id == "evt-first"))
+     second = db.scalar(select(ChannelEvent).where(ChannelEvent.event_id == "evt-second"))
+     assert first is not None and second is not None
+@@ -110,7 +113,7 @@ def test_an_earlier_unprocessed_event_runs_before_a_later_one(
+     assert visitors == ["first", "second"]
+     before = db.scalar(select(Message.id).where(Message.sender_type == "visitor"))
+     # The first event's own job later finds it processed: no duplicates.
+-    _run_event(db, "evt-first", settings=STUB)
++    _run_event(db, "evt-first", settings=no_model)
+     assert db.scalar(select(Message.id).where(Message.sender_type == "visitor")) == before
+     assert len(list(db.scalars(select(Message).where(Message.sender_type == "ai")))) == 1
+     assert db.scalar(select(Job.id).where(Job.status == "failed")) is None
+diff --git a/apps/api/tests/test_channels.py b/apps/api/tests/test_channels.py
+index b7a3bf9..345ba73 100644
+--- a/apps/api/tests/test_channels.py
++++ b/apps/api/tests/test_channels.py
+@@ -2,7 +2,6 @@
+ 
+ import json
+ from datetime import UTC, datetime, timedelta
+-from types import SimpleNamespace
+ from typing import Any
+ from uuid import UUID, uuid4
+ 
+@@ -76,7 +75,7 @@ def test_multi_fernet_decrypt_and_previous_secret_grace() -> None:
+     old_key, new_key = Fernet.generate_key().decode(), Fernet.generate_key().decode()
+     old_secret, current_secret = "old-secret", "current-secret"
+     now = datetime(2026, 10, 18, tzinfo=UTC)
+-    connection = SimpleNamespace(
++    connection = ChannelConnection(
+         secret_ciphertext=encrypt_secret(current_secret, new_key),
+         prev_secret_ciphertext=encrypt_secret(old_secret, old_key),
+         prev_secret_expires_at=now + timedelta(hours=1),
+@@ -225,6 +224,7 @@ def test_connection_lifecycle_secrets_audit_export_and_tenant_sanitization(
+     audit_json = json.dumps([row.metadata_json for row in audit_rows])
+     assert secret not in audit_json and new_secret not in audit_json
+     assert connection.secret_ciphertext not in audit_json
++    assert connection.prev_secret_ciphertext is not None
+     assert connection.prev_secret_ciphertext not in audit_json
+     assert secret not in caplog.text and new_secret not in caplog.text
+ 
+diff --git a/apps/api/tests/test_closeout_schema_drift.py b/apps/api/tests/test_closeout_schema_drift.py
+index d73f10c..85a93ca 100644
+--- a/apps/api/tests/test_closeout_schema_drift.py
++++ b/apps/api/tests/test_closeout_schema_drift.py
+@@ -10,9 +10,11 @@ def test_widget_locator_uses_the_migrated_named_unique_index(engine: Engine) ->
+     indexes = {row["name"]: row for row in inspect(engine).get_indexes("bots")}
+     assert indexes["uq_bots_widget_locator"]["unique"]
+     assert indexes["uq_bots_widget_locator"]["column_names"] == ["widget_locator"]
+-    model_indexes = {index.name: index for index in Bot.__table__.indexes}
++    model_indexes = {
++        str(index.name): index for index in Bot.metadata.tables[Bot.__tablename__].indexes
++    }
+     assert model_indexes["uq_bots_widget_locator"].unique
+-    assert not Bot.__table__.c.widget_locator.unique
++    assert not Bot.metadata.tables[Bot.__tablename__].c.widget_locator.unique
+ 
+ 
+ def test_provisioning_preserves_scope_uniqueness_and_created_lookup(engine: Engine) -> None:
+@@ -22,13 +24,17 @@ def test_provisioning_preserves_scope_uniqueness_and_created_lookup(engine: Engi
+     }
+     assert constraints["uq_provisioning_scope_key"]["column_names"] == ["mode", "idempotency_key"]
+     model_constraints = {
+-        constraint.name: constraint for constraint in ProvisioningRequest.__table__.constraints
++        constraint.name: constraint
++        for constraint in ProvisioningRequest.metadata.tables[
++            ProvisioningRequest.__tablename__
++        ].constraints
+     }
+     assert "uq_provisioning_scope_key" in model_constraints
+     indexes = {row["name"]: row for row in schema.get_indexes("provisioning_requests")}
+     assert indexes["ix_provisioning_requests_created"]["column_names"] == ["created_at"]
+     assert "ix_provisioning_requests_created" in {
+-        index.name for index in ProvisioningRequest.__table__.indexes
++        index.name
++        for index in ProvisioningRequest.metadata.tables[ProvisioningRequest.__tablename__].indexes
+     }
+ 
+ 
+diff --git a/apps/api/tests/test_r19_index_migration.py b/apps/api/tests/test_r19_index_migration.py
+index 9e9330a..df41846 100644
+--- a/apps/api/tests/test_r19_index_migration.py
++++ b/apps/api/tests/test_r19_index_migration.py
+@@ -1,10 +1,11 @@
+ """Verify the existing 0030 expression index through actual Alembic transitions."""
+ 
+ import os
++from pathlib import Path
+ from uuid import uuid4
+ 
+ from alembic.config import Config
+-from sqlalchemy import create_engine, text
++from sqlalchemy import create_engine, make_url, text
+ 
+ from alembic import command
+ from app.db.session import sqlalchemy_url
+@@ -14,19 +15,32 @@ from tests.conftest import API_DIR, create_database, disposable_url, run_migrati
+ def test_health_lookup_index_roundtrip_and_head_drift(base_url: str) -> None:
+     name = "many_test_r19_index_" + uuid4().hex[:8] + "_test"
+     url = disposable_url(base_url, name)
+-    assert os.environ["APP_ENV"] == "test" and os.environ["PGHOST"].startswith("/var/tmp/saas-r19-")
++    assert os.environ["APP_ENV"] == "test" and os.environ["ENVIRONMENT"] == "test"
++    socket = Path(os.environ["PGHOST"]).resolve()
++    assert socket.parent.parent == Path("/var/tmp") and socket.parent.name.startswith("saas-")
++    port = int(os.environ["PGPORT"])
++    assert (socket / f".s.PGSQL.{port}").is_socket()
++    target = make_url(base_url)
++    assert target.host in (None, "127.0.0.1", "localhost")
++    assert target.port in (None, port)
++    assert target.database is not None and target.database.endswith("_test")
+     create_database(base_url, name)
+     run_migrations(url, upgrade_to="0029_channel_event_payload_purge")
+     engine = create_engine(sqlalchemy_url(url))
+ 
+     def definition() -> str | None:
+         with engine.connect() as db:
+-            return db.scalar(
++            value = db.scalar(
+                 text(
+                     "SELECT indexdef FROM pg_indexes WHERE schemaname='public' AND indexname='ix_jobs_channel_health_poll_last'"
+                 )
+             )
+ 
++            if value is None:
++                return None
++            assert isinstance(value, str)
++            return value
++
+     assert definition() is None
+     run_migrations(url, upgrade_to="0030_channel_health_poll_index")
+     index = definition()
+diff --git a/apps/api/tests/test_startup_guard.py b/apps/api/tests/test_startup_guard.py
+index 9257d44..b9185a5 100644
+--- a/apps/api/tests/test_startup_guard.py
++++ b/apps/api/tests/test_startup_guard.py
+@@ -58,6 +58,8 @@ def test_production_requires_an_explicit_embedding_provider() -> None:
+ 
+ 
+ def test_real_settings_object_tracks_explicit_provider(monkeypatch: pytest.MonkeyPatch) -> None:
++    monkeypatch.setenv("CHAT_STUB_MODEL", "0")
++    monkeypatch.setenv("EMBEDDING_TEST_STUB", "0")
+     monkeypatch.delenv("EMBEDDING_PROVIDER", raising=False)
+     unset = Settings(_env_file=None, environment="production")  # type: ignore[call-arg]
+     with pytest.raises(RuntimeError, match="EMBEDDING_PROVIDER"):
+diff --git a/apps/api/tests/test_tenant_data.py b/apps/api/tests/test_tenant_data.py
+index 03cbbe7..02f631e 100644
+--- a/apps/api/tests/test_tenant_data.py
++++ b/apps/api/tests/test_tenant_data.py
+@@ -208,7 +208,9 @@ def test_org_delete_name_mismatch_and_soft_delete(app: Any, db: Any, tmp_path: A
+         select(OrganizationDeletion).where(OrganizationDeletion.tenant_id == a.tenant_id)
+     )
+     assert record is not None and record.purged_at is None
+-    assert record.purge_after - record.requested_at == timedelta(days=2)
++    assert record.purge_after.astimezone(UTC) - record.requested_at.astimezone(UTC) == timedelta(
++        days=2
++    )
+     assert get_storage(settings).open(storage_key) == b"# Delete me"
+     # Existing sessions are invalid immediately; a new login cannot access this organization.
+     assert a.call("admin", "GET", path + "/audit").status_code == 401
+diff --git a/apps/api/tests/test_tenant_route_matrix.py b/apps/api/tests/test_tenant_route_matrix.py
+index b62f877..f9d0497 100644
+--- a/apps/api/tests/test_tenant_route_matrix.py
++++ b/apps/api/tests/test_tenant_route_matrix.py
+@@ -268,7 +268,7 @@ def test_every_openapi_route_role_and_cross_tenant(
+                             if column.key not in {"id", "created_at", "updated_at"}
+                         }
+                     )
+-                    spare.content_hash = uuid4().hex
++                    spare.sha256 = uuid4().hex * 2
+                     spare.storage_key = f"{uuid4().hex}.md"
+                     db.add(spare)
+                     db.commit()
+diff --git a/scripts/test_dev_compose.py b/scripts/test_dev_compose.py
+index 1c507bc..59cb354 100644
+--- a/scripts/test_dev_compose.py
++++ b/scripts/test_dev_compose.py
+@@ -13,15 +13,22 @@ ROOT = Path(__file__).resolve().parents[1]
+ class DevComposeContract(unittest.TestCase):
+     @classmethod
+     def setUpClass(cls) -> None:
+-        cls.compose: dict[str, Any] = yaml.safe_load((ROOT / "compose.yaml").read_text("utf-8"))
++        cls.compose: dict[str, Any] = yaml.safe_load(
++            (ROOT / "compose.yaml").read_text("utf-8")
++        )
+         cls.services = cls.compose["services"]
+ 
+     def test_single_root_stack_and_opt_in_seed(self) -> None:
+         self.assertNotIn("include", self.compose)
+-        self.assertEqual(set(self.services), {"db", "migrate", "api", "worker", "web", "seed"})
++        self.assertEqual(
++            set(self.services),
++            {"db", "migrate", "staff", "api", "worker", "web", "seed"},
++        )
+         self.assertFalse((ROOT / "infra/compose.yaml").exists())
+         for name, service in self.services.items():
+-            self.assertEqual(service.get("profiles", []), ["seed"] if name == "seed" else [])
++            self.assertEqual(
++                service.get("profiles", []), ["seed"] if name == "seed" else []
++            )
+ 
+     def test_database_is_healthy_persistent_and_internal(self) -> None:
+         db = self.services["db"]
+@@ -31,6 +38,24 @@ class DevComposeContract(unittest.TestCase):
+         self.assertNotIn("ports", db)
+         self.assertEqual(set(self.compose["volumes"]), {"postgres_data", "app_data"})
+ 
++    def test_staff_bootstrap_is_optional_and_migration_gated(self) -> None:
++        staff = self.services["staff"]
++        self.assertEqual(staff["restart"], "no")
++        self.assertEqual(
++            staff["depends_on"]["migrate"]["condition"],
++            "service_completed_successfully",
++        )
++        self.assertEqual(
++            staff["environment"]["PLATFORM_STAFF_PASSWORD"],
++            "${PLATFORM_STAFF_PASSWORD:-}",
++        )
++        self.assertIn('if [ -n "$$PLATFORM_STAFF_PASSWORD" ]', staff["command"][-1])
++        self.assertIn("python -m scripts.create_platform_staff", staff["command"][-1])
++        self.assertEqual(
++            self.services["web"]["depends_on"]["staff"]["condition"],
++            "service_completed_successfully",
++        )
++
+     def test_migrations_gate_both_processes(self) -> None:
+         migrate = self.services["migrate"]
+         self.assertEqual(migrate["command"], ["alembic", "upgrade", "head"])
+@@ -42,7 +67,9 @@ class DevComposeContract(unittest.TestCase):
+                 "service_completed_successfully",
+             )
+         self.assertNotIn("command", self.services["api"])
+-        self.assertEqual(self.services["worker"]["command"], ["python", "-m", "app.worker"])
++        self.assertEqual(
++            self.services["worker"]["command"], ["python", "-m", "app.worker"]
++        )
+ 
+     def test_shared_storage_and_explicit_dev_settings(self) -> None:
+         for name in ("api", "worker", "seed"):
+@@ -65,14 +92,20 @@ class DevComposeContract(unittest.TestCase):
+             env = self.services[name]["environment"]
+             for key in ("CHAT_OPENAI_API_KEY", "CHAT_OPENAI_MODEL"):
+                 self.assertTrue(env[key].startswith("${" + key + ":?Set " + key))
+-            self.assertEqual(env["CHAT_OPENROUTER_API_KEY"], "${CHAT_OPENROUTER_API_KEY:-}")
+-            self.assertEqual(env["CHAT_FREE_MODEL_CHAIN"], "${CHAT_FREE_MODEL_CHAIN:-[]}")
++            self.assertEqual(
++                env["CHAT_OPENROUTER_API_KEY"], "${CHAT_OPENROUTER_API_KEY:-}"
++            )
++            self.assertEqual(
++                env["CHAT_FREE_MODEL_CHAIN"], "${CHAT_FREE_MODEL_CHAIN:-[]}"
++            )
+         for name, service in self.services.items():
+             self.assertNotIn("env_file", service)
+             if name not in ("api", "worker"):
+                 self.assertNotIn("CHAT_OPENAI_API_KEY", service.get("environment", {}))
+         seed_env = self.services["seed"]["environment"]
+-        self.assertEqual(seed_env["PLATFORM_STAFF_PASSWORD"], "${PLATFORM_STAFF_PASSWORD:-}")
++        self.assertEqual(
++            seed_env["PLATFORM_STAFF_PASSWORD"], "${PLATFORM_STAFF_PASSWORD:-}"
++        )
+ 
+     def test_web_proxy_and_loopback_ports(self) -> None:
+         web = self.services["web"]

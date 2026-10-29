@@ -1,0 +1,2 @@
+tests/test_closeout_schema_drift.py:14: error: Invalid index type "str" for "dict[quoted_name | None, Index]"; expected type "quoted_name | None"  [index]
+Found 1 error in 1 file (checked 289 source files)
