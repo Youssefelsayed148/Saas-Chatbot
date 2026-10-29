@@ -268,7 +268,7 @@ def test_every_openapi_route_role_and_cross_tenant(
                             if column.key not in {"id", "created_at", "updated_at"}
                         }
                     )
-                    spare.content_hash = uuid4().hex
+                    spare.sha256 = uuid4().hex * 2
                     spare.storage_key = f"{uuid4().hex}.md"
                     db.add(spare)
                     db.commit()

@@ -6,6 +6,7 @@ import time
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -80,14 +81,16 @@ def test_received_at_is_clamped_to_a_sane_window(client: Any, app: Any, db: Sess
 
 
 def test_an_earlier_unprocessed_event_runs_before_a_later_one(
-    client: Any, app: Any, db: Session
+    client: Any, app: Any, db: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.setattr("app.chat.conversations.default_model", lambda _bot=None: None)
+    no_model = build_test_settings(chat_stub_model=False)
     connection_id, secret = _connection(app, db)
     for name in ("first", "second"):
         _post_received(
             client, connection_id, secret, event_id=f"evt-{name}", external_message_id=name
         )
-    _run_event(db, "evt-second", settings=STUB)  # the later job wins the race
+    _run_event(db, "evt-second", settings=no_model)  # the later job wins the race
     first = db.scalar(select(ChannelEvent).where(ChannelEvent.event_id == "evt-first"))
     second = db.scalar(select(ChannelEvent).where(ChannelEvent.event_id == "evt-second"))
     assert first is not None and second is not None
@@ -110,7 +113,7 @@ def test_an_earlier_unprocessed_event_runs_before_a_later_one(
     assert visitors == ["first", "second"]
     before = db.scalar(select(Message.id).where(Message.sender_type == "visitor"))
     # The first event's own job later finds it processed: no duplicates.
-    _run_event(db, "evt-first", settings=STUB)
+    _run_event(db, "evt-first", settings=no_model)
     assert db.scalar(select(Message.id).where(Message.sender_type == "visitor")) == before
     assert len(list(db.scalars(select(Message).where(Message.sender_type == "ai")))) == 1
     assert db.scalar(select(Job.id).where(Job.status == "failed")) is None

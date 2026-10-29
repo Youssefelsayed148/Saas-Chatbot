@@ -13,15 +13,22 @@ ROOT = Path(__file__).resolve().parents[1]
 class DevComposeContract(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.compose: dict[str, Any] = yaml.safe_load((ROOT / "compose.yaml").read_text("utf-8"))
+        cls.compose: dict[str, Any] = yaml.safe_load(
+            (ROOT / "compose.yaml").read_text("utf-8")
+        )
         cls.services = cls.compose["services"]
 
     def test_single_root_stack_and_opt_in_seed(self) -> None:
         self.assertNotIn("include", self.compose)
-        self.assertEqual(set(self.services), {"db", "migrate", "api", "worker", "web", "seed"})
+        self.assertEqual(
+            set(self.services),
+            {"db", "migrate", "staff", "api", "worker", "web", "seed"},
+        )
         self.assertFalse((ROOT / "infra/compose.yaml").exists())
         for name, service in self.services.items():
-            self.assertEqual(service.get("profiles", []), ["seed"] if name == "seed" else [])
+            self.assertEqual(
+                service.get("profiles", []), ["seed"] if name == "seed" else []
+            )
 
     def test_database_is_healthy_persistent_and_internal(self) -> None:
         db = self.services["db"]
@@ -30,6 +37,24 @@ class DevComposeContract(unittest.TestCase):
         self.assertIn("pg_isready", db["healthcheck"]["test"][1])
         self.assertNotIn("ports", db)
         self.assertEqual(set(self.compose["volumes"]), {"postgres_data", "app_data"})
+
+    def test_staff_bootstrap_is_optional_and_migration_gated(self) -> None:
+        staff = self.services["staff"]
+        self.assertEqual(staff["restart"], "no")
+        self.assertEqual(
+            staff["depends_on"]["migrate"]["condition"],
+            "service_completed_successfully",
+        )
+        self.assertEqual(
+            staff["environment"]["PLATFORM_STAFF_PASSWORD"],
+            "${PLATFORM_STAFF_PASSWORD:-}",
+        )
+        self.assertIn('if [ -n "$$PLATFORM_STAFF_PASSWORD" ]', staff["command"][-1])
+        self.assertIn("python -m scripts.create_platform_staff", staff["command"][-1])
+        self.assertEqual(
+            self.services["web"]["depends_on"]["staff"]["condition"],
+            "service_completed_successfully",
+        )
 
     def test_migrations_gate_both_processes(self) -> None:
         migrate = self.services["migrate"]
@@ -42,7 +67,9 @@ class DevComposeContract(unittest.TestCase):
                 "service_completed_successfully",
             )
         self.assertNotIn("command", self.services["api"])
-        self.assertEqual(self.services["worker"]["command"], ["python", "-m", "app.worker"])
+        self.assertEqual(
+            self.services["worker"]["command"], ["python", "-m", "app.worker"]
+        )
 
     def test_shared_storage_and_explicit_dev_settings(self) -> None:
         for name in ("api", "worker", "seed"):
@@ -65,14 +92,20 @@ class DevComposeContract(unittest.TestCase):
             env = self.services[name]["environment"]
             for key in ("CHAT_OPENAI_API_KEY", "CHAT_OPENAI_MODEL"):
                 self.assertTrue(env[key].startswith("${" + key + ":?Set " + key))
-            self.assertEqual(env["CHAT_OPENROUTER_API_KEY"], "${CHAT_OPENROUTER_API_KEY:-}")
-            self.assertEqual(env["CHAT_FREE_MODEL_CHAIN"], "${CHAT_FREE_MODEL_CHAIN:-[]}")
+            self.assertEqual(
+                env["CHAT_OPENROUTER_API_KEY"], "${CHAT_OPENROUTER_API_KEY:-}"
+            )
+            self.assertEqual(
+                env["CHAT_FREE_MODEL_CHAIN"], "${CHAT_FREE_MODEL_CHAIN:-[]}"
+            )
         for name, service in self.services.items():
             self.assertNotIn("env_file", service)
             if name not in ("api", "worker"):
                 self.assertNotIn("CHAT_OPENAI_API_KEY", service.get("environment", {}))
         seed_env = self.services["seed"]["environment"]
-        self.assertEqual(seed_env["PLATFORM_STAFF_PASSWORD"], "${PLATFORM_STAFF_PASSWORD:-}")
+        self.assertEqual(
+            seed_env["PLATFORM_STAFF_PASSWORD"], "${PLATFORM_STAFF_PASSWORD:-}"
+        )
 
     def test_web_proxy_and_loopback_ports(self) -> None:
         web = self.services["web"]

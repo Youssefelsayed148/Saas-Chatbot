@@ -99,7 +99,7 @@ def test_zero_countable_terms_cannot_pass_on_keywords() -> None:
 
 
 def test_rejected_verdicts_name_the_failed_rules() -> None:
-    cfg = settings()
+    cfg = settings(retrieval_vector_floors={"openai:text-embedding-3-large": 0.50})
     chunk = make_chunk(vector_similarity=0.31, fts_match=0.0, matched_terms=0, query_terms=3)
     result = RetrievalResult("en", "en", False, evidence=[chunk], embedding_model=MODEL)
     assert relevance_gate(result, cfg).verdicts[0].failed_rules == ("cosine", "terms", "fts")
@@ -112,7 +112,7 @@ def test_rejected_verdicts_name_the_failed_rules() -> None:
 
 
 def test_refusal_diagnosis_reports_nearest_candidate_and_shortfalls() -> None:
-    cfg = settings()
+    cfg = settings(retrieval_vector_floors={"openai:text-embedding-3-large": 0.50})
     near = make_chunk(
         vector_similarity=0.44, fts_match=0.3, matched_terms=1, query_terms=3, rrf_score=0.03
     )

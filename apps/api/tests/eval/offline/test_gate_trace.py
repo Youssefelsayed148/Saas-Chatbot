@@ -99,7 +99,9 @@ def test_verdict_names_the_rule_that_decided() -> None:
         evidence=[by_cosine, by_keyword, one_term],
         embedding_model="openai:text-embedding-3-large",
     )
-    decision = relevance_gate(result, settings())
+    decision = relevance_gate(
+        result, settings(retrieval_vector_floors={"openai:text-embedding-3-large": 0.50})
+    )
     first, second, third = decision.verdicts
     assert (first.accepted_by, second.accepted_by, third.accepted_by) == ("cosine", "keyword", None)
     assert "cosine 0.620 >= floor 0.50" in first.reason
@@ -166,7 +168,9 @@ def test_candidate_trace_rows_carry_terms_and_gate_rule() -> None:
     result = RetrievalResult(
         "en", "en", False, evidence=[chunk], embedding_model="openai:text-embedding-3-large"
     )
-    decision = relevance_gate(result, settings())
+    decision = relevance_gate(
+        result, settings(retrieval_vector_floors={"openai:text-embedding-3-large": 0.50})
+    )
     rows = candidate_trace(result, decision, decision.passed)
     row = rows[0]
     assert row["query_terms"] == ["card", "refund", "days"]

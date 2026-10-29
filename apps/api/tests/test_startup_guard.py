@@ -58,6 +58,8 @@ def test_production_requires_an_explicit_embedding_provider() -> None:
 
 
 def test_real_settings_object_tracks_explicit_provider(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CHAT_STUB_MODEL", "0")
+    monkeypatch.setenv("EMBEDDING_TEST_STUB", "0")
     monkeypatch.delenv("EMBEDDING_PROVIDER", raising=False)
     unset = Settings(_env_file=None, environment="production")  # type: ignore[call-arg]
     with pytest.raises(RuntimeError, match="EMBEDDING_PROVIDER"):

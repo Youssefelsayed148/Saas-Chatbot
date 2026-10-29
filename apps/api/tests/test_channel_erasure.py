@@ -14,6 +14,7 @@ import app.channels.erasure as erasure
 import app.channels.inbound as inbound
 import app.channels.outbound as outbound
 from app.contacts.router import merge_contact
+from app.core.audit import record_audit
 from app.core.tenancy import TenantContext
 from app.db.models import (
     AuditEvent,
@@ -339,7 +340,7 @@ def test_worker_refreshes_after_waiting_for_erasure_lock(
         _send(client, conn, secret, _erase_payload(conn, event_id="erase-interleave")).status_code
         == 202
     )
-    original_lock = inbound.channel_work_lock
+    original_lock = erasure.channel_work_lock
 
     @contextmanager
     def finish_erasure_while_waiting(*args: Any, **kwargs: Any) -> Any:
@@ -364,7 +365,7 @@ def test_erasure_failure_rolls_back_and_can_retry(
     assert (
         _send(client, conn, secret, _erase_payload(conn, event_id="retry-erase")).status_code == 202
     )
-    original_audit = erasure.record_audit
+    original_audit = record_audit
     monkeypatch.setattr(
         erasure, "record_audit", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("injected"))
     )

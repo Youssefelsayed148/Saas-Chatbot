@@ -208,7 +208,9 @@ def test_org_delete_name_mismatch_and_soft_delete(app: Any, db: Any, tmp_path: A
         select(OrganizationDeletion).where(OrganizationDeletion.tenant_id == a.tenant_id)
     )
     assert record is not None and record.purged_at is None
-    assert record.purge_after - record.requested_at == timedelta(days=2)
+    assert record.purge_after.astimezone(UTC) - record.requested_at.astimezone(UTC) == timedelta(
+        days=2
+    )
     assert get_storage(settings).open(storage_key) == b"# Delete me"
     # Existing sessions are invalid immediately; a new login cannot access this organization.
     assert a.call("admin", "GET", path + "/audit").status_code == 401

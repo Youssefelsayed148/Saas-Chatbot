@@ -2,7 +2,6 @@
 
 import json
 from datetime import UTC, datetime, timedelta
-from types import SimpleNamespace
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -76,7 +75,7 @@ def test_multi_fernet_decrypt_and_previous_secret_grace() -> None:
     old_key, new_key = Fernet.generate_key().decode(), Fernet.generate_key().decode()
     old_secret, current_secret = "old-secret", "current-secret"
     now = datetime(2026, 10, 18, tzinfo=UTC)
-    connection = SimpleNamespace(
+    connection = ChannelConnection(
         secret_ciphertext=encrypt_secret(current_secret, new_key),
         prev_secret_ciphertext=encrypt_secret(old_secret, old_key),
         prev_secret_expires_at=now + timedelta(hours=1),
@@ -225,6 +224,7 @@ def test_connection_lifecycle_secrets_audit_export_and_tenant_sanitization(
     audit_json = json.dumps([row.metadata_json for row in audit_rows])
     assert secret not in audit_json and new_secret not in audit_json
     assert connection.secret_ciphertext not in audit_json
+    assert connection.prev_secret_ciphertext is not None
     assert connection.prev_secret_ciphertext not in audit_json
     assert secret not in caplog.text and new_secret not in caplog.text
 

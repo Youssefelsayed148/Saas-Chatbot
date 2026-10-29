@@ -10,9 +10,11 @@ def test_widget_locator_uses_the_migrated_named_unique_index(engine: Engine) -> 
     indexes = {row["name"]: row for row in inspect(engine).get_indexes("bots")}
     assert indexes["uq_bots_widget_locator"]["unique"]
     assert indexes["uq_bots_widget_locator"]["column_names"] == ["widget_locator"]
-    model_indexes = {index.name: index for index in Bot.__table__.indexes}
+    model_indexes = {
+        str(index.name): index for index in Bot.metadata.tables[Bot.__tablename__].indexes
+    }
     assert model_indexes["uq_bots_widget_locator"].unique
-    assert not Bot.__table__.c.widget_locator.unique
+    assert not Bot.metadata.tables[Bot.__tablename__].c.widget_locator.unique
 
 
 def test_provisioning_preserves_scope_uniqueness_and_created_lookup(engine: Engine) -> None:
@@ -22,13 +24,17 @@ def test_provisioning_preserves_scope_uniqueness_and_created_lookup(engine: Engi
     }
     assert constraints["uq_provisioning_scope_key"]["column_names"] == ["mode", "idempotency_key"]
     model_constraints = {
-        constraint.name: constraint for constraint in ProvisioningRequest.__table__.constraints
+        constraint.name: constraint
+        for constraint in ProvisioningRequest.metadata.tables[
+            ProvisioningRequest.__tablename__
+        ].constraints
     }
     assert "uq_provisioning_scope_key" in model_constraints
     indexes = {row["name"]: row for row in schema.get_indexes("provisioning_requests")}
     assert indexes["ix_provisioning_requests_created"]["column_names"] == ["created_at"]
     assert "ix_provisioning_requests_created" in {
-        index.name for index in ProvisioningRequest.__table__.indexes
+        index.name
+        for index in ProvisioningRequest.metadata.tables[ProvisioningRequest.__tablename__].indexes
     }
 
 

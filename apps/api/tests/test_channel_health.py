@@ -344,7 +344,9 @@ def test_schedule_health_polls_orders_never_polled_then_least_recent(app: Any, d
             select(Job).where(Job.type == "channel_health_poll", Job.status == "pending")
         )
         assert live is not None
-        order.append(live.payload["connection_id"])
+        connection_id = live.payload["connection_id"]
+        assert isinstance(connection_id, str)
+        order.append(connection_id)
         live.status = "succeeded"
         db.commit()
     assert order == [str(never.id), str(old.id), str(recent.id)]
