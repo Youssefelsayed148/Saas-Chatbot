@@ -271,3 +271,6 @@ external call. Only the canonical Many plan/progress documentation is updated
 outside batch-c. The prohibited original SaaS checkouts remain untouched.
 For this session batch-c/implementation/CLOSEOUT-PLAN.md is the synchronized
 SaaS plan copy; it is byte-identical to this Many canonical copy.
+## Owner release decision - 2026-10-29
+
+D5 is CONFIRMED (keep `59d3442`); this supersedes every earlier D5 OPEN statement above. Owner authorized commit, push and merge of both close-out branches to `main`. Deployment, Meta submission and live canary still need their own approval.
