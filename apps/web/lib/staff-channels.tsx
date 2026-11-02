@@ -137,16 +137,46 @@ function ConnectionActions({
   );
 }
 
+/** Shows a connection UUID (an identifier, not a secret) with a copy button. */
+function CopyId({ id }: { id: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <span className="action-row" data-testid="channel-connection-id">
+      <code dir="ltr" className="mono">
+        {id}
+      </code>
+      <Button
+        variant="quiet"
+        onClick={() => {
+          navigator.clipboard
+            .writeText(id)
+            .then(() => setCopied(true))
+            .catch(() => setCopied(false));
+        }}
+      >
+        {copied ? "Copied" : "Copy ID"}
+      </Button>
+    </span>
+  );
+}
+
 function SecretReveal({
   secret,
+  connectionId,
   onDone,
 }: {
   secret: string;
+  connectionId: string | null;
   onDone: () => void;
 }) {
   const [copied, setCopied] = useState(false);
   return (
     <Card title="Signing secret" data-testid="channel-secret-reveal">
+      {connectionId && (
+        <p>
+          Connection ID to enter in Many: <CopyId id={connectionId} />
+        </p>
+      )}
       <p>
         Copy this secret into Many now. It is shown <strong>only once</strong>.
       </p>
@@ -195,6 +225,7 @@ function CreateConnection({
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [ref, setRef] = useState("");
+  const [startPaused, setStartPaused] = useState(true);
   const usable = bots.filter((item) => item.status !== "archived");
   return (
     <FormSection
@@ -214,6 +245,7 @@ function CreateConnection({
             display_name: name.trim(),
             many_base_url: url.trim(),
             many_channel_ref: ref.trim() || undefined,
+            start_paused: startPaused,
           });
           setName("");
           setUrl("");
@@ -293,6 +325,14 @@ function CreateConnection({
             />
           )}
         </Field>
+        <label className="action-row">
+          <input
+            type="checkbox"
+            checked={startPaused}
+            onChange={(event) => setStartPaused(event.target.checked)}
+          />
+          Start paused (resume after Many and SaaS settings match)
+        </label>
         <div>
           <Button type="submit" disabled={busy || !bot}>
             Create connection
@@ -315,6 +355,9 @@ export function OrganizationChannels({
     api.PlatformChannelConnection[] | null
   >(null);
   const [secret, setSecret] = useState<string | null>(null);
+  const [secretConnectionId, setSecretConnectionId] = useState<string | null>(
+    null,
+  );
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -361,7 +404,14 @@ export function OrganizationChannels({
       )}
       {notice && <Notice message={notice} />}
       {secret && (
-        <SecretReveal secret={secret} onDone={() => setSecret(null)} />
+        <SecretReveal
+          secret={secret}
+          connectionId={secretConnectionId}
+          onDone={() => {
+            setSecret(null);
+            setSecretConnectionId(null);
+          }}
+        />
       )}
       <Card title="Connections" data-testid="channels-list">
         {connections === null ? (
@@ -387,6 +437,8 @@ export function OrganizationChannels({
                       {humanLabel(connection.channel)} ·{" "}
                       {botName(connection.bot_id)}
                     </small>
+                    <br />
+                    <CopyId id={connection.id} />
                   </span>
                 ),
               },
@@ -469,6 +521,7 @@ export function OrganizationChannels({
                       void run(async () => {
                         const rotated = await api.rotateChannelSecret(id);
                         setSecret(rotated.secret);
+                        setSecretConnectionId(id);
                       }, "Secret rotated; store it in Many now.")
                     }
                     onCheck={(id) =>
@@ -492,6 +545,7 @@ export function OrganizationChannels({
           void run(async () => {
             const created = await api.createChannelConnection(payload);
             setSecret(created.secret);
+            setSecretConnectionId(created.id);
           }, "Connection created; store the secret in Many now.")
         }
       />
@@ -587,6 +641,8 @@ export function ChannelsOverview() {
                   <small className="muted">
                     {humanLabel(connection.channel)}
                   </small>
+                  <br />
+                  <CopyId id={connection.id} />
                 </span>
               ),
             },
