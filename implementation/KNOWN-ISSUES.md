@@ -1,20 +1,24 @@
-﻿# Known issues
+# Known issues
 
-Status: OPEN
+Reviewed 2026-11-02. The original list dated 2026-10-14; items answered by the Nov 2026 test runs are marked and kept in the resolved list. Everything else is still open. The previous version is `git show ed965ab:implementation/KNOWN-ISSUES.md`.
 
-- Handoff journey: API trace and regression cover agent visibility through the real visitor token and `since` cursor; widget/browser root cause remains unverified. `?debugWidget=1` now logs poll status, sender types/count, or failure without message text or credentials — source: code trace and owner issue (2026-10-14).
-- `widget.spec:146` ECONNRESET: its server path is traced (Playwright starts API/worker, waits for `/health`, then starts built Next server), but the failing request/stack was not supplied; cause remains unknown. Owner should capture reset details on rerun — source: code trace and owner issue (2026-10-14).
-- Unanswered-twice handoff reply used orders/accounts/payments wording for both languages; both canned messages now use generic human-assistance wording, covered by an API regression assertion.
-- AI cost analytics unavailable because provider pricing data is not stored; provider-returned usage is recorded when available — source: P7-02 implementation and `docs/13-SUBSCRIPTIONS-AND-USAGE.md` (2026-10-14).
-- P5-03, P5-05, and phase sign-off remain unticked — source: `implementation/PHASE-CHECKLISTS.md` (2026-10-14).
-- P7-01 operations UI browser check is UNVERIFIED — source: owner instruction (2026-10-14).
-- Quota values are placeholders, pricing TBD — source: owner decision and `docs/13-SUBSCRIPTIONS-AND-USAGE.md` (2026-10-14).
-- RESOLVED 2026-10-14: P2 parser timeout now runs in a spawned subprocess and terminates the process at the configured wall-clock limit; regression test added but unverified pending disposable test DB — source: `apps/api/app/knowledge/ingest.py::parse_source` and `apps/api/tests/test_knowledge_parsers.py::test_parse_subprocess_is_terminated_at_timeout`.
-- Tenant deletion cleans uploaded files through the current storage interface, whose local delete is best-effort if the OS refuses unlink — source: `apps/api/app/knowledge/storage.py::LocalStorage.delete` (2026-10-14 code inspection).
-- API integration tests for P7-02/P7-03/P7-04 and the P2 upload regressions remain UNVERIFIED until run against an explicitly configured disposable PostgreSQL URL — source: this run's pytest setup error and `apps/api/tests/conftest.py::_base_database_url` (2026-10-14).
-- P7-05 backup/restore drill is UNVERIFIED; hosting, backup target, and RPO/RTO depend on open ADR-007 — source: `implementation/PHASE-07/BACKUP-RESTORE.md` and `DECISIONS.md` ADR-007 (2026-10-14).
-- Independent P7 security review is pending; no independent reviewer has supplied findings or sign-off — source: `implementation/PHASE-07/SECURITY-REVIEW.md` (2026-10-14).
-- Full Playwright suite is UNVERIFIED: P7-03 owner signup setup is now migrated to `registerOwner` in contacts, dashboard, install, knowledge, overview, platform, playground and widget. The provisioned first bot is reused. Dashboard editor creation uses staff-assigned Starter (Free permits one bot/two seats); knowledge's existing 10 MB rejection assertion uses Starter (Free permits 5 MB). Invite signup statements were compared with their previous versions and are unchanged. The old immediate organization-list landing assertion is now exercised via `/app` after signup; P7-03 intentionally lands on the tenant bot list. No assertion or timeout was weakened — source: updated E2E specs (2026-10-14).
-- Preserved the owner's two widget-bubble re-open clicks in `conversations.spec.ts`; its inbox handoff test still uses `registerAndPrepareBot`. Handoff and ECONNRESET remain unverified pending the owner browser run — source: spec migration (2026-10-14).
-- Demo seed database integration is UNVERIFIED: guard/password tests pass offline, but the disposable-PostgreSQL idempotency/counts, cross-tenant preservation, collision/password and storage rollback tests require the owner DB. CLI refuses `_test`, production-like names/hosts, URL connection overrides and non-development environments; no CLI test bypass exists — source: `scripts/seed_demo.py` and `tests/test_seed_demo.py` (2026-10-14).
-- Production alert receiver and alert-delivery test are UNVERIFIED pending hosting selection — source: `implementation/PHASE-07/MONITORING-ALERTS.md` (2026-10-14).
+## Open
+
+- **Phase sign-off:** P5-03, P5-05 and the P5 phase sign-off are unticked in `implementation/PHASE-CHECKLISTS.md` (owner decision; the P5 browser gate was deferred by the owner).
+- **Handoff journey in a real browser:** the widget/browser root cause of the earlier handoff report was never established. It has not been reproduced: the Playwright handoff and widget specs pass in the full run of 2026-11-02. `?debugWidget=1` logs poll status and sender types without message text. Close this after an owner browser check.
+- **AI cost analytics:** unavailable because provider pricing is not stored. Provider-returned usage is recorded when available (`docs/13-SUBSCRIPTIONS-AND-USAGE.md`).
+- **Quotas and pricing:** quota values are placeholders and pricing is TBD (ADR-008).
+- **Tenant deletion:** uploaded files are removed through the storage interface, whose local delete is best-effort if the OS refuses `unlink` (`apps/api/app/knowledge/storage.py`, `LocalStorage.delete`).
+- **Backup and restore drill:** not yet performed. Hosting is decided (ADR-007: existing VPS, Docker, `scripts/deploy.sh`, `deploy/backup.sh`); the drill, backup target and RPO/RTO still need owner review. See `docs/operations/BACKUP-RESTORE.md` and `DEPLOY.md`.
+- **Independent security review:** pending; no reviewer sign-off (`docs/operations/SECURITY-REVIEW.md`).
+- **Alert receiver:** the production alert receiver and an alert-delivery test have not been verified (`docs/operations/MONITORING-ALERTS.md`).
+- **Demo seed integration:** guard and password tests pass offline; the idempotency, cross-tenant preservation, collision and storage-rollback checks against a disposable PostgreSQL have not been recorded (`implementation/DEMO-SEED.md`).
+- **P7-01 operations UI:** no recorded manual browser check (the Playwright run covers the flows it contains).
+- **Live delegation:** only one WhatsApp round trip has been observed with the Many side; the remaining live checks are tracked in the Many repository.
+
+## Resolved
+
+- 2026-11-02: **Full Playwright suite** was UNVERIFIED; it now passes (177 passed on `main` at `ed965ab`).
+- 2026-11-02: **API integration tests** were UNVERIFIED without a disposable PostgreSQL; the full suite has been run (see `PROGRESS.md`). Nine tests need pgvector 0.8 or newer and one needs the socket guard described in `docs/15-TESTING-AND-ACCEPTANCE.md`.
+- 2026-10-14: **P2 parser timeout** now runs in a spawned subprocess terminated at the wall-clock limit (regression test added).
+- **Unanswered-twice handoff wording** now uses generic human-assistance wording in both languages (API regression assertion).
