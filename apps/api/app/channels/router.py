@@ -41,6 +41,8 @@ class ChannelConnectionCreate(BaseModel):
     display_name: str = Field(min_length=1, max_length=120)
     many_base_url: str = Field(min_length=8, max_length=500)
     many_channel_ref: str | None = Field(default=None, max_length=128)
+    # Opt-in so existing callers keep creating active connections; the staff UI sends true.
+    start_paused: bool = False
 
     @field_validator("display_name")
     @classmethod
@@ -273,7 +275,7 @@ def create_channel_connection(
         display_name=payload.display_name,
         many_base_url=many_base_url,
         many_channel_ref=payload.many_channel_ref,
-        status="active",
+        status="paused" if payload.start_paused else "active",
         ai_enabled=True,
         secret_ciphertext=ciphertext,
         secret_key_version=1,

@@ -39,6 +39,7 @@ function firstRow(page: Page) {
 async function createConnection(
   page: Page,
   prefix: string,
+  options: { startPaused?: boolean } = {},
 ): Promise<Connected> {
   const email = `${prefix}.${Date.now()}@example.com`;
   const { tenantId } = await registerAdmin(page, prefix, { email });
@@ -54,10 +55,13 @@ async function createConnection(
   await page.getByLabel("Connection name").fill(displayName);
   await page.getByLabel("Many base URL").fill(MANY_BASE_URL);
   await page.getByLabel("Many channel reference").fill(`wa-${Date.now()}-${prefix}`);
+  // The form defaults to "Start paused"; most flows here want an active one.
+  const startPaused = page.getByLabel(/Start paused/);
+  await expect(startPaused).toBeChecked();
+  if (!options.startPaused) await startPaused.uncheck();
   await page.getByRole("button", { name: "Create connection" }).click();
   await expect(page.getByTestId("channel-secret")).toBeVisible();
-  const reveal = page.getByTestId("channel-secret-reveal");
-  const secretValue = await reveal.locator("code").textContent();
+  const secretValue = await page.getByTestId("channel-secret").textContent();
   expect(secretValue).toBeTruthy();
   await expect(page.getByTestId("channel-row").first()).toBeVisible();
   return { tenantId, email, secret: secretValue ?? "", displayName };
@@ -83,6 +87,29 @@ function signedEvent(
     body,
   };
 }
+
+test("a new connection starts paused and shows its ID to copy", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  const { tenantId } = await createConnection(page, "channels-paused", {
+    startPaused: true,
+  });
+  // The one-time reveal lists the connection UUID next to the secret.
+  const reveal = page.getByTestId("channel-secret-reveal");
+  await expect(reveal.getByTestId("channel-connection-id")).toContainText(
+    /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/,
+  );
+  await page.getByRole("button", { name: "I saved the secret" }).click();
+  await orgChannels(page, tenantId);
+  const row = firstRow(page);
+  await expect(row).toContainText("Paused");
+  await expect(row.getByTestId("channel-connection-id")).toContainText(
+    /[0-9a-f]{8}-[0-9a-f]{4}-/,
+  );
+  await row.getByRole("button", { name: "Resume" }).click();
+  await expect(row).toContainText("Active");
+});
 
 test("staff manage a connection end to end at 360px with RTL", async ({
   page,
@@ -127,10 +154,7 @@ test("staff manage a connection end to end at 360px with RTL", async ({
     .getByRole("button", { name: "Rotate" })
     .click();
   await expect(page.getByTestId("channel-secret")).toBeVisible();
-  const rotated = await page
-    .getByTestId("channel-secret-reveal")
-    .locator("code")
-    .textContent();
+  const rotated = await page.getByTestId("channel-secret").textContent();
   expect(rotated).toBeTruthy();
   await page.getByRole("button", { name: "I saved the secret" }).click();
   await expect(page.getByTestId("channel-secret-reveal")).toHaveCount(0);
@@ -143,7 +167,12 @@ test("staff manage a connection end to end at 360px with RTL", async ({
     .getByRole("button", { name: "Revoke" })
     .click();
   await expect(firstRow(page).getByText("Revoked")).toBeVisible();
-  await expect(firstRow(page).getByRole("button")).toHaveCount(0);
+  // No management actions remain; the read-only ID copy button may stay.
+  await expect(
+    firstRow(page)
+      .getByRole("button")
+      .filter({ hasNotText: /^(Copy ID|Copied)$/ }),
+  ).toHaveCount(0);
 
   // The client overview card is read-only and reflects the outage state.
   await page.goto(`/app/${tenantId}`);

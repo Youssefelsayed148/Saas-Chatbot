@@ -466,3 +466,36 @@ def test_inbound_channel_message_dedupe_is_unique_per_conversation(app: Any, db:
         )
     )
     db.flush()
+
+
+def test_connection_defaults_active_and_can_start_paused(app: Any, db: Session) -> None:
+    _configure_channel_key(app)
+    users = seeded_tenant(app, db, prefix="channel-paused", plan_label="business")
+    bot = make_bot(users)
+    staff = users.as_user("staff")
+
+    default = _platform_call(
+        staff,
+        "POST",
+        "/channel-connections",
+        json=_create_payload(users.tenant_id, bot["id"], name="Default"),
+    )
+    assert default.status_code == 201, default.text
+    assert default.json()["status"] == "active"
+
+    paused_payload = {
+        **_create_payload(users.tenant_id, bot["id"], name="Paused"),
+        "many_channel_ref": "wa-paused",
+        "start_paused": True,
+    }
+    paused = _platform_call(staff, "POST", "/channel-connections", json=paused_payload)
+    assert paused.status_code == 201, paused.text
+    body = paused.json()
+    assert body["status"] == "paused"
+    assert body["id"]
+    stored = db.get(ChannelConnection, UUID(body["id"]))
+    assert stored is not None and stored.status == "paused"
+
+    resumed = _platform_call(staff, "POST", f"/channel-connections/{body['id']}/resume")
+    assert resumed.status_code == 200, resumed.text
+    assert resumed.json()["status"] == "active"

@@ -551,6 +551,7 @@ export async function createChannelConnection(payload: {
   display_name: string;
   many_base_url: string;
   many_channel_ref?: string;
+  start_paused?: boolean;
 }): Promise<PlatformChannelConnection & { secret: string }> {
   return api("platform/channel-connections", { method: "POST", body: payload });
 }
