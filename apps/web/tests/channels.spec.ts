@@ -167,7 +167,12 @@ test("staff manage a connection end to end at 360px with RTL", async ({
     .getByRole("button", { name: "Revoke" })
     .click();
   await expect(firstRow(page).getByText("Revoked")).toBeVisible();
-  await expect(firstRow(page).getByRole("button")).toHaveCount(0);
+  // No management actions remain; the read-only ID copy button may stay.
+  await expect(
+    firstRow(page)
+      .getByRole("button")
+      .filter({ hasNotText: /^(Copy ID|Copied)$/ }),
+  ).toHaveCount(0);
 
   // The client overview card is read-only and reflects the outage state.
   await page.goto(`/app/${tenantId}`);
