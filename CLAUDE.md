@@ -1,3 +1,3 @@
 # Claude Code entry point
 
-Read AGENTS.md first (binding). For the Phase 6 close-out task also read implementation/PHASE-06-V2/CLOUD-ADDENDUM.md, SAAS-REBUILD-PROMPT.md, REVIEW-REPORT.md and CONTRACT-V1.1-DELTA.md. Where the addendum and AGENTS.md differ, the addendum applies for this session only (it records the owner's explicit approvals).
+Read AGENTS.md first (binding). The Phase 6 close-out is finished and summarised in docs/HISTORY.md; the working files were removed. Documentation index: docs/README.md. The channel contract copies that scripts/check_contract_copies.py checks are docs/17 and implementation/PHASE-06-V2/.

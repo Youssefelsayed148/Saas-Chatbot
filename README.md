@@ -1,24 +1,24 @@
 # Website Chatbot SaaS
 
-A new standalone application. This ticket provides the web/API toolchain and local PostgreSQL/pgvector infrastructure. Business functionality is not implemented yet.
+A multi-tenant website chatbot: a business adds its data, publishes an AI agent, installs one script tag, and runs conversations through an inbox with human handoff, a light CRM and follow-ups. WhatsApp, Messenger and Instagram arrive through ManyOsirisChat, which owns all Meta connectivity; this repository only implements the signed channel contract (`docs/17`).
 
-Read [README_START_HERE.md](README_START_HERE.md) for the V2 handoff and [docs/LOCAL-DEVELOPMENT.md](docs/LOCAL-DEVELOPMENT.md) for commands, configuration and troubleshooting. The existing handoff and historical references are preserved.
+Start with [docs/README.md](docs/README.md), the index of every maintained document, and [docs/LOCAL-DEVELOPMENT.md](docs/LOCAL-DEVELOPMENT.md) for commands, configuration and troubleshooting. Current status and verified test results are in [PROGRESS.md](PROGRESS.md); open issues are in [implementation/KNOWN-ISSUES.md](implementation/KNOWN-ISSUES.md).
 
 ## Structure
 
 ```text
-apps/web/                  Next.js App Router, TypeScript, browser smoke test
-apps/api/app/api/          Health/readiness routes
-apps/api/app/core/         Environment configuration
-apps/api/app/db/           Read-only database readiness probe
-apps/api/tests/            Isolated pytest tests
-apps/api/requirements*.lock Pinned runtime and development dependencies
+apps/web/                  Next.js App Router dashboard (client workspace and platform console), Playwright tests
+apps/api/app/              FastAPI modular monolith: auth, tenants, bots, knowledge, chat, channels, inbox, analytics, platform
+apps/api/alembic/          Migrations (sole head 0031_contact_erasure)
+apps/api/tests/            pytest suite
+packages/widget/           Embeddable website widget (loader and iframe)
 compose.yaml               Development db, migrator, API, worker, web and opt-in seed
 compose.prod.yaml          Production stack (Caddy HTTPS, db, API, worker, web, backups); see DEPLOY.md
 deploy/                    Caddyfile and backup script used by compose.prod.yaml
-.github/workflows/ci.yml    Separate frontend/backend validation jobs
-docs/, implementation/     V2 specifications and ticket evidence
-reference/original/        Historical documents, read-only references
+scripts/                   deploy.sh, contract check, RAG calibration, smoke test and their tests
+.github/workflows/ci.yml   Separate frontend/backend validation jobs
+docs/                      Specifications 00 to 19, RAG plan, operations drafts; index in docs/README.md
+implementation/            Roadmap, checklists, role matrix, manual test, known issues, contract copies
 ```
 
 ## Deploy
@@ -88,8 +88,4 @@ password. `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` overrides must mat
 existing volume; passwords must be URL-safe. Seed requires a `_dev` / `_demo` database.
 Old plain-Docker runner resources are not adopted; stop them before reusing ports.
 
-Validation for this change is static only; all runtime behaviour is **UNVERIFIED**.
-Historical host-development instructions are in the local-development guide; this
-section is authoritative for the current container stack.
-
-CI is configured; a hosted GitHub Actions run requires a separately authorized remote push. See PROGRESS.md for actual local execution evidence and remaining issues. P1-02 requires separate approval.
+Current verified test results (what was run, where, and what passed) are recorded in [PROGRESS.md](PROGRESS.md). How to run each suite, and what PostgreSQL version it needs, is in [docs/15-TESTING-AND-ACCEPTANCE.md](docs/15-TESTING-AND-ACCEPTANCE.md). Hosted CI is configured in `.github/workflows/ci.yml`.

@@ -79,7 +79,7 @@ def _report_dir() -> Path:
         return Path(override) / "implementation" / "PHASE-03"
     probe = Path(__file__).resolve()
     for parent in probe.parents:
-        if (parent / "apps").is_dir() and (parent / "README_START_HERE.md").is_file():
+        if (parent / "apps").is_dir() and (parent / "compose.yaml").is_file():
             return parent / "implementation" / "PHASE-03"
     raise RuntimeError("Repository root not found for the eval report; set REPO_IMPL_DIR.")
 

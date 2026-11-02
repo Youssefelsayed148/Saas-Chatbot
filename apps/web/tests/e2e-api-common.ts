@@ -6,7 +6,7 @@ import path from "node:path";
 let probe = process.cwd();
 while (
   probe !== path.parse(probe).root &&
-  !existsSync(path.join(probe, "README_START_HERE.md"))
+  !existsSync(path.join(probe, "compose.yaml"))
 ) {
   probe = path.dirname(probe);
 }

@@ -1,7 +1,7 @@
 # Owner-approved Phase 2 execution overrides
 
 2026-10-16. The attached whole-phase request supersedes conflicting wording in
-`RAG-PHASE-PROMPT-v2.md` and `RAG-PLAN-v2.md`.
+the Phase 2 prompt (removed in the Nov 2026 docs cleanup; see `docs/HISTORY.md`) and `RAG-PLAN-v2.md`.
 
 - Execute stages 0–7 in order; numbered STOP gates are reports/checkpoints, not
   approval pauses. Stop immediately on the owner's five explicit failure conditions.

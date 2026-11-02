@@ -5,7 +5,7 @@ import path from "node:path";
 function repoRoot(): string {
   let probe = process.cwd();
   while (probe !== path.parse(probe).root) {
-    if (existsSync(path.join(probe, "README_START_HERE.md"))) return probe;
+    if (existsSync(path.join(probe, "compose.yaml"))) return probe;
     probe = path.dirname(probe);
   }
   throw new Error("Repository root not found.");

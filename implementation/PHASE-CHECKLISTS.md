@@ -1,4 +1,7 @@
 # Phase checklists — tick only with evidence (command + result in PROGRESS.md or the ticket report)
+
+> **Note (2026-11-02):** the ticket and phase reports cited as evidence below were removed in the docs cleanup. Recover any of them with `git show ed965ab:<path>`; a summary is in `docs/HISTORY.md`.
+
 Legend: [ ] open · [x] done with evidence. Owner sign-off closes each phase.## P1 Foundation
 - [x] P1-01 toolchain, health/ready, Compose, CI config (evidence: P1-01-REPORT.md; hosted CI not yet run)
 - [x] P1-02: `alembic upgrade head` from empty DB and `downgrade base` both succeed on a disposable DB (evidence: P1-02-REPORT.md — `test_migrations_up_down_cycle` on `chatbot_dev_migration_test`, Windows + Linux container)

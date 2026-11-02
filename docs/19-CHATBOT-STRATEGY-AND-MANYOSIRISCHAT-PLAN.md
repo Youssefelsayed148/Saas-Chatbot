@@ -3,7 +3,7 @@
 # Chatbot strategy and ManyOsirisChat plan (decisions record)
 
 Status: DRAFT for owner review after testing. Written 2026-10-17 from the triage session.
-Companion: `implementation/WEBSITE-MVP-CLOSEOUT.md` (the staged plan to close the website bot).
+Companion: the website MVP close-out plan (removed in the Nov 2026 docs cleanup; see `docs/HISTORY.md`).
 Authority: where this conflicts with docs/07, 14, 17 or 18, the owner decides after review; ADR-019 and RAG-PLAN-v2 already supersede the keyword-only parts of docs/07, 14 and 18.
 
 ## 1. Product scope and sequence

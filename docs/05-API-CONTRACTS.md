@@ -1,4 +1,7 @@
-# Proposed REST API contracts (to finalize before implementing endpoints)
+# REST API contracts
+
+> **Status (2026-11-02):** the API is implemented. The tables below are the original design narrative, which covers roughly half of the operations. The **generated endpoint index at the end of this file lists every operation** and is authoritative together with the code and tests.
+
 JSON error: `{ "error": {"code":"FORBIDDEN","message":"...","request_id":"..."}}`; 400 validation, 401 unauthenticated, 403 unauthorized, 404 hidden tenant resource, 409 conflict, 422 invalid input, 429 limit, 503 dependency.
 | Method/path | Auth | Intent |
 |---|---|---|
@@ -63,3 +66,196 @@ Request/response schemas with example, pagination, ownership checks, idempotency
 
 ## Error codes added by the account/administration slices (S1–S4)
 `USER_NOT_FOUND` (404, invitation for an email with no account — staff create accounts first); `INVALID_CURRENT_PASSWORD` (400, change-password verification failure, throttled per user after 5 failed attempts in a 300 s window with 429 `RATE_LIMITED`); `PASSWORD_UNCHANGED` (400, new password equals current). Password-change failures never reveal whether an account exists beyond the caller's own session; policy failures remain 422 `VALIDATION_ERROR`.
+
+## Endpoint index (generated from the OpenAPI schema, 2026-11-02)
+The tables above are the original design narrative. This index is generated from the application's OpenAPI schema and lists every operation it exposes: **152 operations**. Where it differs from the narrative, this index wins. Regenerate it with:
+```sh
+cd apps/api && ENVIRONMENT=test python -c "import app.main as m; import json; s=m.create_app().openapi(); [print(k.upper(), p) for p,v in s['paths'].items() for k in v]"
+```
+
+### Authentication (6)
+
+| Method | Path | Handler |
+| --- | --- | --- |
+| POST | `/api/v1/auth/change-password` | `change_password` |
+| GET | `/api/v1/auth/config` | `auth_config` |
+| POST | `/api/v1/auth/login` | `login` |
+| POST | `/api/v1/auth/logout` | `logout` |
+| GET | `/api/v1/auth/me` | `me` |
+| POST | `/api/v1/auth/register` | `register` |
+
+### Channel contract (ManyOsirisChat) (1)
+
+| Method | Path | Handler |
+| --- | --- | --- |
+| POST | `/api/channels/manyosiris/events` | `receive_channel_event` |
+
+### Invitations and health (3)
+
+| Method | Path | Handler |
+| --- | --- | --- |
+| POST | `/api/v1/invitations/accept` | `accept_invitation` |
+| GET | `/health` | `health_health_get` |
+| GET | `/ready` | `ready_ready_get` |
+
+### Platform staff (40)
+
+| Method | Path | Handler |
+| --- | --- | --- |
+| GET | `/api/v1/platform/analytics` | `platform_analytics` |
+| GET | `/api/v1/platform/audit` | `platform_audit_review` |
+| GET | `/api/v1/platform/bots` | `list_bots` |
+| POST | `/api/v1/platform/bots` | `create_bot` |
+| POST | `/api/v1/platform/bots/{bot_id}/pause` | `platform_pause_bot` |
+| GET | `/api/v1/platform/change-requests` | `operator_change_queue` |
+| PATCH | `/api/v1/platform/change-requests/{request_id}` | `triage_change_request` |
+| GET | `/api/v1/platform/channel-connections` | `list_channel_connections` |
+| POST | `/api/v1/platform/channel-connections` | `create_channel_connection` |
+| GET | `/api/v1/platform/channel-connections/{connection_id}` | `get_channel_connection` |
+| PATCH | `/api/v1/platform/channel-connections/{connection_id}` | `update_channel_connection` |
+| POST | `/api/v1/platform/channel-connections/{connection_id}/check-health` | `check_channel_connection_health` |
+| POST | `/api/v1/platform/channel-connections/{connection_id}/pause` | `pause_channel_connection` |
+| POST | `/api/v1/platform/channel-connections/{connection_id}/resume` | `resume_channel_connection` |
+| POST | `/api/v1/platform/channel-connections/{connection_id}/revoke` | `revoke_channel_connection` |
+| POST | `/api/v1/platform/channel-connections/{connection_id}/rotate-secret` | `rotate_channel_secret` |
+| GET | `/api/v1/platform/me` | `platform_me` |
+| GET | `/api/v1/platform/onboarding.csv` | `platform_provisioning_csv` |
+| GET | `/api/v1/platform/onboarding/{request_id}` | `platform_onboarding_status` |
+| GET | `/api/v1/platform/operations/jobs` | `platform_job_health` |
+| POST | `/api/v1/platform/operations/jobs/{job_id}/cancel` | `platform_cancel_job` |
+| POST | `/api/v1/platform/operations/jobs/{job_id}/retry` | `platform_retry_job` |
+| GET | `/api/v1/platform/quotas` | `platform_quotas` |
+| GET | `/api/v1/platform/tenants` | `platform_tenants` |
+| POST | `/api/v1/platform/tenants` | `platform_create_organization` |
+| GET | `/api/v1/platform/tenants/{tenant_id}` | `platform_tenant_detail` |
+| PATCH | `/api/v1/platform/tenants/{tenant_id}` | `platform_update_organization` |
+| POST | `/api/v1/platform/tenants/{tenant_id}/bots` | `platform_create_bot` |
+| DELETE | `/api/v1/platform/tenants/{tenant_id}/bots/{bot_id}` | `platform_archive_bot` |
+| PATCH | `/api/v1/platform/tenants/{tenant_id}/plan` | `platform_assign_plan` |
+| PATCH | `/api/v1/platform/tenants/{tenant_id}/quota-overrides` | `platform_quota_override` |
+| GET | `/api/v1/platform/users` | `list_users` |
+| POST | `/api/v1/platform/users` | `create_user` |
+| GET | `/api/v1/platform/users/{user_id}` | `get_user` |
+| POST | `/api/v1/platform/users/{user_id}/deactivate` | `deactivate` |
+| POST | `/api/v1/platform/users/{user_id}/memberships` | `assign` |
+| DELETE | `/api/v1/platform/users/{user_id}/memberships/{organization_id}` | `remove` |
+| PATCH | `/api/v1/platform/users/{user_id}/memberships/{organization_id}` | `role` |
+| POST | `/api/v1/platform/users/{user_id}/password` | `reset` |
+| POST | `/api/v1/platform/users/{user_id}/reactivate` | `reactivate` |
+
+### Provisioning (1)
+
+| Method | Path | Handler |
+| --- | --- | --- |
+| POST | `/api/v1/provisioning/self-service` | `self_service_signup` |
+
+### Public widget (8)
+
+| Method | Path | Handler |
+| --- | --- | --- |
+| POST | `/api/public/v1/sessions/{session_id}/lead` | `session_lead` |
+| GET | `/api/public/v1/sessions/{session_id}/messages` | `session_messages` |
+| POST | `/api/public/v1/sessions/{session_id}/messages` | `send_message` |
+| POST | `/api/public/v1/sessions/{session_id}/messages/stream` | `send_message_stream` |
+| POST | `/api/public/v1/sessions/{session_id}/messages/{message_id}/feedback` | `session_feedback` |
+| GET | `/api/public/v1/widgets/{locator}/config` | `widget_config` |
+| GET | `/api/public/v1/widgets/{locator}/frame-ancestors` | `widget_frame_ancestors` |
+| POST | `/api/public/v1/widgets/{locator}/sessions` | `create_session` |
+
+### Tenant workspace (93)
+
+| Method | Path | Handler |
+| --- | --- | --- |
+| POST | `/api/v1/tenants` | `create_tenant` |
+| GET | `/api/v1/tenants/{tenant_id}` | `get_tenant` |
+| PATCH | `/api/v1/tenants/{tenant_id}` | `update_tenant` |
+| GET | `/api/v1/tenants/{tenant_id}/analytics` | `handoff_analytics` |
+| GET | `/api/v1/tenants/{tenant_id}/analytics/timeseries` | `conversation_timeseries` |
+| GET | `/api/v1/tenants/{tenant_id}/bots` | `list_bots` |
+| POST | `/api/v1/tenants/{tenant_id}/bots` | `create_bot` |
+| DELETE | `/api/v1/tenants/{tenant_id}/bots/{bot_id}` | `archive_bot` |
+| GET | `/api/v1/tenants/{tenant_id}/bots/{bot_id}` | `get_bot` |
+| PATCH | `/api/v1/tenants/{tenant_id}/bots/{bot_id}` | `update_bot` |
+| GET | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/analytics/conversations.csv` | `analytics_conversations_csv` |
+| GET | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/analytics/leads` | `analytics_leads` |
+| GET | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/analytics/leads.csv` | `analytics_leads_csv` |
+| GET | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/analytics/summary` | `analytics_summary` |
+| GET | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/analytics/top-questions` | `analytics_top_questions` |
+| GET | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/analytics/unanswered` | `analytics_unanswered` |
+| GET | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/analytics/volume` | `analytics_volume` |
+| GET | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/conversations` | `list_conversations` |
+| DELETE | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/conversations/{conversation_id}` | `delete_conversation` |
+| GET | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/conversations/{conversation_id}` | `conversation_detail` |
+| GET | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/documents` | `list_documents` |
+| GET | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/documents/{document_id}/chunks` | `list_document_chunks` |
+| POST | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/ingestion` | `start_ingestion` |
+| GET | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/jobs` | `list_jobs` |
+| GET | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/jobs/{job_id}` | `get_job` |
+| POST | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/jobs/{job_id}/cancel` | `cancel_job` |
+| POST | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/jobs/{job_id}/retry` | `retry_job` |
+| POST | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/messages/{message_id}/feedback` | `message_feedback` |
+| GET | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/playground/conversation` | `playground_conversation` |
+| POST | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/playground/conversation/new` | `playground_new_session` |
+| POST | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/playground/messages` | `playground_turn` |
+| POST | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/playground/messages/stream` | `playground_turn_stream` |
+| GET | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/quota` | `bot_quota_status` |
+| GET | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/rag` | `get_rag` |
+| PATCH | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/rag` | `patch_rag` |
+| POST | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/rag/backfill` | `start_backfill` |
+| GET | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/rag/costs` | `get_costs` |
+| GET | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/rag/traces` | `get_traces` |
+| GET | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/readiness` | `get_readiness` |
+| GET | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/revisions` | `list_revisions` |
+| POST | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/revisions/{revision_id}/publish` | `publish_revision` |
+| GET | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/sources` | `list_sources` |
+| POST | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/sources/bulk-delete` | `bulk_delete_sources` |
+| POST | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/sources/files` | `upload_sources` |
+| GET | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/sources/qa-template` | `download_qa_template` |
+| DELETE | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/sources/{source_id}` | `delete_source` |
+| GET | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/sources/{source_id}` | `get_source` |
+| PUT | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/sources/{source_id}/always-include` | `set_always_include` |
+| POST | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/sources/{source_id}/replace` | `replace_source` |
+| GET | `/api/v1/tenants/{tenant_id}/bots/{bot_id}/tone-and-rules` | `get_tone_and_rules` |
+| GET | `/api/v1/tenants/{tenant_id}/change-requests` | `list_change_requests` |
+| POST | `/api/v1/tenants/{tenant_id}/change-requests` | `create_change_request` |
+| GET | `/api/v1/tenants/{tenant_id}/change-requests/{request_id}/attachments/{attachment_id}` | `download_change_attachment` |
+| GET | `/api/v1/tenants/{tenant_id}/channels` | `list_client_channels` |
+| GET | `/api/v1/tenants/{tenant_id}/contacts` | `list_contacts` |
+| POST | `/api/v1/tenants/{tenant_id}/contacts` | `create_contact` |
+| GET | `/api/v1/tenants/{tenant_id}/contacts/export.csv` | `export_contacts` |
+| GET | `/api/v1/tenants/{tenant_id}/contacts/stages` | `list_stages` |
+| PATCH | `/api/v1/tenants/{tenant_id}/contacts/stages` | `rename_stage` |
+| DELETE | `/api/v1/tenants/{tenant_id}/contacts/{contact_id}` | `erase_contact` |
+| GET | `/api/v1/tenants/{tenant_id}/contacts/{contact_id}` | `get_contact` |
+| PATCH | `/api/v1/tenants/{tenant_id}/contacts/{contact_id}` | `update_contact` |
+| POST | `/api/v1/tenants/{tenant_id}/contacts/{contact_id}/merge` | `merge_contact` |
+| GET | `/api/v1/tenants/{tenant_id}/conversations/{conversation_id}` | `conversation_detail` |
+| POST | `/api/v1/tenants/{tenant_id}/conversations/{conversation_id}/assign` | `assign` |
+| POST | `/api/v1/tenants/{tenant_id}/conversations/{conversation_id}/messages` | `agent_reply` |
+| POST | `/api/v1/tenants/{tenant_id}/conversations/{conversation_id}/messages/{message_id}/resend` | `resend_message` |
+| POST | `/api/v1/tenants/{tenant_id}/conversations/{conversation_id}/notes` | `add_internal_note` |
+| POST | `/api/v1/tenants/{tenant_id}/conversations/{conversation_id}/resolve` | `resolve` |
+| POST | `/api/v1/tenants/{tenant_id}/conversations/{conversation_id}/return-to-ai` | `return_to_ai` |
+| POST | `/api/v1/tenants/{tenant_id}/conversations/{conversation_id}/takeover` | `takeover` |
+| DELETE | `/api/v1/tenants/{tenant_id}/data` | `delete_tenant_data` |
+| GET | `/api/v1/tenants/{tenant_id}/data/audit` | `tenant_audit_review` |
+| GET | `/api/v1/tenants/{tenant_id}/data/deletion-preview` | `deletion_preview` |
+| GET | `/api/v1/tenants/{tenant_id}/data/export` | `export_tenant_data` |
+| GET | `/api/v1/tenants/{tenant_id}/follow-ups` | `list_follow_ups` |
+| POST | `/api/v1/tenants/{tenant_id}/follow-ups` | `create_follow_up` |
+| DELETE | `/api/v1/tenants/{tenant_id}/follow-ups/{follow_up_id}` | `cancel_follow_up` |
+| GET | `/api/v1/tenants/{tenant_id}/inbox` | `list_inbox` |
+| GET | `/api/v1/tenants/{tenant_id}/inbox/assignees` | `list_assignees` |
+| GET | `/api/v1/tenants/{tenant_id}/inbox/counts` | `notification_counts` |
+| GET | `/api/v1/tenants/{tenant_id}/inbox/events` | `stream_events` |
+| POST | `/api/v1/tenants/{tenant_id}/inbox/{conversation_id}/read` | `mark_read` |
+| POST | `/api/v1/tenants/{tenant_id}/inbox/{conversation_id}/tags` | `add_tag` |
+| DELETE | `/api/v1/tenants/{tenant_id}/inbox/{conversation_id}/tags/{tag}` | `remove_tag` |
+| GET | `/api/v1/tenants/{tenant_id}/invitations` | `list_invitations` |
+| POST | `/api/v1/tenants/{tenant_id}/invitations` | `create_invitation` |
+| DELETE | `/api/v1/tenants/{tenant_id}/invitations/{invitation_id}` | `revoke_invitation` |
+| POST | `/api/v1/tenants/{tenant_id}/invitations/{invitation_id}/resend` | `resend_invitation` |
+| GET | `/api/v1/tenants/{tenant_id}/members` | `list_members` |
+| DELETE | `/api/v1/tenants/{tenant_id}/members/{user_id}` | `remove_member` |
+| PATCH | `/api/v1/tenants/{tenant_id}/members/{user_id}` | `change_member_role` |
+| GET | `/api/v1/tenants/{tenant_id}/quota` | `quota_status` |

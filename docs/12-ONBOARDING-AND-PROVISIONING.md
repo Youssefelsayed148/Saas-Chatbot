@@ -1,4 +1,4 @@
-﻿# One provisioning service
+# One provisioning service
 
 Two entry points: self-service and admin-managed. Both invoke the same `ProvisioningService` with an authenticated actor, requested tenant/bot configuration, and an idempotency key. The service creates or reuses tenant/bot resources, records the request and audit event, and can schedule optional ingestion. The staff path changes actor authorization and the account workflow, not the core provisioning logic.
 

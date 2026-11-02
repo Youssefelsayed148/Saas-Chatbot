@@ -9,3 +9,22 @@ Unit: auth, role checks, tenant filters, bot lifecycle, provisioning idempotency
 - **No cross-organization data:** every list is scoped so one organization's members/bots/audit never appear in another's.
 
 Each ticket done only if implementation, tests, docs, acceptance evidence and limitations reported. No claim of green tests without exact commands/output. Phase gate requires independent review; no deployment without separate approval.
+
+## How the suites are run (verified 2026-11-02)
+
+Use a disposable PostgreSQL only; the suites create and truncate databases.
+
+| Suite | Size and time observed | Needs |
+| --- | --- | --- |
+| API (`apps/api`, pytest) | 1,217 tests, about 42 minutes on a 2-CPU sandbox | PostgreSQL 16 with **pgvector 0.8 or newer** (hybrid retrieval uses `hnsw.iterative_scan`; with 0.6 about nine retrieval/embedding tests fail) and the `citext` extension. Set `ENVIRONMENT=test` and `TEST_DATABASE_URL` to a base URL; tests use `<name>_test`. |
+| API migration guard (`tests/test_r19_index_migration.py`) | one test | `PGHOST` set to a Unix socket directory `/var/tmp/saas-*/<dir>`, `PGPORT`, and a base database name ending in `_test`. |
+| Playwright (`apps/web`) | 177 tests in 39 files, about 6 minutes | The pinned Playwright browser build installed (`npx playwright install chromium`), `E2E_PYTHON` pointing at a Python with the API dependencies, and `TEST_DATABASE_URL`. The whole-run limit in `playwright.config.ts` is 30 minutes. |
+| Scripts (`scripts/test_*.py`) | seconds | Python 3 only; `check_contract_copies.py` verifies the contract copies. |
+
+Notes:
+
+- The repo root for the test helpers is the directory containing `compose.yaml`.
+- The evaluation test rewrites `implementation/PHASE-03/EVAL-REPORT.md` on every run; that folder is git-ignored.
+- Hosted CI is configured in `.github/workflows/ci.yml`; local runs are the evidence recorded in `PROGRESS.md`.
+- Last recorded results: full Playwright 177 passed on `main` at `ed965ab`; API 1,207 passed plus 10 environment-related failures that passed once pgvector 0.8.5 was installed (see `PROGRESS.md`).
+
