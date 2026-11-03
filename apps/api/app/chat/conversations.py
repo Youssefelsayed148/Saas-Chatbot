@@ -17,7 +17,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, or_, select, update
 from sqlalchemy.orm import Session as OrmSession
 
 from app.channels import config as channel_config
@@ -28,7 +28,7 @@ from app.chat.history import history_for_turn
 from app.chat.models import default_model
 from app.chat.prompts import canned
 from app.chat.providers import ChatModel, ProviderError
-from app.chat.service import ChatReply, _support_contact, chat_answer
+from app.chat.service import ChatReply, _support_contact, ai_disclosure_for, chat_answer
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
 from app.core.ratelimit import purge_expired_windows
@@ -691,6 +691,32 @@ def _busy_texts(bot: Bot) -> set[str]:
     return raw | {to_plain_text(text, keep=keep) for text in raw}
 
 
+def _disclose_first_ai_message(
+    db: OrmSession, *, tenant_id: UUID, bot: Bot, conversation: Conversation, message: Message, language: str
+) -> None:
+    """Start the first answer of a channel conversation with the AI disclosure line.
+
+    "Already disclosed" means an earlier bot message starts with the line, so busy and
+    unsupported-message notices (matched by exact text elsewhere) never use it up."""
+    line = ai_disclosure_for(bot, language)
+    if not line:
+        return
+    candidates = {text for text in (ai_disclosure_for(bot, "en"), ai_disclosure_for(bot, "ar"), line) if text}
+    earlier = db.scalar(
+        select(Message.id)
+        .where(
+            Message.tenant_id == tenant_id,
+            Message.conversation_id == conversation.id,
+            Message.sender_type == "ai",
+            Message.id != message.id,
+            or_(*[Message.text.startswith(text, autoescape=True) for text in candidates]),
+        )
+        .limit(1)
+    )
+    if earlier is None:
+        message.text = f"{line}\n\n{message.text}"
+
+
 def channel_chat_turn(
     db: OrmSession,
     *,
@@ -805,6 +831,10 @@ def channel_chat_turn(
         return None
     ai_message = turn.ai_message
     ai_message.delivery_status = "pending"
+    if turn.reply.kind != "busy":  # busy notices are de-duplicated by their exact text
+        _disclose_first_ai_message(
+            db, tenant_id=tenant_id, bot=bot, conversation=conversation, message=ai_message, language=language
+        )
     enqueue_message(db, conversation, ai_message, settings)
     return ai_message
 

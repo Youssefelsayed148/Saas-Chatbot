@@ -167,6 +167,29 @@ def _welcome_for(bot: Bot, language: str) -> str:
     return prompts.canned("hello_default", language)
 
 
+DEFAULT_AI_DISCLOSURE = {
+    "en": "You're chatting with our AI assistant; a person can take over on request.",
+    "ar": "أنت تتحدث مع مساعدنا الذكي، ويمكن لأحد أفراد فريقنا تولي المحادثة عند الطلب.",
+}
+
+
+def ai_disclosure_for(bot: Bot, language: str) -> str:
+    """The line that tells a channel customer they are talking to AI, in their language.
+
+    A business can replace it per language through the bot config (`ai_disclosure`);
+    setting every language to blank turns it off. Returns "" when turned off."""
+    configured = _config_get(bot, "ai_disclosure", None)
+    if isinstance(configured, dict):
+        values = {key: value for key, value in configured.items() if isinstance(value, str)}
+        for key in (language, "en", "ar"):
+            text = values.get(key, "").strip()
+            if text:
+                return text
+        if values and all(not value.strip() for value in values.values()):
+            return ""
+    return DEFAULT_AI_DISCLOSURE.get(language) or DEFAULT_AI_DISCLOSURE["en"]
+
+
 def _config_text(bot: Bot, key: str) -> str:
     value = _config_get(bot, key, "")
     return value.strip() if isinstance(value, str) else ""
