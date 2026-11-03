@@ -109,6 +109,8 @@ class BotConfig(BaseModel):
     business_name: str | None = Field(default=None, min_length=1, max_length=100)
     business_description: str | None = Field(default=None, max_length=1000)
     welcome_message: WelcomeMessage | None = None
+    # Line shown before the first AI reply on a channel; blank in every language turns it off.
+    ai_disclosure: WelcomeMessage | None = None
     opening_questions: list[str] | None = Field(default=None, max_length=10)
     default_language: str | None = Field(default=None, pattern="^(en|ar)$")
     # Language of the knowledge base; None = same as default_language. Drives the

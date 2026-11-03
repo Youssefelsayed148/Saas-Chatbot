@@ -327,11 +327,11 @@ class BotService:
         if "knowledge_language" in patch.model_fields_set and patch.knowledge_language is None:
             merged.pop("knowledge_language", None)  # null clears it: back to default_language
         for key, value in provided.items():
-            if key == "welcome_message" and isinstance(value, dict):
-                existing = merged.get("welcome_message")
+            if key in {"welcome_message", "ai_disclosure"} and isinstance(value, dict):
+                existing = merged.get(key)
                 merged_message = dict(existing) if isinstance(existing, dict) else {}
                 merged_message.update({k: v for k, v in value.items()})
-                merged["welcome_message"] = merged_message
+                merged[key] = merged_message
             else:
                 merged[key] = value
         return merged

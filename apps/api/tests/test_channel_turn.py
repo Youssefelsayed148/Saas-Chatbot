@@ -16,7 +16,7 @@ from app.channels.guard import conversation_turn_lock
 from app.channels.inbound import run_channel_inbound
 from app.channels.sanitize import to_plain_text
 from app.chat.providers import ProviderError
-from app.chat.service import ChatReply
+from app.chat.service import DEFAULT_AI_DISCLOSURE, ChatReply
 from app.core.errors import ApiError
 from app.db.models import Bot, ChannelConnection, ChannelEvent, Conversation, Job, Message
 from tests.conftest import build_test_settings
@@ -78,7 +78,7 @@ def test_channel_answer_is_plain_text_with_style_hint_from_the_shared_core(
     _send(client, db, connection_id, secret, "plain")
     reply = db.scalar(select(Message).where(Message.sender_type == "ai"))
     assert reply is not None
-    assert reply.text == "We open at 9\n- Mon to Fri"
+    assert reply.text == f"{DEFAULT_AI_DISCLOSURE['en']}\n\nWe open at 9\n- Mon to Fri"
     assert reply.citations  # staff still see sources; only the DM text is cleaned
     assert seen["channel_style"] == channel_config.DEFAULT_STYLE_HINT
     assert seen["history"] == []

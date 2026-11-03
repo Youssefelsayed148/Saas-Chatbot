@@ -18,7 +18,7 @@ from app.channels.inbound import run_channel_inbound
 from app.channels.secrets import encrypt_secret
 from app.channels.signing import sign
 from app.chat.providers import ChatModel, ProviderError
-from app.chat.service import ChatReply
+from app.chat.service import DEFAULT_AI_DISCLOSURE, ChatReply
 from app.core.config import get_settings
 from app.core.errors import ApiError
 from app.db.models import (
@@ -425,7 +425,7 @@ def test_channel_pipeline_truncates_only_model_input_and_stores_pending_reply(
     ai_message = db.scalar(select(Message).where(Message.sender_type == "ai"))
     assert visitor is not None and visitor.text == long_text
     assert captured == ["x" * 1000]
-    assert ai_message is not None and ai_message.text == "Stored answer"
+    assert ai_message is not None and ai_message.text == f"{DEFAULT_AI_DISCLOSURE['en']}\n\nStored answer"
     assert ai_message.delivery_status == "pending"
     message_usage = db.scalar(
         select(UsageEvent).where(
